@@ -25,17 +25,23 @@ print("SciKit version: " + sk.__version__)
 dtype = 'float64'
 tf.keras.backend.set_floatx(dtype)
 # 2D
-spot = np.asarray([100, 105], dtype=dtype)
-vol = np.asarray([0.25, 0.35], dtype=dtype)
-div = np.asarray([0.02, 0.01], dtype=dtype)
-fixings = np.asarray([90, 95], dtype=dtype)  # Past value of the spot to measure performance
-model_name = "model_2_assets"
+# spot = np.asarray([100, 105], dtype=dtype)
+# vol = np.asarray([0.25, 0.35], dtype=dtype)
+# div = np.asarray([0.02, 0.01], dtype=dtype)
+# fixings = np.asarray([90, 95], dtype=dtype)  # Past value of the spot to measure performance
+# model_name = "model_2_assets"
 # 3D
 # spot = np.asarray([100, 105, 102], dtype=dtype)
 # vol = np.asarray([0.25, 0.35, 0.30], dtype=dtype)
 # div = np.asarray([0.02, 0.01, 0.01], dtype=dtype)
 # fixings = np.asarray([90, 95, 92], dtype=dtype)  # Past value of the spot to measure performance
 # model_name = "model_3_assets"
+# 4D
+spot = np.asarray([100, 105, 102, 104], dtype=dtype)
+vol = np.asarray([0.25, 0.35, 0.30, 0.20], dtype=dtype)
+div = np.asarray([0.02, 0.01, 0.01, 0.3], dtype=dtype)
+fixings = np.asarray([90, 95, 92, 97], dtype=dtype)  # Past value of the spot to measure performance
+model_name = "model_4_assets"
 # 5D
 # spot = np.asarray([100, 105, 102, 104, 103], dtype=dtype)
 # vol = np.asarray([0.25, 0.35, 0.20, 0.40, 0.30], dtype=dtype)
@@ -64,7 +70,7 @@ for i in range(len(correl)):
 seed = 42
 
 # Model saving/loading
-model_save_path = r"W:\\Models\\pinns_worstof\\"
+model_save_path = r"W:\\Models\\pinns_worst_of\\"
 model_folder = os.path.join(model_save_path, model_name)
 
 print("Number of assets: " + str(num_assets))
@@ -103,8 +109,8 @@ def tf_smooth_max(x, y):
 
 # ############################## Define boundaries #########################################################
 # Time boundaries at 0 and expiry
-tmin = tf.constant(0.0, dtype='float64')
-tmax = tf.constant(expiry, dtype='float64')
+tmin = tf.constant(0.0, dtype=dtype)
+tmax = tf.constant(expiry, dtype=dtype)
 
 # Spot boundaries defined as extreme percentiles of the distribution
 N = scipy.stats.norm
@@ -147,14 +153,14 @@ def payoff(x):
 def lw_boundary(t, x):
     n = x.shape[0]
     df_ = tf.math.exp(-rate * (tmax - t))
-    return notional * df_ * tf.ones((n, 1), dtype='float64') * floor
+    return notional * df_ * tf.ones((n, 1), dtype=dtype) * floor
 
 
 # At extreme high values of the spots, the worst performance is above the cap
 def up_boundary(t, x):
     n = x.shape[0]
     df_ = tf.math.exp(-rate * (tmax - t))
-    return notional * df_ * tf.ones((n, 1), dtype='float64') * cap
+    return notional * df_ * tf.ones((n, 1), dtype=dtype) * cap
 
 
 # ############################## Build the dataset #########################################################
@@ -163,16 +169,16 @@ def build_dataset(num_final_, nb_, num_pde_, init_rnd=False):
         tf.random.set_seed(seed)
 
     # Draw payoff points
-    t0_ = tf.ones((num_final_, 1), dtype='float64') * tmax
-    x0 = tf.random.uniform((num_final_, num_assets), xmin, xmax, dtype='float64')
+    t0_ = tf.ones((num_final_, 1), dtype=dtype) * tmax
+    x0 = tf.random.uniform((num_final_, num_assets), xmin, xmax, dtype=dtype)
     payoff_points = tf.concat([t0_, x0], axis=1)
     payoff_values = payoff(x0)
 
     # Draw side boundaries points
-    lw_tb = tf.random.uniform((nb_, 1), tmin, tmax, dtype='float64')
-    lw_xb = tf.ones((nb_, num_assets), dtype='float64') * xmin
+    lw_tb = tf.random.uniform((nb_, 1), tmin, tmax, dtype=dtype)
+    lw_xb = tf.ones((nb_, num_assets), dtype=dtype) * xmin
     up_tb = lw_tb  # We could also draw another set
-    up_xb = tf.ones((nb_, num_assets), dtype='float64') * xmax
+    up_xb = tf.ones((nb_, num_assets), dtype=dtype) * xmax
     tb = tf.concat([lw_tb, up_tb], axis=0)
     xb = tf.concat([lw_xb, up_xb], axis=0)
     side_points = tf.concat([tb, xb], axis=1)
@@ -189,8 +195,8 @@ def build_dataset(num_final_, nb_, num_pde_, init_rnd=False):
         boundary_values_ = [payoff_values]
 
     # Draw PDE points
-    tpde = tf.random.uniform((num_pde_, 1), tmin, tmax, dtype='float64')
-    xpde = tf.random.uniform((num_pde_, num_assets), xmin, xmax, dtype='float64')
+    tpde = tf.random.uniform((num_pde_, 1), tmin, tmax, dtype=dtype)
+    xpde = tf.random.uniform((num_pde_, num_assets), xmin, xmax, dtype=dtype)
     pde_points_ = tf.concat([tpde, xpde], axis=1)
 
     return pde_points_, boundary_points_, boundary_values_
@@ -496,7 +502,7 @@ class FlooredExponentialDecay(tf.keras.optimizers.schedules.LearningRateSchedule
 
 # ############################## Initialize training #######################################################
 # Initialize model (one activation per hidden layer)
-hidden_layers = ['softplus', 'softplus', 'softplus', 'softplus']  # 5D
+hidden_layers = ['softplus', 'softplus', 'softplus', 'softplus']  # 5D, 3D, 2D
 # hidden_layers = ['softplus', 'softplus', 'softplus', 'softplus', 'softplus']  # 3D, 2D
 num_neurons = 8  # 5D(16), 3D(8), 2D(8)
 
@@ -537,9 +543,9 @@ best_weight_file = "model_current_best.h5"
 weights_are_saved = False
 
 # Sample point sizes
-num_final = 4 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
-nb = 5 * 100  # 5D(2 * 1000), 3D(6 * 100), 2D(5 * 100)
-num_pde = 4 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
+num_final = 6 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
+nb = 75 * 10  # 5D(2 * 1000), 3D(750), 2D(500)
+num_pde = 6 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
 
 # Generate sample points
 tf.random.set_seed(seed)
