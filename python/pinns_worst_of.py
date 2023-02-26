@@ -38,14 +38,14 @@ tf.keras.backend.set_floatx(dtype)
 # model_name = "model_3_assets"
 # 4D
 spot = np.asarray([100, 105, 102, 104], dtype=dtype)
-vol = np.asarray([0.25, 0.35, 0.30, 0.20], dtype=dtype)
-div = np.asarray([0.02, 0.01, 0.01, 0.3], dtype=dtype)
+vol = np.asarray([0.25, 0.35, 0.30, 0.40], dtype=dtype)
+div = np.asarray([0.02, 0.01, 0.01, 0.03], dtype=dtype)
 fixings = np.asarray([90, 95, 92, 97], dtype=dtype)  # Past value of the spot to measure performance
 model_name = "model_4_assets"
 # 5D
 # spot = np.asarray([100, 105, 102, 104, 103], dtype=dtype)
-# vol = np.asarray([0.25, 0.35, 0.20, 0.40, 0.30], dtype=dtype)
-# div = np.asarray([0.02, 0.01, 0.02, 0.03, 0.025], dtype=dtype)
+# vol = np.asarray([0.25, 0.35, 0.30, 0.40, 0.30], dtype=dtype)
+# div = np.asarray([0.02, 0.01, 0.01, 0.03, 0.025], dtype=dtype)
 # fixings = np.asarray([90, 95, 92, 97, 102], dtype=dtype)  # Past value of the spot to measure performance
 # model_name = "model_5_assets"
 
@@ -343,10 +343,8 @@ cross_asset_idx = 1
 
 # Direct MC simulation (non-tensor/non-AD)
 def mc_simulation_pv(spot_, time_, gaussians):
-    tf_spot = tf.convert_to_tensor(spot_, dtype='float64')
-    tf_time = tf.convert_to_tensor(time_, dtype='float64')
-    # tf_spot = tf.convert_to_tensor(spot_, dtype='float32')
-    # tf_time = tf.convert_to_tensor(time_, dtype='float32')
+    tf_spot = tf.convert_to_tensor(spot_, dtype=dtype)
+    tf_time = tf.convert_to_tensor(time_, dtype=dtype)
 
     # Calculate deterministic forward
     fwd = tf_spot * tf.math.exp((rate - div) * tf_time)
@@ -442,7 +440,7 @@ num_points = 50
 use_joint_ladder = False
 
 # Generate identical points at the initial spot value
-x_space = np.zeros(shape=(num_points, num_assets), dtype='float64')
+x_space = np.zeros(shape=(num_points, num_assets), dtype=dtype)
 
 # Create a reduced spot ladder
 if use_joint_ladder:
@@ -508,22 +506,14 @@ num_neurons = 8  # 5D(16), 3D(8), 2D(8)
 
 model = compose_model(hidden_layers, num_neurons)
 
-# Custom scheduler
+# Leaning rate
 init_lr = 1e-1  # 2D(1e-1)
 final_lr = 1e-3  # 2D(1e-3)
 decay = 0.97  # 2D(0.97)
 steps = 100  # 2D(100)
 lr_schedule = FlooredExponentialDecay(init_lr, final_lr, decay, steps)
 
-# Learning rate scheduler
-# lr = 1e-1  # 5D(1e-1), 3D(1e-1), 2D(1e-1)
-# decay = 0.98  # 5D(0.99), 3D(), 2D()
-# steps = 100
-# staircase = True
-# lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=lr,
-#                                                              decay_steps=steps, decay_rate=decay)
-
-# Learning rate, decay and optimizer
+# Optimizer
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
 
 # Optimizer fields
@@ -538,14 +528,14 @@ lr_hist = []
 
 # Periodically save weights of the best model to date, and use this best model as a solution
 # at the end of the training. The loss is used as metric to determine the best model.
-best_loss_to_date = np.finfo(dtype='float32').max
+best_loss_to_date = np.finfo(dtype=dtype).max
 best_weight_file = "model_current_best.h5"
 weights_are_saved = False
 
 # Sample point sizes
-num_final = 6 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
-nb = 75 * 10  # 5D(2 * 1000), 3D(750), 2D(500)
-num_pde = 6 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
+num_final = 10 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
+nb = 1250  # 5D(2 * 1000), 3D(750), 2D(500)
+num_pde = 10 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
 
 # Generate sample points
 tf.random.set_seed(seed)
@@ -569,7 +559,7 @@ def train_step(pde_points_, boundary_points_, boundary_values_):
 
 # ############################## Launch the training #######################################################
 # Training parameters
-num_epochs = 10 * 1000  # 2D(20,000)
+num_epochs = 10 * 1000
 redraw_dataset = False
 
 # Prepare comparison with MS
