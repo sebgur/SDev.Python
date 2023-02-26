@@ -37,17 +37,17 @@ tf.keras.backend.set_floatx(dtype)
 # fixings = np.asarray([90, 95, 92], dtype=dtype)  # Past value of the spot to measure performance
 # model_name = "model_3_assets"
 # 4D
-spot = np.asarray([100, 105, 102, 104], dtype=dtype)
-vol = np.asarray([0.25, 0.35, 0.30, 0.40], dtype=dtype)
-div = np.asarray([0.02, 0.01, 0.01, 0.03], dtype=dtype)
-fixings = np.asarray([90, 95, 92, 97], dtype=dtype)  # Past value of the spot to measure performance
-model_name = "model_4_assets"
+# spot = np.asarray([100, 105, 102, 104], dtype=dtype)
+# vol = np.asarray([0.25, 0.35, 0.30, 0.40], dtype=dtype)
+# div = np.asarray([0.02, 0.01, 0.01, 0.03], dtype=dtype)
+# fixings = np.asarray([90, 95, 92, 97], dtype=dtype)  # Past value of the spot to measure performance
+# model_name = "model_4_assets"
 # 5D
-# spot = np.asarray([100, 105, 102, 104, 103], dtype=dtype)
-# vol = np.asarray([0.25, 0.35, 0.30, 0.40, 0.30], dtype=dtype)
-# div = np.asarray([0.02, 0.01, 0.01, 0.03, 0.025], dtype=dtype)
-# fixings = np.asarray([90, 95, 92, 97, 102], dtype=dtype)  # Past value of the spot to measure performance
-# model_name = "model_5_assets"
+spot = np.asarray([100, 105, 102, 104, 103], dtype=dtype)
+vol = np.asarray([0.25, 0.35, 0.30, 0.40, 0.30], dtype=dtype)
+div = np.asarray([0.02, 0.01, 0.01, 0.03, 0.025], dtype=dtype)
+fixings = np.asarray([90, 95, 92, 97, 102], dtype=dtype)  # Past value of the spot to measure performance
+model_name = "model_5_assets"
 
 rate = 0.015
 expiry = 2.5
@@ -502,7 +502,7 @@ class FlooredExponentialDecay(tf.keras.optimizers.schedules.LearningRateSchedule
 # Initialize model (one activation per hidden layer)
 hidden_layers = ['softplus', 'softplus', 'softplus', 'softplus']  # 5D, 3D, 2D
 # hidden_layers = ['softplus', 'softplus', 'softplus', 'softplus', 'softplus']  # 3D, 2D
-num_neurons = 8  # 5D(16), 3D(8), 2D(8)
+num_neurons = 16  # 5D(16), 3D(8), 2D(8)
 
 model = compose_model(hidden_layers, num_neurons)
 
@@ -533,9 +533,9 @@ best_weight_file = "model_current_best.h5"
 weights_are_saved = False
 
 # Sample point sizes
-num_final = 10 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
-nb = 1250  # 5D(2 * 1000), 3D(750), 2D(500)
-num_pde = 10 * 1000  # 5D(20 * 1000), 3D(6 * 1000), 2D(4 * 1000)
+num_final = 20 * 1000  # 5D(20,000), 4D(10,000), 3D(6,000), 2D(4,1000)
+nb = 2500  # 5D(2,500), 4D(1,250), 3D(750), 2D(500)
+num_pde = 20 * 1000  # 5D(20,000), 4D(10,000), 3D(6,1000), 2D(4,1000)
 
 # Generate sample points
 tf.random.set_seed(seed)
@@ -559,7 +559,7 @@ def train_step(pde_points_, boundary_points_, boundary_values_):
 
 # ############################## Launch the training #######################################################
 # Training parameters
-num_epochs = 10 * 1000
+num_epochs = 20 * 1000
 redraw_dataset = False
 
 # Prepare comparison with MS
