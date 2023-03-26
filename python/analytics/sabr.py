@@ -1,5 +1,5 @@
-# import sys
 import numpy as np
+# import sys
 # import matplotlib.pyplot as plt
 # import tools.utils as utils
 # from keras.models import load_model
@@ -22,7 +22,7 @@ def chi(z, rho):
     return zz
 
 
-# Hagan's SABR formula
+# Hagan's SABR formula without ATM limit handling.
 def sabr_iv2(alpha, beta, nu, rho, f, k, t):
     eps_sabr = 0.0001
     v = (f * k) ** ((1.0 - beta) / 2.0)
@@ -39,7 +39,7 @@ def sabr_iv2(alpha, beta, nu, rho, f, k, t):
     return vol
 
 
-# Hagan's SABR formula with ATM limit handling
+# Hagan's SABR formula with ATM limit handling.
 def sabr_iv(alpha, beta, nu, rho, f, k, t):
     big_a = np.power(f * k, 1.0 - beta)
     sqrt_a = np.sqrt(big_a)
