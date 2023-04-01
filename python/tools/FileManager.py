@@ -9,6 +9,7 @@ def check_directory(path):
     if not path_exists:
         os.makedirs(path)
 
+
 def write_csv(file):
     with open(file, mode='w', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
