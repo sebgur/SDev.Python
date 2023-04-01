@@ -1,1 +1,4 @@
 /python/.idea
+/python/__pycache__
+/python/analytics/__pycache__
+/python/tools/__pycache__

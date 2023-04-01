@@ -1,5 +1,8 @@
 import os
 
+# Global variables
+workfolder = r"W:\Data"
+
 # Disable debug warnings in tensorflow
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
