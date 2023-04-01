@@ -13,7 +13,7 @@ class Performance(Product):
         num_samples = shape[0]
         num_underlyings = shape[1]
         payoff = np.ndarray((num_samples, 1))
-        disc_rate = disc_curve  # This is just a place holder. More generally we need a discount curve here
+        disc_rate = disc_curve  # This is just a placeholder. More generally we need a discount curve here
         df = np.exp(-self.expiry * disc_rate)
         for i in range(num_samples):
             # Calculate performances

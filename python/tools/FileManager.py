@@ -2,19 +2,18 @@ import os
 import csv
 import winsound
 import datetime as dt
-import numpy as np
-from sklearn.metrics import mean_squared_error
 
+
+def check_directory(path):
+    path_exists = os.path.exists(path)
+    if not path_exists:
+        os.makedirs(path)
 
 def write_csv(file):
     with open(file, mode='w', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
         row = ['alpha', 'beta']
         writer.writerow(row)
-
-
-def rmse(set1, set2):
-    return np.sqrt(mean_squared_error(set1, set2)) * 10000
 
 
 def list_csv(path):
