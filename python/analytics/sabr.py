@@ -3,8 +3,8 @@ import numpy as np
 
 # Hagan's SABR formula
 def sabr_iv(t, k, f, alpha, beta, nu, rho):
-    """ Hagan's original formula (2.17a) in 'Managing Smile risk', Wilmott Magazine.
-        We introduce a Taylor expansion around ATM to take care of the singularity. """
+    """ Hagan's original formula (2.17a) in 'Managing Smile risk', Wilmott Magazine. We introduce a Taylor
+     expansion around ATM to take care of the singularity. """
     v = np.power(f * k, (1.0 - beta) / 2.0)
     log_m = np.log(f / k)
 
