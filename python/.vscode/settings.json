@@ -1,0 +1,5 @@
+{
+    // Modify pythonpath
+    "python.pythonPath": "W:\\Sandbox\\SDev.Python\\python",
+    "terminal.integrated.env.windows": {"PYTHONPATH": "${workspaceFolder}"} 
+}

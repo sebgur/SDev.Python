@@ -2,11 +2,6 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 import joblib
-# from sklearn.externals import joblib
-import tensorflow as tf
-import random as rn
-import logging
-import os
 
 
 # Prepare training, testing and validation sets, output scaler to file
@@ -43,24 +38,3 @@ def prepare_sets(train_percent, test_percent, n_features, data_file, scaler_file
 
     joblib.dump(x_scaler, scaler_file)
     return x_train, x_test, x_val, y_train, y_test, y_val
-
-
-# Initialize Keras for reproducible results
-def init_keras():
-    np.random.seed(42)
-    rn.seed(21)
-    session_config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
-    # session_config = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
-    from keras import backend as kback
-    tf.random.set_seed(2019)
-    # tf.set_random_seed(2019)
-    session = tf.compat.v1.Session(graph=tf.compat.v1.get_default_graph(), config=session_config)
-    # session = tf.Session(graph=tf.get_default_graph(), config=session_config)
-    kback.set_session(session)
-
-
-# Turn off tensorflow warnings
-def turn_off_ts_warnings():
-    logging.disable(logging.WARNING)
-    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-# import tensorflow as tf

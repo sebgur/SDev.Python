@@ -3,22 +3,23 @@ from scipy.stats import norm
 from scipy.optimize import minimize_scalar
 
 
-def bachelier_price(expiry, fwd, strike, vol):
+def price(expiry, fwd, strike, vol):
     stdev = vol * expiry**0.5
     d = (fwd - strike) / stdev
-    price = stdev * (d * norm.cdf(d) + norm.pdf(d))
-    return price
+    fwdprice = stdev * (d * norm.cdf(d) + norm.pdf(d))
+    return fwdprice
 
 
 # Direct method by numerical inversion using Brent
-def bachelier_iv_solve(expiry, fwd, strike, price):
+def impliedvol_solve(expiry, fwd, strike, fwdprice):
+    """ Direct method by numerical inversion using Brent """
     options = {'xtol': 1e-4, 'maxiter': 100, 'disp': False}
     xmin = 1e-6
     xmax = 1.0
 
     def error(vol):
-        premium = bachelier_price(expiry, fwd, strike, vol)
-        return (premium - price) ** 2
+        premium = price(expiry, fwd, strike, vol)
+        return (premium - fwdprice) ** 2
 
     res = minimize_scalar(fun=error, bracket=(xmin, xmax), options=options, method='brent')
 
@@ -26,16 +27,17 @@ def bachelier_iv_solve(expiry, fwd, strike, price):
 
 
 # P. Jaeckel's method in "Implied Normal Volatility", 6th Jun. 2017
-def bachelier_iv(expiry, fwd, strike, price, is_call=True):
+def impliedvol(expiry, fwd, strike, fwdprice, is_call=True):
+    """ P. Jaeckel's method in "Implied Normal Volatility", 6th Jun. 2017 """
     # Special case at ATM
     if np.abs(fwd - strike) < 1e-8:
-        return price * np.sqrt(2.0 * np.pi) / np.sqrt(expiry)
+        return fwdprice * np.sqrt(2.0 * np.pi) / np.sqrt(expiry)
 
     # General case
     tilde_phi_star_c = -0.001882039271
     theta = 1.0 if is_call else -1.0
 
-    tilde_phi_star = -np.abs(price - np.maximum(theta * (fwd - strike), 0.0)) / np.abs(fwd - strike)
+    tilde_phi_star = -np.abs(fwdprice - np.maximum(theta * (fwd - strike), 0.0)) / np.abs(fwd - strike)
     em5 = 1e-5
 
     if tilde_phi_star < tilde_phi_star_c:

@@ -13,6 +13,7 @@ ten_bps = 10.0 / 10000.0
 
 class HaganSabrGenerator(SmileGenerator):
     def __init__(self, shift=0.0):
+        SmileGenerator.__init__(self)
         self.shift = shift
         seed = 42
         self.rng = np.random.RandomState(seed)
@@ -40,12 +41,9 @@ class HaganSabrGenerator(SmileGenerator):
         price = black.price(t, strike + self.shift, fwd + self.shift, iv, is_call=False)
 
         # Put in dataframe
-        data = pd.DataFrame({'T': t[:, 0], 'K': strike[:, 0], 'F': fwd[:, 0], 'Alpha': alpha[:, 0],
+        data = pd.DataFrame({'TTM': t[:, 0], 'K': strike[:, 0], 'F': fwd[:, 0], 'Alpha': alpha[:, 0],
                              'Beta': beta[:, 0], 'Nu': nu[:, 0], 'Rho': rho[:, 0], 'Price': price[:, 0]})
-        data.columns = ['T', 'K', 'F', 'Alpha', 'Beta', 'Nu', 'Rho', 'Price']
-
-        # Dump to file
-        data.to_csv(output_file, sep='\t', index=False)
+        data.columns = ['TTM', 'K', 'F', 'Alpha', 'Beta', 'Nu', 'Rho', 'Price']
 
         return data
 
@@ -59,23 +57,54 @@ class HaganSabrGenerator(SmileGenerator):
         price = black.price(expiry, strike + self.shift, fwd + self.shift, iv, is_call=False)
         return price
 
+    def retrieve_datasets(self, data_file):
+        data_df = SmileGenerator.from_file(data_file)
+
+        # Retrieve suitable data
+        t = data_df.TTM
+        fwd = data_df.F
+        strike = data_df.K
+        nvol = data_df.IV
+        alpha = data_df.Alpha
+        beta = data_df.Beta
+        nu = data_df.Nu
+        rho = data_df.Rho
+
+        # Extract input and output datasets
+        x_set = np.column_stack((t, strike, fwd, alpha, beta, nu, rho))
+        num_samples = len(nvol)
+        y_set = np.asarray(nvol)
+        y_set = np.reshape(y_set, (num_samples, 1))
+
+        return x_set, y_set, data_df
+
+
+# Special classe for Shifted SABR with shift = 3%, for easier calling
+class ShiftedHaganSabrGenerator(HaganSabrGenerator):
+    def __init__(self):
+        HaganSabrGenerator.__init__(self, 0.03)
+
 
 # Generate
 def generate():
-    shift = 0.03  # Shift often taken to 3%
-    num_samples = 10
-    print("Shift = " + str(shift))
+    model_type = 'ShiftedHaganSABR'
+    num_samples = 10000
     output_folder = os.path.join(settings.workfolder, "XSABRsamples")
     FileManager.check_directory(output_folder)
-    file = os.path.join(output_folder, "HaganSABR_samples.tsv")
-    generator = HaganSabrGenerator(shift)
-    # Generate samples
+    file = os.path.join(output_folder, model_type + "_samples.tsv")
+    generator = ShiftedHaganSabrGenerator()
+
     print("Generating " + str(num_samples) + " samples")
-    generator.generate_samples(num_samples, file)
+    data_df = generator.generate_samples(num_samples)
+    print("Cleansing data")
+    data_df = generator.cleanse(data_df, cleanse=False)
+    print("Output to file: " + file)
+    generator.to_file(data_df, file)
     print("Complete!")
 
 
-# generate()
+# Run data generation
+generate()
 
 # Dump former generate_sabr_vec
 # import numpy as np

@@ -1,27 +1,36 @@
 import settings
 import os
 import pandas as pd
-from projects.xsabr_fit.HaganSabrGenerator import HaganSabrGenerator
+import numpy as np
+from projects.xsabr_fit.HaganSabrGenerator import HaganSabrGenerator, ShiftedHaganSabrGenerator
 
 # ################ ToDo ###################################################################################
-# Read the dataframe from the generator. The generator knows the expected structure, since that
-# structure has been created by it.
-# Implement generic cleansing and conversion from prices
 # Implement generic training
+# Display result and metrics
 
-# Retrieve data from generated file
-model_type = 'HaganSABR'
+# ################ Runtime configuration ##################################################################
 data_folder = os.path.join(settings.workfolder, "XSABRSamples")
+model_type = "ShiftedHaganSABR"
+
+# Generator factory
+if model_type == "HaganSABR":
+    generator = HaganSabrGenerator()
+elif model_type == "ShiftedHaganSABR":
+    generator = ShiftedHaganSabrGenerator()
+else:
+    raise Exception("Unknown model: " + model_type)
+
+
+# Retrieve dataset
 data_file = os.path.join(data_folder, model_type + "_samples.tsv")
-data_df = pd.read_csv(data_file, sep='\t')
-print(data_df)
+print("Reading data from file: " + data_file)
+x_set, y_set, data_df = generator.retrieve_datasets(data_file)
+print(data_df.head())
 
-generator = HaganSabrGenerator(shift)
+# Training
 
-# Cleanse data
-# We take the prices and attempt to convert them to normal volatilities. Any failure to convert
-# is removed from the dataset. We also remove all vols that are not in the acceptable range.
-def clean_price_to_nvol(data_df):
-    # data = data.drop(data[data.IV > 1.5].index)  # Remove high vols
-    return prices
+
+# print(x_set)
+# print(y_set.shape)
+# print(y_set)
 
