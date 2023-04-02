@@ -2,7 +2,7 @@ import settings
 import os
 import pandas as pd
 import numpy as np
-from projects.xsabr_fit.HaganSabrGenerator import HaganSabrGenerator, ShiftedHaganSabrGenerator
+from HaganSabrGenerator import HaganSabrGenerator, ShiftedHaganSabrGenerator
 
 # ################ ToDo ###################################################################################
 # Implement generic training
