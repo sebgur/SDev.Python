@@ -7,15 +7,20 @@ from HaganSabrGenerator import HaganSabrGenerator, ShiftedHaganSabrGenerator
 from machinelearning.topology import compose_model
 from machinelearning.LearningModel import LearningModel
 from machinelearning.FlooredExponentialDecay import FlooredExponentialDecay
+import tools.FileManager as FileManager
 
 # ################ ToDo ###################################################################################
-# Refresh marchine learning py
-# Implement generic training
+# Debug why performing not as well as Colab
+# Improve call-back and model classes. Base class that does nothing special as call-back,
+# and other base that outputs the LR only
 # Display result and metrics
 
 # ################ Runtime configuration ##################################################################
 data_folder = os.path.join(settings.workfolder, "XSABRSamples")
+FileManager.check_directory(data_folder)
+# model_type = "HaganSABR"
 model_type = "ShiftedHaganSABR"
+data_file = os.path.join(data_folder, model_type + "_samples.tsv")
 
 # Generator factory
 if model_type == "HaganSABR":
@@ -26,8 +31,21 @@ else:
     raise Exception("Unknown model: " + model_type)
 
 
+generate_samples = True
+
+# Generate dataset
+if generate_samples:
+    num_samples = 100 * 1000
+    print("Generating " + str(num_samples) + " samples")
+    data_df = generator.generate_samples(num_samples)
+    print("Cleansing data")
+    data_df = generator.cleanse(data_df, cleanse=False)
+    print("Output to file: " + data_file)
+    generator.to_file(data_df, data_file)
+    print("Complete!")
+
+
 # Retrieve dataset
-data_file = os.path.join(data_folder, model_type + "_samples.tsv")
 print("Reading data from file: " + data_file)
 x_set, y_set, data_df = generator.retrieve_datasets(data_file)
 input_dim = x_set.shape[1]

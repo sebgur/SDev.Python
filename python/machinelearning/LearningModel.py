@@ -3,6 +3,9 @@ from keras.models import load_model
 import tensorflow as tf
 import joblib
 
+# ToDo: do more in the call back. Currently it is too specific, so different call-backs wouldn't work.
+# Instead we should do everything in the call-back, and then retrieve information from it in the end,
+# knowing its special type.
 
 class LearningModel:
     def __init__(self, model, x_scaler=StandardScaler(copy=True),
@@ -16,29 +19,30 @@ class LearningModel:
         self.accuracies = []
         self.offset = 0
 
-    def train(self, x_set, y_set, epochs, batch_size, call_back):
+    def train(self, x_set, y_set, epochs, batch_size, callbacks=[]):
         if not self.is_scaled:
             self.x_scaler.fit(x_set)
             self.y_scaler.fit(y_set)
-            call_back.set_scalers(self.x_scaler, self.y_scaler)
             self.is_scaled = True
+            # if call_back != None:
+            #     call_back.set_scalers(self.x_scaler, self.y_scaler)
 
         x_scaled = self.x_scaler.transform(x_set)
         y_scaled = self.y_scaler.transform(y_set)
 
         history = self.model.fit(x_scaled, y_scaled, epochs=epochs, batch_size=batch_size, shuffle=True,
-                                 verbose=1, callbacks=[call_back])
+                                 verbose=1, callbacks=callbacks)
 
-        epochs, accuracies = call_back.convergence()
+        # epochs, accuracies = call_back.convergence()
 
         self.losses.extend(history.history['loss'])
-        self.accuracies.extend(accuracies)
+        # self.accuracies.extend(accuracies)
 
-        num_epochs = len(epochs)
-        for i in range(num_epochs):
-            self.epochs.append(self.offset + epochs[i])
+        # num_epochs = len(epochs)
+        # for i in range(num_epochs):
+        #     self.epochs.append(self.offset + epochs[i])
 
-        self.offset += num_epochs
+        # self.offset += num_epochs
 
     def predict(self, x_test):
         x_scaled = self.x_scaler.transform(x_test)

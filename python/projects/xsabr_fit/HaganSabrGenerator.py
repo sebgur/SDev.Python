@@ -22,19 +22,19 @@ class HaganSabrGenerator(SmileGenerator):
         else:
             self.min_fwd = -shift + ten_bps
 
-        self.max_fwd = self.min_fwd + 0.08
+        self.max_fwd = self.min_fwd + 0.05
 
         self.num_curve_parameters = 1
         self.num_vol_parameters = 4
 
     def generate_samples(self, num_samples, output_file=""):
-        t = self.rng.uniform(1.0 / 52.0, 5.0, (num_samples, 1))
+        t = self.rng.uniform(1.0 / 12.0, 5.0, (num_samples, 1))
         spread = self.rng.uniform(-300, 300, (num_samples, 1))
         fwd = self.rng.uniform(self.min_fwd, self.max_fwd, (num_samples, 1))
         strike = fwd + spread / 10000.0
         strike = np.maximum(strike, -self.shift + ten_bps)
-        beta = self.rng.uniform(0.10, 0.80, (num_samples, 1))
-        alpha = self.rng.uniform(0.05, 0.25, (num_samples, 1)) / (fwd + self.shift) ** (beta - 1.0)
+        beta = self.rng.uniform(0.49, 0.51, (num_samples, 1))
+        alpha = self.rng.uniform(0.05, 0.25, (num_samples, 1)) * (np.abs(fwd + self.shift)) ** (1.0 - beta)
         nu = self.rng.uniform(0.20, 0.80, (num_samples, 1))
         rho = self.rng.uniform(-0.40, 0.40, (num_samples, 1))
         iv = sabr_iv(t, strike + self.shift, fwd + self.shift, alpha, beta, nu, rho)
@@ -86,9 +86,8 @@ class ShiftedHaganSabrGenerator(HaganSabrGenerator):
 
 
 # Generate
-def generate():
+def generate(num_samples):
     model_type = 'ShiftedHaganSABR'
-    num_samples = 10000
     output_folder = os.path.join(settings.workfolder, "XSABRsamples")
     FileManager.check_directory(output_folder)
     file = os.path.join(output_folder, model_type + "_samples.tsv")
@@ -104,7 +103,7 @@ def generate():
 
 
 # Run data generation
-generate()
+# generate(100 * 1000)
 
 # Dump former generate_sabr_vec
 # import numpy as np

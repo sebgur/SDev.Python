@@ -27,7 +27,7 @@ class SmileGenerator(ABC):
         return self.num_curve_parameters + self.num_vol_parameters
 
     @staticmethod
-    def cleanse(data_df, cleanse=True, min_vol=0.0001, max_vol=0.15):
+    def cleanse(data_df, cleanse=True, min_vol=0.0001, max_vol=0.1):
         """ Calculate normal implied vol and remove errors. Further remove points that are not
             in the given min/max range """
         # Calculate normal vols
