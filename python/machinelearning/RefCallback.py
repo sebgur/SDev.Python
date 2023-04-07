@@ -1,10 +1,9 @@
 import keras
-from tools.utils import rmse
+from maths.metrics import rmse
 from sklearn.preprocessing import MinMaxScaler
-# import time
 
 
-class CfCallback(keras.callbacks.Callback):
+class RefCallback(keras.callbacks.Callback):
     def __init__(self, x_test, y_ref_test):
         self.x_test = x_test
         self.y_ref_test = y_ref_test
