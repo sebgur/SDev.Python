@@ -1,20 +1,18 @@
-import settings
+""" Check why xsabr_fit doesn't work as well as colab """
 import os
-import pandas as pd
-import numpy as np
-import tensorflow as tf
-from HaganSabrGenerator import HaganSabrGenerator, ShiftedHaganSabrGenerator
-import scipy.stats
-import sklearn as sk
-from platform import python_version
 import time as tm
-# import matplotlib.pyplot as plt
 import math
 import warnings
-# from pysabr import hagan_2002_lognormal_sabr as sabr
-# from pysabr import black
-from machinelearning.FlooredExponentialDecay import FlooredExponentialDecay
+from platform import python_version
+import numpy as np
+# import pandas as pd
+import tensorflow as tf
+import scipy.stats
+import sklearn as sk
+from HaganSabrGenerator import HaganSabrGenerator, ShiftedHaganSabrGenerator
+import settings
 import tools.FileManager as FileManager
+from machinelearning.FlooredExponentialDecay import FlooredExponentialDecay
 from machinelearning.topology import compose_model
 from machinelearning.LearningModel import LearningModel
 from analytics.bachelier import impliedvol
@@ -26,25 +24,26 @@ print("NumPy version: " + np.__version__)
 print("SciPy version: " + scipy.__version__)
 print("SciKit version: " + sk.__version__)
 
-# ################ Runtime configuration ##################################################################
-data_folder = os.path.join(settings.workfolder, "XSABRSamples")
+# ############## Runtime configuration ############################################################
+data_folder = os.path.join(settings.WORKFOLDER, "XSABRSamples")
+print("Looking for data folder " + data_folder)
 FileManager.check_directory(data_folder)
 # model_type = "HaganSABR"
-model_type = "ShiftedHaganSABR"
-data_file = os.path.join(data_folder, model_type + "_samples.tsv")
+MODEL_TYPE = "ShiftedHaganSABR"
+data_file = os.path.join(data_folder, MODEL_TYPE + "_samples.tsv")
 
 # Generator factory
-if model_type == "HaganSABR":
+if MODEL_TYPE == "HaganSABR":
     generator = HaganSabrGenerator()
-elif model_type == "ShiftedHaganSABR":
+elif MODEL_TYPE == "ShiftedHaganSABR":
     generator = ShiftedHaganSabrGenerator()
 else:
-    raise Exception("Unknown model: " + model_type)
+    raise Exception("Unknown model: " + MODEL_TYPE)
 
 # Global settings
-shift = 0.03  # To account for negative rates in the SABR model
-beta = 0.5  # Fixed to avoid the parameter redundancy
-dtype = 'float32'
+SHIFT = 0.03  # To account for negative rates in the SABR model
+BETA = 0.5  # Fixed to avoid the parameter redundancy
+DTYPE = 'float32'
 np.seterr(all='warn')
 warnings.filterwarnings('error')
 
@@ -58,20 +57,20 @@ warnings.filterwarnings('error')
 
 num_samples = 100000
 
-rngSeed = 42
-rng = np.random.RandomState(rngSeed)
+SEED = 42
+rng = np.random.RandomState(SEED)
 
 t0 = tm.time()
 # Generate inputs
 expiry = rng.uniform(1.0 / 12.0, 5.0, (num_samples, 1))
 fwd = rng.uniform(-0.01, 0.04, (num_samples, 1))
 ln_vol = rng.uniform(0.05, 0.25, (num_samples, 1))  # Specify log-normal vol
-alpha = ln_vol * np.power(np.abs(fwd + shift), 1 - beta)  # Rough order of magnitude for alpha
+alpha = ln_vol * np.power(np.abs(fwd + SHIFT), 1 - BETA)  # Rough order of magnitude for alpha
 nu = rng.uniform(0.20, 0.80, (num_samples, 1))
 rho = rng.uniform(-0.40, 0.40, (num_samples, 1))
 spread = rng.uniform(-300, 300, (num_samples, 1))  # Specify spreads in bps
 strike = fwd + spread / 10000
-strike = np.maximum(strike, -shift + 10.0 / 10000.0)
+strike = np.maximum(strike, -SHIFT + 10.0 / 10000.0)
 print('Generate inputs: {:.3f} seconds'.format(tm.time() - t0))
 
 # Generate outputs
@@ -150,6 +149,6 @@ for field in optim_fields:
     print(field, ":", optim_fields[field])
 
 # Train the network
-epochs = 1000
-batch_size = 1000
-history = model.train(x_set, y_set, epochs, batch_size)
+EPOCHS = 1000
+BATCH_SIZE = 1000
+model.train(x_set, y_set, EPOCHS, BATCH_SIZE)
