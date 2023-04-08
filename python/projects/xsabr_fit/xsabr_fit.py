@@ -11,6 +11,7 @@ import tools.FileManager as FileManager
 
 # ################ ToDo ###################################################################################
 # Debug why performing not as well as Colab
+# Pass boolean for put everywhere right after the strike?
 # Improve call-back and model classes. Base class that does nothing special as call-back,
 # and other base that outputs the LR only
 # Display result and metrics

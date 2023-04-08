@@ -1,5 +1,9 @@
+import settings
+import os
+import pandas as pd
 import numpy as np
 import tensorflow as tf
+from HaganSabrGenerator import HaganSabrGenerator, ShiftedHaganSabrGenerator
 import scipy.stats
 import sklearn as sk
 from platform import python_version
@@ -7,9 +11,10 @@ import time as tm
 # import matplotlib.pyplot as plt
 import math
 import warnings
-from pysabr import hagan_2002_lognormal_sabr as sabr
-from pysabr import black
+# from pysabr import hagan_2002_lognormal_sabr as sabr
+# from pysabr import black
 from machinelearning.FlooredExponentialDecay import FlooredExponentialDecay
+import tools.FileManager as FileManager
 from machinelearning.topology import compose_model
 from machinelearning.LearningModel import LearningModel
 from analytics.bachelier import impliedvol
@@ -21,6 +26,21 @@ print("NumPy version: " + np.__version__)
 print("SciPy version: " + scipy.__version__)
 print("SciKit version: " + sk.__version__)
 
+# ################ Runtime configuration ##################################################################
+data_folder = os.path.join(settings.workfolder, "XSABRSamples")
+FileManager.check_directory(data_folder)
+# model_type = "HaganSABR"
+model_type = "ShiftedHaganSABR"
+data_file = os.path.join(data_folder, model_type + "_samples.tsv")
+
+# Generator factory
+if model_type == "HaganSABR":
+    generator = HaganSabrGenerator()
+elif model_type == "ShiftedHaganSABR":
+    generator = ShiftedHaganSabrGenerator()
+else:
+    raise Exception("Unknown model: " + model_type)
+
 # Global settings
 shift = 0.03  # To account for negative rates in the SABR model
 beta = 0.5  # Fixed to avoid the parameter redundancy
@@ -29,11 +49,11 @@ np.seterr(all='warn')
 warnings.filterwarnings('error')
 
 # Helpers
-def price_function(expiry, fwd, strike, alpha, nu, rho):
-    vol = sabr.lognormal_vol(strike + shift, fwd + shift, expiry, alpha, beta, rho, nu)
-    r = 0.0  # Use forward prices (0 discount rate)
-    fwd_price = black.lognormal_call(strike + shift, fwd + shift, expiry, vol, r)
-    return fwd_price
+# def price_function(expiry, fwd, strike, alpha, nu, rho):
+#     vol = sabr.lognormal_vol(strike + shift, fwd + shift, expiry, alpha, beta, rho, nu)
+#     r = 0.0  # Use forward prices (0 discount rate)
+#     fwd_price = strike - fwd + black.lognormal_call(strike + shift, fwd + shift, expiry, vol, r)
+#     return fwd_price
 
 
 num_samples = 100000
@@ -51,13 +71,14 @@ nu = rng.uniform(0.20, 0.80, (num_samples, 1))
 rho = rng.uniform(-0.40, 0.40, (num_samples, 1))
 spread = rng.uniform(-300, 300, (num_samples, 1))  # Specify spreads in bps
 strike = fwd + spread / 10000
+strike = np.maximum(strike, -shift + 10.0 / 10000.0)
 print('Generate inputs: {:.3f} seconds'.format(tm.time() - t0))
 
 # Generate outputs
 t0 = tm.time()
 fv = np.ndarray((num_samples, 1))
 for i_ in range(num_samples):
-    fv[i_, 0] = price_function(expiry[i_, 0], fwd[i_, 0], strike[i_, 0], alpha[i_, 0], nu[i_, 0], rho[i_, 0])
+    fv[i_, 0] = generator.price(expiry[i_, 0], strike[i_, 0], [fwd[i_, 0], alpha[i_, 0], beta, nu[i_, 0], rho[i_, 0]])
 
 print('Generate prices: {:.3f} seconds'.format(tm.time() - t0))
 
@@ -65,7 +86,7 @@ t0 = tm.time()
 normal_vol = []
 for i_ in range(num_samples):
     try:
-        normal_vol.append(impliedvol(expiry[i_, 0], fwd[i_, 0], strike[i_, 0], fv[i_, 0]))
+        normal_vol.append(impliedvol(expiry[i_, 0], fwd[i_, 0], strike[i_, 0], fv[i_, 0], is_call=False))
     except Exception:
         normal_vol.append(-12345.6789)
 
