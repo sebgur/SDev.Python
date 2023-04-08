@@ -6,12 +6,14 @@ import datetime as dt
 
 
 def check_directory(path):
+    """ Creates directory if it does not already exist """
     path_exists = os.path.exists(path)
     if not path_exists:
         os.makedirs(path)
 
 
 def write_csv(file):
+    """ Write content to csv file """
     with open(file, mode='w', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
         row = ['alpha', 'beta']
@@ -19,6 +21,7 @@ def write_csv(file):
 
 
 def list_csv(path):
+    """ List all csv files in a folder """
     files = []
     for r, d, f in os.walk(path):
         for file in f:
@@ -28,7 +31,8 @@ def list_csv(path):
     return files
 
 
-def close_script(beep=True):
+def make_a_noise(beep=True):
+    """ Make a noise """
     if beep:
         f1 = 500
         f2 = 1000

@@ -1,0 +1,4 @@
+[MASTER]
+generated-members=np.*
+
+disable=broad-exception-caught
