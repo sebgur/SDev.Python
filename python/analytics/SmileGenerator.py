@@ -55,8 +55,8 @@ class SmileGenerator(ABC):
 
         # Remove out of range
         if cleanse:
-            data_df = data_df.drop(data_df[data_df.IV > max_vol].index)
-            data_df = data_df.drop(data_df[data_df.IV < min_vol].index)
+            data_df = data_df.drop(data_df[data_df.NVOL > max_vol].index)
+            data_df = data_df.drop(data_df[data_df.NVOL < min_vol].index)
 
         return data_df
 
