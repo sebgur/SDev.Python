@@ -13,17 +13,17 @@ class SmileGenerator(ABC):
 
     @abstractmethod
     def generate_samples(self, num_samples):
-        """ Abstract base class """
+        """ Generate a sample of expiries, strikes, relevant parameters and put option prices """
         # pass
 
     @abstractmethod
-    def price(self, expiry, strike, parameters):
-        """ Abstract base class """
+    def price(self, expiry, strike, is_call, parameters):
+        """ Calculate option price under the specified model and its parameters """
         # pass
 
     @abstractmethod
     def retrieve_datasets(self, data_file):
-        """ Abstract base class """
+        """ Retrieve dataset stored in tsv file """
         # pass
 
     def num_parameters(self):
@@ -31,7 +31,7 @@ class SmileGenerator(ABC):
         return self.num_curve_parameters + self.num_vol_parameters
 
     @staticmethod
-    def cleanse(data_df, cleanse=True, min_vol=0.0001, max_vol=0.1):
+    def to_nvol(data_df, cleanse=True, min_vol=0.0001, max_vol=0.1):
         """ Calculate normal implied vol and remove errors. Further remove points that are not
             in the given min/max range """
         # Calculate normal vols
@@ -51,7 +51,7 @@ class SmileGenerator(ABC):
 
         np.seterr(divide='warn')  # Set back to warning
 
-        data_df['IV'] = nvol
+        data_df['NVOL'] = nvol
 
         # Remove out of range
         if cleanse:

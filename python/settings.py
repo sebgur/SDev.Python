@@ -2,7 +2,7 @@
 import os
 
 # Global variables
-WORKFOLDER = r"W:\Data"
+WORKFOLDER = r"C:\temp\sdevpy"
 
 # Disable debug warnings in tensorflow
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"

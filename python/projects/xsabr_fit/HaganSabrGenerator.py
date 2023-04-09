@@ -4,16 +4,16 @@ import numpy as np
 import pandas as pd
 import settings
 from analytics.sabr import sabr_iv
-import analytics.black as black
+from analytics import black
 from analytics.SmileGenerator import SmileGenerator
-import tools.FileManager as FileManager
+from tools import FileManager
 
 
 BPS10 = 10.0 / 10000.0
 
 
-class HaganSabrGenerator(SmileGenerator):
-    """ Base class for shifted Hagan SABR models, with a generic shift value. The classical Hagan
+class SabrGenerator(SmileGenerator):
+    """ Base class for the classical SABR model with a generic shift value. The classical Hagan
       model (non-shifted) is the default case with shift = 0. """
     def __init__(self, shift=0.0):
         SmileGenerator.__init__(self)
@@ -37,7 +37,8 @@ class HaganSabrGenerator(SmileGenerator):
         strike = fwd + spread / 10000.0
         strike = np.maximum(strike, -self.shift + BPS10)
         beta = self.rng.uniform(0.49, 0.51, (num_samples, 1))
-        alpha = self.rng.uniform(0.05, 0.25, (num_samples, 1)) * (np.abs(fwd + shift)) ** (1.0 - beta)
+        ln_vol = self.rng.uniform(0.05, 0.25, (num_samples, 1))  # Specify log-normal vol
+        alpha = ln_vol * (np.abs(fwd + shift)) ** (1.0 - beta)
         nu = self.rng.uniform(0.20, 0.80, (num_samples, 1))
         rho = self.rng.uniform(-0.40, 0.40, (num_samples, 1))
         implied_vol = sabr_iv(t, strike + shift, fwd + shift, alpha, beta, nu, rho)
@@ -51,26 +52,24 @@ class HaganSabrGenerator(SmileGenerator):
 
         return df
 
-    def price(self, expiry, strike, parameters):
-        """ Calculate option price under the SABR model with specified parameters """
+    def price(self, expiry, strike, is_call, parameters):
         fwd = parameters[0]
         alpha = parameters[1]
         beta = parameters[2]
         nu = parameters[3]
         rho = parameters[4]
         iv = sabr_iv(expiry, strike + self.shift, fwd + self.shift, alpha, beta, nu, rho)
-        price = black.price(expiry, strike + self.shift, fwd + self.shift, iv, is_call=False)
+        price = black.price(expiry, strike + self.shift, fwd + self.shift, iv, is_call)
         return price
 
     def retrieve_datasets(self, data_file):
-        """ Retrieve dataset stored in tsv file """
         data_df = SmileGenerator.from_file(data_file)
 
         # Retrieve suitable data
         t = data_df.TTM
         fwd = data_df.F
         strike = data_df.K
-        nvol = data_df.IV
+        nvol = data_df.NVOL
         alpha = data_df.Alpha
         beta = data_df.Beta
         nu = data_df.Nu
@@ -86,32 +85,29 @@ class HaganSabrGenerator(SmileGenerator):
 
 
 # Special classe for Shifted SABR with shift = 3%, for easier calling
-class ShiftedHaganSabrGenerator(HaganSabrGenerator):
-    """ For calling convenience, derived from HaganSabrGenerator with specific shift at typical 3%. """
+class ShiftedSabrGenerator(SabrGenerator):
+    """ For calling convenience, derived from SabrGenerator with shift at typical 3%. """
     def __init__(self):
-        HaganSabrGenerator.__init__(self, 0.03)
+        SabrGenerator.__init__(self, 0.03)
 
 
-# Module test
-def module_test(num_samples):
-    """ Module test """
-    model_type = 'ShiftedHaganSABR'
+if __name__ == "__main__":
+    print("<><><><> MODULE TEST <><><><>")
+    NUM_SAMPLES = 100 * 1000
+    MODEL_TYPE = 'ShiftedSABR'
     output_folder = os.path.join(settings.WORKFOLDER, "XSABRsamples")
     FileManager.check_directory(output_folder)
-    file = os.path.join(output_folder, model_type + "_samples.tsv")
-    generator = ShiftedHaganSabrGenerator()
+    file = os.path.join(output_folder, MODEL_TYPE + "_samples.tsv")
+    generator = ShiftedSabrGenerator()
 
-    print("Generating " + str(num_samples) + " samples")
-    data_df = generator.generate_samples(num_samples)
+    print("Generating " + str(NUM_SAMPLES) + " samples")
+    data_df_ = generator.generate_samples(NUM_SAMPLES)
     print("Cleansing data")
-    data_df = generator.cleanse(data_df, cleanse=False)
+    data_df_ = generator.to_nvol(data_df_)
     print("Output to file: " + file)
-    generator.to_file(data_df, file)
+    generator.to_file(data_df_, file)
     print("Complete!")
-
-
-# Run data generation
-# generate(100 * 1000)
+    print("<><><><><><><><><><><><><><>")
 
 # Dump former generate_sabr_vec
 # import numpy as np

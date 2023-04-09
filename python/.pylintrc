@@ -2,3 +2,5 @@
 generated-members=np.*
 
 disable=broad-exception-caught
+
+variable-rgx=[a-z0-9_]{1,30}$
