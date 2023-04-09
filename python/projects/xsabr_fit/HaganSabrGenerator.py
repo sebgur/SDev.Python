@@ -1,53 +1,58 @@
-import settings
+""" Smile generator for classic and shifted Hagan SABR models """
 import os
 import numpy as np
 import pandas as pd
+import settings
 from analytics.sabr import sabr_iv
 import analytics.black as black
 from analytics.SmileGenerator import SmileGenerator
 import tools.FileManager as FileManager
 
 
-ten_bps = 10.0 / 10000.0
+BPS10 = 10.0 / 10000.0
 
 
 class HaganSabrGenerator(SmileGenerator):
+    """ Base class for shifted Hagan SABR models, with a generic shift value. The classical Hagan
+      model (non-shifted) is the default case with shift = 0. """
     def __init__(self, shift=0.0):
         SmileGenerator.__init__(self)
         self.shift = shift
         seed = 42
         self.rng = np.random.RandomState(seed)
         if self.shift > 0.01:
-            self.min_fwd = -0.01 + ten_bps  # shift is often 3%, but training from 3% seems excessive
+            self.min_fwd = -0.01 + BPS10  # shift is often 3%, but training from 3% seems excessive
         else:
-            self.min_fwd = -shift + ten_bps
+            self.min_fwd = -shift + BPS10
 
         self.max_fwd = self.min_fwd + 0.05
-
         self.num_curve_parameters = 1
         self.num_vol_parameters = 4
 
-    def generate_samples(self, num_samples, output_file=""):
+    def generate_samples(self, num_samples):
+        shift = self.shift
         t = self.rng.uniform(1.0 / 12.0, 5.0, (num_samples, 1))
         spread = self.rng.uniform(-300, 300, (num_samples, 1))
         fwd = self.rng.uniform(self.min_fwd, self.max_fwd, (num_samples, 1))
         strike = fwd + spread / 10000.0
-        strike = np.maximum(strike, -self.shift + ten_bps)
+        strike = np.maximum(strike, -self.shift + BPS10)
         beta = self.rng.uniform(0.49, 0.51, (num_samples, 1))
-        alpha = self.rng.uniform(0.05, 0.25, (num_samples, 1)) * (np.abs(fwd + self.shift)) ** (1.0 - beta)
+        alpha = self.rng.uniform(0.05, 0.25, (num_samples, 1)) * (np.abs(fwd + shift)) ** (1.0 - beta)
         nu = self.rng.uniform(0.20, 0.80, (num_samples, 1))
         rho = self.rng.uniform(-0.40, 0.40, (num_samples, 1))
-        iv = sabr_iv(t, strike + self.shift, fwd + self.shift, alpha, beta, nu, rho)
-        price = black.price(t, strike + self.shift, fwd + self.shift, iv, is_call=False)
+        implied_vol = sabr_iv(t, strike + shift, fwd + shift, alpha, beta, nu, rho)
+        price = black.price(t, strike + shift, fwd + shift, implied_vol, is_call=False)
 
         # Put in dataframe
-        data = pd.DataFrame({'TTM': t[:, 0], 'K': strike[:, 0], 'F': fwd[:, 0], 'Alpha': alpha[:, 0],
-                             'Beta': beta[:, 0], 'Nu': nu[:, 0], 'Rho': rho[:, 0], 'Price': price[:, 0]})
-        data.columns = ['TTM', 'K', 'F', 'Alpha', 'Beta', 'Nu', 'Rho', 'Price']
+        df = pd.DataFrame({'TTM': t[:, 0], 'K': strike[:, 0], 'F': fwd[:, 0],
+                           'Alpha': alpha[:, 0], 'Beta': beta[:, 0], 'Nu': nu[:, 0],
+                           'Rho': rho[:, 0], 'Price': price[:, 0]})
+        df.columns = ['TTM', 'K', 'F', 'Alpha', 'Beta', 'Nu', 'Rho', 'Price']
 
-        return data
+        return df
 
     def price(self, expiry, strike, parameters):
+        """ Calculate option price under the SABR model with specified parameters """
         fwd = parameters[0]
         alpha = parameters[1]
         beta = parameters[2]
@@ -58,6 +63,7 @@ class HaganSabrGenerator(SmileGenerator):
         return price
 
     def retrieve_datasets(self, data_file):
+        """ Retrieve dataset stored in tsv file """
         data_df = SmileGenerator.from_file(data_file)
 
         # Retrieve suitable data
@@ -81,14 +87,16 @@ class HaganSabrGenerator(SmileGenerator):
 
 # Special classe for Shifted SABR with shift = 3%, for easier calling
 class ShiftedHaganSabrGenerator(HaganSabrGenerator):
+    """ For calling convenience, derived from HaganSabrGenerator with specific shift at typical 3%. """
     def __init__(self):
         HaganSabrGenerator.__init__(self, 0.03)
 
 
-# Generate
-def generate(num_samples):
+# Module test
+def module_test(num_samples):
+    """ Module test """
     model_type = 'ShiftedHaganSABR'
-    output_folder = os.path.join(settings.workfolder, "XSABRsamples")
+    output_folder = os.path.join(settings.WORKFOLDER, "XSABRsamples")
     FileManager.check_directory(output_folder)
     file = os.path.join(output_folder, model_type + "_samples.tsv")
     generator = ShiftedHaganSabrGenerator()

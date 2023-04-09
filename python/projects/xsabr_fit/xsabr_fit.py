@@ -1,46 +1,44 @@
-import settings
+""" Fit ANN to XSABR models """
 import os
-import pandas as pd
-import numpy as np
+# import pandas as pd
+# import numpy as np
 import tensorflow as tf
 from HaganSabrGenerator import HaganSabrGenerator, ShiftedHaganSabrGenerator
+import settings
 from machinelearning.topology import compose_model
 from machinelearning.LearningModel import LearningModel
 from machinelearning.FlooredExponentialDecay import FlooredExponentialDecay
 import tools.FileManager as FileManager
 
-# ################ ToDo ###################################################################################
-# Debug why performing not as well as Colab
-# Pass boolean for put everywhere right after the strike?
-# Improve call-back and model classes. Base class that does nothing special as call-back,
-# and other base that outputs the LR only
-# Display result and metrics
+# ToDo: Pass boolean for put everywhere right after the strike?
+# ToDo: Improve call-back and model classes. Base class that does nothing special as call-back,
+#       and other base that outputs the LR only
+# ToDo: Display result and metrics
 
-# ################ Runtime configuration ##################################################################
-data_folder = os.path.join(settings.workfolder, "XSABRSamples")
+# ################ Runtime configuration ##########################################################
+data_folder = os.path.join(settings.WORKFOLDER, "XSABRSamples")
+print("Looking for data folder " + data_folder)
 FileManager.check_directory(data_folder)
-# model_type = "HaganSABR"
-model_type = "ShiftedHaganSABR"
-data_file = os.path.join(data_folder, model_type + "_samples.tsv")
+# MODEL_TYPE = "HaganSABR"
+MODEL_TYPE = "ShiftedHaganSABR"
+data_file = os.path.join(data_folder, MODEL_TYPE + "_samples.tsv")
 
 # Generator factory
-if model_type == "HaganSABR":
+if MODEL_TYPE == "HaganSABR":
     generator = HaganSabrGenerator()
-elif model_type == "ShiftedHaganSABR":
+elif MODEL_TYPE == "ShiftedHaganSABR":
     generator = ShiftedHaganSabrGenerator()
 else:
-    raise Exception("Unknown model: " + model_type)
+    raise ValueError("Unknown model: " + MODEL_TYPE)
 
-
-generate_samples = True
-
+GENERATE_SAMPLES = True
 # Generate dataset
-if generate_samples:
-    num_samples = 100 * 1000
-    print("Generating " + str(num_samples) + " samples")
-    data_df = generator.generate_samples(num_samples)
+if GENERATE_SAMPLES:
+    NUM_SAMPLES = 100 * 1000
+    print("Generating " + str(NUM_SAMPLES) + " samples")
+    data_df = generator.generate_samples(NUM_SAMPLES)
     print("Cleansing data")
-    data_df = generator.cleanse(data_df, cleanse=False)
+    data_df = generator.cleanse(data_df, cleanse=True)
     print("Output to file: " + data_file)
     generator.to_file(data_df, data_file)
     print("Complete!")
@@ -57,35 +55,34 @@ print(data_df.head())
 
 # Initialize the model
 hidden_layers = ['softplus', 'softplus', 'softplus']
-num_neurons = 16
-dropout = 0.00
-keras_model = compose_model(input_dim, output_dim, hidden_layers, num_neurons, dropout)
+NUM_NEURONS = 16
+DROP_OUT = 0.00
+keras_model = compose_model(input_dim, output_dim, hidden_layers, NUM_NEURONS, DROP_OUT)
 
 # Learning rate scheduler
-init_lr = 1e-1
-final_lr = 1e-4
-decay = 0.97
-steps = 100
-lr_schedule = FlooredExponentialDecay(init_lr, final_lr, decay, steps)
+INIT_LR = 1e-1
+FINAL_LR = 1e-4
+DECAY = 0.97
+STEPS = 100
+lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
 
 # Optimizer
 optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
 # Display optimizer fields
 print("Optimizer settings")
 optim_fields = optimizer.get_config()
-for field in optim_fields:
-    print(field, ":", optim_fields[field])
+for field, value in optim_fields.items():
+    print(field, ":", value)
 
 # Compile
 keras_model.compile(loss='mse', optimizer=optimizer)
 model = LearningModel(keras_model)
 
 # Train the network
-epochs = 1000
-batch_size = 1000
-history = model.train(x_set, y_set, epochs, batch_size)
+EPOCHS = 1000
+BATCH_SIZE = 1000
+model.train(x_set, y_set, EPOCHS, BATCH_SIZE)
 
 # print(x_set)
 # print(y_set.shape)
 # print(y_set)
-

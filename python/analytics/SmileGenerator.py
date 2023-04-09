@@ -1,29 +1,33 @@
+""" Base framework for smile generation """
 from abc import ABC, abstractmethod
-
 import numpy as np
-
-import analytics.bachelier as bachelier
 import pandas as pd
+import analytics.bachelier as bachelier
 
 
 class SmileGenerator(ABC):
+    """ Base class for smile generation """
     def __init__(self):
         self.num_curve_parameters = 0
         self.num_vol_parameters = 0
 
     @abstractmethod
     def generate_samples(self, num_samples):
-        pass
+        """ Abstract base class """
+        # pass
 
     @abstractmethod
     def price(self, expiry, strike, parameters):
-        pass
+        """ Abstract base class """
+        # pass
 
     @abstractmethod
-    def retrieve_datasets(self, data_df):
-        pass
+    def retrieve_datasets(self, data_file):
+        """ Abstract base class """
+        # pass
 
     def num_parameters(self):
+        """ Total number of parameters (curve + vol) """
         return self.num_curve_parameters + self.num_vol_parameters
 
     @staticmethod
