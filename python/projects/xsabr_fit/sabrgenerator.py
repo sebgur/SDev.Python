@@ -5,8 +5,8 @@ import pandas as pd
 import settings
 from analytics.sabr import sabr_iv
 from analytics import black
-from analytics.SmileGenerator import SmileGenerator
-from tools import FileManager
+from analytics.smilegenerator import SmileGenerator
+from tools import filemanager
 
 
 BPS10 = 10.0 / 10000.0
@@ -42,7 +42,7 @@ class SabrGenerator(SmileGenerator):
         nu = self.rng.uniform(0.20, 0.80, (num_samples, 1))
         rho = self.rng.uniform(-0.40, 0.40, (num_samples, 1))
         implied_vol = sabr_iv(t, strike + shift, fwd + shift, alpha, beta, nu, rho)
-        price = black.price(t, strike + shift, fwd + shift, implied_vol, is_call=False)
+        price = black.price(t, strike + shift, fwd + shift, implied_vol, self.is_call)
 
         # Put in dataframe
         df = pd.DataFrame({'TTM': t[:, 0], 'K': strike[:, 0], 'F': fwd[:, 0],
@@ -83,6 +83,43 @@ class SabrGenerator(SmileGenerator):
 
         return x_set, y_set, data_df
 
+    def price_strike_ladder(self, model, spreads, parameters):
+        num_points = len(spreads)
+        # Calculate strikes
+        fwd = parameters['F']
+        strikes = spreads / 10000.0 + fwd
+        # ToDo: floor the strikes
+
+        # Retrieve parameters
+        shift = self.shift
+        beta = parameters['Beta']
+        alpha = parameters['LNVOL'] * (fwd + shift)**(1.0 - beta)
+        nu = parameters['Nu']
+        rho = parameters['Rho']
+        expiry = parameters['TTM']
+
+        # Prepare learning model inputs
+        # ToDo: define a big matrix of ones and then multiply by columns?
+        expiries = np.ones(shape=(num_points, 1)) * expiry
+        fwds = np.ones(shape=(num_points, 1)) * fwd
+        alphas = np.ones(shape=(num_points, 1)) * alpha
+        betas = np.ones(shape=(num_points, 1)) * beta
+        nus = np.ones(shape=(num_points, 1)) * nu
+        rhos = np.ones(shape=(num_points, 1)) * rho
+        md_inputs = np.column_stack((expiries, fwds, strikes, alphas, betas, nus, rhos))
+
+        # Price with learning model
+        # md_nvols = model.predict(md_inputs)
+        md_prices = 0
+
+        # Price with ref valuation
+        rf_params = [fwd, alpha, beta, nu, rho]
+        rf_prices = []
+        for strike in strikes:
+            parameters = 0
+            rf_prices.append(self.price(expiry, strike, self.is_call, rf_params))
+
+        return rf_prices, md_prices
 
 # Special classe for Shifted SABR with shift = 3%, for easier calling
 class ShiftedSabrGenerator(SabrGenerator):
@@ -96,7 +133,7 @@ if __name__ == "__main__":
     NUM_SAMPLES = 100 * 1000
     MODEL_TYPE = 'ShiftedSABR'
     output_folder = os.path.join(settings.WORKFOLDER, "XSABRsamples")
-    FileManager.check_directory(output_folder)
+    filemanager.check_directory(output_folder)
     file = os.path.join(output_folder, MODEL_TYPE + "_samples.tsv")
     generator = ShiftedSabrGenerator()
 

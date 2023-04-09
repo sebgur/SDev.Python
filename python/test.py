@@ -1,14 +1,15 @@
+""" Just to test things """
 import numpy as np
+import projects.xsabr_fit.sabrgenerator as sabr
 
-print("Hello World!")
 
-t = [-2, -1, -3, 0, 2, 3]
-print(t)
-t = np.asarray(t)
-t = np.reshape(t, (6, 1))
-print(t.shape)
-print(t)
+NUM_TEST = 4
+spread_grid = np.linspace(-300, 300, num=NUM_TEST)
 
-t = np.maximum(t, 0.1)
-print(t)
+generator = sabr.SabrGenerator()
 
+TEST_PARAMS = { 'TTM': 1.2, 'F': 0.035, 'LNVOL': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
+
+prices = generator.price_strike_ladder(None, spread_grid, TEST_PARAMS)
+
+print(prices)

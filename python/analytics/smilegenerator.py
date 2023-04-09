@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
-import analytics.bachelier as bachelier
+from analytics import bachelier
 
 
 class SmileGenerator(ABC):
@@ -10,32 +10,32 @@ class SmileGenerator(ABC):
     def __init__(self):
         self.num_curve_parameters = 0
         self.num_vol_parameters = 0
+        self.is_call = False  # Use put options by default
 
     @abstractmethod
     def generate_samples(self, num_samples):
-        """ Generate a sample of expiries, strikes, relevant parameters and put option prices """
-        # pass
+        """ Generate a sample of expiries, strikes, relevant parameters and option prices """
 
     @abstractmethod
     def price(self, expiry, strike, is_call, parameters):
         """ Calculate option price under the specified model and its parameters """
-        # pass
 
     @abstractmethod
     def retrieve_datasets(self, data_file):
         """ Retrieve dataset stored in tsv file """
-        # pass
+
+    @abstractmethod
+    def price_strike_ladder(self, model, spreads, parameters):
+        """ Calculate prices for a ladder of strikes at given parameters """
 
     def num_parameters(self):
         """ Total number of parameters (curve + vol) """
         return self.num_curve_parameters + self.num_vol_parameters
 
-    @staticmethod
-    def to_nvol(data_df, cleanse=True, min_vol=0.0001, max_vol=0.1):
+    def to_nvol(self, data_df, cleanse=True, min_vol=0.0001, max_vol=0.1):
         """ Calculate normal implied vol and remove errors. Further remove points that are not
             in the given min/max range """
         # Calculate normal vols
-        # print(np.geterr())
         np.seterr(divide='raise')  # To catch errors and warnings
         t = data_df.TTM
         fwd = data_df.F
@@ -45,7 +45,7 @@ class SmileGenerator(ABC):
         num_samples = t.shape[0]
         for i in range(num_samples):
             try:
-                nvol.append(bachelier.impliedvol(t[i], fwd[i], strike[i], price[i], is_call=False))
+                nvol.append(bachelier.impliedvol(t[i], fwd[i], strike[i], price[i], self.is_call))
             except (Exception,):
                 nvol.append(-9999)
 
@@ -59,6 +59,10 @@ class SmileGenerator(ABC):
             data_df = data_df.drop(data_df[data_df.NVOL < min_vol].index)
 
         return data_df
+    
+    def target_is_call(self):
+        """ True if the fit target is call options, False if puts """
+        return self.is_call
 
     @staticmethod
     def from_file(data_file):
