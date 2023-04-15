@@ -1,3 +1,4 @@
+""" Utilities for Black-Scholes model """
 import scipy.stats
 import numpy as np
 
@@ -13,7 +14,7 @@ def price(t, k, f, vol, is_call):
     return w * (f * N(w * d1) - k * N(w * d2))
 
 
-# def black_performance(spot_vol, repo_rate, div_rate, expiry, strike, fixings):
+# def performance(spot_vol, repo_rate, div_rate, expiry, strike, fixings):
 #     shape = spot_vol.shape
 #     num_underlyings = int(shape[0] / 2)
 #     # print(num_underlyings)
@@ -33,8 +34,7 @@ def price(t, k, f, vol, is_call):
 #     # return forward_perf
 #     return black_formula(forward_perf, strike, vol, expiry, True)
 
-# Test
-def test():
+if __name__ == "__main__":
     t = 1.0
     vol = 0.25
     is_call = True

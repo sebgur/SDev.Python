@@ -11,6 +11,10 @@ from machinelearning.LearningModel import LearningModel
 from machinelearning.FlooredExponentialDecay import FlooredExponentialDecay
 from tools.filemanager import check_directory
 
+# ToDo: Fix order of Black and Bachelier formulas: t, k, is_call, f, vol
+# ToDo: Rename all modules to small letters, Write head description
+# ToDo: Remove external copies, temp colab fix
+# ToDo: Put if __name__ in all that have local testing
 # ToDo: Display result and metrics
 # ToDo: Improve call-back and model classes. Base class that does nothing special as call-back,
 #       and other base that outputs the LR only
@@ -114,5 +118,4 @@ spread_grid = np.linspace(-300, 300, num=NUM_TEST)
 # TEST_RHO = -0.25
 TEST_PARAMS = { 'TTM': 1.2, 'F': 0.035, 'LNVOL': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
 
-print(TEST_PARAMS.TTM)
-
+print(TEST_PARAMS['TTM'])

@@ -1,13 +1,18 @@
+""" Wrapper class for machine learning models, including scalers, and simplifying
+    evaluation, history tracking, exporting to/importing from files, etc. """
 from sklearn.preprocessing import StandardScaler
 from keras.models import load_model
 import tensorflow as tf
 import joblib
 
-# ToDo: do more in the call back. Currently it is too specific, so different call-backs wouldn't work.
-# Instead we should do everything in the call-back, and then retrieve information from it in the end,
-# knowing its special type.
+# ToDo: do more in the call back. Currently it is too specific, so different call-backs wouldn't
+# work.
+# Instead we should do everything in the call-back, and then retrieve information from it in the
+# end, knowing its special type.
 
 class LearningModel:
+    """ Wrapper class for machine learning models, including scalers, and simplifying
+        evaluation, history tracking, exporting to/importing from files, etc. """
     def __init__(self, model, x_scaler=StandardScaler(copy=True),
                  y_scaler=StandardScaler(copy=True)):
         self.model = model
@@ -20,6 +25,7 @@ class LearningModel:
         self.offset = 0
 
     def train(self, x_set, y_set, epochs, batch_size, callbacks=[]):
+        """ Scale on first call, then train """
         if not self.is_scaled:
             self.x_scaler.fit(x_set)
             self.y_scaler.fit(y_set)
@@ -45,18 +51,21 @@ class LearningModel:
         # self.offset += num_epochs
 
     def predict(self, x_test):
+        """ Predict, including scaling inputs/outputs """
         x_scaled = self.x_scaler.transform(x_test)
         y_scaled = self.model(x_scaled)
         y_test = self.y_scaler.inverse_transform(y_scaled)
         return y_test
 
     def calculate(self, x_test, diff=False):
+        """ Predict with calculation of differentials or not """
         if diff:
             return self.calculate_with_greeks(x_test)
         else:
             return self.predict(x_test), None
 
     def calculate_with_greeks(self, x_test):
+        """ Predit with calculation of differentials """
         # x-scaler in TF
         x_mean = self.x_scaler.mean_
         x_scale = self.x_scaler.scale_
@@ -85,28 +94,34 @@ class LearningModel:
         return base, diffs
 
     def save_to(self, path, root_file_name):
+        """ Save to files """
         model_file, x_scaler_file, y_scaler_file = self.file_names(path, root_file_name)
         joblib.dump(self.x_scaler, x_scaler_file)
         joblib.dump(self.y_scaler, y_scaler_file)
         self.model.save(model_file)
 
     def convergence(self):
+        """ Retrieve convergence history """
         return self.epochs, self.losses, self.accuracies
 
     def clear_training(self):
+        """ Reset all training history """
         self.epochs.clear()
         self.losses.clear()
         self.accuracies.clear()
         self.offset = 0
 
     def scale_inputs(self, x_data):
+        """ Scale inputs """
         return self.x_scaler.transform(x_data)
 
     def scaleback_outputs(self, y_data):
+        """ Scale back outputs """
         return self.y_scaler.inverse_transform(y_data)
 
     @staticmethod
     def file_names(path, name):
+        """ Specify file names for model save """
         root = path + "/" + name
         model_file = root + "_model.h5"
         x_scaler_file = root + "_xscaler.h5"
@@ -115,6 +130,7 @@ class LearningModel:
 
 
 def read_learning_model(path, name):
+    """ Load learning model from files """
     model_file, x_scaler_file, y_scaler_file = LearningModel.file_names(path, name)
 
     model = load_model(model_file)

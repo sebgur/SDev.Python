@@ -5,6 +5,7 @@ import pandas as pd
 import settings
 from analytics.sabr import sabr_iv
 from analytics import black
+from analytics import bachelier
 from analytics.smilegenerator import SmileGenerator
 from tools import filemanager
 
@@ -93,30 +94,29 @@ class SabrGenerator(SmileGenerator):
         # Retrieve parameters
         shift = self.shift
         beta = parameters['Beta']
-        alpha = parameters['LNVOL'] * (fwd + shift)**(1.0 - beta)
+        alpha = parameters['LnVol'] * (fwd + shift)**(1.0 - beta)
         nu = parameters['Nu']
         rho = parameters['Rho']
-        expiry = parameters['TTM']
+        expiry = parameters['Ttm']
 
         # Prepare learning model inputs
-        # ToDo: define a big matrix of ones and then multiply by columns?
-        expiries = np.ones(shape=(num_points, 1)) * expiry
-        fwds = np.ones(shape=(num_points, 1)) * fwd
-        alphas = np.ones(shape=(num_points, 1)) * alpha
-        betas = np.ones(shape=(num_points, 1)) * beta
-        nus = np.ones(shape=(num_points, 1)) * nu
-        rhos = np.ones(shape=(num_points, 1)) * rho
-        md_inputs = np.column_stack((expiries, fwds, strikes, alphas, betas, nus, rhos))
+        md_inputs = np.ones((num_points, 7))
+        md_inputs[:, 0] *= expiry
+        md_inputs[:, 1] *= fwd
+        md_inputs[:, 2] = strikes
+        md_inputs[:, 3] *= alpha
+        md_inputs[:, 4] *= beta
+        md_inputs[:, 5] *= nu
+        md_inputs[:, 6] *= rho
 
         # Price with learning model
-        # md_nvols = model.predict(md_inputs)
-        md_prices = 0
+        md_nvols = model.predict(md_inputs)
+        md_prices = bachelier.price(fwd, strike, vol, is_call=self.is_call)
 
         # Price with ref valuation
         rf_params = [fwd, alpha, beta, nu, rho]
         rf_prices = []
         for strike in strikes:
-            parameters = 0
             rf_prices.append(self.price(expiry, strike, self.is_call, rf_params))
 
         return rf_prices, md_prices
