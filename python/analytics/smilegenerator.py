@@ -17,7 +17,7 @@ class SmileGenerator(ABC):
         """ Generate a sample of expiries, strikes, relevant parameters and option prices """
 
     @abstractmethod
-    def price(self, expiry, strike, is_call, parameters):
+    def price(self, expiry, strike, is_call, fwd, parameters):
         """ Calculate option price under the specified model and its parameters """
 
     @abstractmethod
@@ -25,7 +25,7 @@ class SmileGenerator(ABC):
         """ Retrieve dataset stored in tsv file """
 
     @abstractmethod
-    def price_strike_ladder(self, model, spreads, parameters):
+    def price_strike_ladder(self, model, spreads, fwd, parameters):
         """ Calculate prices for a ladder of strikes at given parameters """
 
     def num_parameters(self):
@@ -45,7 +45,7 @@ class SmileGenerator(ABC):
         num_samples = t.shape[0]
         for i in range(num_samples):
             try:
-                nvol.append(bachelier.impliedvol(t[i], fwd[i], strike[i], price[i], self.is_call))
+                nvol.append(bachelier.implied_vol(t[i], strike[i], self.is_call, fwd[i], price[i]))
             except (Exception,):
                 nvol.append(-9999)
 
@@ -59,7 +59,7 @@ class SmileGenerator(ABC):
             data_df = data_df.drop(data_df[data_df.NVOL < min_vol].index)
 
         return data_df
-    
+
     def target_is_call(self):
         """ True if the fit target is call options, False if puts """
         return self.is_call

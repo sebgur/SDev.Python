@@ -12,6 +12,7 @@ from machinelearning.FlooredExponentialDecay import FlooredExponentialDecay
 from tools.filemanager import check_directory
 
 # ToDo: Fix order of Black and Bachelier formulas: t, k, is_call, f, vol
+# ToDo: Recheck the whole process with the new order
 # ToDo: Rename all modules to small letters, Write head description
 # ToDo: Remove external copies, temp colab fix
 # ToDo: Put if __name__ in all that have local testing

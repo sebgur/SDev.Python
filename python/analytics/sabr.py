@@ -1,10 +1,12 @@
+""" Utilities for SABR model, in its original formulation by Hagan in 'Managing Smile Risk',
+    Wilmott Magazine """
 import numpy as np
+import matplotlib.pyplot as plt
 
 
-# Hagan's SABR formula
-def sabr_iv(t, k, f, alpha, beta, nu, rho):
-    """ Hagan's original formula (2.17a) in 'Managing Smile risk', Wilmott Magazine. We introduce a Taylor
-     expansion around ATM to take care of the singularity. """
+def implied_vol(t, k, f, alpha, beta, nu, rho):
+    """ Hagan's original formula (2.17a) in 'Managing Smile risk', Wilmott Magazine. We introduce
+        a Taylor expansion around ATM to take care of the singularity. """
     v = np.power(f * k, (1.0 - beta) / 2.0)
     log_m = np.log(f / k)
 
@@ -21,33 +23,50 @@ def sabr_iv(t, k, f, alpha, beta, nu, rho):
     # Correction
     z = (nu / alpha) * v * log_m
     m_epsilon = 1e-15
-    # Unfortunately where() evaluates both so gives warning when going on the wrong side. We temporarily
-    # suspect the warning of division by 0.
+    # Unfortunately where() evaluates both so gives warning when going on the wrong side.
+    # We temporarily suspend the warning of division by 0.
     np.seterr(invalid='ignore')
-    correction = np.where(z * z > 10.0 * m_epsilon,
-                          z / np.log((np.sqrt(1.0 - 2.0 * rho * z + z * z) + z - rho) / (1.0 - rho)),
-                          1.0 - 0.5 * rho * z - (3.0 * rho * rho - 2.0) * z * z / 12.0)
+    z2 = z * z
+    correction = np.where(z2 > 10.0 * m_epsilon,
+                          z / np.log((np.sqrt(1.0 - 2.0 * rho * z + z2) + z - rho) / (1.0 - rho)),
+                          1.0 - 0.5 * rho * z - (3.0 * rho * rho - 2.0) * z2 / 12.0)
     np.seterr(invalid='warn')
 
     return tmp1 / tmp2 * correction
 
 
-# Test near ATM
-# import matplotlib.pyplot as plt
-# beta_ = 0.4
-# nu_ = 0.50
-# rho_ = -0.25
-# fwd = 0.04
-# expiry = 0.5
-# sigma = 0.25
-# alpha_ = sigma * fwd**(1.0 - beta_)
-#
-# min_strike = fwd - 0.03
-# max_strike = fwd + 0.06
-# num_points = 100
-# strikes = np.linspace(min_strike, max_strike, num_points)
-# vol = sabr_iv(expiry, strikes, fwd, alpha_, beta_, nu_, rho_)
-#
-# plt.plot(strikes, vol, color='blue', label='sabr_iv')
-# plt.legend(loc='upper right')
-# plt.show()
+def implied_vol_vec(t, k, f, parameters):
+    """ Hagan's original formula (2.17a) in 'Managing Smile risk', Wilmott Magazine. We introduce
+        a Taylor expansion around ATM to take care of the singularity. The parameters are passed
+        as the vector [ln_vol, beta, nu, rho] where ln_vol is a more intuitive parameter than
+        the original alpha. It has the meaning of a log-normal vol, and we define it through
+        alpha = ln_vol * fwd ^ (1.0 - beta) """
+    ln_vol = parameters[0]
+    beta = parameters[1]
+    nu = parameters[2]
+    rho = parameters[3]
+    alpha = calculate_alpha(ln_vol, f, beta)
+    return implied_vol(t, k, f, alpha, beta, nu, rho)
+
+
+def calculate_alpha(ln_vol, fwd, beta):
+    """ Calculate original parameter alpha with our definition in terms of ln_vol, i.e.
+        alpha = ln_vol * fwd ^ (1.0 - beta) """
+    return ln_vol * fwd ** (1.0 - beta)
+
+
+if __name__ == "__main__":
+    # Test near ATM
+    EXPIRY = 0.5
+    FWD = 0.04
+    PARAMS = [0.25, 0.4, 0.50, -0.25]
+
+    MIN_STRIKE = FWD - 0.03
+    MAX_STRIKE = FWD + 0.06
+    NUM_POINTS = 100
+    strikes = np.linspace(MIN_STRIKE, MAX_STRIKE, NUM_POINTS)
+    vol = implied_vol_vec(EXPIRY, strikes, FWD, PARAMS)
+
+    plt.plot(strikes, vol, color='blue', label='sabr_iv')
+    plt.legend(loc='upper right')
+    plt.show()

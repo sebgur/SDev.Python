@@ -1,7 +1,7 @@
 [MASTER]
 generated-members=np.*
 
-disable=broad-exception-caught
+disable=broad-exception-caught,too-many-locals,too-many-arguments
 
 #variable-rgx=[a-z]{0,30}$
 #variable-rgx=[a-z0-9_]{1,30}$

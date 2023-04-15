@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import settings
-from analytics.sabr import sabr_iv
+from analytics import sabr
 from analytics import black
 from analytics import bachelier
 from analytics.smilegenerator import SmileGenerator
@@ -33,34 +33,40 @@ class SabrGenerator(SmileGenerator):
     def generate_samples(self, num_samples):
         shift = self.shift
         t = self.rng.uniform(1.0 / 12.0, 5.0, (num_samples, 1))
-        spread = self.rng.uniform(-300, 300, (num_samples, 1))
         fwd = self.rng.uniform(self.min_fwd, self.max_fwd, (num_samples, 1))
+        # Draw strikes
+        spread = self.rng.uniform(-300, 300, (num_samples, 1))
         strike = fwd + spread / 10000.0
-        strike = np.maximum(strike, -self.shift + BPS10)
+        strike = np.maximum(strike, -shift + BPS10)
+
+        # Draw parameters
+        ln_vol = self.rng.uniform(0.05, 0.25, (num_samples, 1))
         beta = self.rng.uniform(0.49, 0.51, (num_samples, 1))
-        ln_vol = self.rng.uniform(0.05, 0.25, (num_samples, 1))  # Specify log-normal vol
-        alpha = ln_vol * (np.abs(fwd + shift)) ** (1.0 - beta)
+        # alpha = ln_vol * (np.abs(fwd + shift)) ** (1.0 - beta)
         nu = self.rng.uniform(0.20, 0.80, (num_samples, 1))
         rho = self.rng.uniform(-0.40, 0.40, (num_samples, 1))
-        implied_vol = sabr_iv(t, strike + shift, fwd + shift, alpha, beta, nu, rho)
-        price = black.price(t, strike + shift, fwd + shift, implied_vol, self.is_call)
+        params = np.column_stack((ln_vol, beta, nu, rho))
+
+        # Calculate prices
+        # shifted_k = strike + shift
+        # shifted_f = fwd + shift
+        # iv = sabr.implied_vol_vec(t, shifted_k, shifted_f, params)
+        # price = black.price(t, shifted_k, shifted_f, iv, self.is_call)
+        price = self.price(t, strike, self.is_call, fwd, params)
 
         # Put in dataframe
-        df = pd.DataFrame({'TTM': t[:, 0], 'K': strike[:, 0], 'F': fwd[:, 0],
-                           'Alpha': alpha[:, 0], 'Beta': beta[:, 0], 'Nu': nu[:, 0],
+        df = pd.DataFrame({'Ttm': t[:, 0], 'K': strike[:, 0], 'F': fwd[:, 0],
+                           'LnVol': ln_vol[:, 0], 'Beta': beta[:, 0], 'Nu': nu[:, 0],
                            'Rho': rho[:, 0], 'Price': price[:, 0]})
-        df.columns = ['TTM', 'K', 'F', 'Alpha', 'Beta', 'Nu', 'Rho', 'Price']
+        df.columns = ['Ttm', 'K', 'F', 'LnVol', 'Beta', 'Nu', 'Rho', 'Price']
 
         return df
 
-    def price(self, expiry, strike, is_call, parameters):
-        fwd = parameters[0]
-        alpha = parameters[1]
-        beta = parameters[2]
-        nu = parameters[3]
-        rho = parameters[4]
-        iv = sabr_iv(expiry, strike + self.shift, fwd + self.shift, alpha, beta, nu, rho)
-        price = black.price(expiry, strike + self.shift, fwd + self.shift, iv, is_call)
+    def price(self, expiry, strike, is_call, fwd, parameters):
+        shifted_k = strike + self.shift
+        shifted_f = fwd + self.shift
+        iv = sabr.implied_vol_vec(expiry, shifted_k, shifted_f, parameters)
+        price = black.price(expiry, shifted_k, shifted_f, iv, is_call)
         return price
 
     def retrieve_datasets(self, data_file):
@@ -84,17 +90,20 @@ class SabrGenerator(SmileGenerator):
 
         return x_set, y_set, data_df
 
-    def price_strike_ladder(self, model, spreads, parameters):
-        num_points = len(spreads)
-        # Calculate strikes
-        fwd = parameters['F']
-        strikes = spreads / 10000.0 + fwd
-        # ToDo: floor the strikes
+    def price_strike_ladder(self, model, spreads, fwd, parameters):
+        strikes = []
+        # Calculate strikes and exclude those below the shift
+        for spread in spreads:
+            strike = fwd + spread / 10000.0
+            if strike > self.shift + BPS10:
+                strikes.append(strike)
 
+        num_points = len(strikes)
         # Retrieve parameters
-        shift = self.shift
+        # shift = self.shift
+        ln_vol = parameters['LnVol']
         beta = parameters['Beta']
-        alpha = parameters['LnVol'] * (fwd + shift)**(1.0 - beta)
+        # alpha = parameters['LnVol'] * (fwd + shift)**(1.0 - beta)
         nu = parameters['Nu']
         rho = parameters['Rho']
         expiry = parameters['Ttm']
@@ -102,22 +111,22 @@ class SabrGenerator(SmileGenerator):
         # Prepare learning model inputs
         md_inputs = np.ones((num_points, 7))
         md_inputs[:, 0] *= expiry
-        md_inputs[:, 1] *= fwd
+        md_inputs[:, 1] *= fwd # ToDo: reorder here too for consistency
         md_inputs[:, 2] = strikes
-        md_inputs[:, 3] *= alpha
+        md_inputs[:, 3] *= ln_vol
         md_inputs[:, 4] *= beta
         md_inputs[:, 5] *= nu
         md_inputs[:, 6] *= rho
 
         # Price with learning model
         md_nvols = model.predict(md_inputs)
-        md_prices = bachelier.price(fwd, strike, vol, is_call=self.is_call)
+        md_prices = bachelier.price(expiry, strike, self.is_call, fwd, md_nvols)
 
         # Price with ref valuation
-        rf_params = [fwd, alpha, beta, nu, rho]
+        rf_params = [ln_vol, beta, nu, rho]
         rf_prices = []
         for strike in strikes:
-            rf_prices.append(self.price(expiry, strike, self.is_call, rf_params))
+            rf_prices.append(self.price(expiry, strike, self.is_call, fwd, rf_params))
 
         return rf_prices, md_prices
 
