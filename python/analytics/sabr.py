@@ -59,14 +59,6 @@ def calculate_alpha(ln_vol, fwd, beta):
     return ln_vol * fwd ** (1.0 - beta)
 
 
-class SabrParams:
-    def __init__(self, lnvol, beta, nu, rho):
-        self.lnvol = lnvol
-        self.beta = beta
-        self.nu = nu
-        self.rho = rho
-
-
 if __name__ == "__main__":
     # Test near ATM
     EXPIRY = 0.5

@@ -4,12 +4,15 @@
 import os
 import numpy as np
 import tensorflow as tf
+import matplotlib.pyplot as plt
 from volsurfacegen.sabrgenerator import SabrGenerator, ShiftedSabrGenerator
 import settings
 from machinelearning.topology import compose_model
 from machinelearning.learningmodel import LearningModel
 from machinelearning.learningschedules import FlooredExponentialDecay
 from tools.filemanager import check_directory
+from analytics import bachelier
+import xsabrplot as xplt
 
 # ToDo: Display result and metrics
 # ToDo: Improve call-back and model classes. Base class that does nothing special as call-back,
@@ -100,16 +103,39 @@ if TRAIN:
 
     # Train the network
     print(">> Training ANN model")
-    EPOCHS = 50
+    EPOCHS = 100
     BATCH_SIZE = 1000
     print(f"> Epochs: {EPOCHS:,}")
     print(f"> Batch size: {BATCH_SIZE:,}")
     model.train(x_set, y_set, EPOCHS, BATCH_SIZE)
 
-# Plot results
+# Analyse results
 print(">> Analyse results")
-# Generate strike axis
+# Generate strike spread axis
 NUM_TEST = 100
-spread_grid = np.linspace(-300, 300, num=NUM_TEST)
-TEST_PARAMS = { 'F': 0.035, 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
-print(TEST_PARAMS['F'])
+spread_ladder = np.linspace(-300, 300, num=NUM_TEST)
+EXPIRY = 1.2
+FWD = 0.028
+TEST_PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
+IS_CALL = generator.is_call
+
+xplt.plot_vol_slice(EXPIRY, spread_ladder, FWD, TEST_PARAMS, generator, model)
+
+# # Calculate prices
+# rf_prc, md_prc, strikes, sprds = generator.price_strike_ladder(model, EXPIRY, spread_grid,
+#                                                                FWD, TEST_PARAMS)
+
+# # Invert to normal vols
+# rf_nvols = []
+# md_nvols = []
+# for i, strike in enumerate(strikes):
+#     rf_nvols.append(bachelier.implied_vol(EXPIRY, strike, IS_CALL, FWD, rf_prc[i]))
+#     md_nvols.append(bachelier.implied_vol(EXPIRY, strike, IS_CALL, FWD, md_prc[i]))
+
+# # Plot
+# plt.xlabel('Spread')
+# plt.ylabel('Volatility')
+# plt.plot(spread_grid, rf_nvols, color='blue', label='Reference')
+# plt.plot(spread_grid, md_nvols, color='red', label='Model')
+# plt.legend(loc='upper right')
+# plt.show()
