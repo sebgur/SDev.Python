@@ -25,7 +25,7 @@ class SmileGenerator(ABC):
         """ Retrieve dataset stored in tsv file """
 
     @abstractmethod
-    def price_strike_ladder(self, model, spreads, fwd, parameters):
+    def price_strike_ladder(self, model, expiry, spreads, fwd, parameters):
         """ Calculate prices for a ladder of strikes at given parameters """
 
     def num_parameters(self):
@@ -37,7 +37,7 @@ class SmileGenerator(ABC):
             in the given min/max range """
         # Calculate normal vols
         np.seterr(divide='raise')  # To catch errors and warnings
-        t = data_df.TTM
+        t = data_df.Ttm
         fwd = data_df.F
         strike = data_df.K
         price = data_df.Price
@@ -51,12 +51,12 @@ class SmileGenerator(ABC):
 
         np.seterr(divide='warn')  # Set back to warning
 
-        data_df['NVOL'] = nvol
+        data_df['NVol'] = nvol
 
         # Remove out of range
         if cleanse:
-            data_df = data_df.drop(data_df[data_df.NVOL > max_vol].index)
-            data_df = data_df.drop(data_df[data_df.NVOL < min_vol].index)
+            data_df = data_df.drop(data_df[data_df.NVol > max_vol].index)
+            data_df = data_df.drop(data_df[data_df.NVol < min_vol].index)
 
         return data_df
 

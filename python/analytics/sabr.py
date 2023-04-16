@@ -41,11 +41,15 @@ def implied_vol_vec(t, k, f, parameters):
         as the vector [ln_vol, beta, nu, rho] where ln_vol is a more intuitive parameter than
         the original alpha. It has the meaning of a log-normal vol, and we define it through
         alpha = ln_vol * fwd ^ (1.0 - beta) """
-    ln_vol = parameters[0]
-    beta = parameters[1]
-    nu = parameters[2]
-    rho = parameters[3]
-    alpha = calculate_alpha(ln_vol, f, beta)
+    # lnvol = parameters.lnvol
+    # beta = parameters.beta
+    # nu = parameters.nu
+    # rho = parameters.rho
+    lnvol = parameters['LnVol']
+    beta = parameters['Beta']
+    nu = parameters['Nu']
+    rho = parameters['Rho']
+    alpha = calculate_alpha(lnvol, f, beta)
     return implied_vol(t, k, f, alpha, beta, nu, rho)
 
 
@@ -53,6 +57,14 @@ def calculate_alpha(ln_vol, fwd, beta):
     """ Calculate original parameter alpha with our definition in terms of ln_vol, i.e.
         alpha = ln_vol * fwd ^ (1.0 - beta) """
     return ln_vol * fwd ** (1.0 - beta)
+
+
+class SabrParams:
+    def __init__(self, lnvol, beta, nu, rho):
+        self.lnvol = lnvol
+        self.beta = beta
+        self.nu = nu
+        self.rho = rho
 
 
 if __name__ == "__main__":

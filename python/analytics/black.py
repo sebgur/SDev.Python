@@ -6,12 +6,13 @@ N = scipy.stats.norm.cdf
 # Ninv = scipy.stats.norm.ppf
 
 
-def price(t, k, f, vol, is_call):
+def price(expiry, strike, is_call, fwd, vol):
+    """ Option price under the Black-Scholes model """
     w = 1.0 if is_call else -1.0
-    s = vol * np.sqrt(t)
-    d1 = np.log(f / k) / s + 0.5 * s
+    s = vol * np.sqrt(expiry)
+    d1 = np.log(fwd / strike) / s + 0.5 * s
     d2 = d1 - s
-    return w * (f * N(w * d1) - k * N(w * d2))
+    return w * (fwd * N(w * d1) - strike * N(w * d2))
 
 
 # def performance(spot_vol, repo_rate, div_rate, expiry, strike, fixings):
@@ -35,11 +36,11 @@ def price(t, k, f, vol, is_call):
 #     return black_formula(forward_perf, strike, vol, expiry, True)
 
 if __name__ == "__main__":
-    t = 1.0
-    vol = 0.25
-    is_call = True
-    n_points = 5
-    f_space = np.linspace(100, 120, n_points)
-    k_space = np.linspace(150, 180, n_points)
-    prices = price(f_space, k_space, vol, t, is_call)
+    EXPIRY = 1.0
+    VOL = 0.25
+    IS_CALL = True
+    NUM_POINTS = 5
+    f_space = np.linspace(100, 120, NUM_POINTS)
+    k_space = np.linspace(150, 180, NUM_POINTS)
+    prices = price(f_space, k_space, VOL, EXPIRY, IS_CALL)
     print(prices)
