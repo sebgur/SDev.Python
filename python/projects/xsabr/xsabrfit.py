@@ -13,10 +13,10 @@ from machinelearning.learningschedules import FlooredExponentialDecay
 from tools.filemanager import check_directory
 from projects.xsabr import xsabrplot as xplt
 
-# ToDo: Improve call-back and model classes. Base class that does nothing special as call-back,
-#       and other base that outputs the LR only. Finalize machinelearning design.
+# ToDo: Call-back base class does nothing special, other base that outputs the LR only.
 # ToDo: Display history of loss and learning rate
 # ToDo: Export trained model to file
+# ToDo: Finalize machinelearning design.
 # ToDo: Optional reading of model from file
 # ToDo: Implement split between training and validation datasets
 # ToDo: Compare performance on training vs validation sets
