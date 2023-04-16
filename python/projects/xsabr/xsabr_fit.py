@@ -7,15 +7,13 @@ import tensorflow as tf
 from sabrgenerator import SabrGenerator, ShiftedSabrGenerator
 import settings
 from machinelearning.topology import compose_model
-from machinelearning.LearningModel import LearningModel
-from machinelearning.FlooredExponentialDecay import FlooredExponentialDecay
+from machinelearning.learningmodel import LearningModel
+from machinelearning.learningschedules import FlooredExponentialDecay
 from tools.filemanager import check_directory
 
 # ToDo: Fix order of Black and Bachelier formulas: t, k, is_call, f, vol
 # ToDo: Recheck the whole process with the new order
-# ToDo: Rename all modules to small letters, Write head description
-# ToDo: Remove external copies, temp colab fix
-# ToDo: Put if __name__ in all that have local testing
+# ToDo: Remove colab fix
 # ToDo: Display result and metrics
 # ToDo: Improve call-back and model classes. Base class that does nothing special as call-back,
 #       and other base that outputs the LR only
@@ -26,6 +24,10 @@ from tools.filemanager import check_directory
 # ToDo: Implement split between training and validation datasets
 # ToDo: Compare performance on training vs validation sets
 # ToDo: Finalize and fine-train models
+# ToDo: Put FB-SABR MC into analytics\fbsabr.py
+# ToDo: Import/translate Kienitz's PDEs from C#, especially if we have ZABR?
+# ToDo: Recreate PINNs call/worst-of
+# ToDo: Rename all modules to small letters, Write head description
 
 # ################ Runtime configuration ##########################################################
 print(">> Set up runtime configuration")

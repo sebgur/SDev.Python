@@ -11,17 +11,18 @@ def rebonato(v):
     return ainf + (b * v + a0 - ainf) * np.exp(-v / tau)
 
 
-n_points = 5
-x = np.linspace(0.0, 4.0, num=n_points)
-y = rebonato(x)
-spline = CubicSpline(x, y, bc_type='natural')
+if __name__ == "__main__":
+    n_points = 5
+    x = np.linspace(0.0, 4.0, num=n_points)
+    y = rebonato(x)
+    spline = CubicSpline(x, y, bc_type='natural')
 
-k = np.linspace(-1.0, 5.0, num=10)
-func = rebonato(k)
-inter = spline(k)
+    k = np.linspace(-1.0, 5.0, num=10)
+    func = rebonato(k)
+    inter = spline(k)
 
-plt.ioff()
-plt.plot(k, func, color='blue', label='Function')
-plt.plot(k, inter, color='red', label='Interpolation')
-plt.legend(loc='upper right')
-plt.show()
+    plt.ioff()
+    plt.plot(k, func, color='blue', label='Function')
+    plt.plot(k, inter, color='red', label='Interpolation')
+    plt.legend(loc='upper right')
+    plt.show()
