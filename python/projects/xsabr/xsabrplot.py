@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from analytics import bachelier
 
 
-def plot_vol_slice(expiry, spread_ladder, fwd, test_params, generator, model):
+def strike_ladder(expiry, spread_ladder, fwd, test_params, generator, model):
     """ Plot volatilities along a ladder of strike spreads """
     is_call = generator.is_call
 
@@ -32,4 +32,4 @@ def plot_vol_slice(expiry, spread_ladder, fwd, test_params, generator, model):
     plt.plot(sprds, rf_nvols, color='blue', label='Reference')
     plt.plot(sprds, md_nvols, color='red', label='Model')
     plt.legend(loc='upper right')
-    plt.show()
+    # plt.show()

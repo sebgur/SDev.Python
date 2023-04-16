@@ -11,10 +11,8 @@ from machinelearning.topology import compose_model
 from machinelearning.learningmodel import LearningModel
 from machinelearning.learningschedules import FlooredExponentialDecay
 from tools.filemanager import check_directory
-from analytics import bachelier
-import xsabrplot as xplt
+from projects.xsabr import xsabrplot as xplt
 
-# ToDo: Display result and metrics
 # ToDo: Improve call-back and model classes. Base class that does nothing special as call-back,
 #       and other base that outputs the LR only. Finalize machinelearning design.
 # ToDo: Display history of loss and learning rate
@@ -113,29 +111,28 @@ if TRAIN:
 print(">> Analyse results")
 # Generate strike spread axis
 NUM_TEST = 100
-spread_ladder = np.linspace(-300, 300, num=NUM_TEST)
-EXPIRY = 1.2
-FWD = 0.028
-TEST_PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
-IS_CALL = generator.is_call
+SPREADS = np.linspace(-300, 300, num=NUM_TEST)
 
-xplt.plot_vol_slice(EXPIRY, spread_ladder, FWD, TEST_PARAMS, generator, model)
+plt.figure(figsize=(20, 12))
+plt.subplots_adjust(hspace=0.40)
 
-# # Calculate prices
-# rf_prc, md_prc, strikes, sprds = generator.price_strike_ladder(model, EXPIRY, spread_grid,
-#                                                                FWD, TEST_PARAMS)
+plt.subplot(2, 3, 1)
+PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
+xplt.strike_ladder(0.25, SPREADS, 0.028, PARAMS, generator, model)
+plt.subplot(2, 3, 2)
+PARAMS = { 'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.65, 'Rho': -0.15 }
+xplt.strike_ladder(0.50, SPREADS, 0.025, PARAMS, generator, model)
+plt.subplot(2, 3, 3)
+PARAMS = { 'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.75, 'Rho': -0.10 }
+xplt.strike_ladder(0.75, SPREADS, 0.025, PARAMS, generator, model)
+plt.subplot(2, 3, 4)
+PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.65, 'Rho': 0.00 }
+xplt.strike_ladder(1.00, SPREADS, 0.025, PARAMS, generator, model)
+plt.subplot(2, 3, 5)
+PARAMS = { 'LnVol': 0.30, 'Beta': 0.5, 'Nu': 0.50, 'Rho': 0.15 }
+xplt.strike_ladder(2.00, SPREADS, 0.025, PARAMS, generator, model)
+plt.subplot(2, 3, 6)
+PARAMS = { 'LnVol': 0.35, 'Beta': 0.5, 'Nu': 0.25, 'Rho': 0.25 }
+xplt.strike_ladder(5.00, SPREADS, 0.025, PARAMS, generator, model)
 
-# # Invert to normal vols
-# rf_nvols = []
-# md_nvols = []
-# for i, strike in enumerate(strikes):
-#     rf_nvols.append(bachelier.implied_vol(EXPIRY, strike, IS_CALL, FWD, rf_prc[i]))
-#     md_nvols.append(bachelier.implied_vol(EXPIRY, strike, IS_CALL, FWD, md_prc[i]))
-
-# # Plot
-# plt.xlabel('Spread')
-# plt.ylabel('Volatility')
-# plt.plot(spread_grid, rf_nvols, color='blue', label='Reference')
-# plt.plot(spread_grid, md_nvols, color='red', label='Model')
-# plt.legend(loc='upper right')
-# plt.show()
+plt.show()
