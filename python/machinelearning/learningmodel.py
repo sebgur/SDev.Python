@@ -4,11 +4,7 @@ from sklearn.preprocessing import StandardScaler
 from keras.models import load_model
 import tensorflow as tf
 import joblib
-from machinelearning.callbacks import SDevPyCallback
 
-# ToDo: do more in the call back. Currently it is too specific, so different call-backs wouldn't
-# work. Instead we should do everything in the call-back, and then retrieve information from it
-# in the end, knowing its special type.
 
 class LearningModel:
     """ Wrapper class for machine learning models, including scalers, and simplifying
@@ -20,10 +16,6 @@ class LearningModel:
         self.x_scaler = x_scaler
         self.y_scaler = y_scaler
         self.is_scaled = False
-        self.epochs = []
-        self.losses = []
-        self.accuracies = []
-        self.offset = 0
 
     def train(self, x_set, y_set, epochs, batch_size, callback=None,
               verbose=0, shuffle=True):
@@ -35,7 +27,10 @@ class LearningModel:
             callbacks = []
             if callback is not None:
                 callback.set_scalers(self.x_scaler, self.y_scaler)
-                callback.set_total_epochs(epochs)
+                callback.total_epochs = epochs
+                callback.batch_size = batch_size
+                callback.shuffle = shuffle
+                callback.set_size = x_set.shape[0]
                 callbacks = [callback]
 
         x_scaled = self.x_scaler.transform(x_set)
@@ -43,17 +38,8 @@ class LearningModel:
 
         history = self.model.fit(x_scaled, y_scaled, epochs=epochs, batch_size=batch_size,
                                  shuffle=shuffle, verbose=verbose, callbacks=callbacks)
-
-        # epochs, accuracies = call_back.convergence()
-
-        self.losses.extend(history.history['loss'])
-        # self.accuracies.extend(accuracies)
-
-        # num_epochs = len(epochs)
-        # for i in range(num_epochs):
-        #     self.epochs.append(self.offset + epochs[i])
-
-        # self.offset += num_epochs
+        
+        return history
 
     def predict(self, x_test):
         """ Predict, including scaling inputs/outputs """
@@ -92,10 +78,8 @@ class LearningModel:
 
         # Retrieve results
         base = md_y[0].numpy()
-        # print(pv)
         grads = t.gradient(md_y, md_x_tensor)
         diffs = grads.numpy()
-        # print(greeks)
         return base, diffs
 
     def save_to(self, path, root_file_name):
@@ -104,17 +88,6 @@ class LearningModel:
         joblib.dump(self.x_scaler, x_scaler_file)
         joblib.dump(self.y_scaler, y_scaler_file)
         self.model.save(model_file)
-
-    def convergence(self):
-        """ Retrieve convergence history """
-        return self.epochs, self.losses, self.accuracies
-
-    def clear_training(self):
-        """ Reset all training history """
-        self.epochs.clear()
-        self.losses.clear()
-        self.accuracies.clear()
-        self.offset = 0
 
     def scale_inputs(self, x_data):
         """ Scale inputs """

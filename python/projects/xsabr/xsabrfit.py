@@ -11,18 +11,18 @@ from machinelearning.topology import compose_model
 from machinelearning.learningmodel import LearningModel
 from machinelearning.learningschedules import FlooredExponentialDecay
 from machinelearning.callbacks import SDevPyCallback
+from machinelearning.datasets import prepare_sets
 from tools.filemanager import check_directory
+from maths.metrics import rmse
 from projects.xsabr import xsabrplot as xplt
 
-# ToDo: Display history of loss and learning rate
+# ToDo: Periodical RMSE on test set while training (in callback)
 # ToDo: Export trained model to file
 # ToDo: Finalize machinelearning design.
 # ToDo: Optional reading of model from file
-# ToDo: Implement split between training and validation datasets
-# ToDo: Compare performance on training vs validation sets
+# ToDo: Visual comparison on shifted BS vols for more familiar demo
 # ToDo: Finalize and fine-train models on extended parameter range
 # ToDo: Put FB-SABR MC into analytics\fbsabr.py
-# ToDo: Dark theme for matplotlib
 # ToDo: Import/translate Kienitz's PDEs from C#, especially if we have ZABR?
 
 # ################ Runtime configuration ##########################################################
@@ -30,7 +30,10 @@ from projects.xsabr import xsabrplot as xplt
 MODEL_TYPE = "ShiftedSABR"
 GENERATE_SAMPLES = False
 NUM_SAMPLES = 100 * 1000
+TRAIN_PERCENT = 0.90
 TRAIN = True
+EPOCHS = 100
+BATCH_SIZE = 1000
 
 print(">> Set up runtime configuration")
 project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
@@ -70,6 +73,7 @@ if TRAIN:
     print("> Output dimension: " + str(output_dim))
     print("> Dataset extract")
     print(data_df.head())
+    x_set, y_set, x_test, y_test = prepare_sets(x_set, y_set, TRAIN_PERCENT)
 
     # Initialize the model
     print(">> Compose ANN model")
@@ -101,19 +105,29 @@ if TRAIN:
     model = LearningModel(keras_model)
 
     # Callbacks
-    EPOCH_SAMPLING = 10
+    EPOCH_SAMPLING = 5
     callback = SDevPyCallback(optimizer=optimizer, epoch_sampling=EPOCH_SAMPLING)
 
     # Train the network
     print(">> Training ANN model")
-    EPOCHS = 100
-    BATCH_SIZE = 1000
-    print(f"> Epochs: {EPOCHS:,}")
-    print(f"> Batch size: {BATCH_SIZE:,}")
     model.train(x_set, y_set, EPOCHS, BATCH_SIZE, callback)
 
 # Analyse results
 print(">> Analyse results")
+
+print("> Performance on testing set")
+train_pred = model.predict(x_set)
+train_rmse = rmse(train_pred, y_set) * 10000.0
+print(f"RMSE on training set: {train_rmse:,.2f}")
+test_pred = model.predict(x_test)
+test_rmse = rmse(test_pred, y_test) * 10000.0
+print(f"RMSE on test set: {test_rmse:,.2f}")
+
+# loss_calc = tf.keras.losses.MeanSquaredError()
+# se = loss_calc(test_pred, y_set).numpy()
+# test_rmse = se / BATCH_SIZE
+# test_rmse = np.sqrt(test_rmse) * 10000.0
+
 # Generate strike spread axis
 NUM_TEST = 100
 SPREADS = np.linspace(-300, 300, num=NUM_TEST)
@@ -139,5 +153,23 @@ xplt.strike_ladder(2.00, SPREADS, 0.025, PARAMS, generator, model)
 plt.subplot(2, 3, 6)
 PARAMS = { 'LnVol': 0.35, 'Beta': 0.5, 'Nu': 0.25, 'Rho': 0.25 }
 xplt.strike_ladder(5.00, SPREADS, 0.025, PARAMS, generator, model)
+
+plt.show()
+
+# Show training history
+hist_epochs, hist_losses, hist_lr = callback.convergence()
+
+plt.figure(figsize=(14, 7))
+plt.subplots_adjust(hspace=0.40)
+
+plt.subplot(1, 2, 1)
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.yscale("log")
+plt.plot(hist_epochs, hist_losses)
+plt.subplot(1, 2, 2)
+plt.xlabel('Epoch')
+plt.ylabel('Learning rate')
+plt.plot(hist_epochs, hist_lr)
 
 plt.show()

@@ -1,4 +1,5 @@
 """ Custom callbacks for Keras training """
+import numpy as np
 import keras
 from sklearn.preprocessing import MinMaxScaler
 from maths.metrics import rmse
@@ -14,6 +15,9 @@ class SDevPyCallback(keras.callbacks.Callback):
         self.optimizer = optimizer
         self.epoch_sampling = epoch_sampling
         self.total_epochs = 0
+        self.batch_size = 0
+        self.set_size = 0
+        self.shuffle = True
         self.epochs = []
         self.losses = []
         self.learning_rates = []
@@ -23,19 +27,26 @@ class SDevPyCallback(keras.callbacks.Callback):
         self.epochs.clear()
         self.losses.clear()
         self.learning_rates.clear()
+        print(f"Epochs: {self.total_epochs:,}")
+        print(f"Batch size: {self.batch_size:,}")
+        print(f"Shuffle: {'True' if self.shuffle else 'False'}")
+        print(f"Training set size: {self.set_size:,}")
 
     def on_epoch_end(self, epoch, logs=None):
+        self.epochs.append(epoch)
+        se = logs['loss']
+        mse = se / self.set_size
+        loss = np.sqrt(mse) * 10000.0
+        self.losses.append(loss)
+        if self.optimizer is not None:
+            lr = self.optimizer.learning_rate.numpy()
+            self.learning_rates.append(lr)
+
         if epoch % self.epoch_sampling == 0:
             print("<><><><><><><><><><><><><><><><>")
             print(f"Epoch {epoch:,}/{self.total_epochs:,}")
-            self.epochs.append(epoch)
-            loss = logs['loss']
-            self.losses.append(loss)
-            print(f"Loss: {loss * 10000.0:,.2f}", end="")
-
+            print(f"Loss: {loss:,.2f}", end="")
             if self.optimizer is not None:
-                lr = self.optimizer.learning_rate.numpy()
-                self.learning_rates.append(lr)
                 print(f", LR: {lr:.6f}")
 
             # print(list(logs.keys()))
@@ -45,9 +56,17 @@ class SDevPyCallback(keras.callbacks.Callback):
         self.x_scaler = x_scaler
         self.y_scaler = y_scaler
 
-    def set_total_epochs(self, total_epochs):
-        """ Set number of epochs in current training phase """
-        self.total_epochs = total_epochs
+    # def set_total_epochs(self, total_epochs):
+    #     """ Set number of epochs in current training phase """
+    #     self.total_epochs = total_epochs
+
+    # def set_batch_size(self, total_epochs):
+    #     """ Set number of epochs in current training phase """
+    #     self.batch_size = total_epochs
+
+    # def set_shuffle(self, total_epochs):
+    #     """ Set number of epochs in current training phase """
+    #     self.shuffle = total_epochs
 
     def convergence(self):
         """ Retrieve sampled epochs, losses and learning rates """
