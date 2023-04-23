@@ -14,7 +14,6 @@ from machinelearning.callbacks import SDevPyCallback
 from tools.filemanager import check_directory
 from projects.xsabr import xsabrplot as xplt
 
-# ToDo: Call-back base class does nothing special, other base that outputs the LR only.
 # ToDo: Display history of loss and learning rate
 # ToDo: Export trained model to file
 # ToDo: Finalize machinelearning design.
@@ -23,6 +22,7 @@ from projects.xsabr import xsabrplot as xplt
 # ToDo: Compare performance on training vs validation sets
 # ToDo: Finalize and fine-train models on extended parameter range
 # ToDo: Put FB-SABR MC into analytics\fbsabr.py
+# ToDo: Dark theme for matplotlib
 # ToDo: Import/translate Kienitz's PDEs from C#, especially if we have ZABR?
 
 # ################ Runtime configuration ##########################################################
@@ -101,7 +101,8 @@ if TRAIN:
     model = LearningModel(keras_model)
 
     # Callbacks
-    callback = SDevPyCallback()
+    EPOCH_SAMPLING = 10
+    callback = SDevPyCallback(optimizer=optimizer, epoch_sampling=EPOCH_SAMPLING)
 
     # Train the network
     print(">> Training ANN model")

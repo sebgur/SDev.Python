@@ -7,11 +7,13 @@ from maths.metrics import rmse
 class SDevPyCallback(keras.callbacks.Callback):
     """ SDevPy's base class for callbacks. Compared to Keras's base, it also keeps track of 
         the learning rate and displays it at each period """
-    def __init__(self, epoch_sampling=1):
+    def __init__(self, epoch_sampling=1, optimizer=None):
         keras.callbacks.Callback.__init__(self)
         self.x_scaler = MinMaxScaler()
         self.y_scaler = MinMaxScaler()
+        self.optimizer = optimizer
         self.epoch_sampling = epoch_sampling
+        self.total_epochs = 0
         self.epochs = []
         self.losses = []
         self.learning_rates = []
@@ -24,17 +26,19 @@ class SDevPyCallback(keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         if epoch % self.epoch_sampling == 0:
+            print("<><><><><><><><><><><><><><><><>")
             print(f"Epoch {epoch:,}/{self.total_epochs:,}")
             self.epochs.append(epoch)
             loss = logs['loss']
             self.losses.append(loss)
-            print(f"Loss: {loss * 10000.0:,.2f}")
-            # print(list(logs.keys()))
-            # for k, v in logs.items():
-            #     print(k, end=": ")
-            #     print(v)
-            # print(f"Sample epoch: {rmse_:,.0f}")
+            print(f"Loss: {loss * 10000.0:,.2f}", end="")
 
+            if self.optimizer is not None:
+                lr = self.optimizer.learning_rate.numpy()
+                self.learning_rates.append(lr)
+                print(f", LR: {lr:.6f}")
+
+            # print(list(logs.keys()))
 
     def set_scalers(self, x_scaler, y_scaler):
         """ Set scalers """
