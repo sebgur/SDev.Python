@@ -4,16 +4,17 @@ from sklearn.preprocessing import StandardScaler
 from keras.models import load_model
 import tensorflow as tf
 import joblib
+from machinelearning.callbacks import SDevPyCallback
 
 # ToDo: do more in the call back. Currently it is too specific, so different call-backs wouldn't
-# work.
-# Instead we should do everything in the call-back, and then retrieve information from it in the
-# end, knowing its special type.
+# work. Instead we should do everything in the call-back, and then retrieve information from it
+# in the end, knowing its special type.
 
 class LearningModel:
     """ Wrapper class for machine learning models, including scalers, and simplifying
         evaluation, history tracking, exporting to/importing from files, etc. """
-    def __init__(self, model, x_scaler=StandardScaler(copy=True),
+    def __init__(self, model,
+                 x_scaler=StandardScaler(copy=True),
                  y_scaler=StandardScaler(copy=True)):
         self.model = model
         self.x_scaler = x_scaler
@@ -24,20 +25,24 @@ class LearningModel:
         self.accuracies = []
         self.offset = 0
 
-    def train(self, x_set, y_set, epochs, batch_size, callbacks=[]):
+    def train(self, x_set, y_set, epochs, batch_size, callback=None,
+              verbose=0, shuffle=True):
         """ Scale on first call, then train """
         if not self.is_scaled:
             self.x_scaler.fit(x_set)
             self.y_scaler.fit(y_set)
             self.is_scaled = True
-            # if call_back != None:
-            #     call_back.set_scalers(self.x_scaler, self.y_scaler)
+            callbacks = []
+            if callback is not None:
+                callback.set_scalers(self.x_scaler, self.y_scaler)
+                callback.set_total_epochs(epochs)
+                callbacks = [callback]
 
         x_scaled = self.x_scaler.transform(x_set)
         y_scaled = self.y_scaler.transform(y_set)
 
-        history = self.model.fit(x_scaled, y_scaled, epochs=epochs, batch_size=batch_size, shuffle=True,
-                                 verbose=1, callbacks=callbacks)
+        history = self.model.fit(x_scaled, y_scaled, epochs=epochs, batch_size=batch_size,
+                                 shuffle=shuffle, verbose=verbose, callbacks=callbacks)
 
         # epochs, accuracies = call_back.convergence()
 

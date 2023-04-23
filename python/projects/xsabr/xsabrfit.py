@@ -10,6 +10,7 @@ import settings
 from machinelearning.topology import compose_model
 from machinelearning.learningmodel import LearningModel
 from machinelearning.learningschedules import FlooredExponentialDecay
+from machinelearning.callbacks import SDevPyCallback
 from tools.filemanager import check_directory
 from projects.xsabr import xsabrplot as xplt
 
@@ -99,13 +100,16 @@ if TRAIN:
     keras_model.compile(loss='mse', optimizer=optimizer)
     model = LearningModel(keras_model)
 
+    # Callbacks
+    callback = SDevPyCallback()
+
     # Train the network
     print(">> Training ANN model")
     EPOCHS = 100
     BATCH_SIZE = 1000
     print(f"> Epochs: {EPOCHS:,}")
     print(f"> Batch size: {BATCH_SIZE:,}")
-    model.train(x_set, y_set, EPOCHS, BATCH_SIZE)
+    model.train(x_set, y_set, EPOCHS, BATCH_SIZE, callback)
 
 # Analyse results
 print(">> Analyse results")
@@ -113,7 +117,7 @@ print(">> Analyse results")
 NUM_TEST = 100
 SPREADS = np.linspace(-300, 300, num=NUM_TEST)
 
-plt.figure(figsize=(20, 12))
+plt.figure(figsize=(18, 10))
 plt.subplots_adjust(hspace=0.40)
 
 plt.subplot(2, 3, 1)
