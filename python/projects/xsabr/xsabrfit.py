@@ -18,11 +18,10 @@ from projects.xsabr import xsabrplot as xplt
 
 # ToDo: Periodical RMSE on test set while training (in callback)
 # ToDo: Export trained model to file
-# ToDo: Finalize machinelearning design.
 # ToDo: Optional reading of model from file
 # ToDo: Visual comparison on shifted BS vols for more familiar demo
 # ToDo: Finalize and fine-train models on extended parameter range
-# ToDo: Put FB-SABR MC into analytics\fbsabr.py
+# ToDo: Put SABR and FB-SABR MC into analytics\fbsabr.py
 # ToDo: Import/translate Kienitz's PDEs from C#, especially if we have ZABR?
 
 # ################ Runtime configuration ##########################################################
@@ -73,7 +72,9 @@ if TRAIN:
     print("> Output dimension: " + str(output_dim))
     print("> Dataset extract")
     print(data_df.head())
-    x_set, y_set, x_test, y_test = prepare_sets(x_set, y_set, TRAIN_PERCENT)
+    TRS = TRAIN_PERCENT * 100
+    print(f"> Splitting between training set ({TRS:.2f}%) and test set ({100 - TRS:.2f}%)")
+    x_train, y_train, x_test, y_test = prepare_sets(x_set, y_set, TRAIN_PERCENT)
 
     # Initialize the model
     print(">> Compose ANN model")
@@ -106,18 +107,18 @@ if TRAIN:
 
     # Callbacks
     EPOCH_SAMPLING = 5
-    callback = SDevPyCallback(optimizer=optimizer, epoch_sampling=EPOCH_SAMPLING)
+    callback = SDevPyCallback(x_train, y_train, optimizer=optimizer, epoch_sampling=EPOCH_SAMPLING)
 
     # Train the network
     print(">> Training ANN model")
-    model.train(x_set, y_set, EPOCHS, BATCH_SIZE, callback)
+    model.train(x_train, y_train, EPOCHS, BATCH_SIZE, callback)
 
 # Analyse results
 print(">> Analyse results")
 
 print("> Performance on testing set")
-train_pred = model.predict(x_set)
-train_rmse = rmse(train_pred, y_set) * 10000.0
+train_pred = model.predict(x_train)
+train_rmse = rmse(train_pred, y_train) * 10000.0
 print(f"RMSE on training set: {train_rmse:,.2f}")
 test_pred = model.predict(x_test)
 test_rmse = rmse(test_pred, y_test) * 10000.0

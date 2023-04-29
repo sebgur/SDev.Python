@@ -8,8 +8,11 @@ from maths.metrics import rmse
 class SDevPyCallback(keras.callbacks.Callback):
     """ SDevPy's base class for callbacks. Compared to Keras's base, it also keeps track of 
         the learning rate and displays it at each period """
-    def __init__(self, epoch_sampling=1, optimizer=None):
+    def __init__(self, x_train, y_train, eval_train=True, epoch_sampling=1, optimizer=None):
         keras.callbacks.Callback.__init__(self)
+        self.x_train = x_train
+        self.y_train = y_train
+        self.eval_train=eval_train
         self.x_scaler = MinMaxScaler()
         self.y_scaler = MinMaxScaler()
         self.optimizer = optimizer
@@ -20,34 +23,50 @@ class SDevPyCallback(keras.callbacks.Callback):
         self.shuffle = True
         self.epochs = []
         self.losses = []
+        self.train_losses = []
         self.learning_rates = []
 
     def on_train_begin(self, logs=None):
-        """ Reset training variables if needed """
+        """ Display settings, reset training variables """
+        print("<><><><><><><><> TRAINING START <><><><><><><><>")
         self.epochs.clear()
         self.losses.clear()
+        self.train_losses.clear()
         self.learning_rates.clear()
         print(f"Epochs: {self.total_epochs:,}")
         print(f"Batch size: {self.batch_size:,}")
         print(f"Shuffle: {'True' if self.shuffle else 'False'}")
-        print(f"Training set size: {self.set_size:,}")
+        print(f"Training set size: {self.set_size:,}", end="")
+
+    def on_train_end(self, logs=None):
+        """ Display results """
+        print("<><><><><><><><> TRAINING END <><><><><><><><>")
+
+    def on_epoch_begin(self, epoch, logs=None):
+        if epoch % self.epoch_sampling == 0:
+            print("\n<><><><><><><><><><><><><><><><>")
+            print(f"Epoch {epoch:,}/{self.total_epochs:,}")
 
     def on_epoch_end(self, epoch, logs=None):
         self.epochs.append(epoch)
-        se = logs['loss']
-        mse = se / self.set_size
+        loss = logs['loss']
+        mse = loss / self.set_size
         loss = np.sqrt(mse) * 10000.0
         self.losses.append(loss)
+        train_loss = 12.34
+        train_loss = self.estimate_loss(self.x_train, self.y_train)
+        self.train_losses.append(train_loss)
         if self.optimizer is not None:
             lr = self.optimizer.learning_rate.numpy()
             self.learning_rates.append(lr)
 
         if epoch % self.epoch_sampling == 0:
-            print("<><><><><><><><><><><><><><><><>")
-            print(f"Epoch {epoch:,}/{self.total_epochs:,}")
+            # print("\n<><><><><><><><><><><><><><><><>")
+            # print(f"Epoch {epoch:,}/{self.total_epochs:,}")
             print(f"Loss: {loss:,.2f}", end="")
+            print(f"Training loss: {train_loss:,.2f}", end="")
             if self.optimizer is not None:
-                print(f", LR: {lr:.6f}")
+                print(f", LR: {lr:.6f}", end="")
 
             # print(list(logs.keys()))
 
@@ -56,64 +75,40 @@ class SDevPyCallback(keras.callbacks.Callback):
         self.x_scaler = x_scaler
         self.y_scaler = y_scaler
 
-    # def set_total_epochs(self, total_epochs):
-    #     """ Set number of epochs in current training phase """
-    #     self.total_epochs = total_epochs
-
-    # def set_batch_size(self, total_epochs):
-    #     """ Set number of epochs in current training phase """
-    #     self.batch_size = total_epochs
-
-    # def set_shuffle(self, total_epochs):
-    #     """ Set number of epochs in current training phase """
-    #     self.shuffle = total_epochs
-
     def convergence(self):
         """ Retrieve sampled epochs, losses and learning rates """
         return self.epochs, self.losses, self.learning_rates
+    
+    def estimate_loss(self, x_est, y_est):
+        """ Estimate loss on test set """
+        x_scaled = self.x_scaler.transform(x_est)
+        y_scaled = self.model.predict(x_scaled, verbose=0)
+        y_pred = self.y_scaler.inverse_transform(y_scaled)
+        est_loss = rmse(y_est, y_pred) * 10000
+        return est_loss
+
 
 
 class RefCallback(SDevPyCallback):
     """ Callback class that compares model predictions vs reference periodically """
-    def __init__(self, x_test, y_ref_test):
-        SDevPyCallback.__init__(self)
+    def __init__(self, x_test, y_test, epoch_sampling=1, optimizer=None):
+        SDevPyCallback.__init__(self, epoch_sampling, optimizer)
         self.x_test = x_test
-        self.y_ref_test = y_ref_test
-        # self.x_scaler = MinMaxScaler()
-        # self.y_scaler = MinMaxScaler()
-        # self.epochs = []
-        self.accuracies = []
-        # self.offset = 0
+        self.y_test = y_test
+        self.test_losses = []
 
-    # def on_train_begin(self, logs=None):
-    #     self.epochs.clear()
-    #     self.accuracies.clear()
+    def on_train_begin(self, logs=None):
+        SDevPyCallback.on_train_begin(self, logs)
+        self.test_losses.clear()
 
-    # def on_train_end(self, logs=None):
-    #     keys = list(logs.keys())
-    #     self.offset = len(self.epochs)
-
-    # def on_epoch_begin(self, epoch, logs=None):
-    #     keys = list(logs.keys())
-    #     print("Start epoch {} of training; got log keys: {}".format(epoch, keys))
+    def on_train_end(self, logs=None):
+        test_loss = self.estimate_test_loss()
+        print(f", Test loss: {test_loss:,.2f}")
 
     def on_epoch_end(self, epoch, logs=None):
-        # time.sleep(1.5)
-        x_scaled = self.x_scaler.transform(self.x_test)
-        y_scaled = self.model.predict(x_scaled, verbose=0)
-        y_mod_test = self.y_scaler.inverse_transform(y_scaled)
-        rmse_ = rmse(self.y_ref_test, y_mod_test)
-        self.epochs.append(epoch)
-        # self.epochs.append(self.offset + epoch)
-        self.accuracies.append(rmse_)
-        print(" ")
-        print(f"Estimated rmse: {rmse_:,.0f}")
+        test_loss = self.estimate_test_loss()
+        print(f", Test loss: {test_loss:,.2f}")
 
-    # def set_scalers(self, x_scaler, y_scaler):
-    #     """ Set scalers """
-    #     self.x_scaler = x_scaler
-    #     self.y_scaler = y_scaler
-
-    # def convergence(self):
-    #     """ Retrieve convergence parameters """
-    #     return self.epochs, self.accuracies
+    def test_set_loss(self):
+        """ Retrieve loss on test set """
+        return self.test_losses
