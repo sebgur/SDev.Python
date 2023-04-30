@@ -69,7 +69,7 @@ class SDevPyCallback(keras.callbacks.Callback):
 
     def convergence(self):
         """ Retrieve sampled epochs, losses and learning rates """
-        return self.epochs, self.losses, self.learning_rates
+        return self.epochs, self.losses, self.learning_rates, self.sampled_epochs
 
 
 class RefCallback(SDevPyCallback):
@@ -95,6 +95,7 @@ class RefCallback(SDevPyCallback):
         SDevPyCallback.on_epoch_end(self, epoch, logs)
         if epoch % self.epoch_sampling == 0:
             test_loss = self.estimate_loss(self.x_test, self.y_test)
+            self.test_losses.append(test_loss)
             print(f", Test loss: {test_loss:,.2f}", end="")
 
     def estimate_loss(self, x_est, y_est):

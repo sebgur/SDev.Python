@@ -17,8 +17,6 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
-# ToDo: Implement custom loss function and check if there's a loss of runtime
-# ToDo: Periodical RMSE on test set while training (in callback)
 # ToDo: Export trained model to file
 # ToDo: Optional reading of model from file
 # ToDo: Visual comparison on shifted BS vols for more familiar demo
@@ -36,6 +34,7 @@ TRAIN_PERCENT = 0.90
 TRAIN = True
 EPOCHS = 100
 BATCH_SIZE = 1000
+SHOW_VOL_CHARTS = False
 
 print(">> Set up runtime configuration")
 project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
@@ -145,35 +144,41 @@ test_rmse = bps_rmse(test_pred, y_test)
 print(f"RMSE on test set: {test_rmse:,.2f}")
 
 # Generate strike spread axis
-NUM_TEST = 100
-SPREADS = np.linspace(-300, 300, num=NUM_TEST)
+if SHOW_VOL_CHARTS:
+    NUM_TEST = 100
+    SPREADS = np.linspace(-300, 300, num=NUM_TEST)
 
-plt.figure(figsize=(18, 10))
-plt.subplots_adjust(hspace=0.40)
+    plt.figure(figsize=(18, 10))
+    plt.subplots_adjust(hspace=0.40)
 
-plt.subplot(2, 3, 1)
-PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
-xplt.strike_ladder(0.25, SPREADS, 0.028, PARAMS, generator, model)
-plt.subplot(2, 3, 2)
-PARAMS = { 'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.65, 'Rho': -0.15 }
-xplt.strike_ladder(0.50, SPREADS, 0.025, PARAMS, generator, model)
-plt.subplot(2, 3, 3)
-PARAMS = { 'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.75, 'Rho': -0.10 }
-xplt.strike_ladder(0.75, SPREADS, 0.025, PARAMS, generator, model)
-plt.subplot(2, 3, 4)
-PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.65, 'Rho': 0.00 }
-xplt.strike_ladder(1.00, SPREADS, 0.025, PARAMS, generator, model)
-plt.subplot(2, 3, 5)
-PARAMS = { 'LnVol': 0.30, 'Beta': 0.5, 'Nu': 0.50, 'Rho': 0.15 }
-xplt.strike_ladder(2.00, SPREADS, 0.025, PARAMS, generator, model)
-plt.subplot(2, 3, 6)
-PARAMS = { 'LnVol': 0.35, 'Beta': 0.5, 'Nu': 0.25, 'Rho': 0.25 }
-xplt.strike_ladder(5.00, SPREADS, 0.025, PARAMS, generator, model)
+    plt.subplot(2, 3, 1)
+    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
+    xplt.strike_ladder(0.25, SPREADS, 0.028, PARAMS, generator, model)
+    plt.subplot(2, 3, 2)
+    PARAMS = { 'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.65, 'Rho': -0.15 }
+    xplt.strike_ladder(0.50, SPREADS, 0.025, PARAMS, generator, model)
+    plt.subplot(2, 3, 3)
+    PARAMS = { 'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.75, 'Rho': -0.10 }
+    xplt.strike_ladder(0.75, SPREADS, 0.025, PARAMS, generator, model)
+    plt.subplot(2, 3, 4)
+    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.65, 'Rho': 0.00 }
+    xplt.strike_ladder(1.00, SPREADS, 0.025, PARAMS, generator, model)
+    plt.subplot(2, 3, 5)
+    PARAMS = { 'LnVol': 0.30, 'Beta': 0.5, 'Nu': 0.50, 'Rho': 0.15 }
+    xplt.strike_ladder(2.00, SPREADS, 0.025, PARAMS, generator, model)
+    plt.subplot(2, 3, 6)
+    PARAMS = { 'LnVol': 0.35, 'Beta': 0.5, 'Nu': 0.25, 'Rho': 0.25 }
+    xplt.strike_ladder(5.00, SPREADS, 0.025, PARAMS, generator, model)
 
-plt.show()
+    plt.show()
 
 # Show training history
-hist_epochs, hist_losses, hist_lr = callback.convergence()
+hist_epochs = callback.epochs
+hist_losses = callback.losses
+hist_lr = callback.learning_rates
+sampled_epochs = callback.sampled_epochs
+test_losses = callback.test_losses
+# hist_epochs, hist_losses, hist_lr = callback.convergence()
 
 plt.figure(figsize=(14, 7))
 plt.subplots_adjust(hspace=0.40)
@@ -182,7 +187,9 @@ plt.subplot(1, 2, 1)
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.yscale("log")
-plt.plot(hist_epochs, hist_losses)
+plt.plot(hist_epochs, hist_losses, label='Loss on training set')
+plt.plot(sampled_epochs, test_losses, color='red', label='Loss on test set')
+plt.legend(loc='upper right')
 plt.subplot(1, 2, 2)
 plt.xlabel('Epoch')
 plt.ylabel('Learning rate')
