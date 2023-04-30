@@ -1,14 +1,17 @@
 """ Just to test things """
-# import numpy as np
+import tensorflow as tf
+import numpy as np
+from maths.metrics import rmse
 # import projects.xsabr_fit.sabrgenerator as sabr
 
 
-alpha = [1, 2, 3, 4]
-beta = [0.1, 0.2, 0.3, 0.4]
+def custom_mean_squared_error(y_true, y_pred):
+    return tf.sqrt(tf.math.reduce_mean(tf.square(y_true - y_pred)))
 
-gamma = []
 
-for (a, b) in zip(alpha, beta):
-    gamma.append(a + b)
-
-print(gamma)
+test = np.ones((10, 1)) * 12.0
+ref = np.ones((10, 1)) * 23.0
+loss = custom_mean_squared_error(test, ref).numpy()
+print(loss)
+rmse = rmse(test, ref)
+print(rmse)

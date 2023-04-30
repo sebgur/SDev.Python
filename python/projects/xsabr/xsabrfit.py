@@ -10,13 +10,13 @@ import settings
 from machinelearning.topology import compose_model
 from machinelearning.learningmodel import LearningModel
 from machinelearning.learningschedules import FlooredExponentialDecay
-from machinelearning.callbacks import SDevPyCallback
+from machinelearning.callbacks import SDevPyCallback, RefCallback
 from machinelearning.datasets import prepare_sets
 from tools.filemanager import check_directory
-from maths.metrics import rmse
+from tools.timer import Stopwatch
+from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
-# ToDo: Time the training
 # ToDo: Implement custom loss function and check if there's a loss of runtime
 # ToDo: Periodical RMSE on test set while training (in callback)
 # ToDo: Export trained model to file
@@ -103,34 +103,46 @@ if TRAIN:
     for field, value in optim_fields.items():
         print(field, ":", value)
 
+
+    # Customized loss (just scaling RMSE by 10,000)
+    def tf_bps_rmse(y_true, y_ref):
+        """ RMSE in bps in tensorflow """
+        return 10000.0 * tf_rmse(y_true, y_ref)
+
+    def bps_rmse(y_true, y_ref):
+        """ RMSE in bps """
+        return 10000.0 * rmse(y_true, y_ref)
+
     # Compile
     print("> Compile model")
-    keras_model.compile(loss='mse', optimizer=optimizer)
+    keras_model.compile(loss=tf_bps_rmse, optimizer=optimizer)
+    # keras_model.compile(loss='mse', optimizer=optimizer)
     model = LearningModel(keras_model)
 
     # Callbacks
     EPOCH_SAMPLING = 5
-    callback = SDevPyCallback(x_train, y_train, optimizer=optimizer, epoch_sampling=EPOCH_SAMPLING)
+    callback = RefCallback(x_test, y_test, bps_rmse, optimizer=optimizer,
+                           epoch_sampling=EPOCH_SAMPLING)
+    # callback = SDevPyCallback(optimizer=optimizer, epoch_sampling=EPOCH_SAMPLING)
 
     # Train the network
     print(">> Training ANN model")
+    trn_timer = Stopwatch("Training")
+    trn_timer.trigger()
     model.train(x_train, y_train, EPOCHS, BATCH_SIZE, callback)
+    trn_timer.stop()
+    trn_timer.print()
 
 # Analyse results
 print(">> Analyse results")
 
 print("> Performance on testing set")
 train_pred = model.predict(x_train)
-train_rmse = rmse(train_pred, y_train) * 10000.0
+train_rmse = bps_rmse(train_pred, y_train)
 print(f"RMSE on training set: {train_rmse:,.2f}")
 test_pred = model.predict(x_test)
-test_rmse = rmse(test_pred, y_test) * 10000.0
+test_rmse = bps_rmse(test_pred, y_test)
 print(f"RMSE on test set: {test_rmse:,.2f}")
-
-# loss_calc = tf.keras.losses.MeanSquaredError()
-# se = loss_calc(test_pred, y_set).numpy()
-# test_rmse = se / BATCH_SIZE
-# test_rmse = np.sqrt(test_rmse) * 10000.0
 
 # Generate strike spread axis
 NUM_TEST = 100

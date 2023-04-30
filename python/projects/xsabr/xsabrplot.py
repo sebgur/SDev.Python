@@ -22,10 +22,9 @@ def strike_ladder(expiry, spread_ladder, fwd, test_params, generator, model):
     beta = test_params['Beta']
     nu = test_params['Nu']
     rho = test_params['Rho']
-    rmse = 0
     # Plot
     plt.title(f'T={expiry:.2f}, F={fwd * 100:.2f}, LnVol={lnvol * 100:.2f}, Beta={beta:.2f}' +
-              f',\n Nu={nu*100:.2f}, Rho={rho * 100:.2f}, rmse={rmse:.1f}bps')
+              f',\n Nu={nu*100:.2f}, Rho={rho * 100:.2f}')
 
     plt.xlabel('Spread')
     plt.ylabel('Volatility')
