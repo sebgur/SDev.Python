@@ -16,6 +16,8 @@ from tools.filemanager import check_directory
 from maths.metrics import rmse
 from projects.xsabr import xsabrplot as xplt
 
+# ToDo: Time the training
+# ToDo: Implement custom loss function and check if there's a loss of runtime
 # ToDo: Periodical RMSE on test set while training (in callback)
 # ToDo: Export trained model to file
 # ToDo: Optional reading of model from file
@@ -23,6 +25,7 @@ from projects.xsabr import xsabrplot as xplt
 # ToDo: Finalize and fine-train models on extended parameter range
 # ToDo: Put SABR and FB-SABR MC into analytics\fbsabr.py
 # ToDo: Import/translate Kienitz's PDEs from C#, especially if we have ZABR?
+# ToDo: Store models in git and data in Kaggle
 
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
