@@ -67,9 +67,9 @@ class SDevPyCallback(keras.callbacks.Callback):
         self.x_scaler = x_scaler
         self.y_scaler = y_scaler
 
-    def convergence(self):
-        """ Retrieve sampled epochs, losses and learning rates """
-        return self.epochs, self.losses, self.learning_rates, self.sampled_epochs
+    # def convergence(self):
+    #     """ Retrieve sampled epochs, losses and learning rates """
+    #     return self.epochs, self.losses, self.learning_rates, self.sampled_epochs
 
 
 class RefCallback(SDevPyCallback):

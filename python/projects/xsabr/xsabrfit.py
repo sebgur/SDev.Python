@@ -1,6 +1,6 @@
 """ Fit ANN to XSABR models. We implement the direct map here. Datasets of parameters (inputs)
     vs prices/implied vols (outputs) are generated (or read from tsv) to train a network that
-    learns the so-colled 'direct' calculation, i.e. prices from parameter. """
+    learns the so-called 'direct' calculation, i.e. prices from parameter. """
 import os
 from datetime import datetime
 import numpy as np
@@ -33,7 +33,7 @@ TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for te
 TRAIN = False # Train the model (if False, read from file)
 EPOCHS = 100 # Relevant if TRAIN is True
 BATCH_SIZE = 1000 # Relevant if TRAIN is True
-SHOW_VOL_CHARTS = False # Show strike ladder charts
+SHOW_VOL_CHARTS = True # Show strike ladder charts
 SAVE_MODEL = True # Save model to files
 
 print(">> Set up runtime configuration")
@@ -195,7 +195,6 @@ if TRAIN:
     hist_lr = callback.learning_rates
     sampled_epochs = callback.sampled_epochs
     test_losses = callback.test_losses
-    # hist_epochs, hist_losses, hist_lr = callback.convergence()
 
     plt.figure(figsize=(14, 7))
     plt.subplots_adjust(hspace=0.40)
