@@ -8,47 +8,38 @@ class TimeGridBuilder(ABC):
     """ Base class for time grid builders """
     def __init__(self):
         self.epsilon_ = 1e-10
-        self.time_grid_ = np.zeros((1, self.epsilon_))
+        self.time_grid_ = []
 
     def reset(self):
         """ Resetting to fresh state """
-        self.time_grid_ = np.zeros((1, self.epsilon_))
+        self.time_grid_ = []
 
-    # public void AddDates(Date valDate, Date[] dates)
-    # {
-    #     int nDates = dates.Length;
-    #     List<double> list = new List<double>();
-    #     for (int i = 0; i < nDates; i++)
-    #         list.Add(dayCount.YearFraction(valDate, dates[i]));
-    #     double[] t = list.ToArray();
-    #     timeGrid = VectorAlgebra.MergeVectors(timeGrid, t);
-    # }
+    def add_dates(self, val_date, dates):
+        """ Add vector of dates respectively to valuation date """
+        t_grid = []
+        for d in dates:
+            t_grid.append(model_time(val_date, d))
 
-    # public void AddGrid(double[] t)
-    # {
-    #     timeGrid = VectorAlgebra.MergeVectors(timeGrid, t);
-    # }
+        self.time_grid_.extend(t_grid)
 
-    def extend(self):
+    def refine(self):
         """ Add a fine grid to the current grid """
-        # self.time_grid_ = VectorAlgebra.MergeVectors(self.time_grid_, fine_grid(self))
-        return self.epsilon_
+        self.time_grid_.extend(self.fine_grid())
 
     def clean(self):
         """ Remove negative times and duplicates, then sort in ascending order """
-        self.time_grid_ = 0 #TimeGridTools.RemoveNegative(timeGrid, timeEpsilon)
-        # self.time_grid_ = timeGrid.RemoveDuplicates(timeEpsilon)
-        # Array.Sort(self.time_grid_)
+        self.time_grid_ = [t for t in self.time_grid_ if t > self.epsilon_]
+        self.time_grid_ = np.unique(self.time_grid_)
 
     def complete_grid(self):
         """ Add a fine grid, clean and return the final grid """
-        self.extend()
+        self.refine()
         self.clean()
         return self.time_grid_
 
     def max(self):
         """ Largest point on the grid """
-        return self.time_grid_.max()
+        return np.max(self.time_grid_)
 
     @abstractmethod
     def fine_grid(self):
@@ -74,15 +65,21 @@ class SimpleTimeGridBuilder(TimeGridBuilder):
         return fine_grid
 
 
-
 def model_time(date1, date2):
     """ Yearfraction (time) between two dates for models, using simply (date2 - date1) / 365."""
     span = date2 - date1
     return span.days / 365.0
 
 if __name__ == "__main__":
-    expiry = date(2025, 1, 24)
     base = date(2023, 1, 24)
-    print(expiry)
-    print(base)
-    print(model_time(base, expiry))
+    fixing = date(2022, 1, 24)
+    monitor = date(2024, 1, 24)
+    expiry = date(2025, 1, 24)
+    settlement = date(2026, 1, 24)
+    builder = SimpleTimeGridBuilder(5)
+    builder.add_dates(base, [fixing, settlement, expiry, monitor, settlement])
+    print(builder.time_grid_)
+    builder.refine()
+    print(builder.time_grid_)
+    builder.clean()
+    print(builder.time_grid_)
