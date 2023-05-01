@@ -9,17 +9,15 @@ import matplotlib.pyplot as plt
 from volsurfacegen.sabrgenerator import SabrGenerator, ShiftedSabrGenerator
 import settings
 from machinelearning.topology import compose_model
-from machinelearning.learningmodel import LearningModel
+from machinelearning.learningmodel import LearningModel, load_learning_model
 from machinelearning.learningschedules import FlooredExponentialDecay
-from machinelearning.callbacks import RefCallback  #, SDevPyCallback
+from machinelearning.callbacks import RefCallback #, SDevPyCallback
 from machinelearning.datasets import prepare_sets
 from tools.filemanager import check_directory
 from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
-# ToDo: Export trained model to file
-# ToDo: Optional reading of model from file
 # ToDo: Visual comparison on shifted BS vols for more familiar demo
 # ToDo: Put SABR and FB-SABR MC into analytics\fbsabr.py
 # ToDo: Import/translate Kienitz's PDEs from C#, especially if we have ZABR?
@@ -29,14 +27,14 @@ from projects.xsabr import xsabrplot as xplt
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
 MODEL_TYPE = "ShiftedSABR"
-GENERATE_SAMPLES = False  # If false, read dataset from file
-NUM_SAMPLES = 100 * 1000  # Relevant if GENERATE_SAMPLES is True
-TRAIN_PERCENT = 0.90  # Proportion of dataset used for training (rest used for test)
-TRAIN = True  # Train the model (if False, read from file)
-EPOCHS = 100  # Relefvant if TRAIN is True
-BATCH_SIZE = 1000  # Relevant if TRAIN is True
-SHOW_VOL_CHARTS = False  # Show strike ladder charts
-SAVE_MODEL = True  # Save model to files
+GENERATE_SAMPLES = False # If false, read dataset from file
+NUM_SAMPLES = 100 * 1000 # Relevant if GENERATE_SAMPLES is True
+TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
+TRAIN = False # Train the model (if False, read from file)
+EPOCHS = 100 # Relevant if TRAIN is True
+BATCH_SIZE = 1000 # Relevant if TRAIN is True
+SHOW_VOL_CHARTS = False # Show strike ladder charts
+SAVE_MODEL = True # Save model to files
 
 print(">> Set up runtime configuration")
 project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
@@ -76,22 +74,21 @@ if GENERATE_SAMPLES:
     print("> Output to file: " + data_file)
     generator.to_file(data_df, data_file)
 
+# Retrieve dataset
+print(">> Reading dataset from file: " + data_file)
+x_set, y_set, data_df = generator.retrieve_datasets(data_file)
+input_dim = x_set.shape[1]
+output_dim = y_set.shape[1]
+print("> Input dimension: " + str(input_dim))
+print("> Output dimension: " + str(output_dim))
+print("> Dataset extract")
+print(data_df.head())
+TRS = TRAIN_PERCENT * 100
+print(f"> Splitting between training set ({TRS:.2f}%) and test set ({100 - TRS:.2f}%)")
+x_train, y_train, x_test, y_test = prepare_sets(x_set, y_set, TRAIN_PERCENT)
 
 # Retrieve dataset, compose and train the model on the normal vols
 if TRAIN:
-    # Retrieve dataset
-    print(">> Reading dataset from file: " + data_file)
-    x_set, y_set, data_df = generator.retrieve_datasets(data_file)
-    input_dim = x_set.shape[1]
-    output_dim = y_set.shape[1]
-    print("> Input dimension: " + str(input_dim))
-    print("> Output dimension: " + str(output_dim))
-    print("> Dataset extract")
-    print(data_df.head())
-    TRS = TRAIN_PERCENT * 100
-    print(f"> Splitting between training set ({TRS:.2f}%) and test set ({100 - TRS:.2f}%)")
-    x_train, y_train, x_test, y_test = prepare_sets(x_set, y_set, TRAIN_PERCENT)
-
     # Initialize the model
     print(">> Compose ANN model")
     hidden_layers = ['softplus', 'softplus', 'softplus']
@@ -136,28 +133,31 @@ if TRAIN:
     trn_timer.stop()
     trn_timer.print()
 
-    # Check performance
-    train_pred = model.predict(x_train)
-    train_rmse = bps_rmse(train_pred, y_train)
-    print(f"RMSE on training set: {train_rmse:,.2f}")
-
-    test_pred = model.predict(x_test)
-    test_rmse = bps_rmse(test_pred, y_test)
-    print(f"RMSE on test set: {test_rmse:,.2f}")
-
     # Save trained model to file
     if SAVE_MODEL:
         now = datetime.now()
         dt_string = now.strftime("%Y%m%d-%H_%M_%S")
         model_folder_name = os.path.join(model_folder, MODEL_TYPE + "_" + dt_string)
+        print("Saving model to: " + model_folder_name)
         model.save(model_folder_name)
 
 else:  # Not training, so loading the model from file
-    print("Loading pre-trained model from files")
+    model_folder_name = os.path.join(model_folder, MODEL_TYPE)
+    print("Loading pre-trained model from: " + model_folder_name)
+    model = load_learning_model(model_folder_name)
 
 # ################ Performance analysis ###########################################################
 # Analyse results
 print(">> Analyse results")
+
+# Check performance
+train_pred = model.predict(x_train)
+train_rmse = bps_rmse(train_pred, y_train)
+print(f"RMSE on training set: {train_rmse:,.2f}")
+
+test_pred = model.predict(x_test)
+test_rmse = bps_rmse(test_pred, y_test)
+print(f"RMSE on test set: {test_rmse:,.2f}")
 
 # Generate strike spread axis
 if SHOW_VOL_CHARTS:

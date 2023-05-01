@@ -1,7 +1,8 @@
 """ Wrapper class for machine learning models, including scalers, and simplifying
     evaluation, history tracking, exporting to/importing from files, etc. """
+import os
 from sklearn.preprocessing import StandardScaler
-from keras.models import load_model
+# from keras.models import load_model
 import tensorflow as tf
 import joblib
 
@@ -9,13 +10,12 @@ import joblib
 class LearningModel:
     """ Wrapper class for machine learning models, including scalers, and simplifying
         evaluation, history tracking, exporting to/importing from files, etc. """
-    def __init__(self, model,
-                 x_scaler=StandardScaler(copy=True),
-                 y_scaler=StandardScaler(copy=True)):
+    def __init__(self, model, is_scaled=False,
+                 x_scaler=StandardScaler(copy=True), y_scaler=StandardScaler(copy=True)):
         self.model = model
         self.x_scaler = x_scaler
         self.y_scaler = y_scaler
-        self.is_scaled = False
+        self.is_scaled = is_scaled
 
     def train(self, x_set, y_set, epochs, batch_size, callback=None,
               verbose=0, shuffle=True):
@@ -38,7 +38,7 @@ class LearningModel:
 
         history = self.model.fit(x_scaled, y_scaled, epochs=epochs, batch_size=batch_size,
                                  shuffle=shuffle, verbose=verbose, callbacks=callbacks)
-        
+
         return history
 
     def predict(self, x_test):
@@ -48,9 +48,16 @@ class LearningModel:
         y_test = self.y_scaler.inverse_transform(y_scaled)
         return y_test
 
+    def save(self, path):
+        """ Save model and its scalers to files """
+        self.model.save(path)
+        x_scaler_file, y_scaler_file = scaler_files(path)
+        joblib.dump(self.x_scaler, x_scaler_file)
+        joblib.dump(self.y_scaler, y_scaler_file)
+
     def calculate(self, x_test, diff=False):
         """ Predict with calculation of differentials or not """
-        if diff:
+        if diff is True:
             return self.calculate_with_greeks(x_test)
         else:
             return self.predict(x_test), None
@@ -82,13 +89,6 @@ class LearningModel:
         diffs = grads.numpy()
         return base, diffs
 
-    def save_to(self, path, root_file_name):
-        """ Save to files """
-        model_file, x_scaler_file, y_scaler_file = self.file_names(path, root_file_name)
-        joblib.dump(self.x_scaler, x_scaler_file)
-        joblib.dump(self.y_scaler, y_scaler_file)
-        self.model.save(model_file)
-
     def scale_inputs(self, x_data):
         """ Scale inputs """
         return self.x_scaler.transform(x_data)
@@ -97,24 +97,29 @@ class LearningModel:
         """ Scale back outputs """
         return self.y_scaler.inverse_transform(y_data)
 
-    @staticmethod
-    def file_names(path, name):
-        """ Specify file names for model save """
-        root = path + "/" + name
-        model_file = root + "_model.h5"
-        x_scaler_file = root + "_xscaler.h5"
-        y_scaler_file = root + "_yscaler.h5"
-        return model_file, x_scaler_file, y_scaler_file
 
+def scaler_files(path):
+    """ Scaler files corresponding to model stored in path """
+    x_scaler_file = os.path.join(path, "x_scaler.h5")
+    y_scaler_file = os.path.join(path, "y_scaler.h5")
+    return x_scaler_file, y_scaler_file
 
-def read_learning_model(path, name):
-    """ Load learning model from files """
-    model_file, x_scaler_file, y_scaler_file = LearningModel.file_names(path, name)
+def load_learning_model(path):
+    """ Load learning model from files. Note that for now, we set compile=False when loading
+        the keras model as we do not know how to save and load custom components such as
+        the scheduler or the callback. To restart the training after loading the model from
+        file, we would have to be able to properly save and load those custom components.
+         
+        One possibility could be to implement additional custom saving, recreate those components
+        by hand, and then compile again. """
+    keras_model = tf.keras.models.load_model(path, compile=False)
 
-    model = load_model(model_file)
-    x_scaler = joblib.load(x_scaler_file)
-    y_scaler = joblib.load(y_scaler_file)
+    x_scaler_file, y_scaler_file = scaler_files(path)
+    if os.path.exists(x_scaler_file) and os.path.exists(y_scaler_file):
+        x_scaler = joblib.load(x_scaler_file)
+        y_scaler = joblib.load(y_scaler_file)
+        model = LearningModel(keras_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
+    else:
+        model = LearningModel(keras_model)
 
-    learning_model = LearningModel(model, x_scaler, y_scaler)
-
-    return learning_model
+    return model

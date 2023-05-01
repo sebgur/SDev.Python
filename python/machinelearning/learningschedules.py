@@ -1,3 +1,4 @@
+""" Custom learning schedules """
 import tensorflow as tf
 
 # Custom learning rate scheduler, exponentially decreases between given values
