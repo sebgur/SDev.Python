@@ -16,11 +16,15 @@ class TimeGridBuilder(ABC):
 
     def add_dates(self, val_date, dates):
         """ Add vector of dates respectively to valuation date """
-        t_grid = []
+        times = []
         for d in dates:
-            t_grid.append(model_time(val_date, d))
+            times.append(model_time(val_date, d))
 
-        self.time_grid_.extend(t_grid)
+        self.time_grid_.extend(times)
+
+    def add_grid(self, times):
+        """ Add vector of times """
+        self.time_grid_.extend(times)
 
     def refine(self):
         """ Add a fine grid to the current grid """
