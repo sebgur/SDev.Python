@@ -1,25 +1,23 @@
-""" Monte-Carlo simulation for XSABR models (vanillas) """
+""" Monte-Carlo simulation for SABR models (vanillas) """
 import numpy as np
 from tools.timegrids import SimpleTimeGridBuilder
 
 
-def prices(expiries, strikes, are_calls, fwd, shift, parameters, num_mc, points_per_year):
-    """ Calculate vanilla prices under XSABR model """
-    scale = fwd + shift
+def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_per_year=10):
+    """ Calculate vanilla prices under SABR model by Monte-Carlo simulation"""
+    scale = fwd
     if scale < 0.0:
-        raise ValueError("Negative shifted forward")
+        raise ValueError("Negative forward")
 
     # Build time grid
     time_grid_builder = SimpleTimeGridBuilder(points_per_year=points_per_year)
     time_grid_builder.add_grid(expiries)
     time_grid = time_grid_builder.complete_grid()
-    # num_steps = len(time_grid)
-    # print("num. time steps\n", num_steps)
-    print("time grid\n", time_grid)
+    # print("time grid\n", time_grid)
 
     # Find payoff times
     is_payoff = np.in1d(time_grid, expiries)
-    print("is_payoff\n", is_payoff)
+    # print("is_payoff\n", is_payoff)
 
     # Retrieve parameters
     alpha = parameters[0]
@@ -41,17 +39,17 @@ def prices(expiries, strikes, are_calls, fwd, shift, parameters, num_mc, points_
     rng = np.random.RandomState(seed)
 
     # Initialize paths
-    spot = np.ones((num_mc, 1)) * (fwd + shift)
-    print("spot\n", spot)
+    spot = np.ones((num_mc, 1)) * fwd
+    # print("spot\n", spot)
     vol = np.ones((num_mc, 1)) * 1.0
-    print("vol\n", vol)
+    # print("vol\n", vol)
 
     # Loop over time grid
     ts = te = 0
     payoff_count = 0
     mc_prices = []
     for i, t in enumerate(time_grid):
-        print(f"time step {i}")
+        # print(f"time step {i}")
         ts = te
         te = t
         dt = te - ts
@@ -67,12 +65,13 @@ def prices(expiries, strikes, are_calls, fwd, shift, parameters, num_mc, points_
         # dz1 = dz[:, 1]
         dz0 = dz[:, 0].reshape(-1, 1)
         dz1 = dz[:, 1].reshape(-1, 1)
-        print("BM\n", dz)
-        print("dz0\n", dz0)
-        print("dz1\n", dz1)
+        # print("BM\n", dz)
+        # print("dz0\n", dz0)
+        # print("dz1\n", dz1)
 
         # Scheme
         # avolc = spot**(beta - 1.0)
+        # print(spot)
         avolc = alpha * np.minimum(spot**(beta - 1.0), 500.0 * scale**(beta - 1.0))
         # print("avolc\n", avolc)
         vols = vol * avolc
@@ -87,30 +86,23 @@ def prices(expiries, strikes, are_calls, fwd, shift, parameters, num_mc, points_
 
         # Calculate payoff
         if is_payoff[i]:
-            print("calculate payoff")
+            # print("calculate payoff")
+            # print("spot\n", spot)
+            # print(spot.shape)
 
-            print("spot\n", spot)
-            print(spot.shape)
-            # pspot = np.expand_dims(spot, axis=1)
-            # print(pspot)
-            pspot = spot - shift           
-            print(pspot)
-            print(pspot.shape)
-
-            print("payoff")
+            # print("payoff")
             w = [1.0 if is_call else -1.0 for is_call in are_calls[payoff_count]]
-            # print(w)
             w = np.asarray(w).reshape(1, -1)
             k = np.asarray(strikes[payoff_count]).reshape(1, -1)
-            print(w)
-            print(w.shape)
-            print(k)
-            print(k.shape)
-            payoff = np.maximum(w * (pspot - k), 0.0)
-            print(payoff)
-            print(payoff.shape)
+            # print(w)
+            # print(w.shape)
+            # print(k)
+            # print(k.shape)
+            payoff = np.maximum(w * (spot - k), 0.0)
+            # print(payoff)
+            # print(payoff.shape)
             rpayoff = np.mean(payoff, axis=0)
-            print(rpayoff)
+            # print(rpayoff)
             mc_prices.append(rpayoff)
             payoff_count += 1
 
@@ -119,12 +111,14 @@ def prices(expiries, strikes, are_calls, fwd, shift, parameters, num_mc, points_
 
 if __name__ == "__main__":
     EXPIRIES = [1, 2]#, 5]
-    STRIKES = [[-0.01, 0.0, 0.01], [-0.015, 0.0, 0.015]]
+    STRIKES = np.asarray([[-0.01, 0.0, 0.01], [-0.015, 0.0, 0.015]])
     ARE_CALLS = [[False, False, False], [False, True, False]]
     FWD = -0.01
     PARAMETERS = [0.02, 0.5, 0.50, -0.25]
-    NUM_MC = 4
-    POINTS_PER_YEAR = 2
+    NUM_MC = 1000
+    POINTS_PER_YEAR = 9
     SHIFT = 0.03
-    p = prices(EXPIRIES, STRIKES, ARE_CALLS, FWD, SHIFT, PARAMETERS, NUM_MC, POINTS_PER_YEAR)
+    FWD = FWD + SHIFT
+    STRIKES = STRIKES + SHIFT
+    p = price(EXPIRIES, STRIKES, ARE_CALLS, FWD, PARAMETERS, NUM_MC, POINTS_PER_YEAR)
     print(p)
