@@ -49,6 +49,7 @@ def prices(expiries, strikes, are_calls, fwd, shift, parameters, num_mc, points_
     # Loop over time grid
     ts = te = 0
     payoff_count = 0
+    mc_prices = []
     for i, t in enumerate(time_grid):
         print(f"time step {i}")
         ts = te
@@ -110,12 +111,11 @@ def prices(expiries, strikes, are_calls, fwd, shift, parameters, num_mc, points_
             print(payoff.shape)
             rpayoff = np.mean(payoff, axis=0)
             print(rpayoff)
+            mc_prices.append(rpayoff)
             payoff_count += 1
 
 
-    mc_prices = 0
-
-    return mc_prices
+    return np.asarray(mc_prices)
 
 if __name__ == "__main__":
     EXPIRIES = [1, 2]#, 5]

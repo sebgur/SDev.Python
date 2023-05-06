@@ -19,7 +19,7 @@ def price(expiry, strike, is_call, fwd, vol):
 def implied_vol_jaeckel(expiry, strike, is_call, fwd, fwd_price):
     """ Black-Scholes implied volatility using P. Jaeckel's 'Let's be rational' method,
         from package py_vollib. Install with pip install py_vollib or at
-        https://pypi.org/project/py_vollib/. Unfortunately we found instabilities with it
+        https://pypi.org/project/py_vollib/. Unfortunately we found it has instabilities
         near ATM. """
     flag = 'c' if is_call else 'p'
     p = fwd_price

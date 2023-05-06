@@ -124,7 +124,7 @@ class SabrGenerator(SmileGenerator):
 
         return rf_prices, md_prices, strikes, eff_spreads
 
-# Special classe for Shifted SABR with shift = 3%, for easier calling
+# Special class for Shifted SABR with shift = 3%, for easier calling
 class ShiftedSabrGenerator(SabrGenerator):
     """ For calling convenience, derived from SabrGenerator with shift at typical 3%. """
     def __init__(self):
