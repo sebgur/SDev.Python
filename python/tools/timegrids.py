@@ -53,19 +53,19 @@ class TimeGridBuilder(ABC):
 class SimpleTimeGridBuilder(TimeGridBuilder):
     """ Specific TimeGridBuilder with a fine grid that is simply a homogeneous grid until last
         point"""
-    def __init__(self, steps_per_year=1):
+    def __init__(self, points_per_year=1):
         TimeGridBuilder.__init__(self)
-        self.steps_per_year_ = steps_per_year
+        self.points_per_year_ = points_per_year
 
     def fine_grid(self):
         """ Generate a homogeneous grid until last point """
         tmax = self.max()
-        dsteps = tmax * self.steps_per_year_
-        nsteps = int(dsteps)
-        if nsteps < 1:
+        dpoints = tmax * self.points_per_year_
+        npoints = int(dpoints)
+        if npoints < 1:
             raise ValueError("Empty fine grid in simple time grid builder")
 
-        fine_grid = np.linspace(0.0, tmax, nsteps)
+        fine_grid = np.linspace(0.0, tmax, npoints)
         return fine_grid
 
 
