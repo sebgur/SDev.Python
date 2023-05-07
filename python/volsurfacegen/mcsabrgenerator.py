@@ -4,7 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 import settings
-# from analytics import sabr
+from analytics import mcsabr
 # from analytics import black
 # from analytics import bachelier
 from volsurfacegen.sabrgenerator import SabrGenerator
@@ -14,11 +14,13 @@ from tools import constants
 
 class McSabrGenerator(SabrGenerator):
     """ SABR model with a generic shift value, using Monte-Carlo to calculate option prices. """
-    def __init__(self, shift=0.0, num_expiries=15, num_strikes=10):
+    def __init__(self, shift=0.0, num_expiries=15, num_strikes=10, num_mc=10000, points_per_year=10):
         SabrGenerator.__init__(self, shift)
         self.num_strikes = num_strikes
         self.num_expiries = num_expiries
         self.surface_size = self.num_expiries * self.num_strikes
+        self.num_mc = num_mc
+        self.points_per_year = points_per_year
 
     def generate_samples(self, num_samples):
         shift = self.shift
@@ -61,8 +63,10 @@ class McSabrGenerator(SabrGenerator):
     def price(self, expiry, strike, is_call, fwd, parameters):
         shifted_k = strike + self.shift
         shifted_f = fwd + self.shift
+        prices = mcsabr.price(expiry, shifted_k, is_call, shifted_f, parameters, num_mc = self.num_mc,
+                              points_per_year=self.points_per_year)
 
-        # return price
+        return prices
 
 
 # Special class for Shifted SABR with shift = 3%, for easier calling

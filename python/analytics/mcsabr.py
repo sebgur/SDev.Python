@@ -1,5 +1,6 @@
 """ Monte-Carlo simulation for SABR models (vanillas) """
 import numpy as np
+from analytics.sabr import calculate_alpha
 from tools.timegrids import SimpleTimeGridBuilder
 
 
@@ -8,6 +9,13 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     scale = fwd
     if scale < 0.0:
         raise ValueError("Negative forward")
+
+    # Temporarily turn of the warnings for division by 0. This is because on certain paths,
+    # the spot becomes so close to 0 and Python effectively handles it as 0. This results in
+    # a warning when taking a negative power of it. However, this is not an issue as Python correctly
+    # finds +infinity and since we use a floor, this case is correctly handled. So we remove
+    # the warning temporarily for clarity of outputs.
+    np.seterr(divide='ignore')
 
     # Build time grid
     time_grid_builder = SimpleTimeGridBuilder(points_per_year=points_per_year)
@@ -20,17 +28,17 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     # print("is_payoff\n", is_payoff)
 
     # Retrieve parameters
-    alpha = parameters[0]
-    beta = parameters[1]
-    nu = parameters[2]
+    lnvol = parameters['LnVol']
+    beta = parameters['Beta']
+    nu = parameters['Nu']
+    rho = parameters['Rho']
+    alpha = calculate_alpha(lnvol, fwd, beta)
     nu2 = nu**2
-    rho = parameters[3]
     sqrtmrho2 = np.sqrt(1.0 - rho**2)
 
     # Correlation matrix
     corr = np.ones((2, 2))
     corr[0, 1] = corr[1, 0] = 0.0
-    # corr[0, 1] = corr[1, 0] = parameters[3]
     # print("corr\n", corr)
 
     # Set RNG
@@ -70,8 +78,6 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
         # print("dz1\n", dz1)
 
         # Scheme
-        # avolc = spot**(beta - 1.0)
-        # print(spot)
         avolc = alpha * np.minimum(spot**(beta - 1.0), 500.0 * scale**(beta - 1.0))
         # print("avolc\n", avolc)
         vols = vol * avolc
@@ -106,6 +112,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
             mc_prices.append(rpayoff)
             payoff_count += 1
 
+    np.seterr(divide='warn')
 
     return np.asarray(mc_prices)
 
@@ -114,8 +121,9 @@ if __name__ == "__main__":
     STRIKES = np.asarray([[-0.01, 0.0, 0.01], [-0.015, 0.0, 0.015]])
     ARE_CALLS = [[False, False, False], [False, True, False]]
     FWD = -0.01
-    PARAMETERS = [0.02, 0.5, 0.50, -0.25]
-    NUM_MC = 1000
+    PARAMETERS = {'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.50, 'Rho': -0.25}
+    # PARAMETERS = [0.02, 0.5, 0.50, -0.25]
+    NUM_MC = 100
     POINTS_PER_YEAR = 9
     SHIFT = 0.03
     FWD = FWD + SHIFT
