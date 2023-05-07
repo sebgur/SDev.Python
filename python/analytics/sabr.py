@@ -41,10 +41,6 @@ def implied_vol_vec(t, k, f, parameters):
         as the vector [ln_vol, beta, nu, rho] where ln_vol is a more intuitive parameter than
         the original alpha. It has the meaning of a log-normal vol, and we define it through
         alpha = ln_vol * fwd ^ (1.0 - beta) """
-    # lnvol = parameters.lnvol
-    # beta = parameters.beta
-    # nu = parameters.nu
-    # rho = parameters.rho
     lnvol = parameters['LnVol']
     beta = parameters['Beta']
     nu = parameters['Nu']
