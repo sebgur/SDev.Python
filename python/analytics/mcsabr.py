@@ -1,11 +1,15 @@
 """ Monte-Carlo simulation for SABR models (vanillas) """
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as sp
 from analytics.sabr import calculate_alpha
 from tools.timegrids import SimpleTimeGridBuilder
+from tools import timer
+from maths.sobol import Sobol
 
 
-def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_per_year=10):
+def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_per_year=10,
+          scheme='LogAndersen'):
     """ Calculate vanilla prices under SABR model by Monte-Carlo simulation"""
     scale = fwd
     if scale < 0.0:
@@ -22,7 +26,10 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     time_grid_builder = SimpleTimeGridBuilder(points_per_year=points_per_year)
     time_grid_builder.add_grid(expiries)
     time_grid = time_grid_builder.complete_grid()
-    # print("time grid\n", time_grid)
+    print("time grid size\n", len(time_grid))
+    num_factors = 2
+    num_steps = len(time_grid)
+    dim = num_steps * num_factors
 
     # Find payoff times
     is_payoff = np.in1d(time_grid, expiries)
@@ -37,15 +44,25 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     nu2 = nu**2
     sqrtmrho2 = np.sqrt(1.0 - rho**2)
 
-    # Correlation matrix
+    # Draw all gaussians
+    # Pseudo-random
     corr = np.ones((2, 2))
     corr[0, 1] = corr[1, 0] = 0.0
     # print("corr\n", corr)
-
-    # Set RNG
     means = np.zeros(2)
     seed = 42
     rng = np.random.RandomState(seed)
+    gaussians = []
+    for i in range(num_steps):
+        gaussians.append(rng.multivariate_normal(means, corr, size=num_mc))
+
+    # Sobol
+    # rng = Sobol(dim, scramble=True)
+    # sob = rng.normal(num_mc)
+    # gaussians = [sob[:,num_factors * idx:num_factors*(idx + 1)] for idx in range(num_steps)]
+
+    # print('gaussian shape: ', np.asarray(gaussians).shape)
+
 
     # Initialize paths
     spot = np.ones((num_mc, 1)) * fwd
@@ -69,7 +86,10 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
         # print("sqrt_dt\n", sqrt_dt)
 
         # Evolve
-        dz = rng.multivariate_normal(means, corr, size=num_mc) * sqrt_dt
+        dz = gaussians[i] * sqrt_dt
+        # dz = rng.multivariate_normal(means, corr, size=num_mc) * sqrt_dt
+        # print(dz.shape)
+        # print(dz)
         # dz0 = dz[:, 0]
         # dz1 = dz[:, 1]
         dz0 = dz[:, 0].reshape(-1, 1)
@@ -79,16 +99,38 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
         # print("dz1\n", dz1)
 
         # Scheme
-        avolc = alpha * np.minimum(spot**(beta - 1.0), 500.0 * scale**(beta - 1.0))
-        # print("avolc\n", avolc)
-        vols = vol * avolc
-        # print("vol\n", vol)
-        vol *= np.exp(-0.5 * nu2 * dt + nu * dz1)
-        # print("vols\n", vols)
+        if scheme == 'LogEuler' or scheme == 'LogAndersen':
+            avolc = alpha * np.minimum(spot**(beta - 1.0), 500.0 * scale**(beta - 1.0))
+            # print("avolc\n", avolc)
+            vols = vol * avolc
 
-        ito = 0.5 * np.power(vols, 2) * dt
-        dw = rho * dz1 + sqrtmrho2 * dz0
-        spot *= np.exp(-ito + vols * dw)
+        else:
+            vols = vol
+
+        # Evolve vol
+        vol *= np.exp(-0.5 * nu2 * dt + nu * dz1)
+
+        # Evolve spot
+        if scheme == 'LogEuler':
+            # print("using logEuler")
+            ito = 0.5 * np.power(vols, 2) * dt
+            dw = rho * dz1 + sqrtmrho2 * dz0
+            spot *= np.exp(-ito + vols * dw)
+        elif scheme == 'LogAndersen':
+            # print("using logAndersen")
+            vole = vol * avolc
+            intvol2 = 0.5 * (np.power(vols, 2) + np.power(vole, 2)) * dt
+            ito = 0.5 * intvol2
+            linear1 = (vole - vols) / nu
+            linear2 = np.sqrt(intvol2 / dt)
+            spot *= np.exp(-ito + linear1 * rho + linear2 * sqrtmrho2 * dz0)
+        elif scheme == 'Andersen':
+            # print("using Andersen")
+            vole = vol
+            spot += alpha * np.abs(spot)**beta * (sqrtmrho2 * vols * dz0 + rho / nu * (vole - vols))
+        else:
+            raise ValueError("Unknown scheme in MCSABR: " + scheme)
+
         # print("spot\n", spot)
 
         # Calculate payoff
@@ -118,24 +160,50 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     return np.asarray(mc_prices)
 
 if __name__ == "__main__":
-    EXPIRIES = [0.10, 0.25, 0.75, 1.0]
-    NSTRIKES = 20
-    SPREADS = np.linspace(-100, 100, NSTRIKES)
+    EXPIRIES = [0.25, 0.5, 1.0, 5.0]
+    NSTRIKES = 50
+    SPREADS = np.linspace(-200, 200, NSTRIKES)
+    PERCENT = np.linspace(0.001, 0.999, NSTRIKES)
     FWD = -0.005
     SHIFT = 0.03
+    SFWD = FWD + SHIFT
     IS_CALL = False
     ARE_CALLS = [IS_CALL] * len(SPREADS)
     ARE_CALLS = [ARE_CALLS] * len(EXPIRIES)
     SPREADS = np.asarray([SPREADS] * len(EXPIRIES))
-    STRIKES = FWD + SPREADS / 10000.0
-    PARAMETERS = {'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.50, 'Rho': -0.25}
-    NUM_MC = 10000
-    POINTS_PER_YEAR = 250
-    SFWD = FWD + SHIFT
-    SSTRIKES = STRIKES + SHIFT
+    PERCENT = np.asarray([PERCENT] * len(EXPIRIES))
+    LNVOL = 0.25
+    # Spread method
+    # STRIKES = FWD + SPREADS / 10000.0
+    # SSTRIKES = STRIKES + SHIFT
+    # XAXIS = SPREADS
+    # Distribution method
+    expiries = np.asarray(EXPIRIES).reshape(-1, 1)
+    # print(expiries.shape)
+    ITO = -0.5 * LNVOL**2 * expiries
+    print(ITO)
+    # # DIFF = sp.norm.ppf(PERCENT)
+    DIFF = LNVOL * np.sqrt(expiries) * sp.norm.ppf(PERCENT)
+    # print(DIFF.shape)
+    print(DIFF)
+    SSTRIKES = SFWD * np.exp(ITO + DIFF)
+    # print(SSTRIKES)
+    XAXIS = SSTRIKES - SHIFT
+
+    PARAMETERS = {'LnVol': LNVOL, 'Beta': 0.1, 'Nu': 0.50, 'Rho': -0.25}
+    NUM_MC = 100000
+    POINTS_PER_YEAR = 50
+    # SCHEME = 'Andersen'
+    SCHEME = 'LogAndersen'
+    # SCHEME = 'LogEuler'
 
     # Calculate MC prices
-    mc_prices = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMETERS, NUM_MC, POINTS_PER_YEAR)
+    mc_timer = timer.Stopwatch("MC")
+    mc_timer.trigger()
+    mc_prices = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMETERS, NUM_MC, POINTS_PER_YEAR,
+                      scheme=SCHEME)
+    mc_timer.stop()
+    mc_timer.print()
 
     # Convert to IV and compare against approximate closed-form
     import black
@@ -155,23 +223,23 @@ if __name__ == "__main__":
     plt.figure(figsize=(10, 8))
     plt.subplots_adjust(hspace=0.40)
     plt.subplot(2, 2, 1)
-    plt.plot(SPREADS[0], mc_ivs[0], label='MC')
-    plt.plot(SPREADS[0], cf_ivs[0], label='CF')
+    plt.plot(XAXIS[0], mc_ivs[0], label='MC')
+    plt.plot(XAXIS[0], cf_ivs[0], label='CF')
     plt.legend(loc='best')
     plt.title(f"Expiry: {EXPIRIES[0]}")
     plt.subplot(2, 2, 2)
-    plt.plot(SPREADS[1], mc_ivs[1], label='MC')
-    plt.plot(SPREADS[1], cf_ivs[1], label='CF')
+    plt.plot(XAXIS[1], mc_ivs[1], label='MC')
+    plt.plot(XAXIS[1], cf_ivs[1], label='CF')
     plt.legend(loc='best')
     plt.title(f"Expiry: {EXPIRIES[1]}")
     plt.subplot(2, 2, 3)
-    plt.plot(SPREADS[2], mc_ivs[2], label='MC')
-    plt.plot(SPREADS[2], cf_ivs[2], label='CF')
+    plt.plot(XAXIS[2], mc_ivs[2], label='MC')
+    plt.plot(XAXIS[2], cf_ivs[2], label='CF')
     plt.legend(loc='best')
     plt.title(f"Expiry: {EXPIRIES[2]}")
     plt.subplot(2, 2, 4)
-    plt.plot(SPREADS[3], mc_ivs[3], label='MC')
-    plt.plot(SPREADS[3], cf_ivs[3], label='CF')
+    plt.plot(XAXIS[3], mc_ivs[3], label='MC')
+    plt.plot(XAXIS[3], cf_ivs[3], label='CF')
     plt.legend(loc='best')
     plt.title(f"Expiry: {EXPIRIES[3]}")
 
