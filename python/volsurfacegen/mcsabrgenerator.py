@@ -12,7 +12,7 @@ from tools import filemanager
 from tools import constants
 
 
-# ToDo: Run a couple more MC runs with full accuracy and check on s/s against Hagan
+# ToDo: Write sample test that compares a smile against CF
 # ToDo: Plug cleansing/inversion to nvol and check on s/s
 # ToDo: Try full training
 # ToDo: Test if better to use smaller numbers of expiries to have more diversity in
@@ -125,9 +125,9 @@ class McShiftedSabrGenerator(McSabrGenerator):
 
 
 if __name__ == "__main__":
-    NUM_SAMPLES = 20 #100 * 1000
-    NUM_MC = 1000
-    POINTS_PER_YEAR = 2
+    NUM_SAMPLES = 150 #100 * 1000
+    NUM_MC = 40000
+    POINTS_PER_YEAR = 25
     NUM_EXPIRIES = 3
     NUM_STRIKES = 5
     MODEL_TYPE = 'McShiftedSABR'

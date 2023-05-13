@@ -1,5 +1,6 @@
 """ Monte-Carlo simulation for SABR models (vanillas) """
 import numpy as np
+import matplotlib.pyplot as plt
 from analytics.sabr import calculate_alpha
 from tools.timegrids import SimpleTimeGridBuilder
 
@@ -117,16 +118,61 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     return np.asarray(mc_prices)
 
 if __name__ == "__main__":
-    EXPIRIES = [1, 2]#, 5]
-    STRIKES = np.asarray([[-0.01, 0.0, 0.01], [-0.015, 0.0, 0.015]])
-    ARE_CALLS = [[False, False, False], [False, True, False]]
-    FWD = -0.01
-    PARAMETERS = {'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.50, 'Rho': -0.25}
-    # PARAMETERS = [0.02, 0.5, 0.50, -0.25]
-    NUM_MC = 100
-    POINTS_PER_YEAR = 9
+    EXPIRIES = [0.10, 0.25, 0.75, 1.0]
+    NSTRIKES = 20
+    SPREADS = np.linspace(-100, 100, NSTRIKES)
+    FWD = -0.005
     SHIFT = 0.03
-    FWD = FWD + SHIFT
-    STRIKES = STRIKES + SHIFT
-    p = price(EXPIRIES, STRIKES, ARE_CALLS, FWD, PARAMETERS, NUM_MC, POINTS_PER_YEAR)
-    print(p)
+    IS_CALL = False
+    ARE_CALLS = [IS_CALL] * len(SPREADS)
+    ARE_CALLS = [ARE_CALLS] * len(EXPIRIES)
+    SPREADS = np.asarray([SPREADS] * len(EXPIRIES))
+    STRIKES = FWD + SPREADS / 10000.0
+    PARAMETERS = {'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.50, 'Rho': -0.25}
+    NUM_MC = 10000
+    POINTS_PER_YEAR = 250
+    SFWD = FWD + SHIFT
+    SSTRIKES = STRIKES + SHIFT
+
+    # Calculate MC prices
+    mc_prices = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMETERS, NUM_MC, POINTS_PER_YEAR)
+
+    # Convert to IV and compare against approximate closed-form
+    import black
+    import sabr
+    # ivs = black.implied_vol(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, mc_prices)
+    mc_ivs = []
+    cf_ivs = []
+    for i, expiry in enumerate(EXPIRIES):
+        mc_iv = []
+        cf_iv = []
+        for j, sstrike in enumerate(SSTRIKES[i]):
+            mc_iv.append(black.implied_vol(expiry, sstrike, IS_CALL, SFWD, mc_prices[i, j]))
+            cf_iv.append(sabr.implied_vol_vec(expiry, sstrike, SFWD, PARAMETERS))
+        mc_ivs.append(mc_iv)
+        cf_ivs.append(cf_iv)
+
+    plt.figure(figsize=(10, 8))
+    plt.subplots_adjust(hspace=0.40)
+    plt.subplot(2, 2, 1)
+    plt.plot(SPREADS[0], mc_ivs[0], label='MC')
+    plt.plot(SPREADS[0], cf_ivs[0], label='CF')
+    plt.legend(loc='best')
+    plt.title(f"Expiry: {EXPIRIES[0]}")
+    plt.subplot(2, 2, 2)
+    plt.plot(SPREADS[1], mc_ivs[1], label='MC')
+    plt.plot(SPREADS[1], cf_ivs[1], label='CF')
+    plt.legend(loc='best')
+    plt.title(f"Expiry: {EXPIRIES[1]}")
+    plt.subplot(2, 2, 3)
+    plt.plot(SPREADS[2], mc_ivs[2], label='MC')
+    plt.plot(SPREADS[2], cf_ivs[2], label='CF')
+    plt.legend(loc='best')
+    plt.title(f"Expiry: {EXPIRIES[2]}")
+    plt.subplot(2, 2, 4)
+    plt.plot(SPREADS[3], mc_ivs[3], label='MC')
+    plt.plot(SPREADS[3], cf_ivs[3], label='CF')
+    plt.legend(loc='best')
+    plt.title(f"Expiry: {EXPIRIES[3]}")
+
+    plt.show()

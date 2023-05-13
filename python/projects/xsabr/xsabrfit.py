@@ -18,8 +18,6 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
-# ToDo: Put SABR and FB-SABR MC into analytics\fbsabr.py
-# ToDo: Import/translate Kienitz's PDEs from C#, especially if we have ZABR?
 # ToDo: Finalize and fine-train models on extended parameter range
 # ToDo: Store models in git and data in Kaggle
 
