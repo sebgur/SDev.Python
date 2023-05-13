@@ -8,6 +8,15 @@ import scipy.stats as sp
 from scipy.optimize import minimize_scalar
 import py_vollib.black.implied_volatility as jaeckel
 
+num_factors = 4
+corr = np.zeros((num_factors, num_factors))
+for i in range(num_factors):
+    corr[i, i] = 1.0
+
+print(corr)
+
+
+
 time_steps = 2
 factors = 3
 sim = 5

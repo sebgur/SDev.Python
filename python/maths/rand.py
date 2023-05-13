@@ -3,8 +3,34 @@ import math
 import numpy as np
 import scipy.stats as sp
 
-N = sp.norm.cdf
 Ninv = sp.norm.ppf
+
+
+def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
+    """ Easy-input method to draw gaussians in dimensions num_steps x num_mc x num_factors """
+    gaussians = None
+    if method == 'PseudoRandom':
+        # Define dimensions
+        mean = np.zeros(num_factors)
+        corr = np.zeros((num_factors, num_factors))
+        for i in range(num_factors):
+            corr[i, i] = 1.0
+
+        # Draw for each step
+        seed = 42
+        rng = np.random.RandomState(seed)
+        gaussians = []
+        for i in range(num_steps):
+            gaussians.append(rng.multivariate_normal(mean, corr, size=num_mc))
+    elif method == 'Sobol':
+        dim = num_steps * num_factors
+        rng = Sobol(dim, scramble=True)
+        sob = rng.normal(num_mc)
+        gaussians = [sob[:,num_factors * idx:num_factors*(idx + 1)] for idx in range(num_steps)]
+    else:
+        raise ValueError("Unknown method: " + method)
+    
+    return gaussians
 
 
 class Sobol:

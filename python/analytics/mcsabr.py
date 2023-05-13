@@ -5,11 +5,11 @@ import scipy.stats as sp
 from analytics.sabr import calculate_alpha
 from tools.timegrids import SimpleTimeGridBuilder
 from tools import timer
-from maths.sobol import Sobol
+from maths import rand
 
 
 def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_per_year=10,
-          scheme='LogAndersen'):
+          rand_method='Sobol', scheme='LogAndersen'):
     """ Calculate vanilla prices under SABR model by Monte-Carlo simulation"""
     scale = fwd
     if scale < 0.0:
@@ -45,16 +45,17 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     sqrtmrho2 = np.sqrt(1.0 - rho**2)
 
     # Draw all gaussians
+    gaussians = rand.gaussians(num_steps, num_mc, num_factors, rand_method)
     # Pseudo-random
-    corr = np.ones((2, 2))
-    corr[0, 1] = corr[1, 0] = 0.0
-    # print("corr\n", corr)
-    means = np.zeros(2)
-    seed = 42
-    rng = np.random.RandomState(seed)
-    gaussians = []
-    for i in range(num_steps):
-        gaussians.append(rng.multivariate_normal(means, corr, size=num_mc))
+    # corr = np.ones((2, 2))
+    # corr[0, 1] = corr[1, 0] = 0.0
+    # # print("corr\n", corr)
+    # means = np.zeros(2)
+    # seed = 42
+    # rng = np.random.RandomState(seed)
+    # gaussians = []
+    # for i in range(num_steps):
+    #     gaussians.append(rng.multivariate_normal(means, corr, size=num_mc))
 
     # Sobol
     # rng = Sobol(dim, scramble=True)
@@ -193,6 +194,8 @@ if __name__ == "__main__":
     PARAMETERS = {'LnVol': LNVOL, 'Beta': 0.1, 'Nu': 0.50, 'Rho': -0.25}
     NUM_MC = 100000
     POINTS_PER_YEAR = 50
+    RAND = 'PseudoRandom'
+    # RAND = 'Sobol'
     # SCHEME = 'Andersen'
     SCHEME = 'LogAndersen'
     # SCHEME = 'LogEuler'
@@ -201,7 +204,7 @@ if __name__ == "__main__":
     mc_timer = timer.Stopwatch("MC")
     mc_timer.trigger()
     mc_prices = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMETERS, NUM_MC, POINTS_PER_YEAR,
-                      scheme=SCHEME)
+                      rand_method=RAND, scheme=SCHEME)
     mc_timer.stop()
     mc_timer.print()
 
