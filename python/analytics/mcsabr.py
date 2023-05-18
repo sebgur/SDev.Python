@@ -7,6 +7,8 @@ from tools.timegrids import SimpleTimeGridBuilder
 from tools import timer
 from maths import rand
 
+# ToDo: split the function into a core part that takes in the time grid and the gaussians
+# ToDo: use that core part in the sample generation to avoid re-drawing the rands() every time.
 
 def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_per_year=10,
           rand_method='Sobol', scheme='LogAndersen'):
@@ -111,7 +113,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     return np.asarray(mc_prices)
 
 if __name__ == "__main__":
-    EXPIRIES = [0.25, 0.5, 1.0, 5.0]
+    EXPIRIES = [0.10, 0.25, 1.0, 5.0]
     NSTRIKES = 50
     FWD = -0.005
     SHIFT = 0.03
@@ -128,7 +130,7 @@ if __name__ == "__main__":
     # XAXIS = SPREADS
     # Distribution method
     expiries = np.asarray(EXPIRIES).reshape(-1, 1)
-    PERCENT = np.linspace(0.001, 0.999, NSTRIKES)
+    PERCENT = np.linspace(0.01, 0.99, NSTRIKES)
     PERCENT = np.asarray([PERCENT] * len(EXPIRIES))
     ITO = -0.5 * LNVOL**2 * expiries
     DIFF = LNVOL * np.sqrt(expiries) * sp.norm.ppf(PERCENT)
@@ -137,8 +139,8 @@ if __name__ == "__main__":
     XAXIS = STRIKES
 
     PARAMETERS = {'LnVol': LNVOL, 'Beta': 0.1, 'Nu': 0.50, 'Rho': -0.25}
-    NUM_MC = 1000000
-    POINTS_PER_YEAR = 50
+    NUM_MC = 100000
+    POINTS_PER_YEAR = 100
     # RAND = 'PseudoRandom'
     RAND = 'Sobol'
     # SCHEME = 'Andersen'
