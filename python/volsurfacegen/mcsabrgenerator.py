@@ -12,7 +12,6 @@ from tools import filemanager
 from tools import constants
 
 
-# ToDo: Write sample test that compares a smile against CF
 # ToDo: Plug cleansing/inversion to nvol and check on s/s
 # ToDo: Try full training
 # ToDo: Test if better to use smaller numbers of expiries to have more diversity in

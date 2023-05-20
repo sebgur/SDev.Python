@@ -5,30 +5,38 @@ import scipy.stats as sp
 # from maths.metrics import rmse
 # import projects.xsabr_fit.sabrgenerator as sabr
 
-from scipy.optimize import minimize_scalar
-import py_vollib.black.implied_volatility as jaeckel
-
-num_factors = 4
-corr = np.zeros((num_factors, num_factors))
-for i in range(num_factors):
-    corr[i, i] = 1.0
-
-print(corr)
+a = np.asarray([[1, 2, 3], [4, 5, 6]])
+print(a)
+print(a.shape)
+b = np.concatenate((a, -a), axis=0)
+print(b)
+print(b.shape)
 
 
+# from scipy.optimize import minimize_scalar
+# import py_vollib.black.implied_volatility as jaeckel
 
-time_steps = 2
-factors = 3
-sim = 5
-row = ['a', 'b', 'c', 'd', 'e', 'f']
-matrix = np.asarray([row] * sim)
-print(matrix)
-idx = 1
-draws = [matrix[:,factors * idx:factors*(idx + 1)] for idx in range(time_steps)]
-# draws = matrix.reshape(sim, time_steps * factors)
-print(draws)
-print(draws[0])
-print(draws[1])
+# num_factors = 4
+# corr = np.zeros((num_factors, num_factors))
+# for i in range(num_factors):
+#     corr[i, i] = 1.0
+
+# print(corr)
+
+
+
+# time_steps = 2
+# factors = 3
+# sim = 5
+# row = ['a', 'b', 'c', 'd', 'e', 'f']
+# matrix = np.asarray([row] * sim)
+# print(matrix)
+# idx = 1
+# draws = [matrix[:,factors * idx:factors*(idx + 1)] for idx in range(time_steps)]
+# # draws = matrix.reshape(sim, time_steps * factors)
+# print(draws)
+# print(draws[0])
+# print(draws[1])
 # print(draws[0:factors])
 
 # N = sp.norm.cdf
