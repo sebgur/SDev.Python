@@ -5,12 +5,23 @@ import scipy.stats as sp
 # from maths.metrics import rmse
 # import projects.xsabr_fit.sabrgenerator as sabr
 
-a = np.asarray([[1, 2, 3], [4, 5, 6]])
-print(a)
-print(a.shape)
-b = np.concatenate((a, -a), axis=0)
-print(b)
-print(b.shape)
+expiries = np.asarray([1, 2, 3]).reshape(-1, 1)
+print(expiries)
+# mod_expiries = np.tile(expiries, (2, 1))
+mod_expiries = np.repeat(expiries, 2)
+print(mod_expiries)
+
+strikes = np.asarray([[1, -1], [2, -2], [3, -3]])
+print(strikes)
+mod_strikes = strikes.reshape(-1, 1)
+print(mod_strikes)
+
+# a = np.asarray([[1, 2, 3], [4, 5, 6]])
+# print(a)
+# print(a.shape)
+# b = np.concatenate((a, -a), axis=0)
+# print(b)
+# print(b.shape)
 
 
 # from scipy.optimize import minimize_scalar

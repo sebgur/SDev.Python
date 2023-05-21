@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from volsurfacegen.sabrgenerator import SabrGenerator, ShiftedSabrGenerator
+from volsurfacegen.mcsabrgenerator import McShiftedSabrGenerator
 import settings
 from machinelearning.topology import compose_model
 from machinelearning.learningmodel import LearningModel, load_learning_model
@@ -18,6 +19,9 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
+# ToDo: We're refactoring the chart viewing to be more suitable for models that calculate
+#       by surfaces. Next step is to finish this refactoring in sabrgenerator, see notes there.
+#       Then we should do implement it for McSABR, and then refactor the code to plot the charts.
 # ToDo: Re-training from saved model
 # ToDo: Possibility to test only without training
 # ToDo: Finalize and fine-train models on extended parameter range
@@ -26,6 +30,7 @@ from projects.xsabr import xsabrplot as xplt
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
 MODEL_TYPE = "ShiftedSABR"
+# MODEL_TYPE = "McShiftedSABR"
 GENERATE_SAMPLES = False # If false, read dataset from file
 NUM_SAMPLES = 100 * 1000 # Relevant if GENERATE_SAMPLES is True
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
@@ -60,6 +65,8 @@ if MODEL_TYPE == "SABR":
     generator = SabrGenerator()
 elif MODEL_TYPE == "ShiftedSABR":
     generator = ShiftedSabrGenerator()
+elif MODEL_TYPE == "McShiftedSABR":
+    generator = McShiftedSabrGenerator()
 else:
     raise ValueError("Unknown model: " + MODEL_TYPE)
 
@@ -162,28 +169,24 @@ print(f"RMSE on test set: {test_rmse:,.2f}")
 if SHOW_VOL_CHARTS:
     NUM_TEST = 100
     SPREADS = np.linspace(-300, 300, num=NUM_TEST)
+    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
+    FWD = 0.028
 
     plt.figure(figsize=(18, 10))
     plt.subplots_adjust(hspace=0.40)
 
     plt.subplot(2, 3, 1)
-    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
-    xplt.strike_ladder(0.25, SPREADS, 0.028, PARAMS, generator, model)
+    xplt.strike_ladder(0.25, SPREADS, FWD, PARAMS, generator, model)
     plt.subplot(2, 3, 2)
-    PARAMS = { 'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.65, 'Rho': -0.15 }
-    xplt.strike_ladder(0.50, SPREADS, 0.025, PARAMS, generator, model)
+    xplt.strike_ladder(0.50, SPREADS, FWD, PARAMS, generator, model)
     plt.subplot(2, 3, 3)
-    PARAMS = { 'LnVol': 0.25, 'Beta': 0.5, 'Nu': 0.75, 'Rho': -0.10 }
-    xplt.strike_ladder(0.75, SPREADS, 0.025, PARAMS, generator, model)
+    xplt.strike_ladder(0.75, SPREADS, FWD, PARAMS, generator, model)
     plt.subplot(2, 3, 4)
-    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.65, 'Rho': 0.00 }
-    xplt.strike_ladder(1.00, SPREADS, 0.025, PARAMS, generator, model)
+    xplt.strike_ladder(1.00, SPREADS, FWD, PARAMS, generator, model)
     plt.subplot(2, 3, 5)
-    PARAMS = { 'LnVol': 0.30, 'Beta': 0.5, 'Nu': 0.50, 'Rho': 0.15 }
-    xplt.strike_ladder(2.00, SPREADS, 0.025, PARAMS, generator, model)
+    xplt.strike_ladder(2.00, SPREADS, FWD, PARAMS, generator, model)
     plt.subplot(2, 3, 6)
-    PARAMS = { 'LnVol': 0.35, 'Beta': 0.5, 'Nu': 0.25, 'Rho': 0.25 }
-    xplt.strike_ladder(5.00, SPREADS, 0.025, PARAMS, generator, model)
+    xplt.strike_ladder(5.00, SPREADS, FWD, PARAMS, generator, model)
 
     plt.show()
 

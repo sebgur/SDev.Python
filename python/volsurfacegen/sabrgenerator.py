@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
+import scipy.stats as sp
 import settings
 from analytics import sabr
 from analytics import black
@@ -9,6 +10,10 @@ from analytics import bachelier
 from volsurfacegen.smilegenerator import SmileGenerator
 from tools import filemanager
 from tools import constants
+
+# ToDo: continue pricing the surface with the model
+# ToDo: replace surface version against older strike_ladder and check it works on charts
+# ToDo: move to implement the same thing for McSABR
 
 
 class SabrGenerator(SmileGenerator):
@@ -124,6 +129,59 @@ class SabrGenerator(SmileGenerator):
 
         return rf_prices, md_prices, strikes, eff_spreads
 
+    def price_surface_gen(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
+        strikes = self.convert_strikes(expiries, strike_inputs, fwd, parameters, input_method)
+        ref_prices = self.price(expiries, strikes, self.is_call, fwd, parameters)
+        return ref_prices
+
+    def price_surface_mod(self, model, expiries, strike_inputs, fwd, parameters,
+                          input_method='Strikes'):
+        strikes = self.convert_strikes(expiries, strike_inputs, fwd, parameters, input_method)
+
+        # Retrieve parameters
+        lnvol = parameters['LnVol']
+        beta = parameters['Beta']
+        nu = parameters['Nu']
+        rho = parameters['Rho']
+
+        # Prepare learning model inputs
+        num_expiries = expiries.shape[0]
+        num_strikes = strikes.shape[1]
+        num_points = num_expiries * num_strikes
+        md_inputs = np.ones((num_points, 7))
+        md_inputs[:, 0] = np.repeat(expiries, num_strikes)
+        md_inputs[:, 1] = strikes.reshape(-1)
+        md_inputs[:, 2] *= fwd
+        md_inputs[:, 3] *= lnvol
+        md_inputs[:, 4] *= beta
+        md_inputs[:, 5] *= nu
+        md_inputs[:, 6] *= rho
+
+        # Price with learning model
+        md_nvols = model.predict(md_inputs)
+
+        # Calculate all prices in a simple vector along the model point direction.
+        # Then use some Python magic to reshape that into the final output format
+        # (num_expiries, num_strikes). Maybe .reshape(num_expiries, num_strikes)
+        # will do the trick.
+        md_prices = []
+        for point in md_inputs:
+            md_prices.append(bachelier.price(expiry, strike, self.is_call, fwd, vol))
+
+        return md_inputs
+
+
+    def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
+        if input_method == 'Percentiles':
+            lnvol = parameters['LnVol']
+            stdev = lnvol * np.sqrt(expiries)
+            sfwd = fwd + self.shift
+            return sfwd * np.exp(-0.5 * stdev**2 + stdev * sp.norm.ppf(strike_inputs)) - self.shift
+        else:
+            return SmileGenerator.convert_strikes(expiries, strike_inputs, fwd, parameters,
+                                                  input_method)
+
+
 # Special class for Shifted SABR with shift = 3%, for easier calling
 class ShiftedSabrGenerator(SabrGenerator):
     """ For calling convenience, derived from SabrGenerator with shift at typical 3%. """
@@ -132,19 +190,35 @@ class ShiftedSabrGenerator(SabrGenerator):
 
 
 if __name__ == "__main__":
-    NUM_SAMPLES = 10 #100 * 1000
-    MODEL_TYPE = 'ShiftedSABR'
-    project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
-    data_folder = os.path.join(project_folder, "samples")
-    filemanager.check_directory(data_folder)
-    file = os.path.join(data_folder, MODEL_TYPE + "_samples_test.tsv")
-    generator = ShiftedSabrGenerator()
+    # Test generation
+    # NUM_SAMPLES = 10 #100 * 1000
+    # MODEL_TYPE = 'ShiftedSABR'
+    # project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
+    # data_folder = os.path.join(project_folder, "samples")
+    # filemanager.check_directory(data_folder)
+    # file = os.path.join(data_folder, MODEL_TYPE + "_samples_test.tsv")
+    # generator = ShiftedSabrGenerator()
 
-    print("Generating " + str(NUM_SAMPLES) + " samples")
-    data_df_ = generator.generate_samples(NUM_SAMPLES)
-    print(data_df_)
-    print("Cleansing data")
-    data_df_ = generator.to_nvol(data_df_)
-    print("Output to file: " + file)
-    generator.to_file(data_df_, file)
-    print("Complete!")
+    # print("Generating " + str(NUM_SAMPLES) + " samples")
+    # data_df_ = generator.generate_samples(NUM_SAMPLES)
+    # print(data_df_)
+    # print("Cleansing data")
+    # data_df_ = generator.to_nvol(data_df_)
+    # print("Output to file: " + file)
+    # generator.to_file(data_df_, file)
+    # print("Complete!")
+
+    # Test strike conversion
+    generator = ShiftedSabrGenerator()
+    EXPIRIES = np.asarray([0.5, 1.0, 5.0]).reshape(-1, 1)
+    STRIKE_INPUTS = np.asarray([[0.1, 0.9], [0.4, 0.6], [0.5, 0.5]])
+    FWD = 0.01
+    PARAMETERS = { 'LnVol': 0.2222, 'Beta': 0.3333, 'Nu': 0.4444, 'Rho': -0.5555 }
+    METHOD = 'Percentiles'
+    prices = generator.price_surface_mod(None, EXPIRIES, STRIKE_INPUTS, FWD, PARAMETERS, METHOD)
+    print(prices)
+
+    # strikes_ = generator.convert_strikes(EXPIRIES, STRIKE_INPUTS, FWD, PARAMETERS, METHOD)
+    # print(strikes_)
+    # a = (0.01 + 0.03) * np.exp(-0.5 * 0.25 * 0.25 * 1.0 + 0.25 * 1.0 * sp.norm.ppf(0.6)) - 0.03
+    # print(a)

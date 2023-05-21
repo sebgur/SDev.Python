@@ -26,7 +26,27 @@ class SmileGenerator(ABC):
 
     @abstractmethod
     def price_strike_ladder(self, model, expiry, spreads, fwd, parameters):
-        """ Calculate prices for a ladder of strikes at given parameters """
+        """ Calculate prices for a ladder of strikes for given parameters """
+
+    @abstractmethod
+    def price_surface_gen(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
+        """ Calculate a surface of prices for given parameters using the generating model """
+
+    @abstractmethod
+    def price_surface_mod(self, model, expiries, strike_inputs, fwd, parameters,
+                          input_method='Strikes'):
+        """ Calculate a surface of prices for given parameters using the learning model """
+
+    def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
+        """ Convert strike inputs into absolute strikes using the strike input_method """
+        if input_method == 'Strikes':
+            strikes = strike_inputs
+        elif input_method == 'Spreads':
+            strikes = fwd + strike_inputs / 10000.0
+        else:
+            raise ValueError("Invalid strike input method: " + input_method)
+        
+        return strikes
 
     def num_parameters(self):
         """ Total number of parameters (curve + vol) """

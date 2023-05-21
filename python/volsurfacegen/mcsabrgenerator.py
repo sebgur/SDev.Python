@@ -9,15 +9,14 @@ from analytics import mcsabr
 # from analytics import black
 # from analytics import bachelier
 from volsurfacegen.sabrgenerator import SabrGenerator
+from volsurfacegen.smilegenerator import SmileGenerator
 from tools import filemanager
-from tools import constants
+# from tools import constants
 from tools import timer
 
 
 # ToDo: Plug cleansing/inversion to nvol and check on s/s
 # ToDo: Try full training
-# ToDo: Test if better to use smaller numbers of expiries to have more diversity in
-#       sampled fwds and parameters.
 
 class McSabrGenerator(SabrGenerator):
     """ SABR model with a generic shift value, using Monte-Carlo to calculate option prices. """
@@ -70,14 +69,14 @@ class McSabrGenerator(SabrGenerator):
 
             # Draw strikes
             ks = []
-            for expIdx in range(self.num_expiries):
+            for exp_idx in range(self.num_expiries):
                 # Spread method
                 # spread = self.rng.uniform(-300, 300, self.num_strikes)
                 # k = fwd + spread / 10000.0
                 # k = np.maximum(k, -shift + constants.BPS10)
 
                 # Percentile method
-                stdev = vol * np.sqrt(expiries[expIdx])
+                stdev = vol * np.sqrt(expiries[exp_idx])
                 percentiles = self.rng.uniform(0.01, 0.99, self.num_strikes)
                 k = (fwd + shift) * np.exp(-0.5 * stdev * stdev + stdev * sp.norm.ppf(percentiles))
                 k = k - shift
@@ -126,6 +125,26 @@ class McSabrGenerator(SabrGenerator):
 
         return prices
 
+    def retrieve_datasets(self, data_file):
+        data_df = SmileGenerator.from_file(data_file)
+
+        # Retrieve suitable data
+        t = data_df.Ttm
+        strike = data_df.K
+        fwd = data_df.F
+        lnvol = data_df.LnVol
+        beta = data_df.Beta
+        nu = data_df.Nu
+        rho = data_df.Rho
+        nvol = data_df.NVol
+
+        # Extract input and output datasets
+        x_set = np.column_stack((t, strike, fwd, lnvol, beta, nu, rho))
+        num_samples = len(nvol)
+        y_set = np.asarray(nvol)
+        y_set = np.reshape(y_set, (num_samples, 1))
+
+        return x_set, y_set, data_df
 
 # Special class for Shifted SABR with shift = 3%, for easier calling
 class McShiftedSabrGenerator(McSabrGenerator):
@@ -145,7 +164,7 @@ if __name__ == "__main__":
     project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
     data_folder = os.path.join(project_folder, "samples")
     filemanager.check_directory(data_folder)
-    file = os.path.join(data_folder, MODEL_TYPE + "_samples_test.tsv")
+    file = os.path.join(data_folder, MODEL_TYPE + "_samples.tsv")
     generator = McShiftedSabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
 
     print("Generating " + str(NUM_SAMPLES) + " samples")
