@@ -14,11 +14,10 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     if scale < 0.0:
         raise ValueError("Negative forward")
 
-    # Temporarily turn of the warnings for division by 0. This is because on certain paths,
-    # the spot becomes so close to 0 and Python effectively handles it as 0. This results in
+    # Temporarily turn off the warnings for division by 0. This is because on certain paths,
+    # the spot becomes so close to 0 that Python effectively handles it as 0. This results in
     # a warning when taking a negative power of it. However, this is not an issue as Python
     # correctly finds +infinity and since we use a floor, this case is correctly handled.
-    # So we remove the warning temporarily for clarity of outputs.
     np.seterr(divide='ignore')
 
     # Build time grid

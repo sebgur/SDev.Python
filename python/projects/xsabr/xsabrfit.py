@@ -18,6 +18,8 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
+# ToDo: Re-training from saved model
+# ToDo: Possibility to test only without training
 # ToDo: Finalize and fine-train models on extended parameter range
 # ToDo: Store models in git and data in Kaggle
 

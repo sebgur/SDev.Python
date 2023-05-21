@@ -3,6 +3,7 @@
 import os
 import numpy as np
 import pandas as pd
+import scipy.stats as sp
 import settings
 from analytics import mcsabr
 # from analytics import black
@@ -10,6 +11,7 @@ from analytics import mcsabr
 from volsurfacegen.sabrgenerator import SabrGenerator
 from tools import filemanager
 from tools import constants
+from tools import timer
 
 
 # ToDo: Plug cleansing/inversion to nvol and check on s/s
@@ -37,17 +39,17 @@ class McSabrGenerator(SabrGenerator):
         print(f"Surface size: {self.surface_size:,}")
         print(f"Number of samples: {num_samples:,}")
 
-        # Derive number of random expiries
-        num_mc_runs = int(num_samples / self.surface_size) # ToDo: + 1
-        print(f"Number of MC runs: {num_mc_runs:,}")
+        # Derive number of surfaces to generate
+        num_surfaces = int(num_samples / self.surface_size + 1)
+        print(f"Number of surfaces to generate: {num_surfaces:,}")
 
         # Draw parameters
-        lnvol = self.rng.uniform(0.05, 0.25, num_mc_runs)
-        beta = self.rng.uniform(0.49, 0.51, num_mc_runs)
-        nu = self.rng.uniform(0.20, 0.80, num_mc_runs)
-        rho = self.rng.uniform(-0.40, 0.40, num_mc_runs)
+        lnvol = self.rng.uniform(0.05, 0.25, num_surfaces)
+        beta = self.rng.uniform(0.49, 0.51, num_surfaces)
+        nu = self.rng.uniform(0.20, 0.80, num_surfaces)
+        rho = self.rng.uniform(-0.40, 0.40, num_surfaces)
 
-        # Calculate prices
+        # Calculate prices per surface
         ts = []
         strikes = []
         fwds = []
@@ -56,10 +58,11 @@ class McSabrGenerator(SabrGenerator):
         nus = []
         rhos = []
         prices = []
-        for j in range(num_mc_runs):
-            print(f"MC simulation {j+1:,}/{num_mc_runs:,}")
+        for j in range(num_surfaces):
+            print(f"Surface generation number {j+1:,}/{num_surfaces:,}")
             expiries = self.rng.uniform(1.0 / 12.0, 5.0, self.num_expiries)
             fwd = self.rng.uniform(self.min_fwd, self.max_fwd, 1)[0]
+            vol = lnvol[j]
 
             # print("t shape: ", expiries.shape)
             # print("t\n", expiries)
@@ -67,10 +70,18 @@ class McSabrGenerator(SabrGenerator):
 
             # Draw strikes
             ks = []
-            for _ in range(self.num_expiries):
-                spread = self.rng.uniform(-300, 300, self.num_strikes)
-                k = fwd + spread / 10000.0
-                k = np.maximum(k, -shift + constants.BPS10)
+            for expIdx in range(self.num_expiries):
+                # Spread method
+                # spread = self.rng.uniform(-300, 300, self.num_strikes)
+                # k = fwd + spread / 10000.0
+                # k = np.maximum(k, -shift + constants.BPS10)
+
+                # Percentile method
+                stdev = vol * np.sqrt(expiries[expIdx])
+                percentiles = self.rng.uniform(0.01, 0.99, self.num_strikes)
+                k = (fwd + shift) * np.exp(-0.5 * stdev * stdev + stdev * sp.norm.ppf(percentiles))
+                k = k - shift
+
                 ks.append(k)
 
             ks = np.asarray(ks)
@@ -124,11 +135,12 @@ class McShiftedSabrGenerator(McSabrGenerator):
 
 
 if __name__ == "__main__":
-    NUM_SAMPLES = 150 #100 * 1000
-    NUM_MC = 40000
+    NUM_SAMPLES = 100 * 1000
+    NUM_MC = 100 * 1000
     POINTS_PER_YEAR = 25
-    NUM_EXPIRIES = 3
-    NUM_STRIKES = 5
+    SURFACE_SIZE = 1000
+    NUM_EXPIRIES = 25
+    NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
     MODEL_TYPE = 'McShiftedSABR'
     project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
     data_folder = os.path.join(project_folder, "samples")
@@ -137,10 +149,22 @@ if __name__ == "__main__":
     generator = McShiftedSabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
 
     print("Generating " + str(NUM_SAMPLES) + " samples")
+    gen_timer = timer.Stopwatch("Sample Generation")
+    gen_timer.trigger()
     data_df_ = generator.generate_samples(NUM_SAMPLES)
+    gen_timer.stop()
     print(data_df_)
-    # print("Cleansing data")
-    # data_df_ = generator.to_nvol(data_df_)
+    print("Cleansing data")
+    nvol_timer = timer.Stopwatch("Convertion to normal vols")
+    nvol_timer.trigger()
+    data_df_ = generator.to_nvol(data_df_)
+    nvol_timer.stop()
     print("Output to file: " + file)
+    file_timer = timer.Stopwatch("Output to file")
+    file_timer.trigger()
     generator.to_file(data_df_, file)
+    file_timer.stop()
     print("Complete!")
+    gen_timer.print()
+    nvol_timer.print()
+    file_timer.print()
