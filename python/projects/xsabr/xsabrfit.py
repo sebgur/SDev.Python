@@ -20,13 +20,16 @@ from maths.metrics import rmse, tf_rmse
 # from projects.xsabr import xsabrplot as xplt
 
 # Test new charting on old SABR
+# Save best trained models in Git
 # Adapt new charting to MC SABR
 # See if error improves when reducing the range of percentiles for training and/or
 #   increasing the number of simulations
-# Try training on intrinsic value. Would be faster for clean-up and maybe not have
-#   the transformation failure issues, but might be harder as a shape to learn.
+# Try training on correction to Shifted BS price. Time value will probably not work 
+#   as it is not smooth at ATM.
 # Bring into design the ability to use best model until now?
 # Re-training from saved model
+# Implement new class over LearningModel that gives prices directly, having stored
+#   the model. Implement inversions to shifted BS and Bachelier as well.
 # Possibility to test only without training
 # Finalize and fine-train models on extended parameter range
 # Store models in git and data in Kaggle
