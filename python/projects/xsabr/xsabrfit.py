@@ -17,11 +17,13 @@ from machinelearning.datasets import prepare_sets
 from tools.filemanager import check_directory
 from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
-from projects.xsabr import xsabrplot as xplt
+# from projects.xsabr import xsabrplot as xplt
 
 # ToDo: We're refactoring the chart viewing to be more suitable for models that calculate
 #       by surfaces. Next step is to finish this refactoring in sabrgenerator, see notes there.
 #       Then we should do implement it for McSABR, and then refactor the code to plot the charts.
+# ToDo: See if error improves when reducing the range of percentiles for training
+# ToDo: Bring into design the ability to use best model until now?
 # ToDo: Re-training from saved model
 # ToDo: Possibility to test only without training
 # ToDo: Finalize and fine-train models on extended parameter range
@@ -172,23 +174,36 @@ if SHOW_VOL_CHARTS:
     PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
     FWD = 0.028
 
-    plt.figure(figsize=(18, 10))
-    plt.subplots_adjust(hspace=0.40)
+    EXPIRIES = np.asarray([0.25, 1.00]).reshape(-1, 1)
+    # EXPIRIES = np.asarray([0.25, 0.50, 0.75, 1.00, 2.00, 5.00]).reshape(-1, 1)
+    METHOD = 'Percentiles'
+    PERCENTS = np.linspace(0.01, 0.99, num=3)
+    PERCENTS = np.asarray([PERCENTS] * 2)
 
-    plt.subplot(2, 3, 1)
-    xplt.strike_ladder(0.25, SPREADS, FWD, PARAMS, generator, model)
-    plt.subplot(2, 3, 2)
-    xplt.strike_ladder(0.50, SPREADS, FWD, PARAMS, generator, model)
-    plt.subplot(2, 3, 3)
-    xplt.strike_ladder(0.75, SPREADS, FWD, PARAMS, generator, model)
-    plt.subplot(2, 3, 4)
-    xplt.strike_ladder(1.00, SPREADS, FWD, PARAMS, generator, model)
-    plt.subplot(2, 3, 5)
-    xplt.strike_ladder(2.00, SPREADS, FWD, PARAMS, generator, model)
-    plt.subplot(2, 3, 6)
-    xplt.strike_ladder(5.00, SPREADS, FWD, PARAMS, generator, model)
+    print(EXPIRIES)
+    print(PERCENTS)
+    ref_prices = generator.price_surface_ref(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
+    mod_prices = generator.price_surface_mod(model, EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
+    print(ref_prices)
+    print(mod_prices)
 
-    plt.show()
+    # plt.figure(figsize=(18, 10))
+    # plt.subplots_adjust(hspace=0.40)
+
+    # plt.subplot(2, 3, 1)
+    # xplt.strike_ladder(0.25, SPREADS, FWD, PARAMS, generator, model)
+    # plt.subplot(2, 3, 2)
+    # xplt.strike_ladder(0.50, SPREADS, FWD, PARAMS, generator, model)
+    # plt.subplot(2, 3, 3)
+    # xplt.strike_ladder(0.75, SPREADS, FWD, PARAMS, generator, model)
+    # plt.subplot(2, 3, 4)
+    # xplt.strike_ladder(1.00, SPREADS, FWD, PARAMS, generator, model)
+    # plt.subplot(2, 3, 5)
+    # xplt.strike_ladder(2.00, SPREADS, FWD, PARAMS, generator, model)
+    # plt.subplot(2, 3, 6)
+    # xplt.strike_ladder(5.00, SPREADS, FWD, PARAMS, generator, model)
+
+    # plt.show()
 
 # Show training history
 if TRAIN:

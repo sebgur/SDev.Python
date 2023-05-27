@@ -129,7 +129,7 @@ class SabrGenerator(SmileGenerator):
 
         return rf_prices, md_prices, strikes, eff_spreads
 
-    def price_surface_gen(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
+    def price_surface_ref(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
         strikes = self.convert_strikes(expiries, strike_inputs, fwd, parameters, input_method)
         ref_prices = self.price(expiries, strikes, self.is_call, fwd, parameters)
         return ref_prices
@@ -159,16 +159,16 @@ class SabrGenerator(SmileGenerator):
 
         # Price with learning model
         md_nvols = model.predict(md_inputs)
-
-        # Calculate all prices in a simple vector along the model point direction.
-        # Then use some Python magic to reshape that into the final output format
-        # (num_expiries, num_strikes). Maybe .reshape(num_expiries, num_strikes)
-        # will do the trick.
         md_prices = []
-        for point in md_inputs:
+        for (point, vol) in zip(md_inputs, md_nvols):
+            expiry = point[0]
+            strike = point[1]
             md_prices.append(bachelier.price(expiry, strike, self.is_call, fwd, vol))
 
-        return md_inputs
+        md_prices = np.asarray(md_prices)
+        return md_prices.reshape(num_expiries, num_strikes)
+        # return md_prices.reshape(num_expiries, num_strikes)
+        # return md_inputs
 
 
     def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):

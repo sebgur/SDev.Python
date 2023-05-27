@@ -15,9 +15,6 @@ from tools import filemanager
 from tools import timer
 
 
-# ToDo: Plug cleansing/inversion to nvol and check on s/s
-# ToDo: Try full training
-
 class McSabrGenerator(SabrGenerator):
     """ SABR model with a generic shift value, using Monte-Carlo to calculate option prices. """
     def __init__(self, shift=0.0, num_expiries=15, num_strikes=10, num_mc=10000,

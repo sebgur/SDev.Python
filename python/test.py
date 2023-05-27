@@ -5,16 +5,40 @@ import scipy.stats as sp
 # from maths.metrics import rmse
 # import projects.xsabr_fit.sabrgenerator as sabr
 
-expiries = np.asarray([1, 2, 3]).reshape(-1, 1)
-print(expiries)
-# mod_expiries = np.tile(expiries, (2, 1))
-mod_expiries = np.repeat(expiries, 2)
-print(mod_expiries)
+expiries = np.asarray([0.5, 2.5]).reshape(-1, 1)
+strikes = np.asarray([[111, 222, 333], [44, 55, 66]])
+num_expiries = 2
+num_strikes = 3
+num_points = num_expiries * num_strikes
+md_inputs = np.ones((num_points, 3))
+md_inputs[:, 0] = np.repeat(expiries, num_strikes)
+md_inputs[:, 1] = strikes.reshape(-1)
+for i in range(6):
+    md_inputs[i, 2] = i + 1
+print(md_inputs)
 
-strikes = np.asarray([[1, -1], [2, -2], [3, -3]])
-print(strikes)
-mod_strikes = strikes.reshape(-1, 1)
-print(mod_strikes)
+vols = md_inputs[:, 2]
+print(vols)
+svols = vols.reshape(2, 3)
+print(svols)
+
+vec_a = ['a', 'b', 'c']
+vec_b = ['1', '2', '3']
+
+for (a, b) in zip(vec_a, vec_b):
+    print(a + b)
+
+
+# expiries = np.asarray([1, 2, 3]).reshape(-1, 1)
+# print(expiries)
+# # mod_expiries = np.tile(expiries, (2, 1))
+# mod_expiries = np.repeat(expiries, 2)
+# print(mod_expiries)
+
+# strikes = np.asarray([[1, -1], [2, -2], [3, -3]])
+# print(strikes)
+# mod_strikes = strikes.reshape(-1, 1)
+# print(mod_strikes)
 
 # a = np.asarray([[1, 2, 3], [4, 5, 6]])
 # print(a)

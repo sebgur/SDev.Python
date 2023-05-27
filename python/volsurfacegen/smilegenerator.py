@@ -29,7 +29,7 @@ class SmileGenerator(ABC):
         """ Calculate prices for a ladder of strikes for given parameters """
 
     @abstractmethod
-    def price_surface_gen(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
+    def price_surface_ref(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
         """ Calculate a surface of prices for given parameters using the generating model """
 
     @abstractmethod
