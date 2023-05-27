@@ -19,15 +19,17 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 # from projects.xsabr import xsabrplot as xplt
 
-# ToDo: We're refactoring the chart viewing to be more suitable for models that calculate
-#       by surfaces. Next step is to finish this refactoring in sabrgenerator, see notes there.
-#       Then we should do implement it for McSABR, and then refactor the code to plot the charts.
-# ToDo: See if error improves when reducing the range of percentiles for training
-# ToDo: Bring into design the ability to use best model until now?
-# ToDo: Re-training from saved model
-# ToDo: Possibility to test only without training
-# ToDo: Finalize and fine-train models on extended parameter range
-# ToDo: Store models in git and data in Kaggle
+# Test new charting on old SABR
+# Adapt new charting to MC SABR
+# See if error improves when reducing the range of percentiles for training and/or
+#   increasing the number of simulations
+# Try training on intrinsic value. Would be faster for clean-up and maybe not have
+#   the transformation failure issues, but might be harder as a shape to learn.
+# Bring into design the ability to use best model until now?
+# Re-training from saved model
+# Possibility to test only without training
+# Finalize and fine-train models on extended parameter range
+# Store models in git and data in Kaggle
 
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
