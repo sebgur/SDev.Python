@@ -11,10 +11,6 @@ from volsurfacegen.smilegenerator import SmileGenerator
 from tools import filemanager
 from tools import constants
 
-# ToDo: continue pricing the surface with the model
-# ToDo: replace surface version against older strike_ladder and check it works on charts
-# ToDo: move to implement the same thing for McSABR
-
 
 class SabrGenerator(SmileGenerator):
     """ Base class for the classical SABR model with a generic shift value. The classical Hagan
@@ -88,49 +84,49 @@ class SabrGenerator(SmileGenerator):
 
         return x_set, y_set, data_df
 
-    def price_strike_ladder(self, model, expiry, spreads, fwd, parameters):
-        strikes = []
-        eff_spreads = []
-        # Calculate strikes and exclude those below the shift
-        for spread in spreads:
-            strike = fwd + spread / 10000.0
-            if strike > -self.shift + constants.BPS10:
-                eff_spreads.append(spread)
-                strikes.append(strike)
+    # def price_strike_ladder(self, model, expiry, spreads, fwd, parameters):
+    #     strikes = []
+    #     eff_spreads = []
+    #     # Calculate strikes and exclude those below the shift
+    #     for spread in spreads:
+    #         strike = fwd + spread / 10000.0
+    #         if strike > -self.shift + constants.BPS10:
+    #             eff_spreads.append(spread)
+    #             strikes.append(strike)
 
-        num_points = len(strikes)
-        # Retrieve parameters
-        lnvol = parameters['LnVol']
-        beta = parameters['Beta']
-        nu = parameters['Nu']
-        rho = parameters['Rho']
+    #     num_points = len(strikes)
+    #     # Retrieve parameters
+    #     lnvol = parameters['LnVol']
+    #     beta = parameters['Beta']
+    #     nu = parameters['Nu']
+    #     rho = parameters['Rho']
 
-        # Prepare learning model inputs
-        md_inputs = np.ones((num_points, 7))
-        md_inputs[:, 0] *= expiry
-        md_inputs[:, 1] = strikes
-        md_inputs[:, 2] *= fwd
-        md_inputs[:, 3] *= lnvol
-        md_inputs[:, 4] *= beta
-        md_inputs[:, 5] *= nu
-        md_inputs[:, 6] *= rho
+    #     # Prepare learning model inputs
+    #     md_inputs = np.ones((num_points, 7))
+    #     md_inputs[:, 0] *= expiry
+    #     md_inputs[:, 1] = strikes
+    #     md_inputs[:, 2] *= fwd
+    #     md_inputs[:, 3] *= lnvol
+    #     md_inputs[:, 4] *= beta
+    #     md_inputs[:, 5] *= nu
+    #     md_inputs[:, 6] *= rho
 
-        # Price with learning model
-        md_nvols = model.predict(md_inputs)
-        # md_prices = bachelier.price(expiry, strikes, self.is_call, fwd, md_nvols)
-        md_prices = []
-        for (strike, vol) in zip(strikes, md_nvols):
-            md_prices.append(bachelier.price(expiry, strike, self.is_call, fwd, vol))
+    #     # Price with learning model
+    #     md_nvols = model.predict(md_inputs)
+    #     # md_prices = bachelier.price(expiry, strikes, self.is_call, fwd, md_nvols)
+    #     md_prices = []
+    #     for (strike, vol) in zip(strikes, md_nvols):
+    #         md_prices.append(bachelier.price(expiry, strike, self.is_call, fwd, vol))
 
-        # Price with ref valuation
-        rf_prices = []
-        for strike in strikes:
-            rf_prices.append(self.price(expiry, strike, self.is_call, fwd, parameters))
+    #     # Price with ref valuation
+    #     rf_prices = []
+    #     for strike in strikes:
+    #         rf_prices.append(self.price(expiry, strike, self.is_call, fwd, parameters))
 
-        return rf_prices, md_prices, strikes, eff_spreads
+    #     return rf_prices, md_prices, strikes, eff_spreads
 
     def price_surface_ref(self, expiries, strikes, is_call, fwd, parameters):
-        ref_prices = self.price(expiries, strikes, self.is_call, fwd, parameters)
+        ref_prices = self.price(expiries, strikes, is_call, fwd, parameters)
         return ref_prices
 
     def price_surface_mod(self, model, expiries, strikes, is_call, fwd, parameters):
@@ -164,7 +160,6 @@ class SabrGenerator(SmileGenerator):
         md_prices = np.asarray(md_prices)
         return md_prices.reshape(num_expiries, num_strikes)
 
-
     def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
         if input_method == 'Percentiles':
             lnvol = parameters['LnVol']
@@ -185,34 +180,29 @@ class ShiftedSabrGenerator(SabrGenerator):
 
 if __name__ == "__main__":
     # Test generation
-    # NUM_SAMPLES = 10 #100 * 1000
-    # MODEL_TYPE = 'ShiftedSABR'
-    # project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
-    # data_folder = os.path.join(project_folder, "samples")
-    # filemanager.check_directory(data_folder)
-    # file = os.path.join(data_folder, MODEL_TYPE + "_samples_test.tsv")
-    # generator = ShiftedSabrGenerator()
+    NUM_SAMPLES = 10 #100 * 1000
+    MODEL_TYPE = 'ShiftedSABR'
+    project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
+    data_folder = os.path.join(project_folder, "samples")
+    filemanager.check_directory(data_folder)
+    file = os.path.join(data_folder, MODEL_TYPE + "_samples_test.tsv")
+    generator = ShiftedSabrGenerator()
 
-    # print("Generating " + str(NUM_SAMPLES) + " samples")
-    # data_df_ = generator.generate_samples(NUM_SAMPLES)
-    # print(data_df_)
-    # print("Cleansing data")
-    # data_df_ = generator.to_nvol(data_df_)
-    # print("Output to file: " + file)
-    # generator.to_file(data_df_, file)
-    # print("Complete!")
+    print("Generating " + str(NUM_SAMPLES) + " samples")
+    data_df_ = generator.generate_samples(NUM_SAMPLES)
+    print(data_df_)
+    print("Cleansing data")
+    data_df_ = generator.to_nvol(data_df_)
+    print("Output to file: " + file)
+    generator.to_file(data_df_, file)
+    print("Complete!")
 
     # Test strike conversion
-    generator = ShiftedSabrGenerator()
-    EXPIRIES = np.asarray([0.5, 1.0, 5.0]).reshape(-1, 1)
-    STRIKE_INPUTS = np.asarray([[0.1, 0.9], [0.4, 0.6], [0.5, 0.5]])
-    FWD = 0.01
-    PARAMETERS = { 'LnVol': 0.2222, 'Beta': 0.3333, 'Nu': 0.4444, 'Rho': -0.5555 }
-    METHOD = 'Percentiles'
-    prices = generator.price_surface_mod(None, EXPIRIES, STRIKE_INPUTS, FWD, PARAMETERS, METHOD)
-    print(prices)
-
-    # strikes_ = generator.convert_strikes(EXPIRIES, STRIKE_INPUTS, FWD, PARAMETERS, METHOD)
-    # print(strikes_)
-    # a = (0.01 + 0.03) * np.exp(-0.5 * 0.25 * 0.25 * 1.0 + 0.25 * 1.0 * sp.norm.ppf(0.6)) - 0.03
-    # print(a)
+    # generator = ShiftedSabrGenerator()
+    # EXPIRIES = np.asarray([0.5, 1.0, 5.0]).reshape(-1, 1)
+    # STRIKE_INPUTS = np.asarray([[0.1, 0.9], [0.4, 0.6], [0.5, 0.5]])
+    # FWD = 0.01
+    # PARAMETERS = { 'LnVol': 0.2222, 'Beta': 0.3333, 'Nu': 0.4444, 'Rho': -0.5555 }
+    # METHOD = 'Percentiles'
+    # prices = generator.price_surface_mod(None, EXPIRIES, STRIKE_INPUTS, FWD, PARAMETERS, METHOD)
+    # print(prices)

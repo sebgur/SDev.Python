@@ -24,9 +24,9 @@ class SmileGenerator(ABC):
     def retrieve_datasets(self, data_file):
         """ Retrieve dataset stored in tsv file """
 
-    @abstractmethod
-    def price_strike_ladder(self, model, expiry, spreads, fwd, parameters):
-        """ Calculate prices for a ladder of strikes for given parameters """
+    # @abstractmethod
+    # def price_strike_ladder(self, model, expiry, spreads, fwd, parameters):
+    #     """ Calculate prices for a ladder of strikes for given parameters """
 
     @abstractmethod
     def price_surface_ref(self, expiries, strikes, is_call, fwd, parameters):

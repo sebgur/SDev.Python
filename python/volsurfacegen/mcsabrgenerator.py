@@ -7,7 +7,7 @@ import scipy.stats as sp
 import settings
 from analytics import mcsabr
 # from analytics import black
-# from analytics import bachelier
+from analytics import bachelier
 from volsurfacegen.sabrgenerator import SabrGenerator
 from volsurfacegen.smilegenerator import SmileGenerator
 from tools import filemanager
@@ -142,6 +142,53 @@ class McSabrGenerator(SabrGenerator):
         y_set = np.reshape(y_set, (num_samples, 1))
 
         return x_set, y_set, data_df
+
+    def price_surface_ref(self, expiries, strikes, is_call, fwd, parameters):
+        are_calls = [is_call] * strikes.shape[1]
+        are_calls = [are_calls] * expiries.shape[0]
+        ref_prices = self.price(expiries, strikes, are_calls, fwd, parameters)
+        return ref_prices
+
+    def price_surface_mod(self, model, expiries, strikes, is_call, fwd, parameters):
+        # Retrieve parameters
+        lnvol = parameters['LnVol']
+        beta = parameters['Beta']
+        nu = parameters['Nu']
+        rho = parameters['Rho']
+
+        # Prepare learning model inputs
+        num_expiries = expiries.shape[0]
+        num_strikes = strikes.shape[1]
+        num_points = num_expiries * num_strikes
+        md_inputs = np.ones((num_points, 7))
+        md_inputs[:, 0] = np.repeat(expiries, num_strikes)
+        md_inputs[:, 1] = strikes.reshape(-1)
+        md_inputs[:, 2] *= fwd
+        md_inputs[:, 3] *= lnvol
+        md_inputs[:, 4] *= beta
+        md_inputs[:, 5] *= nu
+        md_inputs[:, 6] *= rho
+
+        # Price with learning model
+        md_nvols = model.predict(md_inputs)
+        md_prices = []
+        for (point, vol) in zip(md_inputs, md_nvols):
+            expiry = point[0]
+            strike = point[1]
+            md_prices.append(bachelier.price(expiry, strike, is_call, fwd, vol))
+
+        md_prices = np.asarray(md_prices)
+        return md_prices.reshape(num_expiries, num_strikes)
+
+    def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
+        if input_method == 'Percentiles':
+            lnvol = parameters['LnVol']
+            stdev = lnvol * np.sqrt(expiries)
+            sfwd = fwd + self.shift
+            return sfwd * np.exp(-0.5 * stdev**2 + stdev * sp.norm.ppf(strike_inputs)) - self.shift
+        else:
+            return SmileGenerator.convert_strikes(expiries, strike_inputs, fwd, parameters,
+                                                  input_method)
 
 # Special class for Shifted SABR with shift = 3%, for easier calling
 class McShiftedSabrGenerator(McSabrGenerator):

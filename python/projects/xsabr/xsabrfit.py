@@ -19,9 +19,7 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
-# Adapt new charting to MC SABR
-# See if error improves when reducing the range of percentiles for training and/or
-#   increasing the number of simulations
+# See if error improves when increasing the number of simulations
 # Try training on correction to Shifted BS price. Is that similar to Kienitz's control variate?
 # Bring into design the ability to use best model until now?
 # Re-training from saved model
@@ -33,12 +31,12 @@ from projects.xsabr import xsabrplot as xplt
 
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
-MODEL_TYPE = "ShiftedSABR"
-# MODEL_TYPE = "McShiftedSABR"
-GENERATE_SAMPLES = False # If false, read dataset from file
+# MODEL_TYPE = "ShiftedSABR"
+MODEL_TYPE = "McShiftedSABR"
+GENERATE_SAMPLES = True # If false, read dataset from file
 NUM_SAMPLES = 100 * 1000 # Relevant if GENERATE_SAMPLES is True
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-TRAIN = False # Train the model (if False, read from file)
+TRAIN = True # Train the model (if False, read from file)
 EPOCHS = 100 # Relevant if TRAIN is True
 BATCH_SIZE = 1000 # Relevant if TRAIN is True
 SHOW_VOL_CHARTS = True # Show strike ladder charts
@@ -70,7 +68,12 @@ if MODEL_TYPE == "SABR":
 elif MODEL_TYPE == "ShiftedSABR":
     generator = ShiftedSabrGenerator()
 elif MODEL_TYPE == "McShiftedSABR":
-    generator = McShiftedSabrGenerator()
+    NUM_EXPIRIES = 25
+    SURFACE_SIZE = 1000
+    NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
+    NUM_MC = 100 * 1000
+    POINTS_PER_YEAR = 25
+    generator = McShiftedSabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
 else:
     raise ValueError("Unknown model: " + MODEL_TYPE)
 
@@ -183,7 +186,9 @@ if SHOW_VOL_CHARTS:
 
     strikes = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
     IS_CALL = False
+    print("Calculating chart surface with reference model")
     ref_prices = generator.price_surface_ref(EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
+    print("Calculating chart surface with trained model")
     mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
     print(f"Ref-Mod RMSE: {bps_rmse(ref_prices, mod_prices):.2f}")
 
