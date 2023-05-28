@@ -19,9 +19,7 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
-# See if error improves when using smaller surfaces for more parameter variety
-# See if error improves when increasing the number of simulations
-# Implement training on correction to Shifted BS price. Is that similar to Kienitz's control variate?
+# FBSABR, ZABR, Heston
 # Bring into design the ability to use best model until now?
 # Re-training from saved model
 # Implement new class over LearningModel that gives prices directly, having stored
