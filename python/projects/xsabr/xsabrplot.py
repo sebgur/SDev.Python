@@ -15,14 +15,15 @@ def plot_transform_surface(expiries, strikes, is_call, fwd, ref_prices, mod_pric
     num_charts = expiries.shape[0]
     num_cols = 2
     num_rows = int(num_charts / num_cols)
+    print("num_rows: " + str(num_rows))
     ylabel = 'Price' if transform is 'Price' else 'Vol'
 
     plt.figure(figsize=(18, 10))
     plt.subplots_adjust(hspace=0.40)
 
     for i in range(num_charts):
-        plt.title(title + f", at T={expiries[i]}")
         plt.subplot(num_rows, num_cols, i + 1)
+        plt.title(title + f" at T={expiries[i, 0]}")
         plt.xlabel('Strike')
         plt.ylabel(ylabel)
         plt.plot(strikes[i], ref_disp[i], color='blue', label='Reference')

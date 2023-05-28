@@ -129,15 +129,11 @@ class SabrGenerator(SmileGenerator):
 
         return rf_prices, md_prices, strikes, eff_spreads
 
-    def price_surface_ref(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
-        strikes = self.convert_strikes(expiries, strike_inputs, fwd, parameters, input_method)
+    def price_surface_ref(self, expiries, strikes, is_call, fwd, parameters):
         ref_prices = self.price(expiries, strikes, self.is_call, fwd, parameters)
         return ref_prices
 
-    def price_surface_mod(self, model, expiries, strike_inputs, fwd, parameters,
-                          input_method='Strikes'):
-        strikes = self.convert_strikes(expiries, strike_inputs, fwd, parameters, input_method)
-
+    def price_surface_mod(self, model, expiries, strikes, is_call, fwd, parameters):
         # Retrieve parameters
         lnvol = parameters['LnVol']
         beta = parameters['Beta']
@@ -163,12 +159,10 @@ class SabrGenerator(SmileGenerator):
         for (point, vol) in zip(md_inputs, md_nvols):
             expiry = point[0]
             strike = point[1]
-            md_prices.append(bachelier.price(expiry, strike, self.is_call, fwd, vol))
+            md_prices.append(bachelier.price(expiry, strike, is_call, fwd, vol))
 
         md_prices = np.asarray(md_prices)
         return md_prices.reshape(num_expiries, num_strikes)
-        # return md_prices.reshape(num_expiries, num_strikes)
-        # return md_inputs
 
 
     def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):

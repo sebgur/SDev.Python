@@ -17,22 +17,19 @@ from machinelearning.datasets import prepare_sets
 from tools.filemanager import check_directory
 from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
-# from projects.xsabr import xsabrplot as xplt
+from projects.xsabr import xsabrplot as xplt
 
-# Test new charting on old SABR
-# Save best trained models in Git
 # Adapt new charting to MC SABR
 # See if error improves when reducing the range of percentiles for training and/or
 #   increasing the number of simulations
-# Try training on correction to Shifted BS price. Time value will probably not work 
-#   as it is not smooth at ATM.
+# Try training on correction to Shifted BS price. Is that similar to Kienitz's control variate?
 # Bring into design the ability to use best model until now?
 # Re-training from saved model
 # Implement new class over LearningModel that gives prices directly, having stored
 #   the model. Implement inversions to shifted BS and Bachelier as well.
 # Possibility to test only without training
 # Finalize and fine-train models on extended parameter range
-# Store models in git and data in Kaggle
+# Store data in Kaggle
 
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
@@ -174,41 +171,27 @@ print(f"RMSE on test set: {test_rmse:,.2f}")
 
 # Generate strike spread axis
 if SHOW_VOL_CHARTS:
-    NUM_TEST = 100
-    SPREADS = np.linspace(-300, 300, num=NUM_TEST)
+    NUM_STRIKES = 100
     PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
     FWD = 0.028
 
-    EXPIRIES = np.asarray([0.25, 1.00]).reshape(-1, 1)
-    # EXPIRIES = np.asarray([0.25, 0.50, 0.75, 1.00, 2.00, 5.00]).reshape(-1, 1)
+    # Any number of expiries can be calculated, but for optimum display choose no more than 6
+    EXPIRIES = np.asarray([0.25, 0.50, 0.75, 1.00, 2.00, 5.00]).reshape(-1, 1)
     METHOD = 'Percentiles'
-    PERCENTS = np.linspace(0.01, 0.99, num=3)
-    PERCENTS = np.asarray([PERCENTS] * 2)
+    PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
+    PERCENTS = np.asarray([PERCENTS] * EXPIRIES.shape[0])
 
-    print(EXPIRIES)
-    print(PERCENTS)
-    ref_prices = generator.price_surface_ref(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
-    mod_prices = generator.price_surface_mod(model, EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
-    print(ref_prices)
-    print(mod_prices)
+    strikes = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
+    IS_CALL = False
+    ref_prices = generator.price_surface_ref(EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
+    mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
+    print(f"Ref-Mod RMSE: {bps_rmse(ref_prices, mod_prices):.2f}")
 
-    # plt.figure(figsize=(18, 10))
-    # plt.subplots_adjust(hspace=0.40)
+    # Available tranforms: Price, ShiftedBlackScholes, Bachelier
+    TITLE = "Smile"
+    xplt.plot_transform_surface(EXPIRIES, strikes, generator.is_call, FWD, ref_prices, mod_prices,
+                                TITLE, transform="ShiftedBlackScholes")
 
-    # plt.subplot(2, 3, 1)
-    # xplt.strike_ladder(0.25, SPREADS, FWD, PARAMS, generator, model)
-    # plt.subplot(2, 3, 2)
-    # xplt.strike_ladder(0.50, SPREADS, FWD, PARAMS, generator, model)
-    # plt.subplot(2, 3, 3)
-    # xplt.strike_ladder(0.75, SPREADS, FWD, PARAMS, generator, model)
-    # plt.subplot(2, 3, 4)
-    # xplt.strike_ladder(1.00, SPREADS, FWD, PARAMS, generator, model)
-    # plt.subplot(2, 3, 5)
-    # xplt.strike_ladder(2.00, SPREADS, FWD, PARAMS, generator, model)
-    # plt.subplot(2, 3, 6)
-    # xplt.strike_ladder(5.00, SPREADS, FWD, PARAMS, generator, model)
-
-    # plt.show()
 
 # Show training history
 if TRAIN:
