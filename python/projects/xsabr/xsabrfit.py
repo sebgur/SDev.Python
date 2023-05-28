@@ -19,13 +19,15 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
+# See if error improves when using smaller surfaces for more parameter variety
 # See if error improves when increasing the number of simulations
-# Try training on correction to Shifted BS price. Is that similar to Kienitz's control variate?
+# Implement training on correction to Shifted BS price. Is that similar to Kienitz's control variate?
 # Bring into design the ability to use best model until now?
 # Re-training from saved model
 # Implement new class over LearningModel that gives prices directly, having stored
 #   the model. Implement inversions to shifted BS and Bachelier as well.
 # Possibility to test only without training
+# Utility to merge sample data files into 1
 # Finalize and fine-train models on extended parameter range
 # Store data in Kaggle
 
@@ -33,7 +35,7 @@ from projects.xsabr import xsabrplot as xplt
 # MODEL_TYPE = "SABR"
 # MODEL_TYPE = "ShiftedSABR"
 MODEL_TYPE = "McShiftedSABR"
-GENERATE_SAMPLES = True # If false, read dataset from file
+GENERATE_SAMPLES = False # If false, read dataset from file
 NUM_SAMPLES = 100 * 1000 # Relevant if GENERATE_SAMPLES is True
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 TRAIN = True # Train the model (if False, read from file)
@@ -68,8 +70,8 @@ if MODEL_TYPE == "SABR":
 elif MODEL_TYPE == "ShiftedSABR":
     generator = ShiftedSabrGenerator()
 elif MODEL_TYPE == "McShiftedSABR":
-    NUM_EXPIRIES = 25
-    SURFACE_SIZE = 1000
+    NUM_EXPIRIES = 20
+    SURFACE_SIZE = 200
     NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
     NUM_MC = 100 * 1000
     POINTS_PER_YEAR = 25
@@ -89,7 +91,7 @@ if GENERATE_SAMPLES:
 
 # Retrieve dataset
 print(">> Reading dataset from file: " + data_file)
-x_set, y_set, data_df = generator.retrieve_datasets(data_file)
+x_set, y_set, data_df = generator.retrieve_datasets(data_file, shuffle=True)
 input_dim = x_set.shape[1]
 output_dim = y_set.shape[1]
 print("> Input dimension: " + str(input_dim))
@@ -142,6 +144,9 @@ if TRAIN:
     print(">> Training ANN model")
     trn_timer = Stopwatch("Training")
     trn_timer.trigger()
+    # shuffled_indices = np.random.permutation(x_train.shape[0])
+    # x_train = x_train[shuffled_indices]
+    # y_train = y_train[shuffled_indices]
     model.train(x_train, y_train, EPOCHS, BATCH_SIZE, callback)
     trn_timer.stop()
     trn_timer.print()

@@ -21,7 +21,7 @@ class SmileGenerator(ABC):
         """ Calculate option price under the specified model and its parameters """
 
     @abstractmethod
-    def retrieve_datasets(self, data_file):
+    def retrieve_datasets(self, data_file, shuffle=False):
         """ Retrieve dataset stored in tsv file """
 
     # @abstractmethod
@@ -84,9 +84,12 @@ class SmileGenerator(ABC):
         return self.is_call
 
     @staticmethod
-    def from_file(data_file):
+    def from_file(data_file, shuffle=False):
         """ Creating dataframe from tsv file """
         data_df = pd.read_csv(data_file, sep='\t')
+        if shuffle:
+            data_df = data_df.sample(frac=1)
+
         return data_df
 
     @staticmethod

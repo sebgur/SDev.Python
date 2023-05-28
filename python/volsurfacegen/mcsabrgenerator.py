@@ -34,6 +34,7 @@ class McSabrGenerator(SabrGenerator):
         print(f"Number of expiries: {self.num_expiries:,}")
         print(f"Surface size: {self.surface_size:,}")
         print(f"Number of samples: {num_samples:,}")
+        print(f"Number of parameter samples: {int(num_samples / self.surface_size)}")
 
         # Derive number of surfaces to generate
         num_surfaces = int(num_samples / self.surface_size + 1)
@@ -122,8 +123,8 @@ class McSabrGenerator(SabrGenerator):
 
         return prices
 
-    def retrieve_datasets(self, data_file):
-        data_df = SmileGenerator.from_file(data_file)
+    def retrieve_datasets(self, data_file, shuffle=False):
+        data_df = SmileGenerator.from_file(data_file, shuffle)
 
         # Retrieve suitable data
         t = data_df.Ttm

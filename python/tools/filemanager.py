@@ -3,6 +3,7 @@ import os
 import csv
 import winsound
 import datetime as dt
+import pathlib
 
 
 def check_directory(path):
@@ -20,16 +21,28 @@ def write_csv(file):
         writer.writerow(row)
 
 
-def list_csv(path):
-    """ List all csv files in a folder """
-    files = []
-    for r, d, f in os.walk(path):
-        for file in f:
-            if '.csv' in file:
-                files.append(os.path.join(r, file))
+# def list_csv(path):
+#     """ List all csv files in a folder """
+#     files = []
+#     for r, d, f in os.walk(path):
+#         for file in f:
+#             if '.csv' in file:
+#                 files.append(os.path.join(r, file))
 
-    return files
+#     return files
 
+def list_files(path, extensions=None):
+    """ List all files in a path that have the extensions """
+    all_files = os.listdir(path)
+    if extensions is None:
+        return all_files
+    else:
+        files = []
+        for f in all_files:
+            if pathlib.Path(f).suffix in extensions:
+                files.append(f)
+
+        return files
 
 def make_a_noise(beep=True):
     """ Make a noise """
