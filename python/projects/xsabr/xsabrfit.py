@@ -70,11 +70,11 @@ if MODEL_TYPE == "SABR":
 elif MODEL_TYPE == "ShiftedSABR":
     generator = ShiftedSabrGenerator()
 elif MODEL_TYPE == "McShiftedSABR":
-    NUM_EXPIRIES = 20
-    SURFACE_SIZE = 200
+    NUM_EXPIRIES = 10
+    SURFACE_SIZE = 50
     NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
-    NUM_MC = 100 * 1000
-    POINTS_PER_YEAR = 25
+    NUM_MC = 50 * 1000 # 100 * 1000
+    POINTS_PER_YEAR = 20 # 25
     generator = McShiftedSabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
 else:
     raise ValueError("Unknown model: " + MODEL_TYPE)

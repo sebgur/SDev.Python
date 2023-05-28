@@ -34,11 +34,10 @@ class McSabrGenerator(SabrGenerator):
         print(f"Number of expiries: {self.num_expiries:,}")
         print(f"Surface size: {self.surface_size:,}")
         print(f"Number of samples: {num_samples:,}")
-        print(f"Number of parameter samples: {int(num_samples / self.surface_size)}")
 
         # Derive number of surfaces to generate
-        num_surfaces = int(num_samples / self.surface_size + 1)
-        print(f"Number of surfaces to generate: {num_surfaces:,}")
+        num_surfaces = int(num_samples / self.surface_size)# + 1)
+        print(f"Number of surfaces/parameter samples: {num_surfaces:,}")
 
         # Draw parameters
         lnvol = self.rng.uniform(0.05, 0.25, num_surfaces)
@@ -58,6 +57,8 @@ class McSabrGenerator(SabrGenerator):
         for j in range(num_surfaces):
             print(f"Surface generation number {j+1:,}/{num_surfaces:,}")
             expiries = self.rng.uniform(1.0 / 12.0, 5.0, self.num_expiries)
+            # Need to sort these expiries
+            expiries = np.unique(expiries)
             fwd = self.rng.uniform(self.min_fwd, self.max_fwd, 1)[0]
             vol = lnvol[j]
 

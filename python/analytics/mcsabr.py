@@ -24,7 +24,10 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     time_grid_builder = SimpleTimeGridBuilder(points_per_year=points_per_year)
     time_grid_builder.add_grid(expiries)
     time_grid = time_grid_builder.complete_grid()
-    print("time grid size: ", len(time_grid))
+    # print("expiries: \n")
+    # print(expiries)
+    # print("time grid size: ", len(time_grid))
+    # print(time_grid)
     num_factors = 2
 
     # Find payoff times
