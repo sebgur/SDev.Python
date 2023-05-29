@@ -62,10 +62,6 @@ class McSabrGenerator(SabrGenerator):
             fwd = self.rng.uniform(self.min_fwd, self.max_fwd, 1)[0]
             vol = lnvol[j]
 
-            # print("t shape: ", expiries.shape)
-            # print("t\n", expiries)
-            # print("fwd: ", fwd)
-
             # Draw strikes
             ks = []
             for exp_idx in range(self.num_expiries):
@@ -83,15 +79,12 @@ class McSabrGenerator(SabrGenerator):
                 ks.append(k)
 
             ks = np.asarray(ks)
-            # print("Strikes shape: ", ks.shape)
-            # print("Strikes\n", ks)
 
             # Draw parameters
             params = {'LnVol': lnvol[j], 'Beta': beta[j], 'Nu': nu[j], 'Rho': rho[j]}
 
             # Calculate prices
             price = self.price(expiries, ks, self.are_calls, fwd, params)
-            # print(price)
 
             # Flatten the results
             for exp_idx, expiry in enumerate(expiries):
@@ -103,11 +96,6 @@ class McSabrGenerator(SabrGenerator):
                 nus.extend([nu[j]] * self.num_strikes)
                 rhos.extend([rho[j]] * self.num_strikes)
                 prices.extend(price[exp_idx])
-
-
-            # print("expiries\n", ts)
-            # print("strikes\n", strikes)
-            # print("fwds\n", fwds)
 
         # Put in dataframe
         df = pd.DataFrame({'Ttm': ts, 'K': strikes, 'F': fwds, 'LnVol': lnvols, 'Beta': betas,
@@ -125,6 +113,7 @@ class McSabrGenerator(SabrGenerator):
         return prices
 
     def retrieve_datasets(self, data_file, shuffle=False):
+        # ToDo: This is identical to SABR, make SABR base class and derive?
         data_df = SmileGenerator.from_file(data_file, shuffle)
 
         # Retrieve suitable data
@@ -183,6 +172,7 @@ class McSabrGenerator(SabrGenerator):
         return md_prices.reshape(num_expiries, num_strikes)
 
     def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
+        # ToDo: This is identical to SABR, make SABR base class and derive?
         if input_method == 'Percentiles':
             lnvol = parameters['LnVol']
             stdev = lnvol * np.sqrt(expiries)
