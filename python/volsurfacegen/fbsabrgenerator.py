@@ -25,7 +25,7 @@ class FbSabrGenerator(McSabrGenerator):
         self.are_calls = [[self.is_call] * self.num_strikes] * self.num_expiries
 
     def price(self, expiries, strikes, is_call, fwd, parameters):
-        prices = mcsabr.price(expiries, strikes, is_call, fwd, parameters,
+        prices = fbsabr.price(expiries, strikes, is_call, fwd, parameters,
                               self.num_mc, self.points_per_year)
 
         return prices
@@ -35,15 +35,15 @@ if __name__ == "__main__":
     NUM_SAMPLES = 100 * 1000
     NUM_MC = 100 * 1000
     POINTS_PER_YEAR = 25
-    SURFACE_SIZE = 1000
-    NUM_EXPIRIES = 25
+    SURFACE_SIZE = 50
+    NUM_EXPIRIES = 10
     NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
-    MODEL_TYPE = 'McShiftedSABR'
+    MODEL_TYPE = 'FbSABR'
     project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
     data_folder = os.path.join(project_folder, "samples")
     filemanager.check_directory(data_folder)
     file = os.path.join(data_folder, MODEL_TYPE + "_samples.tsv")
-    generator = McShiftedSabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
+    generator = FbSabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
 
     print("Generating " + str(NUM_SAMPLES) + " samples")
     gen_timer = timer.Stopwatch("Sample Generation")

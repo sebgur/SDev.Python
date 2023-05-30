@@ -190,11 +190,11 @@ class McShiftedSabrGenerator(McSabrGenerator):
 
 
 if __name__ == "__main__":
-    NUM_SAMPLES = 100 * 1000
+    NUM_SAMPLES = 100 #100 * 1000
     NUM_MC = 100 * 1000
     POINTS_PER_YEAR = 25
-    SURFACE_SIZE = 1000
-    NUM_EXPIRIES = 25
+    SURFACE_SIZE = 50
+    NUM_EXPIRIES = 10
     NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
     MODEL_TYPE = 'McShiftedSABR'
     project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
