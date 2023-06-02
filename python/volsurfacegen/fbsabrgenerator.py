@@ -1,14 +1,9 @@
 """ Smile generator for Free-Boundary SABR model (FBSABR) using Monte-Carlo to calculate option
     prices """
 import os
-# import numpy as np
-# import pandas as pd
-# import scipy.stats as sp
 import settings
 from analytics import fbsabr
-# from analytics import bachelier
 from volsurfacegen.mcsabrgenerator import McSabrGenerator
-# from volsurfacegen.smilegenerator import SmileGenerator
 from tools import filemanager
 from tools import timer
 
