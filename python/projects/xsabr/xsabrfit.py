@@ -10,6 +10,7 @@ from volsurfacegen.sabrgenerator import SabrGenerator, ShiftedSabrGenerator
 from volsurfacegen.mcsabrgenerator import McShiftedSabrGenerator
 from volsurfacegen.fbsabrgenerator import FbSabrGenerator
 from volsurfacegen.mczabrgenerator import McShiftedZabrGenerator
+from volsurfacegen.mchestongenerator import McShiftedHestonGenerator
 import settings
 from machinelearning.topology import compose_model
 from machinelearning.learningmodel import LearningModel, load_learning_model
@@ -21,8 +22,6 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
-# Heston
-# Bring into design the ability to use best model until now?
 # Re-training from saved model
 # Implement new class over LearningModel that gives prices directly, having stored
 #   the model. Implement inversions to shifted BS and Bachelier as well.
@@ -36,11 +35,12 @@ from projects.xsabr import xsabrplot as xplt
 # MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "McShiftedSABR"
 # MODEL_TYPE = "FbSABR"
-MODEL_TYPE = "McShiftedZABR"
+# MODEL_TYPE = "McShiftedZABR"
+MODEL_TYPE = "McShiftedHeston"
 GENERATE_SAMPLES = False # If false, read dataset from file
 NUM_SAMPLES = 100 * 1000 # Relevant if GENERATE_SAMPLES is True
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-TRAIN = False # Train the model (if False, read from file)
+TRAIN = True # Train the model (if False, read from file)
 EPOCHS = 100 # Relevant if TRAIN is True
 BATCH_SIZE = 1000 # Relevant if TRAIN is True
 SHOW_VOL_CHARTS = True # Show strike ladder charts
@@ -92,6 +92,13 @@ elif MODEL_TYPE == "McShiftedZABR":
     NUM_MC = 50 * 1000 # 100 * 1000
     POINTS_PER_YEAR = 20 # 25
     generator = McShiftedZabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
+elif MODEL_TYPE == "McShiftedHeston":
+    NUM_EXPIRIES = 10
+    SURFACE_SIZE = 50
+    NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
+    NUM_MC = 50 * 1000 # 100 * 1000
+    POINTS_PER_YEAR = 20 # 25
+    generator = McShiftedHestonGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
 else:
     raise ValueError("Unknown model: " + MODEL_TYPE)
 
@@ -196,7 +203,8 @@ print(f"RMSE on test set: {test_rmse:,.2f}")
 # Generate strike spread axis
 if SHOW_VOL_CHARTS:
     NUM_STRIKES = 100
-    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25, 'Gamma': 0.7 }
+    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25, 'Gamma': 0.7, 'Kappa': 1.0,
+                'Theta': 0.05, 'Xi': 0.50 }
     FWD = 0.028
 
     # Any number of expiries can be calculated, but for optimum display choose no more than 6
