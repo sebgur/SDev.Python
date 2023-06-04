@@ -84,47 +84,6 @@ class SabrGenerator(SmileGenerator):
 
         return x_set, y_set, data_df
 
-    # def price_strike_ladder(self, model, expiry, spreads, fwd, parameters):
-    #     strikes = []
-    #     eff_spreads = []
-    #     # Calculate strikes and exclude those below the shift
-    #     for spread in spreads:
-    #         strike = fwd + spread / 10000.0
-    #         if strike > -self.shift + constants.BPS10:
-    #             eff_spreads.append(spread)
-    #             strikes.append(strike)
-
-    #     num_points = len(strikes)
-    #     # Retrieve parameters
-    #     lnvol = parameters['LnVol']
-    #     beta = parameters['Beta']
-    #     nu = parameters['Nu']
-    #     rho = parameters['Rho']
-
-    #     # Prepare learning model inputs
-    #     md_inputs = np.ones((num_points, 7))
-    #     md_inputs[:, 0] *= expiry
-    #     md_inputs[:, 1] = strikes
-    #     md_inputs[:, 2] *= fwd
-    #     md_inputs[:, 3] *= lnvol
-    #     md_inputs[:, 4] *= beta
-    #     md_inputs[:, 5] *= nu
-    #     md_inputs[:, 6] *= rho
-
-    #     # Price with learning model
-    #     md_nvols = model.predict(md_inputs)
-    #     # md_prices = bachelier.price(expiry, strikes, self.is_call, fwd, md_nvols)
-    #     md_prices = []
-    #     for (strike, vol) in zip(strikes, md_nvols):
-    #         md_prices.append(bachelier.price(expiry, strike, self.is_call, fwd, vol))
-
-    #     # Price with ref valuation
-    #     rf_prices = []
-    #     for strike in strikes:
-    #         rf_prices.append(self.price(expiry, strike, self.is_call, fwd, parameters))
-
-    #     return rf_prices, md_prices, strikes, eff_spreads
-
     def price_surface_ref(self, expiries, strikes, is_call, fwd, parameters):
         ref_prices = self.price(expiries, strikes, is_call, fwd, parameters)
         return ref_prices

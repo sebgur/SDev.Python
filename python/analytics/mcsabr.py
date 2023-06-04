@@ -141,7 +141,7 @@ if __name__ == "__main__":
     XAXIS = STRIKES
 
     PARAMETERS = {'LnVol': LNVOL, 'Beta': 0.1, 'Nu': 0.50, 'Rho': -0.25}
-    NUM_MC = 1000 * 1000
+    NUM_MC = 10 * 1000
     POINTS_PER_YEAR = 200
     SCHEME = 'LogAndersen'
     # SCHEME = 'LogEuler'

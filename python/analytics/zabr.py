@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as sp
-# from analytics.sabr import calculate_alpha
+import analytics.mcsabr as mcsabr
 from tools.timegrids import SimpleTimeGridBuilder
 from tools import timer
 
@@ -38,8 +38,12 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     rho = parameters['Rho']
     gamma = parameters['Gamma']
     alpha = calculate_zabr_alpha(lnvol, fwd, beta)
+    print(f'alpha: {alpha:0.5f}')
+    print(f'beta: {beta:.2f}')
     sqrtmrho2 = np.sqrt(1.0 - rho**2)
-    vol_floor = 0.000001
+    vol_floor = 0.0001
+
+    print(f'Gamma: {gamma:.2f}')
 
     # Draw all gaussians
     # gaussians = rand.gaussians(num_steps, num_mc, num_factors, rand_method)
@@ -77,16 +81,22 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
         # Only using LogEuler scheme
         avolc = alpha * np.minimum(spot**(beta - 1.0), 500.0 * scale**(beta - 1.0))
         vols = vol * avolc
+        # vols = vol
 
         # Evolve vol
+        # nus = nu
+        # nus = nu * vol**(gamma - 1.0)
+        nus = nu * np.minimum(vol**(gamma - 1.0), 50000.0 * vol_floor**(gamma - 1.0))
+        vol *= np.exp(-0.5 * np.power(nus, 2) * dt + nus * dz1)
         # vol = vol + nu * np.power(np.abs(vol), gamma) * dz1
-        nus = nu * np.minimum(vol**(gamma - 1.0), 500.0 * vol_floor**(gamma - 1.0))
-        vol *= np.exp(-0.5 * nus**2 * dt + nus * dz1)
+        # vol = np.maximum(vol, 0.0)
 
         # Evolve spot
-        ito = 0.5 * np.power(vols, 2) * dt
         dw = rho * dz1 + sqrtmrho2 * dz0
+        ito = 0.5 * np.power(vols, 2) * dt
         spot *= np.exp(-ito + vols * dw)
+        # spot = spot + vol * alpha * np.maximum(spot, 0.0001)**beta * dw
+        # spot = np.maximum(spot, 0.0)
 
         # Calculate payoff
         if is_payoff[i]:
@@ -110,18 +120,19 @@ def calculate_zabr_alpha(ln_vol, fwd, beta):
 
 
 if __name__ == "__main__":
-    EXPIRIES = [0.5, 1.0, 5.0, 10.0]
+    EXPIRIES = [10.0]#[0.5, 1.0, 5.0, 10.0]
     NSTRIKES = 50
-    FWD = 0.04
+    FWD = 0.0325
     SHIFT = 0.00
     SFWD = FWD + SHIFT
     IS_CALL = False
     ARE_CALLS = [IS_CALL] * NSTRIKES
     ARE_CALLS = [ARE_CALLS] * len(EXPIRIES)
-    LNVOL = 0.23
+    beta = 0.7
+    LNVOL = 0.0873 / FWD**(1.0 - 0.7)
     # Distribution method
     np_expiries = np.asarray(EXPIRIES).reshape(-1, 1)
-    PERCENT = np.linspace(0.01, 0.99, NSTRIKES)
+    PERCENT = np.linspace(0.01, 0.999, NSTRIKES)
     PERCENT = np.asarray([PERCENT] * len(EXPIRIES))
     ITO = -0.5 * LNVOL**2 * np_expiries
     DIFF = LNVOL * np.sqrt(np_expiries) * sp.norm.ppf(PERCENT)
@@ -129,88 +140,85 @@ if __name__ == "__main__":
     STRIKES = SSTRIKES - SHIFT
     XAXIS = STRIKES
 
-    PARAMS00 = {'LnVol': LNVOL, 'Beta': 0.7, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 0.0}
-    PARAMS05 = {'LnVol': LNVOL, 'Beta': 0.7, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 0.5}
-    PARAMS10 = {'LnVol': LNVOL, 'Beta': 0.7, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 1.0}
-    PARAMS15 = {'LnVol': LNVOL, 'Beta': 0.7, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 1.1}
-    PARAMS17 = {'LnVol': LNVOL, 'Beta': 0.7, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 1.2}
-    NUM_MC = 100 * 1000
+    # PARAMS1 = {'LnVol': LNVOL, 'Beta': 0.7, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 0.0}
+    # PARAMS2 = {'LnVol': LNVOL, 'Beta': 0.7, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 0.5}
+    # PARAMS3 = {'LnVol': LNVOL, 'Beta': 0.7, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 1.0}
+    # PARAMS4 = {'LnVol': LNVOL, 'Beta': 0.7, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 1.5}
+    PARAMS5 = {'LnVol': LNVOL, 'Beta': beta, 'Nu': 0.47, 'Rho': -0.48, 'Gamma': 1.7}
+    NUM_MC = 500 * 1000
     POINTS_PER_YEAR = 25
 
     # Calculate MC prices
     mc_timer = timer.Stopwatch("MC")
     mc_timer.trigger()
-    MC_PRICES00 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS00, NUM_MC, POINTS_PER_YEAR)
-    MC_PRICES05 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS05, NUM_MC, POINTS_PER_YEAR)
-    MC_PRICES10 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS10, NUM_MC, POINTS_PER_YEAR)
-    MC_PRICES15 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS15, NUM_MC, POINTS_PER_YEAR)
-    MC_PRICES17 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS17, NUM_MC, POINTS_PER_YEAR)
+    # MC_PRICES1 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS1, NUM_MC, POINTS_PER_YEAR)
+    # MC_PRICES2 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS2, NUM_MC, POINTS_PER_YEAR)
+    # MC_PRICES3 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS3, NUM_MC, POINTS_PER_YEAR)
+    # MC_PRICES4 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS4, NUM_MC, POINTS_PER_YEAR)
+    # MC_PRICES5 = price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS5, NUM_MC, POINTS_PER_YEAR)
+    SB_PRICES = mcsabr.price(EXPIRIES, SSTRIKES, ARE_CALLS, SFWD, PARAMS5, NUM_MC, POINTS_PER_YEAR)
     mc_timer.stop()
     mc_timer.print()
-
-    # print(MC_PRICES)
 
     # Convert to IV and compare against approximate closed-form
     import black
     import bachelier
-    mc_ivs00 = []
-    mc_ivs05 = []
-    mc_ivs10 = []
-    mc_ivs15 = []
-    mc_ivs17 = []
+    mc_ivs1 = []
+    mc_ivs2 = []
+    mc_ivs3 = []
+    mc_ivs4 = []
+    mc_ivs5 = []
+    sb_ivs = []
     for a, expiry in enumerate(EXPIRIES):
-        mc_iv00 = []
-        mc_iv05 = []
-        mc_iv10 = []
-        mc_iv15 = []
-        mc_iv17 = []
+        mc_iv1 = []
+        mc_iv2 = []
+        mc_iv3 = []
+        mc_iv4 = []
+        mc_iv5 = []
+        sb_iv = []
         for j, sstrike in enumerate(SSTRIKES[a]):
-            mc_iv00.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES00[a, j]))
-            mc_iv05.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES05[a, j]))
-            mc_iv10.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES10[a, j]))
-            mc_iv15.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES15[a, j]))
-            mc_iv17.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES17[a, j]))
-            # mc_iv.append(bachelier.implied_vol(expiry, STRIKES[a, j], IS_CALL, FWD, MC_PRICES[a, j]))
-            # mc_iv1.append(bachelier.implied_vol(expiry, STRIKES[a, j], IS_CALL, FWD, MC_PRICES1[a, j]))
-        mc_ivs00.append(mc_iv00)
-        mc_ivs05.append(mc_iv05)
-        mc_ivs10.append(mc_iv10)
-        mc_ivs15.append(mc_iv15)
-        mc_ivs17.append(mc_iv17)
+            # mc_iv1.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES1[a, j]))
+            # mc_iv2.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES2[a, j]))
+            # mc_iv3.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES3[a, j]))
+            # mc_iv4.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES4[a, j]))
+            # mc_iv5.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, MC_PRICES5[a, j]))
+            sb_iv.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD, SB_PRICES[a, j]))
+        mc_ivs1.append(mc_iv1)
+        mc_ivs2.append(mc_iv2)
+        mc_ivs3.append(mc_iv3)
+        mc_ivs4.append(mc_iv4)
+        mc_ivs5.append(mc_iv5)
+        sb_ivs.append(sb_iv)
 
-    plt.figure(figsize=(10, 8))
-    plt.subplots_adjust(hspace=0.40)
-    plt.subplot(2, 2, 1)
-    plt.plot(XAXIS[0], mc_ivs00[0], label='gam=0', color='blue')
-    plt.plot(XAXIS[0], mc_ivs05[0], label='gam=0.5', color='red')
-    plt.plot(XAXIS[0], mc_ivs10[0], label='gam=1', color='green')
-    plt.plot(XAXIS[0], mc_ivs15[0], label='gam=1.5', color='purple')
-    plt.plot(XAXIS[0], mc_ivs17[0], label='gam=1.7', color='cyan')
-    plt.legend(loc='best')
-    plt.title(f"Expiry: {EXPIRIES[0]}")
-    plt.subplot(2, 2, 2)
-    plt.plot(XAXIS[1], mc_ivs00[1], label='gam=0', color='blue')
-    plt.plot(XAXIS[1], mc_ivs05[1], label='gam=0.5', color='red')
-    plt.plot(XAXIS[1], mc_ivs10[1], label='gam=1', color='green')
-    plt.plot(XAXIS[1], mc_ivs15[1], label='gam=1.5', color='purple')
-    plt.plot(XAXIS[1], mc_ivs17[1], label='gam=1.7', color='cyan')
-    plt.legend(loc='best')
-    plt.title(f"Expiry: {EXPIRIES[1]}")
-    plt.subplot(2, 2, 3)
-    plt.plot(XAXIS[2], mc_ivs00[2], label='gam=0', color='blue')
-    plt.plot(XAXIS[2], mc_ivs05[2], label='gam=0.5', color='red')
-    plt.plot(XAXIS[2], mc_ivs10[2], label='gam=1', color='green')
-    plt.plot(XAXIS[2], mc_ivs15[2], label='gam=1.5', color='purple')
-    plt.plot(XAXIS[2], mc_ivs17[2], label='gam=1.7', color='cyan')
-    plt.legend(loc='best')
-    plt.title(f"Expiry: {EXPIRIES[2]}")
-    plt.subplot(2, 2, 4)
-    plt.plot(XAXIS[3], mc_ivs00[3], label='gam=0', color='blue')
-    plt.plot(XAXIS[3], mc_ivs05[3], label='gam=0.5', color='red')
-    plt.plot(XAXIS[3], mc_ivs10[3], label='gam=1', color='green')
-    plt.plot(XAXIS[3], mc_ivs15[3], label='gam=1.5', color='purple')
-    plt.plot(XAXIS[3], mc_ivs17[3], label='gam=1.7', color='cyan')
-    plt.legend(loc='best')
-    plt.title(f"Expiry: {EXPIRIES[3]}")
+    # label1 = f'gam={PARAMS1["Gamma"]}'
+    # label2 = f'gam={PARAMS2["Gamma"]}'
+    # label3 = f'gam={PARAMS3["Gamma"]}'
+    # label4 = f'gam={PARAMS4["Gamma"]}'
+    label5 = f'gam={PARAMS5["Gamma"]}'
 
-    plt.show()
+    xport = np.column_stack((STRIKES[0, :], sb_ivs[0]))
+    # xport = np.column_stack((STRIKES[3, :], mc_ivs1[3], mc_ivs2[3], mc_ivs3[3], mc_ivs4[3], mc_ivs5[3], sb_ivs[3]))
+    from tools import clipboard
+    clipboard.export2d(xport)
+
+
+    # def plot_zabr(idx):
+    #     plt.subplot(2, 2, idx + 1)
+        # plt.plot(XAXIS[idx], mc_ivs1[idx], label=label1, color='blue')
+        # plt.plot(XAXIS[idx], mc_ivs2[idx], label=label2, color='red')
+        # plt.plot(XAXIS[idx], mc_ivs3[idx], label=label3, color='green')
+        # plt.plot(XAXIS[idx], mc_ivs4[idx], label=label4, color='purple')
+        # plt.plot(XAXIS[idx], mc_ivs5[idx], label=label5, color='cyan')
+        # plt.plot(XAXIS[idx], sb_ivs[idx], label="SABR", color='black')
+        # plt.xticks(plt.xticks()[0],[f'{x*100:,.1f}%' for x in plt.xticks()[0]])
+        # plt.yticks(plt.yticks()[0],[f'{x*100:,.0f}%' for x in plt.yticks()[0]])
+        # plt.legend(loc='best')
+        # plt.title(f"Expiry: {EXPIRIES[idx]}")
+
+    # plt.figure(figsize=(12, 8))
+    # plt.subplots_adjust(hspace=0.40)
+    # plot_zabr(0)
+    # plot_zabr(1)
+    # plot_zabr(2)
+    # plot_zabr(3)
+    # plt.show()
