@@ -1,5 +1,5 @@
-""" Fit ANN to XSABR models. We implement the direct map here. Datasets of parameters (inputs)
-    vs prices/implied vols (outputs) are generated (or read from tsv) to train a network that
+""" Fit ANN to Stochastic Local Vol models. We implement the direct map here. Datasets of parameters
+    (inputs) vs prices/implied vols (outputs) are generated (or read from tsv) to train a network that
     learns the so-called 'direct' calculation, i.e. prices from parameter. """
 import os
 from datetime import datetime
