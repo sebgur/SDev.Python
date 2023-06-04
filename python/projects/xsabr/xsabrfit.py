@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from volsurfacegen.sabrgenerator import SabrGenerator, ShiftedSabrGenerator
 from volsurfacegen.mcsabrgenerator import McShiftedSabrGenerator
 from volsurfacegen.fbsabrgenerator import FbSabrGenerator
+from volsurfacegen.mczabrgenerator import McShiftedZabrGenerator
 import settings
 from machinelearning.topology import compose_model
 from machinelearning.learningmodel import LearningModel, load_learning_model
@@ -20,7 +21,7 @@ from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from projects.xsabr import xsabrplot as xplt
 
-# ZABR, Heston
+# Heston
 # Bring into design the ability to use best model until now?
 # Re-training from saved model
 # Implement new class over LearningModel that gives prices directly, having stored
@@ -34,11 +35,12 @@ from projects.xsabr import xsabrplot as xplt
 # MODEL_TYPE = "SABR"
 # MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "McShiftedSABR"
-MODEL_TYPE = "FbSABR"
+# MODEL_TYPE = "FbSABR"
+MODEL_TYPE = "McShiftedZABR"
 GENERATE_SAMPLES = False # If false, read dataset from file
 NUM_SAMPLES = 100 * 1000 # Relevant if GENERATE_SAMPLES is True
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-TRAIN = True # Train the model (if False, read from file)
+TRAIN = False # Train the model (if False, read from file)
 EPOCHS = 100 # Relevant if TRAIN is True
 BATCH_SIZE = 1000 # Relevant if TRAIN is True
 SHOW_VOL_CHARTS = True # Show strike ladder charts
@@ -83,6 +85,13 @@ elif MODEL_TYPE == "FbSABR":
     NUM_MC = 50 * 1000 # 100 * 1000
     POINTS_PER_YEAR = 20 # 25
     generator = FbSabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
+elif MODEL_TYPE == "McShiftedZABR":
+    NUM_EXPIRIES = 10
+    SURFACE_SIZE = 50
+    NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
+    NUM_MC = 50 * 1000 # 100 * 1000
+    POINTS_PER_YEAR = 20 # 25
+    generator = McShiftedZabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
 else:
     raise ValueError("Unknown model: " + MODEL_TYPE)
 
@@ -187,19 +196,21 @@ print(f"RMSE on test set: {test_rmse:,.2f}")
 # Generate strike spread axis
 if SHOW_VOL_CHARTS:
     NUM_STRIKES = 100
-    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
+    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25, 'Gamma': 0.7 }
     FWD = 0.028
 
     # Any number of expiries can be calculated, but for optimum display choose no more than 6
     EXPIRIES = np.asarray([0.25, 0.50, 0.75, 1.00, 2.00, 5.00]).reshape(-1, 1)
+    NUM_EXPIRIES = EXPIRIES.shape[0]
     METHOD = 'Percentiles'
     PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
-    PERCENTS = np.asarray([PERCENTS] * EXPIRIES.shape[0])
+    PERCENTS = np.asarray([PERCENTS] * NUM_EXPIRIES)
 
     strikes = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
     IS_CALL = False
+    ARE_CALLS = [[IS_CALL] * NUM_STRIKES] * NUM_EXPIRIES
     print("Calculating chart surface with reference model")
-    ref_prices = generator.price_surface_ref(EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
+    ref_prices = generator.price_surface_ref(EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
     print("Calculating chart surface with trained model")
     mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
     print(f"Ref-Mod RMSE: {bps_rmse(ref_prices, mod_prices):.2f}")
