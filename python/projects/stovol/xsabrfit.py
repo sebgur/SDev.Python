@@ -31,12 +31,12 @@ from projects.xsabr import xsabrplot as xplt
 # Store data in Kaggle
 
 # ################ Runtime configuration ##########################################################
-# MODEL_TYPE = "SABR"
+MODEL_TYPE = "SABR"
 # MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "McShiftedSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McShiftedZABR"
-MODEL_TYPE = "McShiftedHeston"
+# MODEL_TYPE = "McShiftedHeston"
 GENERATE_SAMPLES = False # If false, read dataset from file
 NUM_SAMPLES = 100 * 1000 # Relevant if GENERATE_SAMPLES is True
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
