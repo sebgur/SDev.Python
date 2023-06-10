@@ -199,7 +199,7 @@ if __name__ == "__main__":
     NUM_EXPIRIES = 10
     NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
     MODEL_TYPE = 'McShiftedZABR'
-    project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
+    project_folder = os.path.join(settings.WORKFOLDER, "stovol")
     data_folder = os.path.join(project_folder, "samples")
     filemanager.check_directory(data_folder)
     file = os.path.join(data_folder, MODEL_TYPE + "_samples.tsv")

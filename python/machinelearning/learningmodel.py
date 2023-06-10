@@ -112,6 +112,10 @@ def load_learning_model(path):
          
         One possibility could be to implement additional custom saving, recreate those components
         by hand, and then compile again. """
+    
+    if os.path.exists(path) is False:
+        raise RuntimeError("Model folder does not exist: " + path)
+
     keras_model = tf.keras.models.load_model(path, compile=False)
 
     x_scaler_file, y_scaler_file = scaler_files(path)

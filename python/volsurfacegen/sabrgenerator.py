@@ -141,7 +141,7 @@ if __name__ == "__main__":
     # Test generation
     NUM_SAMPLES = 10 #100 * 1000
     MODEL_TYPE = 'ShiftedSABR'
-    project_folder = os.path.join(settings.WORKFOLDER, "xsabr")
+    project_folder = os.path.join(settings.WORKFOLDER, "stovol")
     data_folder = os.path.join(project_folder, "samples")
     filemanager.check_directory(data_folder)
     file = os.path.join(data_folder, MODEL_TYPE + "_samples_test.tsv")
