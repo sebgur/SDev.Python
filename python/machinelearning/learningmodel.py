@@ -5,7 +5,8 @@ from sklearn.preprocessing import StandardScaler
 # from keras.models import load_model
 import tensorflow as tf
 import joblib
-
+from tools import jsonmanager
+import absl.logging
 
 class LearningModel:
     """ Wrapper class for machine learning models, including scalers, and simplifying
@@ -16,6 +17,8 @@ class LearningModel:
         self.x_scaler = x_scaler
         self.y_scaler = y_scaler
         self.is_scaled = is_scaled
+        self.topology_ = None
+        self.optimizer_ = None
 
     def train(self, x_set, y_set, epochs, batch_size, callback=None,
               verbose=0, shuffle=True):
@@ -24,14 +27,15 @@ class LearningModel:
             self.x_scaler.fit(x_set)
             self.y_scaler.fit(y_set)
             self.is_scaled = True
-            callbacks = []
-            if callback is not None:
-                callback.set_scalers(self.x_scaler, self.y_scaler)
-                callback.total_epochs = epochs
-                callback.batch_size = batch_size
-                callback.shuffle = shuffle
-                callback.set_size = x_set.shape[0]
-                callbacks = [callback]
+
+        callbacks = []
+        if callback is not None:
+            callback.set_scalers(self.x_scaler, self.y_scaler)
+            callback.total_epochs = epochs
+            callback.batch_size = batch_size
+            callback.shuffle = shuffle
+            callback.set_size = x_set.shape[0]
+            callbacks = [callback]
 
         x_scaled = self.x_scaler.transform(x_set)
         y_scaled = self.y_scaler.transform(y_set)
@@ -50,10 +54,22 @@ class LearningModel:
 
     def save(self, path):
         """ Save model and its scalers to files """
+        # Save keras model first. Turn dummy warning off temporarily.
+        verbosity = absl.logging.get_verbosity()
+        absl.logging.set_verbosity(absl.logging.ERROR)
         self.model.save(path)
+        absl.logging.set_verbosity(verbosity)
+
+        # Save scalers
         x_scaler_file, y_scaler_file = scaler_files(path)
         joblib.dump(self.x_scaler, x_scaler_file)
         joblib.dump(self.y_scaler, y_scaler_file)
+        config_data = { 'topology': self.topology_, 'optimizer': self.optimizer_ }
+        config_file = os.path.join(path, 'config.json')
+
+        # Save additional config
+        jsonmanager.serialize(config_data, config_file)
+
 
     def calculate(self, x_test, diff=False):
         """ Predict with calculation of differentials or not """
@@ -104,7 +120,7 @@ def scaler_files(path):
     y_scaler_file = os.path.join(path, "y_scaler.h5")
     return x_scaler_file, y_scaler_file
 
-def load_learning_model(path):
+def load_learning_model(path, compile_=False):
     """ Load learning model from files. Note that for now, we set compile=False when loading
         the keras model as we do not know how to save and load custom components such as
         the scheduler or the callback. To restart the training after loading the model from
@@ -116,7 +132,7 @@ def load_learning_model(path):
     if os.path.exists(path) is False:
         raise RuntimeError("Model folder does not exist: " + path)
 
-    keras_model = tf.keras.models.load_model(path, compile=False)
+    keras_model = tf.keras.models.load_model(path, compile=compile_)
 
     x_scaler_file, y_scaler_file = scaler_files(path)
     if os.path.exists(x_scaler_file) and os.path.exists(y_scaler_file):
@@ -125,5 +141,11 @@ def load_learning_model(path):
         model = LearningModel(keras_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
     else:
         model = LearningModel(keras_model)
+
+    config_file = os.path.join(path, 'config.json')
+    if os.path.exists(config_file):
+        config_data = jsonmanager.deserialize(config_file)
+        model.topology_ = config_data['topology']
+        model.optimizer_ = config_data['optimizer']
 
     return model

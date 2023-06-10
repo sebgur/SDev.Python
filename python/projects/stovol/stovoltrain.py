@@ -19,12 +19,10 @@ from maths.metrics import rmse, tf_rmse
 from volsurfacegen.stovolfactory import set_generator
 from projects.stovol import xsabrplot as xplt
 
-# Re-training from saved model
+# Possibility to test only without training
+# Finalize and fine-train models on extended parameter range
 # Implement new class over LearningModel that gives prices directly, having stored
 #   the model. Implement inversions to shifted BS and Bachelier as well.
-# Possibility to test only without training
-# Utility to merge sample data files into 1
-# Finalize and fine-train models on extended parameter range
 # Store data in Kaggle
 
 # ################ Runtime configuration ##########################################################
@@ -35,15 +33,14 @@ MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "McShiftedZABR"
 # MODEL_TYPE = "McShiftedHeston"
 USE_TRAINED = True
-TRAIN = False
+TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
-#NUM_SAMPLES = 100 * 1000 # Relevant if GENERATE_SAMPLES is True
+
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 100 # Relevant if TRAIN is True
+EPOCHS = 30 # Relevant if TRAIN is True
 BATCH_SIZE = 1000 # Relevant if TRAIN is True
 SHOW_VOL_CHARTS = True # Show strike ladder charts
-#SAVE_MODEL = True # Save model to files
 # For comparison to reference values (accuracy of reference)
 NUM_MC = 50 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 20 # 25
@@ -71,7 +68,7 @@ def tf_bps_rmse(y_true, y_ref):
 # ################ Select generator ###############################################################
 # Select generator. The number of expiries and surface size are irrelevant as here we do not
 # generate sample data but read it from files. Number of MC and points per year are required
-# to validate the model against the reference values.
+# to calculate the reference values against which we can validate the model.
 generator = set_generator(MODEL_TYPE, num_mc=NUM_MC, points_per_year=POINTS_PER_YEAR)
 
 # ################ Prepare datasets ###############################################################
@@ -97,22 +94,36 @@ x_train, y_train, x_test, y_test = prepare_sets(x_set, y_set, TRAIN_PERCENT)
 if USE_TRAINED:
     print(">> Loading pre-trained model")
     model_folder_name = os.path.join(model_folder, MODEL_TYPE)
-    print("Loading pre-trained model from: " + model_folder_name)
+    print("> Loading pre-trained model from: " + model_folder_name)
     model = load_learning_model(model_folder_name)
+    keras_model = model.model
+    hidden_layers = NUM_NEURONS = DROP_OUT = None
+    topology = model.topology_
+    if topology != None:
+        hidden_layers = topology['layers']
+        NUM_NEURONS = topology['neurons']
+        DROP_OUT = topology['dropout']
 else:
     print(">> Composing new model")
     # Initialize the model
-    print(">> Compose ANN model")
-    hidden_layers = ['softplus', 'softplus', 'softplus']
+    hidden_layers = ['softplus', 'softplus', 'softplus', 'softplus']
     NUM_NEURONS = 16
     DROP_OUT = 0.00
     keras_model = compose_model(input_dim, output_dim, hidden_layers, NUM_NEURONS, DROP_OUT)
-    print(f"> Hidden layer structure: {hidden_layers}")
-    print(f"> Number of neurons per layer: {NUM_NEURONS}")
-    print(f"> Drop-out rate: {DROP_OUT:.2f}")
+    topology = { 'layers': hidden_layers, 'neurons': NUM_NEURONS, 'dropout': DROP_OUT}
 
+    model = LearningModel(keras_model)
+    model.topology_ = topology
+
+# Display topology
+print(f"> Hidden layer structure: {hidden_layers}")
+print(f"> Number of neurons per layer: {NUM_NEURONS}")
+print(f"> Drop-out rate: {DROP_OUT:.2f}")
+
+# ################ Train the model ################################################################
+if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1e-1
+    INIT_LR = 1e-3
     FINAL_LR = 1e-4
     DECAY = 0.97
     STEPS = 100
@@ -120,23 +131,23 @@ else:
 
     # Optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+    model.optimizer_ = optimizer.get_config()
     print("> Optimizer settings")
-    optim_fields = optimizer.get_config()
+    optim_fields = model.optimizer_
     for field, value in optim_fields.items():
-        print(field, ":", value)
+        print("> ", field, ":", value)
+
 
     # Compile
     print("> Compile model")
     keras_model.compile(loss=tf_bps_rmse, optimizer=optimizer)
-    # keras_model.compile(loss='mse', optimizer=optimizer)
-    model = LearningModel(keras_model)
 
-# ################ Train the model ################################################################
-if TRAIN:
+
     # Callbacks
     EPOCH_SAMPLING = 5
     callback = RefCallback(x_test, y_test, bps_rmse, optimizer=optimizer,
                            epoch_sampling=EPOCH_SAMPLING)
+    # callback = None
     # callback = SDevPyCallback(optimizer=optimizer, epoch_sampling=EPOCH_SAMPLING)
 
     # Train the network

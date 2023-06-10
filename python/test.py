@@ -2,8 +2,31 @@
 # import tensorflow as tf
 import numpy as np
 import scipy.stats as sp
+import json
 # from maths.metrics import rmse
 # import projects.xsabr_fit.sabrgenerator as sabr
+
+
+# Json serialize/deserialize
+data = {
+    "user":
+      {
+          "name": "seb",
+          "age": 45,
+          "place": "Singapore"
+      }
+}
+
+file = r"C:\\temp\\sdevpy\\test.json"
+jsonstr = json.dumps(data)
+print(jsonstr)
+# with open(file, "w") as write:
+#     json.dump(data, write)
+
+newfiledata = open(file,)
+newdata = json.load(newfiledata)
+
+print(newdata['user']['age'])
 
 
 # Merge two data samples

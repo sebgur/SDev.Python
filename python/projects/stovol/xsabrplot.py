@@ -16,7 +16,7 @@ def plot_transform_surface(expiries, strikes, is_call, fwd, ref_prices, mod_pric
     num_charts = expiries.shape[0]
     num_cols = 2
     num_rows = int(num_charts / num_cols)
-    print("num_rows: " + str(num_rows))
+    # print("num_rows: " + str(num_rows))
     ylabel = 'Price' if transform is 'Price' else 'Vol'
 
     plt.figure(figsize=(18, 10))
