@@ -1,10 +1,11 @@
 """ Plot helpers for XSABR project """
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 from analytics import bachelier
 from analytics import black
 
 
-def plot_transform_surface(expiries, strikes, is_call, fwd, ref_prices, mod_prices, title,
+def plot_transform_surface(expiries, strikes, is_call, fwd, ref_prices, mod_prices, title_,
                            transform='ShiftedBlackScholes'):
     """ Calculate quantities to display for the surface and display them in charts. Transformed
         quantities available are: Price, ShiftedBlackScholes (3%) and Bachelier (normal vols). """
@@ -19,20 +20,22 @@ def plot_transform_surface(expiries, strikes, is_call, fwd, ref_prices, mod_pric
     # print("num_rows: " + str(num_rows))
     ylabel = 'Price' if transform is 'Price' else 'Vol'
 
-    plt.figure(figsize=(18, 10))
-    plt.subplots_adjust(hspace=0.40)
-
-    for i in range(num_charts):
-        plt.subplot(num_rows, num_cols, i + 1)
-        plt.title(title + f" at T={expiries[i, 0]}")
-        plt.xlabel('Strike')
-        plt.ylabel(ylabel)
-        plt.plot(strikes[i], ref_disp[i], color='blue', label='Reference')
-        plt.plot(strikes[i], mod_disp[i], color='red', label='Model')
-        plt.legend(loc='upper right')
+    fig, axs = plt.subplots(num_rows, num_cols, layout="constrained")
+    fig.suptitle(title_, size='x-large', weight='bold')
+    fig.set_size_inches(12, 8)
+    for i in range(num_rows):
+        for j in range(num_cols):
+            k = num_cols * i + j
+            axs[i, j].plot(strikes[k], ref_disp[k], color='blue', label='Reference')
+            axs[i, j].plot(strikes[k], mod_disp[k], color='red', label='Model')
+            axs[i, j].xaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimales=1))
+            axs[i, j].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=0))
+            axs[i, j].set_xlabel('Strike')
+            axs[i, j].set_ylabel(ylabel)
+            axs[i, j].set_title(f"T={expiries[i, 0]}")
+            axs[i, j].legend(loc='upper right')
 
     plt.show()
-
 
 
 def transform_surface(expiries, strikes, is_call, fwd, prices, transform='ShiftedBlackScholes'):

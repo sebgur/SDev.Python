@@ -1,7 +1,8 @@
 """ Train ANN on datasets for Stochastic Local Vol models. We implement the direct map here.
     Datasets of parameters (inputs) vs prices/implied vols (outputs) have been generated
-    in a previous set and are now read from tsv. The network here is either loaded from a pre-trained
-    state or trained from scratch. Pre-trained models can be loaded and training continued. """
+    in a previous set and are now read from tsv. The network here is either loaded from a
+    pre-trained state or trained from scratch. Pre-trained models can be loaded and training
+    resumed. """
 import os
 from datetime import datetime
 import numpy as np
@@ -19,10 +20,8 @@ from maths.metrics import rmse, tf_rmse
 from volsurfacegen.stovolfactory import set_generator
 from projects.stovol import xsabrplot as xplt
 
-# Possibility to test only without training
+# Lazy instantiation from remote/name code
 # Finalize and fine-train models on extended parameter range
-# Implement new class over LearningModel that gives prices directly, having stored
-#   the model. Implement inversions to shifted BS and Bachelier as well.
 # Store data in Kaggle
 
 # ################ Runtime configuration ##########################################################
@@ -32,13 +31,13 @@ MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McShiftedZABR"
 # MODEL_TYPE = "McShiftedHeston"
-USE_TRAINED = True
+USE_TRAINED = False
 TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 30 # Relevant if TRAIN is True
+EPOCHS = 10 # Relevant if TRAIN is True
 BATCH_SIZE = 1000 # Relevant if TRAIN is True
 SHOW_VOL_CHARTS = True # Show strike ladder charts
 # For comparison to reference values (accuracy of reference)
@@ -97,36 +96,36 @@ if USE_TRAINED:
     print("> Loading pre-trained model from: " + model_folder_name)
     model = load_learning_model(model_folder_name)
     keras_model = model.model
-    hidden_layers = NUM_NEURONS = DROP_OUT = None
+    HIDDEN_LAYERS = NUM_NEURONS = DROP_OUT = None
     topology = model.topology_
-    if topology != None:
-        hidden_layers = topology['layers']
+    if topology is not None:
+        HIDDEN_LAYERS = topology['layers']
         NUM_NEURONS = topology['neurons']
         DROP_OUT = topology['dropout']
 else:
     print(">> Composing new model")
     # Initialize the model
-    hidden_layers = ['softplus', 'softplus', 'softplus', 'softplus']
+    HIDDEN_LAYERS = ['softplus', 'softplus', 'softplus']
     NUM_NEURONS = 16
     DROP_OUT = 0.00
-    keras_model = compose_model(input_dim, output_dim, hidden_layers, NUM_NEURONS, DROP_OUT)
-    topology = { 'layers': hidden_layers, 'neurons': NUM_NEURONS, 'dropout': DROP_OUT}
+    keras_model = compose_model(input_dim, output_dim, HIDDEN_LAYERS, NUM_NEURONS, DROP_OUT)
+    topology = { 'layers': HIDDEN_LAYERS, 'neurons': NUM_NEURONS, 'dropout': DROP_OUT}
 
     model = LearningModel(keras_model)
     model.topology_ = topology
 
 # Display topology
-print(f"> Hidden layer structure: {hidden_layers}")
+print(f"> Hidden layer structure: {HIDDEN_LAYERS}")
 print(f"> Number of neurons per layer: {NUM_NEURONS}")
 print(f"> Drop-out rate: {DROP_OUT:.2f}")
 
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1e-3
+    INIT_LR = 1e-1
     FINAL_LR = 1e-4
     DECAY = 0.97
-    STEPS = 100
+    STEPS = 200
     lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
 
     # Optimizer
@@ -206,7 +205,7 @@ if SHOW_VOL_CHARTS:
     print(f"Ref-Mod RMSE: {bps_rmse(ref_prices, mod_prices):.2f}")
 
     # Available tranforms: Price, ShiftedBlackScholes, Bachelier
-    TITLE = "Smile"
+    TITLE = f"{MODEL_TYPE} smile sections, forward={FWD*100:.2f}"#,%\n parameters={PARAMS}"
     xplt.plot_transform_surface(EXPIRIES, strikes, generator.is_call, FWD, ref_prices, mod_prices,
                                 TITLE, transform="ShiftedBlackScholes")
 

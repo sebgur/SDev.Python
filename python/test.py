@@ -3,30 +3,80 @@
 import numpy as np
 import scipy.stats as sp
 import json
+import matplotlib.pyplot as plt
 # from maths.metrics import rmse
 # import projects.xsabr_fit.sabrgenerator as sabr
 
+def f(t):
+    s1 = np.cos(2*np.pi*t)
+    e1 = np.exp(-t)
+    return s1 * e1
+
+t1 = np.arange(0.0, 5.0, 0.1)
+t2 = np.arange(0.0, 5.0, 0.02)
+t3 = np.arange(0.0, 2.0, 0.01)
+
+num_rows = 2
+num_cols = 3
+title_ = "my big title"
+num_charts = num_rows * num_cols
+strikes = [0, 1, 2, 3, 4] * num_charts
+ref_disp = [0, 1, 2, 3, 4] * num_charts
+mod_disp = [0, 2, 4, 6, 8] * num_charts
+strikes = np.asarray(strikes).reshape(num_charts, 5)
+ref_disp = np.asarray(ref_disp).reshape(num_charts, 5)
+mod_disp = np.asarray(mod_disp).reshape(num_charts, 5)
+ylabel = "this is y"
+
+fig, axs = plt.subplots(num_rows, num_cols, layout="constrained")
+fig.suptitle(title_)
+for i in range(num_rows):
+    for j in range(num_cols):
+        k = num_cols * i + j
+        axs[i, j].plot(strikes[k], ref_disp[k], color='blue', label='Reference')
+    # axs[i].plot(strikes[i], mod_disp[i], color='ref', label='Model')
+    # axs[i].legend(loc='upper_right')
+    # axs[i].xlabel('Strike')
+    # axs[i].ylabel(ylabel)
+    # axs[i].title('chart title')
+
+plt.show()
+
+# plt.figure(figsize=(18, 10))
+# plt.subplots_adjust(hspace=0.40)
+
+# for i in range(num_charts):
+#     plt.subplot(num_rows, num_cols, i + 1)
+#     plt.title(title_)
+#     plt.xlabel('Strike')
+#     plt.ylabel(ylabel)
+#     plt.plot(strikes[i], ref_disp[i], color='blue', label='Reference')
+#     plt.plot(strikes[i], mod_disp[i], color='red', label='Model')
+#     plt.legend(loc='upper right')
+
+# plt.show()
+
 
 # Json serialize/deserialize
-data = {
-    "user":
-      {
-          "name": "seb",
-          "age": 45,
-          "place": "Singapore"
-      }
-}
+# data = {
+#     "user":
+#       {
+#           "name": "seb",
+#           "age": 45,
+#           "place": "Singapore"
+#       }
+# }
 
-file = r"C:\\temp\\sdevpy\\test.json"
-jsonstr = json.dumps(data)
-print(jsonstr)
-# with open(file, "w") as write:
-#     json.dump(data, write)
+# file = r"C:\\temp\\sdevpy\\test.json"
+# jsonstr = json.dumps(data)
+# print(jsonstr)
+# # with open(file, "w") as write:
+# #     json.dump(data, write)
 
-newfiledata = open(file,)
-newdata = json.load(newfiledata)
+# newfiledata = open(file,)
+# newdata = json.load(newfiledata)
 
-print(newdata['user']['age'])
+# print(newdata['user']['age'])
 
 
 # Merge two data samples

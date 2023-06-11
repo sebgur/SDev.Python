@@ -96,3 +96,7 @@ class SmileGenerator(ABC):
     def to_file(data_df, output_file):
         """ Dumping dataframe to tsv file """
         data_df.to_csv(output_file, sep='\t', index=False)
+
+
+# if __name__ == "__main__":
+    # Test reading from remote location and calculating prices and vols
