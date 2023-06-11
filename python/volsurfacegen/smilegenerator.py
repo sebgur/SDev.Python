@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 from analytics import bachelier
+from analytics import black
 
 
 class SmileGenerator(ABC):
@@ -62,20 +63,41 @@ class SmileGenerator(ABC):
         price = data_df.Price
         nvol = []
         num_samples = t.shape[0]
+        num_print = 10000
+        num_batches = int(num_samples / num_print) + 1
+        batch_id = 0
         for i in range(num_samples):
+            if i % num_print == 0:
+                batch_id = batch_id + 1
+                print(f"Converting to normal vol, batch {batch_id:,} out of {num_batches:,}")
             try:
                 nvol.append(bachelier.implied_vol(t[i], strike[i], self.is_call, fwd[i], price[i]))
             except (Exception,):
                 nvol.append(-9999)
 
+        # Add test on Shifted BS
+        # shift = 0.03
+        # bsvol = []
+        # for i in range(num_samples):
+        #     if i % num_print == 0:
+        #         print(f"Converting to lognormal vol, batch {int(i/num_print)+1:,} out of {num_batches:,}")
+        #     try:
+        #         bsvol.append(black.implied_vol(t[i], strike[i] + shift, self.is_call, fwd[i] + shift, price[i]))
+        #     except (Exception,):
+        #         bsvol.append(-9999)
+
+
         np.seterr(divide='warn')  # Set back to warning
 
         data_df['NVol'] = nvol
+        # data_df['BSVol'] = bsvol
 
         # Remove out of range
         if cleanse:
             data_df = data_df.drop(data_df[data_df.NVol > max_vol].index)
             data_df = data_df.drop(data_df[data_df.NVol < min_vol].index)
+            # data_df = data_df.drop(data_df[data_df.BSVol < 0.01].index)
+            # data_df = data_df.drop(data_df[data_df.BSVol > 0.99].index)
 
         return data_df
 

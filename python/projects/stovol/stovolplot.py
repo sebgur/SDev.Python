@@ -32,7 +32,7 @@ def plot_transform_surface(expiries, strikes, is_call, fwd, ref_prices, mod_pric
             axs[i, j].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=0))
             axs[i, j].set_xlabel('Strike')
             axs[i, j].set_ylabel(ylabel)
-            axs[i, j].set_title(f"T={expiries[i, 0]}")
+            axs[i, j].set_title(f"T={expiries[k, 0]}")
             axs[i, j].legend(loc='upper right')
 
     plt.show()

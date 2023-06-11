@@ -104,10 +104,10 @@ class McSabrGenerator(SabrGenerator):
 
         return df
 
-    def price(self, expiry, strike, is_call, fwd, parameters):
+    def price(self, expiries, strike, are_calls, fwd, parameters):
         shifted_k = strike + self.shift
         shifted_f = fwd + self.shift
-        prices = mcsabr.price(expiry, shifted_k, is_call, shifted_f, parameters,
+        prices = mcsabr.price(expiries, shifted_k, are_calls, shifted_f, parameters,
                               self.num_mc, self.points_per_year)
 
         return prices

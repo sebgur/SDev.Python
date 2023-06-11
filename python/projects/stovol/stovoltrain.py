@@ -18,8 +18,11 @@ from tools.filemanager import check_directory
 from tools.timer import Stopwatch
 from maths.metrics import rmse, tf_rmse
 from volsurfacegen.stovolfactory import set_generator
-from projects.stovol import xsabrplot as xplt
+from projects.stovol import stovolplot as xplt
 
+# Would it make sense to do an additional cleansing to convert into Shifted BS and 
+# #  remove what's smaller/larger than certain safety bounds? Or cut-off time values that are
+# #  smaller than something?
 # Lazy instantiation from remote/name code
 # Finalize and fine-train models on extended parameter range
 # Store data in Kaggle
@@ -31,15 +34,15 @@ MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McShiftedZABR"
 # MODEL_TYPE = "McShiftedHeston"
-USE_TRAINED = False
+USE_TRAINED = True
 TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 10 # Relevant if TRAIN is True
-BATCH_SIZE = 1000 # Relevant if TRAIN is True
-SHOW_VOL_CHARTS = True # Show strike ladder charts
+EPOCHS = 100
+BATCH_SIZE = 1000
+SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
 NUM_MC = 50 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 20 # 25
@@ -105,7 +108,7 @@ if USE_TRAINED:
 else:
     print(">> Composing new model")
     # Initialize the model
-    HIDDEN_LAYERS = ['softplus', 'softplus', 'softplus']
+    HIDDEN_LAYERS = ['softplus', 'softplus', 'softplus', 'softplus', 'softplus']
     NUM_NEURONS = 16
     DROP_OUT = 0.00
     keras_model = compose_model(input_dim, output_dim, HIDDEN_LAYERS, NUM_NEURONS, DROP_OUT)
@@ -122,10 +125,10 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1e-1
-    FINAL_LR = 1e-4
+    INIT_LR = 1.0e-2
+    FINAL_LR = 1.0e-3
     DECAY = 0.97
-    STEPS = 200
+    STEPS = 250
     lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
 
     # Optimizer
@@ -189,7 +192,7 @@ if SHOW_VOL_CHARTS:
     FWD = 0.028
 
     # Any number of expiries can be calculated, but for optimum display choose no more than 6
-    EXPIRIES = np.asarray([0.25, 0.50, 0.75, 1.00, 2.00, 5.00]).reshape(-1, 1)
+    EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.00, 10.0, 30.0]).reshape(-1, 1)
     NUM_EXPIRIES = EXPIRIES.shape[0]
     METHOD = 'Percentiles'
     PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
@@ -197,17 +200,22 @@ if SHOW_VOL_CHARTS:
 
     strikes = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
     IS_CALL = False
-    ARE_CALLS = [[IS_CALL] * NUM_STRIKES] * NUM_EXPIRIES
+    ARE_CALLS = [[IS_CALL] * NUM_STRIKES] * NUM_EXPIRIES # ToDo: why not using this?
     print("Calculating chart surface with reference model")
     ref_prices = generator.price_surface_ref(EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
+    # print(ref_prices.shape)
     print("Calculating chart surface with trained model")
     mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
+    # print(mod_prices.shape)
     print(f"Ref-Mod RMSE: {bps_rmse(ref_prices, mod_prices):.2f}")
 
     # Available tranforms: Price, ShiftedBlackScholes, Bachelier
     TITLE = f"{MODEL_TYPE} smile sections, forward={FWD*100:.2f}"#,%\n parameters={PARAMS}"
+    # TRANSFORM = "Bachelier"
+    # TRANSFORM = "Price"
+    TRANSFORM = "ShiftedBlackScholes"
     xplt.plot_transform_surface(EXPIRIES, strikes, generator.is_call, FWD, ref_prices, mod_prices,
-                                TITLE, transform="ShiftedBlackScholes")
+                                TITLE, transform=TRANSFORM)
 
 
 # Show training history

@@ -6,8 +6,8 @@ from volsurfacegen.mczabrgenerator import McShiftedZabrGenerator
 from volsurfacegen.mchestongenerator import McShiftedHestonGenerator
 
 
-def set_generator(type_, num_expiries = 10, surface_size = 50, num_mc = 100000,
-                  points_per_year = 25):
+def set_generator(type_, num_expiries=10, surface_size=50, num_mc=100000,
+                  points_per_year=25, seed=42):
     """ Select generator based on type and other information. Currently available are: SABR,
         ShiftedSABR, McShiftedSABR, FbSABR, McShiftedZABR and McShiftedHeston. All models
         except SABR and ShiftedSABR require inputs num_expiries and surface_size for sample
@@ -16,9 +16,9 @@ def set_generator(type_, num_expiries = 10, surface_size = 50, num_mc = 100000,
     num_strikes = int(surface_size / num_expiries)
 
     if type_ == "SABR":
-        generator = SabrGenerator()
+        generator = SabrGenerator(0.0, num_expiries, num_strikes, seed)
     elif type_ == "ShiftedSABR":
-        generator = ShiftedSabrGenerator()
+        generator = ShiftedSabrGenerator(num_expiries, num_strikes, seed)
     elif type_ == "McShiftedSABR":
         generator = McShiftedSabrGenerator(num_expiries, num_strikes, num_mc, points_per_year)
     elif type_ == "FbSABR":
