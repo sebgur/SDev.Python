@@ -28,7 +28,7 @@ def plot_transform_surface(expiries, strikes, is_call, fwd, ref_prices, mod_pric
             k = num_cols * i + j
             axs[i, j].plot(strikes[k], ref_disp[k], color='blue', label='Reference')
             axs[i, j].plot(strikes[k], mod_disp[k], color='red', label='Model')
-            axs[i, j].xaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimales=1))
+            axs[i, j].xaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=1))
             axs[i, j].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=0))
             axs[i, j].set_xlabel('Strike')
             axs[i, j].set_ylabel(ylabel)
