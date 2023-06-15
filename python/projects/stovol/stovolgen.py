@@ -21,7 +21,7 @@ NUM_EXPIRIES = 10
 SURFACE_SIZE = 50
 NUM_MC = 50 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 20 # 25
-SEED = 42#1234
+SEED = 4444# [123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42]
 
 print(">> Set up runtime configuration")
 project_folder = os.path.join(settings.WORKFOLDER, "stovol")

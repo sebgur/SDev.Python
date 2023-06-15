@@ -49,7 +49,8 @@ class SabrGenerator(SmileGenerator):
 
         # Draw parameters
         lnvol = self.rng.uniform(0.05, 0.50, num_surfaces)
-        beta = self.rng.uniform(0.45, 0.55, num_surfaces)
+        beta = self.rng.uniform(0.10, 0.90, num_surfaces)
+        # beta = self.rng.uniform(0.45, 0.55, num_surfaces)
         nu = self.rng.uniform(0.10, 1.00, num_surfaces)
         rho = self.rng.uniform(-0.60, 0.60, num_surfaces)
 
@@ -64,7 +65,7 @@ class SabrGenerator(SmileGenerator):
         prices = []
         for j in range(num_surfaces):
             print(f"Surface generation number {j+1:,}/{num_surfaces:,}")
-            expiries = self.rng.uniform(1.0 / 12.0, 32.0, self.num_expiries)
+            expiries = self.rng.uniform(1.0 / 12.0, 35.0, self.num_expiries)
             # Need to sort these expiries
             expiries = np.unique(expiries)
             fwd = self.rng.uniform(self.min_fwd, self.max_fwd, 1)[0]

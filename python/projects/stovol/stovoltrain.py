@@ -34,13 +34,13 @@ MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McShiftedZABR"
 # MODEL_TYPE = "McShiftedHeston"
-USE_TRAINED = True
+USE_TRAINED = False
 TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 100
+EPOCHS = 200
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
@@ -125,7 +125,7 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1.0e-2
+    INIT_LR = 1.0e-1
     FINAL_LR = 1.0e-3
     DECAY = 0.97
     STEPS = 250
@@ -187,7 +187,7 @@ print(f"RMSE on test set: {test_rmse:,.2f}")
 # Generate strike spread axis
 if SHOW_VOL_CHARTS:
     NUM_STRIKES = 100
-    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25, 'Gamma': 0.7, 'Kappa': 1.0,
+    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': 0.25, 'Gamma': 0.7, 'Kappa': 1.0,
                 'Theta': 0.05, 'Xi': 0.50 }
     FWD = 0.028
 
@@ -211,8 +211,8 @@ if SHOW_VOL_CHARTS:
 
     # Available tranforms: Price, ShiftedBlackScholes, Bachelier
     TITLE = f"{MODEL_TYPE} smile sections, forward={FWD*100:.2f}"#,%\n parameters={PARAMS}"
-    # TRANSFORM = "Bachelier"
-    # TRANSFORM = "Price"
+    #TRANSFORM = "Bachelier"
+    #TRANSFORM = "Price"
     TRANSFORM = "ShiftedBlackScholes"
     xplt.plot_transform_surface(EXPIRIES, strikes, generator.is_call, FWD, ref_prices, mod_prices,
                                 TITLE, transform=TRANSFORM)
