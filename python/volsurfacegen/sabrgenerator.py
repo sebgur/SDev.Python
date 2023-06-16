@@ -34,7 +34,6 @@ class SabrGenerator(SmileGenerator):
         self.num_curve_parameters = 1
         self.num_vol_parameters = 4
 
-
     def generate_samples(self, num_samples):
         shift = self.shift
 
@@ -93,7 +92,7 @@ class SabrGenerator(SmileGenerator):
             params = {'LnVol': lnvol[j], 'Beta': beta[j], 'Nu': nu[j], 'Rho': rho[j]}
 
             # Calculate prices
-            price = self.price_surface(expiries, ks, self.are_calls, fwd, params)
+            price = self.price(expiries, ks, self.are_calls, fwd, params)
 
             # Flatten the results
             for exp_idx, expiry in enumerate(expiries):
@@ -113,47 +112,47 @@ class SabrGenerator(SmileGenerator):
 
         return df
 
-    def generate_samples_old(self, num_samples):
-        shift = self.shift
-        t = self.rng.uniform(1.0 / 12.0, 32.0, num_samples)
-        fwd = self.rng.uniform(self.min_fwd, self.max_fwd, num_samples)
-        lnvol = self.rng.uniform(0.05, 0.50, num_samples)
+    # def generate_samples_old(self, num_samples):
+    #     shift = self.shift
+    #     t = self.rng.uniform(1.0 / 12.0, 32.0, num_samples)
+    #     fwd = self.rng.uniform(self.min_fwd, self.max_fwd, num_samples)
+    #     lnvol = self.rng.uniform(0.05, 0.50, num_samples)
 
-        # Draw strikes by spreads
-        # spread = self.rng.uniform(-300, 300, num_samples)
-        # strike = fwd + spread / 10000.0
-        # strike = np.maximum(strike, -shift + constants.BPS10)
+    #     # Draw strikes by spreads
+    #     # spread = self.rng.uniform(-300, 300, num_samples)
+    #     # strike = fwd + spread / 10000.0
+    #     # strike = np.maximum(strike, -shift + constants.BPS10)
 
-        # Draw strikes by percentiles
-        stdev = lnvol * np.sqrt(t)
-        percentiles = self.rng.uniform(0.01, 0.99, num_samples)
-        strike = (fwd + shift) * np.exp(-0.5 * stdev * stdev + stdev * sp.norm.ppf(percentiles))
-        strike = strike - shift
+    #     # Draw strikes by percentiles
+    #     stdev = lnvol * np.sqrt(t)
+    #     percentiles = self.rng.uniform(0.01, 0.99, num_samples)
+    #     strike = (fwd + shift) * np.exp(-0.5 * stdev * stdev + stdev * sp.norm.ppf(percentiles))
+    #     strike = strike - shift
 
-        # Draw parameters
-        beta = self.rng.uniform(0.45, 0.55, num_samples)
-        nu = self.rng.uniform(0.10, 1.00, num_samples)
-        rho = self.rng.uniform(-0.60, 0.60, num_samples)
-        params = {'LnVol': lnvol, 'Beta': beta, 'Nu': nu, 'Rho': rho}
+    #     # Draw parameters
+    #     beta = self.rng.uniform(0.45, 0.55, num_samples)
+    #     nu = self.rng.uniform(0.10, 1.00, num_samples)
+    #     rho = self.rng.uniform(-0.60, 0.60, num_samples)
+    #     params = {'LnVol': lnvol, 'Beta': beta, 'Nu': nu, 'Rho': rho}
 
-        # Calculate prices
-        price = self.price(t, strike, self.is_call, fwd, params)
+    #     # Calculate prices
+    #     price = self.price(t, strike, self.is_call, fwd, params)
 
-        # Put in dataframe
-        df = pd.DataFrame({'Ttm': t, 'K': strike, 'F': fwd, 'LnVol': lnvol, 'Beta': beta, 'Nu': nu,
-                           'Rho': rho, 'Price': price})
-        df.columns = ['Ttm', 'K', 'F', 'LnVol', 'Beta', 'Nu', 'Rho', 'Price']
+    #     # Put in dataframe
+    #     df = pd.DataFrame({'Ttm': t, 'K': strike, 'F': fwd, 'LnVol': lnvol, 'Beta': beta, 'Nu': nu,
+    #                        'Rho': rho, 'Price': price})
+    #     df.columns = ['Ttm', 'K', 'F', 'LnVol', 'Beta', 'Nu', 'Rho', 'Price']
 
-        return df
+    #     return df
 
-    def price(self, expiry, strike, is_call, fwd, parameters):
-        shifted_k = strike + self.shift
-        shifted_f = fwd + self.shift
-        iv = sabr.implied_vol_vec(expiry, shifted_k, shifted_f, parameters)
-        price = black.price(expiry, shifted_k, is_call, shifted_f, iv)
-        return price
-    
-    def price_surface(self, expiries, strikes, are_calls, fwd, parameters):
+    # def price(self, expiry, strike, is_call, fwd, parameters):
+    #     shifted_k = strike + self.shift
+    #     shifted_f = fwd + self.shift
+    #     iv = sabr.implied_vol_vec(expiry, shifted_k, shifted_f, parameters)
+    #     price = black.price(expiry, shifted_k, is_call, shifted_f, iv)
+    #     return price
+
+    def price(self, expiries, strikes, are_calls, fwd, parameters):
         expiries_ = np.asarray(expiries).reshape(-1, 1)
         shifted_k = strikes + self.shift
         shifted_f = fwd + self.shift
@@ -165,7 +164,7 @@ class SabrGenerator(SmileGenerator):
                 price = black.price(expiry, sk, are_calls[i][j], shifted_f, iv)
                 k_prices.append(price[0])
             prices.append(k_prices)
-        
+
         return np.asarray(prices)
 
     def retrieve_datasets(self, data_file, shuffle=False):
@@ -189,17 +188,17 @@ class SabrGenerator(SmileGenerator):
 
         return x_set, y_set, data_df
 
-    def price_surface_ref(self, expiries, strikes, is_call, fwd, parameters):
-        are_calls = [is_call] * strikes.shape[1]
-        are_calls = [are_calls] * expiries.shape[0]
-        ref_prices = self.price_surface(expiries, strikes, are_calls, fwd, parameters)
+    def price_surface_ref(self, expiries, strikes, are_calls, fwd, parameters):
+        # are_calls = [is_call] * strikes.shape[1]
+        # are_calls = [are_calls] * expiries.shape[0]
+        ref_prices = self.price(expiries, strikes, are_calls, fwd, parameters)
         return ref_prices
 
-    def price_surface_ref_old(self, expiries, strikes, is_call, fwd, parameters):
-        ref_prices = self.price(expiries, strikes, is_call, fwd, parameters)
-        return ref_prices
+    # def price_surface_ref_old(self, expiries, strikes, is_call, fwd, parameters):
+    #     ref_prices = self.price(expiries, strikes, is_call, fwd, parameters)
+    #     return ref_prices
 
-    def price_surface_mod(self, model, expiries, strikes, is_call, fwd, parameters):
+    def price_surface_mod(self, model, expiries, strikes, are_calls, fwd, parameters):
         # Retrieve parameters
         lnvol = parameters['LnVol']
         beta = parameters['Beta']
@@ -219,10 +218,17 @@ class SabrGenerator(SmileGenerator):
         md_inputs[:, 5] *= nu
         md_inputs[:, 6] *= rho
 
+        # Flatten are_calls
+        flat_types = np.asarray(are_calls).reshape(-1)
+
         # Price with learning model
         md_nvols = model.predict(md_inputs)
+        # print(md_inputs.shape[0])
+        # print(md_nvols.shape[0])
+        # print(flat_types.shape[0])
+
         md_prices = []
-        for (point, vol) in zip(md_inputs, md_nvols):
+        for (point, vol, is_call) in zip(md_inputs, md_nvols, flat_types):
             expiry = point[0]
             strike = point[1]
             md_prices.append(bachelier.price(expiry, strike, is_call, fwd, vol))

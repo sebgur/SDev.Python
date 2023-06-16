@@ -7,52 +7,53 @@ import matplotlib.pyplot as plt
 # from maths.metrics import rmse
 # import projects.xsabr_fit.sabrgenerator as sabr
 
-def f(t):
-    s1 = np.cos(2*np.pi*t)
-    e1 = np.exp(-t)
-    return s1 * e1
+strikes = [1, 2, 3, 4, 5]
+fwd = 2.5
+are_calls = [False if s < fwd else True for s in strikes]
+print(are_calls) 
 
-t1 = np.arange(0.0, 5.0, 0.1)
-t2 = np.arange(0.0, 5.0, 0.02)
-t3 = np.arange(0.0, 2.0, 0.01)
+# num_expiries = 2
+# num_strikes = 3
 
-num_rows = 2
-num_cols = 3
-title_ = "my big title"
-num_charts = num_rows * num_cols
-strikes = [0, 1, 2, 3, 4] * num_charts
-ref_disp = [0, 1, 2, 3, 4] * num_charts
-mod_disp = [0, 2, 4, 6, 8] * num_charts
-strikes = np.asarray(strikes).reshape(num_charts, 5)
-ref_disp = np.asarray(ref_disp).reshape(num_charts, 5)
-mod_disp = np.asarray(mod_disp).reshape(num_charts, 5)
-ylabel = "this is y"
+# are_calls = [True, False, True]# * num_strikes
+# are_calls = [are_calls] * num_expiries
+# print(are_calls)
+# are_calls = np.asarray(are_calls)
+# print(are_calls.shape)
+# print(are_calls.reshape(-1))
 
-fig, axs = plt.subplots(num_rows, num_cols, layout="constrained")
-fig.suptitle(title_)
-for i in range(num_rows):
-    for j in range(num_cols):
-        k = num_cols * i + j
-        axs[i, j].plot(strikes[k], ref_disp[k], color='blue', label='Reference')
-    # axs[i].plot(strikes[i], mod_disp[i], color='ref', label='Model')
-    # axs[i].legend(loc='upper_right')
-    # axs[i].xlabel('Strike')
-    # axs[i].ylabel(ylabel)
-    # axs[i].title('chart title')
+# is_call = [True, True, True]
+# is_put = [False, False, False]
+# is_opt = is_call + is_put
+# print(is_opt)
 
-plt.show()
+# def f(t):
+#     s1 = np.cos(2*np.pi*t)
+#     e1 = np.exp(-t)
+#     return s1 * e1
 
-# plt.figure(figsize=(18, 10))
-# plt.subplots_adjust(hspace=0.40)
+# t1 = np.arange(0.0, 5.0, 0.1)
+# t2 = np.arange(0.0, 5.0, 0.02)
+# t3 = np.arange(0.0, 2.0, 0.01)
 
-# for i in range(num_charts):
-#     plt.subplot(num_rows, num_cols, i + 1)
-#     plt.title(title_)
-#     plt.xlabel('Strike')
-#     plt.ylabel(ylabel)
-#     plt.plot(strikes[i], ref_disp[i], color='blue', label='Reference')
-#     plt.plot(strikes[i], mod_disp[i], color='red', label='Model')
-#     plt.legend(loc='upper right')
+# num_rows = 2
+# num_cols = 3
+# title_ = "my big title"
+# num_charts = num_rows * num_cols
+# strikes = [0, 1, 2, 3, 4] * num_charts
+# ref_disp = [0, 1, 2, 3, 4] * num_charts
+# mod_disp = [0, 2, 4, 6, 8] * num_charts
+# strikes = np.asarray(strikes).reshape(num_charts, 5)
+# ref_disp = np.asarray(ref_disp).reshape(num_charts, 5)
+# mod_disp = np.asarray(mod_disp).reshape(num_charts, 5)
+# ylabel = "this is y"
+
+# fig, axs = plt.subplots(num_rows, num_cols, layout="constrained")
+# fig.suptitle(title_)
+# for i in range(num_rows):
+#     for j in range(num_cols):
+#         k = num_cols * i + j
+#         axs[i, j].plot(strikes[k], ref_disp[k], color='blue', label='Reference')
 
 # plt.show()
 

@@ -16,15 +16,14 @@ from machinelearning.callbacks import RefCallback
 from machinelearning.datasets import prepare_sets
 from tools.filemanager import check_directory
 from tools.timer import Stopwatch
+from tools import clipboard
 from maths.metrics import rmse, tf_rmse
 from volsurfacegen.stovolfactory import set_generator
 from projects.stovol import stovolplot as xplt
 
-# Would it make sense to do an additional cleansing to convert into Shifted BS and 
-# #  remove what's smaller/larger than certain safety bounds? Or cut-off time values that are
-# #  smaller than something?
+# Create generator that samples/prices from a trained model
+# Fine-train models
 # Lazy instantiation from remote/name code
-# Finalize and fine-train models on extended parameter range
 # Store data in Kaggle
 
 # ################ Runtime configuration ##########################################################
@@ -34,13 +33,13 @@ MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McShiftedZABR"
 # MODEL_TYPE = "McShiftedHeston"
-USE_TRAINED = False
+USE_TRAINED = True
 TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 200
+EPOCHS = 400
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
@@ -108,9 +107,9 @@ if USE_TRAINED:
 else:
     print(">> Composing new model")
     # Initialize the model
-    HIDDEN_LAYERS = ['softplus', 'softplus', 'softplus', 'softplus', 'softplus']
-    NUM_NEURONS = 16
-    DROP_OUT = 0.00
+    HIDDEN_LAYERS = ['softplus', 'softplus', 'softplus']
+    NUM_NEURONS = 64
+    DROP_OUT = 0.0
     keras_model = compose_model(input_dim, output_dim, HIDDEN_LAYERS, NUM_NEURONS, DROP_OUT)
     topology = { 'layers': HIDDEN_LAYERS, 'neurons': NUM_NEURONS, 'dropout': DROP_OUT}
 
@@ -125,8 +124,8 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1.0e-1
-    FINAL_LR = 1.0e-3
+    INIT_LR = 1.0e-2
+    FINAL_LR = 1.0e-4
     DECAY = 0.97
     STEPS = 250
     lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
@@ -178,11 +177,11 @@ print(">> Analyse results")
 # Check performance
 train_pred = model.predict(x_train)
 train_rmse = bps_rmse(train_pred, y_train)
-print(f"RMSE on training set: {train_rmse:,.2f}")
+print(f"RMSE(nvol) on training set: {train_rmse:,.2f}")
 
 test_pred = model.predict(x_test)
 test_rmse = bps_rmse(test_pred, y_test)
-print(f"RMSE on test set: {test_rmse:,.2f}")
+print(f"RMSE(nvol) on test set: {test_rmse:,.2f}")
 
 # Generate strike spread axis
 if SHOW_VOL_CHARTS:
@@ -199,22 +198,26 @@ if SHOW_VOL_CHARTS:
     PERCENTS = np.asarray([PERCENTS] * NUM_EXPIRIES)
 
     strikes = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
-    IS_CALL = False
-    ARE_CALLS = [[IS_CALL] * NUM_STRIKES] * NUM_EXPIRIES # ToDo: why not using this?
+    ARE_CALLS = [[False] * NUM_STRIKES] * NUM_EXPIRIES # All puts
+    # ARE_CALLS = [[False if s < FWD else True for s in expks] for expks in strikes] # Puts/calls
+    # print(ARE_CALLS)
+    
     print("Calculating chart surface with reference model")
-    ref_prices = generator.price_surface_ref(EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
+    ref_prices = generator.price_surface_ref(EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
     # print(ref_prices.shape)
+    # clipboard.export2d(ref_prices)
     print("Calculating chart surface with trained model")
-    mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, IS_CALL, FWD, PARAMS)
+    mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
     # print(mod_prices.shape)
-    print(f"Ref-Mod RMSE: {bps_rmse(ref_prices, mod_prices):.2f}")
+    # clipboard.export2d(mod_prices)
+    print(f"Ref-Mod RMSE(price): {bps_rmse(ref_prices, mod_prices):.2f}")
 
     # Available tranforms: Price, ShiftedBlackScholes, Bachelier
     TITLE = f"{MODEL_TYPE} smile sections, forward={FWD*100:.2f}"#,%\n parameters={PARAMS}"
-    #TRANSFORM = "Bachelier"
-    #TRANSFORM = "Price"
-    TRANSFORM = "ShiftedBlackScholes"
-    xplt.plot_transform_surface(EXPIRIES, strikes, generator.is_call, FWD, ref_prices, mod_prices,
+    TRANSFORM = "Bachelier"
+    # TRANSFORM = "Price"
+    #TRANSFORM = "ShiftedBlackScholes"
+    xplt.plot_transform_surface(EXPIRIES, strikes, ARE_CALLS, FWD, ref_prices, mod_prices,
                                 TITLE, transform=TRANSFORM)
 
 

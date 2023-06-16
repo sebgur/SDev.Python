@@ -5,13 +5,13 @@ from analytics import bachelier
 from analytics import black
 
 
-def plot_transform_surface(expiries, strikes, is_call, fwd, ref_prices, mod_prices, title_,
+def plot_transform_surface(expiries, strikes, are_calls, fwd, ref_prices, mod_prices, title_,
                            transform='ShiftedBlackScholes'):
     """ Calculate quantities to display for the surface and display them in charts. Transformed
         quantities available are: Price, ShiftedBlackScholes (3%) and Bachelier (normal vols). """
     # Transform prices
-    ref_disp = transform_surface(expiries, strikes, is_call, fwd, ref_prices, transform)
-    mod_disp = transform_surface(expiries, strikes, is_call, fwd, mod_prices, transform)
+    ref_disp = transform_surface(expiries, strikes, are_calls, fwd, ref_prices, transform)
+    mod_disp = transform_surface(expiries, strikes, are_calls, fwd, mod_prices, transform)
 
     # Display transformed prices
     num_charts = expiries.shape[0]
@@ -38,7 +38,7 @@ def plot_transform_surface(expiries, strikes, is_call, fwd, ref_prices, mod_pric
     plt.show()
 
 
-def transform_surface(expiries, strikes, is_call, fwd, prices, transform='ShiftedBlackScholes'):
+def transform_surface(expiries, strikes, are_calls, fwd, prices, transform='ShiftedBlackScholes'):
     """ Tranform prices into: Price, ShiftedBlackScholes (3%) and Bachelier (normal vols). """
     # Transform prices
     trans_prices = []
@@ -49,17 +49,19 @@ def transform_surface(expiries, strikes, is_call, fwd, prices, transform='Shifte
         sfwd = fwd + shift
         for i, expiry in enumerate(expiries):
             strikes_ = strikes[i]
+            are_calls_ = are_calls[i]
             trans_prices_ = []
             for j, strike in enumerate(strikes_):
                 sstrike = strike + shift
-                trans_prices_.append(black.implied_vol(expiry, sstrike, is_call, sfwd, prices[i, j]))
+                trans_prices_.append(black.implied_vol(expiry, sstrike, are_calls_[j], sfwd, prices[i, j]))
             trans_prices.append(trans_prices_)
     elif transform is 'Bachelier':
         for i, expiry in enumerate(expiries):
             strikes_ = strikes[i]
+            are_calls_ = are_calls[i]
             trans_prices_ = []
             for j, strike in enumerate(strikes_):
-                trans_prices_.append(bachelier.implied_vol(expiry, strike, is_call, fwd, prices[i, j]))
+                trans_prices_.append(bachelier.implied_vol(expiry, strike, are_calls_[j], fwd, prices[i, j]))
             trans_prices.append(trans_prices_)
     else:
         raise ValueError("Unknown transform type: " + transform)

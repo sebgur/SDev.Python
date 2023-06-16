@@ -2,6 +2,7 @@
 import os
 import pandas as pd
 from tools import filemanager
+import settings
 
 
 def merge_tsv(path, shuffle=False):
@@ -23,5 +24,5 @@ def merge_tsv(path, shuffle=False):
     df.to_csv(merged_file, sep='\t', index=False)
 
 if __name__ == "__main__":
-    FOLDER = r"C:\temp\sdevpy\xsabr\samples\merge"
+    FOLDER = os.path.join(settings.WORKFOLDER, r"stovol\samples\merge")
     merge_tsv(FOLDER, shuffle=True)

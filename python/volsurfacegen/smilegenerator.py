@@ -18,7 +18,7 @@ class SmileGenerator(ABC):
         """ Generate a sample of expiries, strikes, relevant parameters and option prices """
 
     @abstractmethod
-    def price(self, expiry, strike, is_call, fwd, parameters):
+    def price(self, expiries, strikes, are_calls, fwd, parameters):
         """ Calculate option price under the specified model and its parameters """
 
     @abstractmethod
