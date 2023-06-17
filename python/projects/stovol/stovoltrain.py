@@ -34,7 +34,7 @@ MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "McShiftedZABR"
 # MODEL_TYPE = "McShiftedHeston"
 USE_TRAINED = True
-TRAIN = True
+TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 

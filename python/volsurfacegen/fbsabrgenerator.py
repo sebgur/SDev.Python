@@ -10,17 +10,19 @@ from tools import timer
 
 class FbSabrGenerator(McSabrGenerator):
     """ Free-Boundary SABR model using Monte-Carlo to calculate option prices. """
-    def __init__(self, num_expiries=15, num_strikes=10, num_mc=10000, points_per_year=10):
-        McSabrGenerator.__init__(self, 0.03)
-        self.num_strikes = num_strikes
-        self.num_expiries = num_expiries
-        self.surface_size = self.num_expiries * self.num_strikes
-        self.num_mc = num_mc
-        self.points_per_year = points_per_year
-        self.are_calls = [[self.is_call] * self.num_strikes] * self.num_expiries
+    def __init__(self, num_expiries=15, num_strikes=10, num_mc=10000, points_per_year=10,
+                 seed=42):
+        McSabrGenerator.__init__(self, 0.03, num_expiries, num_strikes, num_mc,
+                                 points_per_year, seed)
+        # self.num_strikes = num_strikes
+        # self.num_expiries = num_expiries
+        # self.surface_size = self.num_expiries * self.num_strikes
+        # self.num_mc = num_mc
+        # self.points_per_year = points_per_year
+        # self.are_calls = [[self.is_call] * self.num_strikes] * self.num_expiries
 
-    def price(self, expiries, strikes, is_call, fwd, parameters):
-        prices = fbsabr.price(expiries, strikes, is_call, fwd, parameters,
+    def price(self, expiries, strikes, are_calls, fwd, parameters):
+        prices = fbsabr.price(expiries, strikes, are_calls, fwd, parameters,
                               self.num_mc, self.points_per_year)
 
         return prices

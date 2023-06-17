@@ -18,14 +18,14 @@ from tools import timer
 class McSabrGenerator(SabrGenerator):
     """ SABR model with a generic shift value, using Monte-Carlo to calculate option prices. """
     def __init__(self, shift=0.0, num_expiries=15, num_strikes=10, num_mc=10000,
-                 points_per_year=10):
-        SabrGenerator.__init__(self, shift)
-        self.num_strikes = num_strikes
-        self.num_expiries = num_expiries
-        self.surface_size = self.num_expiries * self.num_strikes
+                 points_per_year=10, seed=42):
+        SabrGenerator.__init__(self, shift, num_expiries, num_strikes, seed=seed)
+        # self.num_strikes = num_strikes
+        # self.num_expiries = num_expiries
+        # self.surface_size = self.num_expiries * self.num_strikes
         self.num_mc = num_mc
         self.points_per_year = points_per_year
-        self.are_calls = [[self.is_call] * self.num_strikes] * self.num_expiries
+        # self.are_calls = [[self.is_call] * self.num_strikes] * self.num_expiries
 
     def generate_samples(self, num_samples):
         shift = self.shift
@@ -40,10 +40,11 @@ class McSabrGenerator(SabrGenerator):
         print(f"Number of surfaces/parameter samples: {num_surfaces:,}")
 
         # Draw parameters
-        lnvol = self.rng.uniform(0.05, 0.25, num_surfaces)
-        beta = self.rng.uniform(0.49, 0.51, num_surfaces)
-        nu = self.rng.uniform(0.20, 0.80, num_surfaces)
-        rho = self.rng.uniform(-0.40, 0.40, num_surfaces)
+        lnvol = self.rng.uniform(0.05, 0.50, num_surfaces)
+        beta = self.rng.uniform(0.10, 0.90, num_surfaces)
+        # beta = self.rng.uniform(0.49, 0.51, num_surfaces)
+        nu = self.rng.uniform(0.10, 1.00, num_surfaces)
+        rho = self.rng.uniform(-0.60, 0.60, num_surfaces)
 
         # Calculate prices per surface
         ts = []
@@ -56,7 +57,7 @@ class McSabrGenerator(SabrGenerator):
         prices = []
         for j in range(num_surfaces):
             print(f"Surface generation number {j+1:,}/{num_surfaces:,}")
-            expiries = self.rng.uniform(1.0 / 12.0, 5.0, self.num_expiries)
+            expiries = self.rng.uniform(1.0 / 12.0, 35.0, self.num_expiries)
             # Need to sort these expiries
             expiries = np.unique(expiries)
             fwd = self.rng.uniform(self.min_fwd, self.max_fwd, 1)[0]
@@ -104,8 +105,8 @@ class McSabrGenerator(SabrGenerator):
 
         return df
 
-    def price(self, expiries, strike, are_calls, fwd, parameters):
-        shifted_k = strike + self.shift
+    def price(self, expiries, strikes, are_calls, fwd, parameters):
+        shifted_k = strikes + self.shift
         shifted_f = fwd + self.shift
         prices = mcsabr.price(expiries, shifted_k, are_calls, shifted_f, parameters,
                               self.num_mc, self.points_per_year)
@@ -185,8 +186,10 @@ class McSabrGenerator(SabrGenerator):
 # Special class for Shifted SABR with shift = 3%, for easier calling
 class McShiftedSabrGenerator(McSabrGenerator):
     """ For calling convenience, derived from McSabrGenerator with shift at typical 3%. """
-    def __init__(self, num_expiries=15, num_strikes=10, num_mc=10000, points_per_year=10):
-        McSabrGenerator.__init__(self, 0.03, num_expiries, num_strikes, num_mc, points_per_year)
+    def __init__(self, num_expiries=15, num_strikes=10, num_mc=10000, points_per_year=10,
+                 seed=42):
+        McSabrGenerator.__init__(self, 0.03, num_expiries, num_strikes, num_mc, points_per_year,
+                                 seed)
 
 
 if __name__ == "__main__":

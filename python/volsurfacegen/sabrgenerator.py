@@ -223,9 +223,6 @@ class SabrGenerator(SmileGenerator):
 
         # Price with learning model
         md_nvols = model.predict(md_inputs)
-        # print(md_inputs.shape[0])
-        # print(md_nvols.shape[0])
-        # print(flat_types.shape[0])
 
         md_prices = []
         for (point, vol, is_call) in zip(md_inputs, md_nvols, flat_types):

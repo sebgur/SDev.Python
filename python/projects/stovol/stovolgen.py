@@ -10,18 +10,18 @@ from tools.timer import Stopwatch
 
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
-MODEL_TYPE = "ShiftedSABR"
+# MODEL_TYPE = "ShiftedSABR"
 # MODEL_TYPE = "McShiftedSABR"
-# MODEL_TYPE = "FbSABR"
+MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McShiftedZABR"
 # MODEL_TYPE = "McShiftedHeston"
-NUM_SAMPLES = 500 * 1000
+NUM_SAMPLES = 400 * 1000
 # The 4 parameters below are only relevant for models whose reference is calculated by MC
 NUM_EXPIRIES = 10
 SURFACE_SIZE = 50
-NUM_MC = 50 * 1000 # 100 * 1000
-POINTS_PER_YEAR = 20 # 25
-SEED = 4444# [123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42]
+NUM_MC = 100 * 1000 # 100 * 1000
+POINTS_PER_YEAR = 25 # 25
+SEED = 42# [123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42]
 
 print(">> Set up runtime configuration")
 project_folder = os.path.join(settings.WORKFOLDER, "stovol")
