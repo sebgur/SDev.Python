@@ -1,14 +1,14 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling","pandas"]
 build-backend = "hatchling.build"
 
 [project]
 name = "example_package_sebgur"
-version = "0.0.1"
+version = "0.0.3"
 authors = [
   { name="Sebastien Gurrieri", email="sebgur@gmail.com" },
 ]
-description = "Python package for Machine Learning in Finance"
+description = "Python package for Machine Learning in Finance-add pandas"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
