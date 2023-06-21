@@ -1,0 +1,11 @@
+[MASTER]
+generated-members=np.*
+
+disable=broad-exception-caught,too-many-locals,too-many-arguments,no-else-return
+
+#variable-rgx=[a-z]{0,30}$
+#variable-rgx=[a-z0-9_]{1,30}$
+
+#good-names=t,nu
+#good-names-rgx=[a-z]
+good-names-rgxs=^[_a-z][_a-z0-9]?$
