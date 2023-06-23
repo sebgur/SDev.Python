@@ -1,7 +1,7 @@
 """ File management utilities """
 import os
 import csv
-import winsound
+# import winsound
 import datetime as dt
 import pathlib
 
@@ -44,16 +44,16 @@ def list_files(path, extensions=None):
 
         return files
 
-def make_a_noise(beep=True):
-    """ Make a noise """
-    if beep:
-        f1 = 500
-        f2 = 1000
-        duration = 300
-        winsound.Beep(f1, duration)
-        winsound.Beep(f2, duration)
-        winsound.Beep(f1, duration)
+# def make_a_noise(beep=True):
+#     """ Make a noise """
+#     if beep:
+#         f1 = 500
+#         f2 = 1000
+#         duration = 300
+#         winsound.Beep(f1, duration)
+#         winsound.Beep(f2, duration)
+#         winsound.Beep(f1, duration)
 
-    now = dt.datetime.now()
-    dt_string = now.strftime("%H:%M:%S, %d/%m/%Y")
-    print("Closing at ", dt_string)
+#     now = dt.datetime.now()
+#     dt_string = now.strftime("%H:%M:%S, %d/%m/%Y")
+#     print("Closing at ", dt_string)

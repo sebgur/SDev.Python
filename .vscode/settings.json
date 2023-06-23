@@ -1,0 +1,6 @@
+{
+    // Modify pythonpath
+    "terminal.integrated.env.windows": {"PYTHONPATH": "${workspaceFolder}"},
+    //"python.linting.pep8Enabled": true,
+    "python.linting.pylintEnabled": true
+}

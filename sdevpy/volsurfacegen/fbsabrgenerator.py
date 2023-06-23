@@ -1,5 +1,4 @@
-""" Smile generator for Free-Boundary SABR model (FBSABR) using Monte-Carlo to calculate option
-    prices """
+""" Smile generator for Free-Boundary SABR (FBSABR) using Monte-Carlo for option prices """
 import os
 from sdevpy import settings
 from sdevpy.analytics import fbsabr
@@ -14,12 +13,6 @@ class FbSabrGenerator(McSabrGenerator):
                  seed=42):
         McSabrGenerator.__init__(self, 0.03, num_expiries, num_strikes, num_mc,
                                  points_per_year, seed)
-        # self.num_strikes = num_strikes
-        # self.num_expiries = num_expiries
-        # self.surface_size = self.num_expiries * self.num_strikes
-        # self.num_mc = num_mc
-        # self.points_per_year = points_per_year
-        # self.are_calls = [[self.is_call] * self.num_strikes] * self.num_expiries
 
     def price(self, expiries, strikes, are_calls, fwd, parameters):
         prices = fbsabr.price(expiries, strikes, are_calls, fwd, parameters,

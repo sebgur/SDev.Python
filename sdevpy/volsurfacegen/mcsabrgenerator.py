@@ -11,7 +11,6 @@ from sdevpy.analytics import bachelier
 from sdevpy.volsurfacegen.sabrgenerator import SabrGenerator
 from sdevpy.volsurfacegen.smilegenerator import SmileGenerator
 from sdevpy.tools import filemanager
-# from tools import constants
 from sdevpy.tools import timer
 
 
@@ -20,12 +19,8 @@ class McSabrGenerator(SabrGenerator):
     def __init__(self, shift=0.0, num_expiries=15, num_strikes=10, num_mc=10000,
                  points_per_year=10, seed=42):
         SabrGenerator.__init__(self, shift, num_expiries, num_strikes, seed=seed)
-        # self.num_strikes = num_strikes
-        # self.num_expiries = num_expiries
-        # self.surface_size = self.num_expiries * self.num_strikes
         self.num_mc = num_mc
         self.points_per_year = points_per_year
-        # self.are_calls = [[self.is_call] * self.num_strikes] * self.num_expiries
 
     def generate_samples(self, num_samples):
         shift = self.shift

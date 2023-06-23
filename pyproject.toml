@@ -1,20 +1,23 @@
 [build-system]
-requires = ["hatchling","pandas"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "example_package_sebgur"
-version = "0.0.3"
+name = "sdevpy"
+version = "0.1.3"
 authors = [
   { name="Sebastien Gurrieri", email="sebgur@gmail.com" },
 ]
-description = "Python package for Machine Learning in Finance-add pandas"
+description = "Python package for Machine Learning in Finance"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.6"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+]
+dependencies = [
+	"pandas","pyperclip","py_vollib"
 ]
 
 [project.urls]

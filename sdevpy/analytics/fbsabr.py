@@ -109,15 +109,15 @@ def calculate_fbsabr_alpha(ln_vol, fwd, beta):
     return ln_vol * abs_f ** (1.0 - beta)
 
 if __name__ == "__main__":
-    EXPIRIES = [0.05, 0.10, 0.25, 0.5]
+    EXPIRIES = [3.0, 8.0, 13, 19, 22, 31, 34]
     NSTRIKES = 50
-    FWD = -0.005
-    SHIFT = 0.03
+    FWD = 0.016132
+    SHIFT = 0.00
     SFWD = FWD + SHIFT
     IS_CALL = False
     ARE_CALLS = [IS_CALL] * NSTRIKES
     ARE_CALLS = [ARE_CALLS] * len(EXPIRIES)
-    LNVOL = 0.25
+    LNVOL = 0.48
     # Spread method
     # SPREADS = np.linspace(-200, 200, NSTRIKES)
     # SPREADS = np.asarray([SPREADS] * len(EXPIRIES))
@@ -134,11 +134,11 @@ if __name__ == "__main__":
     STRIKES = SSTRIKES - SHIFT
     XAXIS = STRIKES
 
-    PARAMETERS = {'LnVol': LNVOL, 'Beta': 0.1, 'Nu': 0.50, 'Rho': -0.25}
+    PARAMETERS = {'LnVol': LNVOL, 'Beta': 0.5, 'Nu': 0.66, 'Rho': 0.48}
     NUM_MC = 100 * 1000
     POINTS_PER_YEAR = 25
-    # SCHEME = 'Andersen'
-    SCHEME = 'Euler'
+    SCHEME = 'Andersen'
+    # SCHEME = 'Euler'
 
     # Calculate MC prices
     mc_timer = timer.Stopwatch("MC")
