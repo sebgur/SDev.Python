@@ -24,7 +24,7 @@ class TimeGridBuilder(ABC):
 
     def add_grid(self, times):
         """ Add vector of times """
-        self.time_grid_.extend(times)
+        self.time_grid_.extend(times.reshape(-1))
 
     def refine(self):
         """ Add a fine grid to the current grid """
@@ -82,8 +82,24 @@ if __name__ == "__main__":
     settlement = date(2026, 1, 24)
     builder = SimpleTimeGridBuilder(5)
     builder.add_dates(base, [fixing, settlement, expiry, monitor, settlement])
-    print(builder.time_grid_)
+    # print(builder.time_grid_)
     builder.refine()
-    print(builder.time_grid_)
+    # print(builder.time_grid_)
     builder.clean()
-    print(builder.time_grid_)
+    # print(builder.time_grid_)
+
+    # Test MC situation
+    time_grid_builder = SimpleTimeGridBuilder(points_per_year=5)
+    EXPIRIES = np.asarray([5.0, 1.0, 0.125, 0.250, 0.5]).reshape(-1, 1)
+    print(EXPIRIES)
+    time_grid_builder.add_grid(EXPIRIES)
+    print(time_grid_builder.time_grid_)
+    print("refine")
+    time_grid_builder.refine()
+    print(time_grid_builder.time_grid_)
+    print("clean")
+    time_grid_builder.clean()
+    tg = time_grid_builder.time_grid_
+    print(tg)
+    # time_grid = time_grid_builder.complete_grid()
+

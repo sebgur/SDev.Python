@@ -7,10 +7,20 @@ import matplotlib.pyplot as plt
 # from maths.metrics import rmse
 # import projects.xsabr_fit.sabrgenerator as sabr
 
-strikes = [1, 2, 3, 4, 5]
-fwd = 2.5
-are_calls = [False if s < fwd else True for s in strikes]
-print(are_calls) 
+parameters = { 'LnVol2': 0.2, 'Beta': 0.5}
+
+# print(parameters['LnVol'])
+
+if 'LnVol' in parameters:
+    print("found it")
+else:
+    print("boooo")
+
+
+# strikes = [1, 2, 3, 4, 5]
+# fwd = 2.5
+# are_calls = [False if s < fwd else True for s in strikes]
+# print(are_calls) 
 
 # num_expiries = 2
 # num_strikes = 3

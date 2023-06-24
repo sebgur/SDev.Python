@@ -28,6 +28,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     time_grid = time_grid_builder.complete_grid()
     num_factors = 2
 
+
     # Find payoff times
     is_payoff = np.in1d(time_grid, expiries)
 

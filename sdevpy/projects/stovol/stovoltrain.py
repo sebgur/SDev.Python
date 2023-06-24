@@ -28,13 +28,13 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
-# MODEL_TYPE = "ShiftedSABR"
-# MODEL_TYPE = "McShiftedSABR"
-MODEL_TYPE = "FbSABR"
-# MODEL_TYPE = "McShiftedZABR"
-# MODEL_TYPE = "McShiftedHeston"
-USE_TRAINED = False
-TRAIN = True
+# MODEL_TYPE = "McSABR"
+# MODEL_TYPE = "FbSABR"
+# MODEL_TYPE = "McZABR"
+MODEL_TYPE = "McHeston"
+SHIFT = 0.03
+USE_TRAINED = True
+TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
@@ -70,7 +70,7 @@ def tf_bps_rmse(y_true, y_ref):
 # Select generator. The number of expiries and surface size are irrelevant as here we do not
 # generate sample data but read it from files. Number of MC and points per year are required
 # to calculate the reference values against which we can validate the model.
-generator = set_generator(MODEL_TYPE, num_mc=NUM_MC, points_per_year=POINTS_PER_YEAR)
+generator = set_generator(MODEL_TYPE, shift=SHIFT, num_mc=NUM_MC, points_per_year=POINTS_PER_YEAR)
 
 # ################ Prepare datasets ###############################################################
 # Datasets are always read, as even if we don't train, we're still going to evaluate the
@@ -177,22 +177,23 @@ print(">> Analyse results")
 # Check performance
 train_pred = model.predict(x_train)
 train_rmse = bps_rmse(train_pred, y_train)
-print(f"RMSE(nvol) on training set: {train_rmse:,.2f}")
+print(f"> RMSE(nvol) on training set: {train_rmse:,.2f}")
 
 test_pred = model.predict(x_test)
 test_rmse = bps_rmse(test_pred, y_test)
-print(f"RMSE(nvol) on test set: {test_rmse:,.2f}")
+print(f"> RMSE(nvol) on test set: {test_rmse:,.2f}")
 
 # Generate strike spread axis
 if SHOW_VOL_CHARTS:
+    print("> Choosing a sample parameter set to display chart")
     NUM_STRIKES = 100
     PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25, 'Gamma': 0.7, 'Kappa': 1.0,
                 'Theta': 0.05, 'Xi': 0.50 }
     FWD = 0.028
 
     # Any number of expiries can be calculated, but for optimum display choose no more than 6
-    # EXPIRIES = np.asarray([0.125, 0.250, 0.5, 1.00, 2.0, 5.0]).reshape(-1, 1)
-    EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.00, 10.0, 30.0]).reshape(-1, 1)
+    EXPIRIES = np.asarray([0.125, 0.250, 0.5, 1.00, 2.0, 5.0]).reshape(-1, 1)
+    # EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.00, 10.0, 30.0]).reshape(-1, 1)
     NUM_EXPIRIES = EXPIRIES.shape[0]
     METHOD = 'Percentiles'
     PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
@@ -204,15 +205,25 @@ if SHOW_VOL_CHARTS:
     # ARE_CALLS = [[False if s < FWD else True for s in expks] for expks in strikes] # Puts/calls
     # print(ARE_CALLS)
 
-    print("Calculating chart surface with reference model")
+    print("> Calculating chart surface with reference model")
+    timer_ref = Stopwatch("Reference surface calculation")
+    timer_ref.trigger()
     ref_prices = generator.price_surface_ref(EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
+    timer_ref.stop()
     # print(ref_prices.shape)
     # clipboard.export2d(ref_prices)
-    print("Calculating chart surface with trained model")
+    print("> Calculating chart surface with trained model")
+    timer_mod = Stopwatch("Model surface calculation")
+    timer_mod.trigger()
     mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
+    timer_mod.stop()
     # print(mod_prices.shape)
     # clipboard.export2d(mod_prices)
-    print(f"Ref-Mod RMSE(price): {bps_rmse(ref_prices, mod_prices):.2f}")
+    print(f"> Ref-Mod RMSE(price): {bps_rmse(ref_prices, mod_prices):.2f}")
+
+    # Display timers
+    timer_ref.print()
+    timer_mod.print()
 
     # Available tranforms: Price, ShiftedBlackScholes, Bachelier
     TITLE = f"{MODEL_TYPE} smile sections, forward={FWD*100:.2f}"#,%\n parameters={PARAMS}"

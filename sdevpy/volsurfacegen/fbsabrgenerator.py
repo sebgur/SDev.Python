@@ -22,8 +22,8 @@ class FbSabrGenerator(McSabrGenerator):
 
 
 if __name__ == "__main__":
-    NUM_SAMPLES = 100 * 1000
-    NUM_MC = 100 * 1000
+    NUM_SAMPLES = 1 * 1000
+    NUM_MC = 1 * 1000
     POINTS_PER_YEAR = 25
     SURFACE_SIZE = 50
     NUM_EXPIRIES = 10
@@ -32,13 +32,15 @@ if __name__ == "__main__":
     project_folder = os.path.join(settings.WORKFOLDER, "stovol")
     data_folder = os.path.join(project_folder, "samples")
     filemanager.check_directory(data_folder)
-    file = os.path.join(data_folder, MODEL_TYPE + "_samples.tsv")
+    file = os.path.join(data_folder, MODEL_TYPE + "_samples_tests.tsv")
     generator = FbSabrGenerator(NUM_EXPIRIES, NUM_STRIKES, NUM_MC, POINTS_PER_YEAR)
 
+    ranges = {'Ttm': [1.0 / 12.0, 35.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041],
+              'LnVol': [0.05, 0.5], 'Beta': [0.1, 0.9], 'Nu': [0.1, 1.0], 'Rho': [-0.6, 0.6]}
     print("Generating " + str(NUM_SAMPLES) + " samples")
     gen_timer = timer.Stopwatch("Sample Generation")
     gen_timer.trigger()
-    data_df_ = generator.generate_samples(NUM_SAMPLES)
+    data_df_ = generator.generate_samples(NUM_SAMPLES, ranges)
     gen_timer.stop()
     print(data_df_)
     print("Cleansing data")

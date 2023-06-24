@@ -2,19 +2,26 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
+import scipy.stats as sp
 from sdevpy.analytics import bachelier
 # from sdevpy.analytics import black
 
 
 class SmileGenerator(ABC):
     """ Base class for smile generation """
-    def __init__(self):
-        self.num_curve_parameters = 0
-        self.num_vol_parameters = 0
+    def __init__(self, shift=0.0, num_expiries=15, num_strikes=10, seed=42):
+        # self.num_curve_parameters = 0
+        # self.num_vol_parameters = 0
         self.is_call = False  # Use put options by default
+        self.shift = shift
+        self.num_strikes = num_strikes
+        self.num_expiries = num_expiries
+        self.surface_size = self.num_expiries * self.num_strikes
+        self.are_calls = [[self.is_call] * self.num_strikes] * self.num_expiries
+        self.rng = np.random.RandomState(seed)
 
     @abstractmethod
-    def generate_samples(self, num_samples):
+    def generate_samples(self, num_samples, rg):
         """ Generate a sample of expiries, strikes, relevant parameters and option prices """
 
     @abstractmethod
@@ -26,12 +33,12 @@ class SmileGenerator(ABC):
         """ Retrieve dataset stored in tsv file """
 
     # @abstractmethod
-    # def price_strike_ladder(self, model, expiry, spreads, fwd, parameters):
-    #     """ Calculate prices for a ladder of strikes for given parameters """
+    # def price_surface_ref(self, expiries, strikes, are_calls, fwd, parameters):
+    #     """ Calculate a surface of prices for given parameters using the generating model """
 
-    @abstractmethod
     def price_surface_ref(self, expiries, strikes, are_calls, fwd, parameters):
         """ Calculate a surface of prices for given parameters using the generating model """
+        return self.price(expiries, strikes, are_calls, fwd, parameters)
 
     @abstractmethod
     def price_surface_mod(self, model, expiries, strikes, are_calls, fwd, parameters):
@@ -39,18 +46,28 @@ class SmileGenerator(ABC):
 
     def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
         """ Convert strike inputs into absolute strikes using the strike input_method """
+        # pylint: disable=unused-argument
         if input_method == 'Strikes':
             strikes = strike_inputs
         elif input_method == 'Spreads':
             strikes = fwd + strike_inputs / 10000.0
+        elif input_method == 'Percentiles':
+            if 'LnVol' in parameters:
+                lnvol = parameters['LnVol']
+                stdev = lnvol * np.sqrt(expiries)
+                sfwd = fwd + self.shift
+                N = sp.norm
+                return sfwd * np.exp(-0.5 * stdev**2 + stdev * N.ppf(strike_inputs)) - self.shift
+            else:
+                raise RuntimeError("Lognormal vol parameter not provided")
         else:
             raise ValueError("Invalid strike input method: " + input_method)
 
         return strikes
 
-    def num_parameters(self):
-        """ Total number of parameters (curve + vol) """
-        return self.num_curve_parameters + self.num_vol_parameters
+    # def num_parameters(self):
+    #     """ Total number of parameters (curve + vol) """
+    #     return self.num_curve_parameters + self.num_vol_parameters
 
     def to_nvol(self, data_df, cleanse=True, min_vol=0.0001, max_vol=0.1):
         """ Calculate normal implied vol and remove errors. Further remove points that are not
@@ -80,9 +97,11 @@ class SmileGenerator(ABC):
         # bsvol = []
         # for i in range(num_samples):
         #     if i % num_print == 0:
-        #         print(f"Converting to lognormal vol, batch {int(i/num_print)+1:,} out of {num_batches:,}")
+        #         print(f"Converting to lognormal vol, batch {int(i/num_print)+1:,} out of
+        #                   {num_batches:,}")
         #     try:
-        #         bsvol.append(black.implied_vol(t[i], strike[i] + shift, self.is_call, fwd[i] + shift, price[i]))
+        #         bsvol.append(black.implied_vol(t[i], strike[i] + shift, self.is_call,
+        #                    fwd[i] + shift, price[i]))
         #     except (Exception,):
         #         bsvol.append(-9999)
 
