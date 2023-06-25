@@ -9,9 +9,16 @@ import io
 import pandas as pd
 from io import BytesIO
 
-url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/McHeston.zip'
+url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/SABR.zip'
 
-req = requests.get(url)
+
+MODEL_NAME = 'SABR'
+OUPUT_ROOT = r'C:\temp\sdevpy\stovol\models'
+
+base_url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/'
+model_url = base_url + MODEL_NAME + ".zip"
+
+req = requests.get(model_url)
 
 filename = url.split('/')[-1]
 print("Downloading: " + filename)
@@ -23,7 +30,7 @@ print('Downloading Completed')
 
 # Extract
 zipfile = zipfile.ZipFile(BytesIO(req.content))
-zipfile.extractall('NewFolder')
+zipfile.extractall(OUPUT_ROOT)
 
 
 # url = "https://raw.githubusercontent.com/sebgur/SDev.Python/main/samples/McHeston_samples.tsv"
