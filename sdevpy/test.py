@@ -4,14 +4,29 @@
 # import scipy.stats as sp
 # import json
 # import matplotlib.pyplot as plt
-import requests
+import requests, zipfile
 import io
 import pandas as pd
+from io import BytesIO
+
+url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/McHeston.zip'
+
+req = requests.get(url)
+
+filename = url.split('/')[-1]
+print("Downloading: " + filename)
+
+# Download
+with open(filename,'wb') as output_file:
+    output_file.write(req.content)
+print('Downloading Completed')
+
+# Extract
+zipfile = zipfile.ZipFile(BytesIO(req.content))
+zipfile.extractall('NewFolder')
 
 
-!mkdir -p test_folder
-
-url = "https://raw.githubusercontent.com/sebgur/SDev.Python/main/samples/McHeston_samples.tsv"
+# url = "https://raw.githubusercontent.com/sebgur/SDev.Python/main/samples/McHeston_samples.tsv"
 
 # https://github.com/sebgur/SDev.Python/blob/main/models/stovol/SABR/config.json
 # https://raw.githubusercontent.com/sebgur/SDev.Python/main/models/stovol/SABR/config.json
