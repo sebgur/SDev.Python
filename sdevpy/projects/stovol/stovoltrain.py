@@ -25,21 +25,20 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # Use type in json to know which type to instantiate
 # Lazy instantiation from remote/name code
 # Store data in Kaggle
-# Remove xsabrfit
 
 # ################ Runtime configuration ##########################################################
-# MODEL_TYPE = "SABR"
+MODEL_TYPE = "SABR"
 # MODEL_TYPE = "McSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
-MODEL_TYPE = "McHeston"
+# MODEL_TYPE = "McHeston"
 SHIFT = 0.03
-USE_TRAINED = False
-TRAIN = True
+USE_TRAINED = True
+TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 12 # Number of samples to read from sample files
+NUM_SAMPLES = 100 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 100
 BATCH_SIZE = 1000
@@ -58,7 +57,8 @@ print("> Data folder: " + data_folder)
 # check_directory(data_folder)
 data_file = os.path.join(sample_folder, MODEL_TYPE + "_samples.tsv")
 print("> Data file: " + data_file)
-model_folder = os.path.join(project_folder, "models")
+# model_folder = os.path.join(project_folder, "models")
+model_folder = "https://github.com/sebgur/SDev.Python/tree/main/models/stovol/ShiftedSABR"
 print("> Model folder: " + model_folder)
 
 # ################ Select generator ###############################################################
