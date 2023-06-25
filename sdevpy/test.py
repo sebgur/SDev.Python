@@ -9,7 +9,7 @@ import io
 import pandas as pd
 from io import BytesIO
 
-url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/McHeston.zip'
+url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/SABR.zip'
 
 req = requests.get(url)
 

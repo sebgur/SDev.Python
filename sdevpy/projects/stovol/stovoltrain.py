@@ -27,11 +27,11 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # Store data in Kaggle
 
 # ################ Runtime configuration ##########################################################
-# MODEL_TYPE = "SABR"
+MODEL_TYPE = "SABR"
 # MODEL_TYPE = "McSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
-MODEL_TYPE = "McHeston"
+# MODEL_TYPE = "McHeston"
 SHIFT = 0.03
 USE_TRAINED = True
 TRAIN = False
@@ -99,7 +99,6 @@ if USE_TRAINED:
     keras_model = model.model
     HIDDEN_LAYERS = NUM_NEURONS = DROP_OUT = None
     topology = model.topology_
-    print(topology)
     if topology is not None:
         HIDDEN_LAYERS = topology['layers']
         NUM_NEURONS = topology['neurons']
