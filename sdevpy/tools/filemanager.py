@@ -1,9 +1,27 @@
 """ File management utilities """
 import os
 import csv
-# import winsound
-import datetime as dt
+# import datetime as dt
 import pathlib
+from io import BytesIO
+import zipfile as zf
+import requests
+
+
+def download_unzip(zip_url, extract_folder, save_file=False):
+    """ Download zip file from url and unzip """
+    req = requests.get(zip_url, timeout=10)
+
+    if save_file:
+        down_filename = zip_url.split('/')[-1]
+        with open(down_filename,'wb') as output_file:
+            output_file.write(req.content)
+
+    with zf.ZipFile(BytesIO(req.content)) as zip_file:
+        zip_file.extractall(extract_folder)
+
+    # zipfile = zf.ZipFile(BytesIO(req.content))
+    # zipfile.extractall(extract_folder)
 
 
 def check_directory(path):
@@ -31,6 +49,7 @@ def write_csv(file):
 
 #     return files
 
+
 def list_files(path, extensions=None):
     """ List all files in a path that have the extensions """
     all_files = os.listdir(path)
@@ -43,17 +62,3 @@ def list_files(path, extensions=None):
                 files.append(f)
 
         return files
-
-# def make_a_noise(beep=True):
-#     """ Make a noise """
-#     if beep:
-#         f1 = 500
-#         f2 = 1000
-#         duration = 300
-#         winsound.Beep(f1, duration)
-#         winsound.Beep(f2, duration)
-#         winsound.Beep(f1, duration)
-
-#     now = dt.datetime.now()
-#     dt_string = now.strftime("%H:%M:%S, %d/%m/%Y")
-#     print("Closing at ", dt_string)

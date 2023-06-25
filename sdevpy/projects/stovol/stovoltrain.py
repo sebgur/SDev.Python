@@ -14,16 +14,15 @@ from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_mo
 from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay
 from sdevpy.machinelearning.callbacks import RefCallback
 from sdevpy.machinelearning import datasets
-# from sdevpy.tools.filemanager import check_directory
+from sdevpy.tools import filemanager
 from sdevpy.tools.timer import Stopwatch
 from sdevpy.tools import clipboard
 from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
 from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
 
+
 # Fine-train models
-# Use type in json to know which type to instantiate
-# Lazy instantiation from remote/name code
 # Store data in Kaggle
 
 # ################ Runtime configuration ##########################################################
@@ -32,8 +31,10 @@ MODEL_TYPE = "SABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
+MODEL_ID = "SABR_3L_64n" # Pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
 USE_TRAINED = True
+DOWNLOAD_MODELS = True # Only used when USE_TRAINED is True
 TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
@@ -48,7 +49,10 @@ NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25 # 25
 
 print(">> Set up runtime configuration")
-print("> Chosen model: " + MODEL_TYPE)
+print("> Chosen model type: " + MODEL_TYPE)
+if USE_TRAINED:
+    print("> Pre-trained model ID: " + MODEL_ID)
+
 project_folder = os.path.join(settings.WORKFOLDER, "stovol")
 print("> Project folder: " + project_folder)
 sample_folder = os.path.join(project_folder, "samples")
@@ -58,6 +62,11 @@ data_file = os.path.join(sample_folder, MODEL_TYPE + "_samples.tsv")
 print("> Data file: " + data_file)
 model_folder = os.path.join(project_folder, "models")
 print("> Model folder: " + model_folder)
+
+if USE_TRAINED and DOWNLOAD_MODELS:
+    url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/stovol.zip'
+    print("> Downloading and unzipping models from: " + url)
+    filemanager.download_unzip(url, model_folder)
 
 # ################ Select generator ###############################################################
 # Select generator. The number of expiries and surface size are irrelevant as here we do not
@@ -91,7 +100,7 @@ print(f"> Testing set size: {x_test.shape[0]:,}")
 # Compose new model or load pre-trained one
 if USE_TRAINED:
     print(">> Loading pre-trained model")
-    model_folder_name = os.path.join(model_folder, MODEL_TYPE)
+    model_folder_name = os.path.join(model_folder, MODEL_ID)
     print("> Loading pre-trained model from: " + model_folder_name)
     model = load_learning_model(model_folder_name)
     keras_model = model.model
@@ -135,26 +144,19 @@ if TRAIN:
     for field, value in optim_fields.items():
         print("> ", field, ":", value)
 
-
     # Compile
     print("> Compile model")
     keras_model.compile(loss=tf_bps_rmse, optimizer=optimizer)
-
 
     # Callbacks
     EPOCH_SAMPLING = 5
     callback = RefCallback(x_test, y_test, bps_rmse, optimizer=optimizer,
                            epoch_sampling=EPOCH_SAMPLING)
-    # callback = None
-    # callback = SDevPyCallback(optimizer=optimizer, epoch_sampling=EPOCH_SAMPLING)
 
     # Train the network
     print(">> Training ANN model")
     trn_timer = Stopwatch("Training")
     trn_timer.trigger()
-    # shuffled_indices = np.random.permutation(x_train.shape[0])
-    # x_train = x_train[shuffled_indices]
-    # y_train = y_train[shuffled_indices]
     model.train(x_train, y_train, EPOCHS, BATCH_SIZE, callback)
     trn_timer.stop()
     trn_timer.print()
@@ -207,14 +209,12 @@ if SHOW_VOL_CHARTS:
     timer_ref.trigger()
     ref_prices = generator.price_surface_ref(EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
     timer_ref.stop()
-    # print(ref_prices.shape)
     # clipboard.export2d(ref_prices)
     print("> Calculating chart surface with trained model")
     timer_mod = Stopwatch("Model surface calculation")
     timer_mod.trigger()
     mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
     timer_mod.stop()
-    # print(mod_prices.shape)
     # clipboard.export2d(mod_prices)
     print(f"> Ref-Mod RMSE(price): {bps_rmse(ref_prices, mod_prices):.2f}")
 
