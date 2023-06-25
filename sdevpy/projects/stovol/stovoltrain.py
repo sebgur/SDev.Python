@@ -58,7 +58,7 @@ print("> Data folder: " + data_folder)
 data_file = os.path.join(sample_folder, MODEL_TYPE + "_samples.tsv")
 print("> Data file: " + data_file)
 # model_folder = os.path.join(project_folder, "models")
-model_folder = "https://github.com/sebgur/SDev.Python/tree/main/models/stovol/ShiftedSABR"
+model_folder = "https://github.com/sebgur/SDev.Python/tree/main/models/stovol/"
 print("> Model folder: " + model_folder)
 
 # ################ Select generator ###############################################################
