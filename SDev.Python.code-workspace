@@ -6,7 +6,7 @@
 	],
 	"settings": {
 		"terminal.integrated.env.windows": {
-		//	"PYTHONPATH": "${workspaceFolder}"
+			"PYTHONPATH": "${workspaceFolder}"
 		}
 	}
 }

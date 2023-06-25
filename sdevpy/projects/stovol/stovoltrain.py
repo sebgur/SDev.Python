@@ -13,11 +13,11 @@ from sdevpy.machinelearning.topology import compose_model
 from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model
 from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay
 from sdevpy.machinelearning.callbacks import RefCallback
-from sdevpy.machinelearning.datasets import prepare_sets
-from sdevpy.tools.filemanager import check_directory
+from sdevpy.machinelearning import datasets
+# from sdevpy.tools.filemanager import check_directory
 from sdevpy.tools.timer import Stopwatch
 from sdevpy.tools import clipboard
-from sdevpy.maths.metrics import rmse, tf_rmse
+from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
 from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
 
@@ -25,6 +25,7 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # Use type in json to know which type to instantiate
 # Lazy instantiation from remote/name code
 # Store data in Kaggle
+# Remove xsabrfit
 
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
@@ -33,11 +34,12 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # MODEL_TYPE = "McZABR"
 MODEL_TYPE = "McHeston"
 SHIFT = 0.03
-USE_TRAINED = True
-TRAIN = False
+USE_TRAINED = False
+TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
+NUM_SAMPLES = 12 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 100
 BATCH_SIZE = 1000
@@ -47,24 +49,17 @@ NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25 # 25
 
 print(">> Set up runtime configuration")
+print("> Chosen model: " + MODEL_TYPE)
 project_folder = os.path.join(settings.WORKFOLDER, "stovol")
 print("> Project folder: " + project_folder)
-data_folder = os.path.join(project_folder, "samples")
+sample_folder = os.path.join(project_folder, "samples")
+data_folder = os.path.join(sample_folder, MODEL_TYPE)
 print("> Data folder: " + data_folder)
-check_directory(data_folder)
-print("> Chosen model: " + MODEL_TYPE)
-data_file = os.path.join(data_folder, MODEL_TYPE + "_samples.tsv")
+# check_directory(data_folder)
+data_file = os.path.join(sample_folder, MODEL_TYPE + "_samples.tsv")
+print("> Data file: " + data_file)
 model_folder = os.path.join(project_folder, "models")
 print("> Model folder: " + model_folder)
-
-# ################ Helper functions ###############################################################
-def bps_rmse(y_true, y_ref):
-    """ RMSE in bps """
-    return 10000.0 * rmse(y_true, y_ref)
-
-def tf_bps_rmse(y_true, y_ref):
-    """ RMSE in bps in tensorflow """
-    return 10000.0 * tf_rmse(y_true, y_ref)
 
 # ################ Select generator ###############################################################
 # Select generator. The number of expiries and surface size are irrelevant as here we do not
@@ -76,6 +71,8 @@ generator = set_generator(MODEL_TYPE, shift=SHIFT, num_mc=NUM_MC, points_per_yea
 # Datasets are always read, as even if we don't train, we're still going to evaluate the
 # performance of the pre-trained model
 print(">> Preparing datasets")
+# Retrieve data from dataset folder
+datasets.retrieve_data(data_folder, NUM_SAMPLES, shuffle=True, export_file=data_file)
 # Retrieve dataset
 print("> Reading dataset from file: " + data_file)
 x_set, y_set, data_df = generator.retrieve_datasets(data_file, shuffle=True)
@@ -88,7 +85,9 @@ print(data_df.head())
 # Split into training and test sets
 TRS = TRAIN_PERCENT * 100
 print(f"> Splitting between training set ({TRS:.2f}%) and test set ({100 - TRS:.2f}%)")
-x_train, y_train, x_test, y_test = prepare_sets(x_set, y_set, TRAIN_PERCENT)
+x_train, y_train, x_test, y_test = datasets.prepare_sets(x_set, y_set, TRAIN_PERCENT)
+print(f"> Training set size: {x_train.shape[0]:,}")
+print(f"> Testing set size: {x_test.shape[0]:,}")
 
 # ################ Compose/Load the model #########################################################
 # Compose new model or load pre-trained one
