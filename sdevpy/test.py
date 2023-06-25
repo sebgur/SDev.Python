@@ -1,20 +1,37 @@
 """ Just to test things """
 # import tensorflow as tf
-import numpy as np
-import scipy.stats as sp
-import json
-import matplotlib.pyplot as plt
-# from maths.metrics import rmse
-# import projects.xsabr_fit.sabrgenerator as sabr
+# import numpy as np
+# import scipy.stats as sp
+# import json
+# import matplotlib.pyplot as plt
+import requests
+import io
+import pandas as pd
 
-parameters = { 'LnVol2': 0.2, 'Beta': 0.5}
 
-# print(parameters['LnVol'])
+!mkdir -p test_folder
 
-if 'LnVol' in parameters:
-    print("found it")
-else:
-    print("boooo")
+url = "https://raw.githubusercontent.com/sebgur/SDev.Python/main/samples/McHeston_samples.tsv"
+
+# https://github.com/sebgur/SDev.Python/blob/main/models/stovol/SABR/config.json
+# https://raw.githubusercontent.com/sebgur/SDev.Python/main/models/stovol/SABR/config.json
+
+# https://github.com/sebgur/SDev.Python/tree/main/models/stovol
+# https://raw.githubusercontent.com/sebgur/SDev.Python/main/models/stovol
+
+# download = requests.get(url).content
+
+# df = pd.read_csv(io.StringIO(download.decode('utf-8')), sep='\t')
+# print(df.head())
+
+# parameters = { 'LnVol2': 0.2, 'Beta': 0.5}
+
+# # print(parameters['LnVol'])
+
+# if 'LnVol' in parameters:
+#     print("found it")
+# else:
+#     print("boooo")
 
 
 # strikes = [1, 2, 3, 4, 5]
