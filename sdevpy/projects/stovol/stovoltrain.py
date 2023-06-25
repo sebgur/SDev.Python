@@ -38,7 +38,7 @@ TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 100 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 500 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 100
 BATCH_SIZE = 1000
@@ -54,11 +54,9 @@ print("> Project folder: " + project_folder)
 sample_folder = os.path.join(project_folder, "samples")
 data_folder = os.path.join(sample_folder, MODEL_TYPE)
 print("> Data folder: " + data_folder)
-# check_directory(data_folder)
 data_file = os.path.join(sample_folder, MODEL_TYPE + "_samples.tsv")
 print("> Data file: " + data_file)
 model_folder = os.path.join(project_folder, "models")
-# model_folder = "https://raw.githubusercontent.com/sebgur/SDev.Python/main/models/stovol"
 print("> Model folder: " + model_folder)
 
 # ################ Select generator ###############################################################
@@ -191,8 +189,8 @@ if SHOW_VOL_CHARTS:
     FWD = 0.028
 
     # Any number of expiries can be calculated, but for optimum display choose no more than 6
-    EXPIRIES = np.asarray([0.125, 0.250, 0.5, 1.00, 2.0, 5.0]).reshape(-1, 1)
-    # EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.00, 10.0, 30.0]).reshape(-1, 1)
+    # EXPIRIES = np.asarray([0.125, 0.250, 0.5, 1.00, 2.0, 5.0]).reshape(-1, 1)
+    EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.00, 10.0, 30.0]).reshape(-1, 1)
     NUM_EXPIRIES = EXPIRIES.shape[0]
     METHOD = 'Percentiles'
     PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
