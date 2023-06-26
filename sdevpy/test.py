@@ -9,28 +9,79 @@ import io
 import pandas as pd
 from io import BytesIO
 
-url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/SABR.zip'
+# URL = 'https://drive.google.com/file/d/10dKi82fW2arlKnOahNv9i5igfiydwMnc/view?usp=sharing'
 
 
-MODEL_NAME = 'SABR'
-OUPUT_ROOT = r'C:\temp\sdevpy\stovol\models'
+# def download_file_from_google_drive(id, destination):
+#     # URL = "https://docs.google.com/uc?export=download"
 
-base_url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/'
-model_url = base_url + MODEL_NAME + ".zip"
+#     session = requests.Session()
 
-req = requests.get(model_url)
+#     print(URL)
+#     print(id)
+#     response = session.get(URL, params = { 'id' : id }, stream = True)
+#     print(response)
+#     token = get_confirm_token(response)
+#     print(token)
 
-filename = url.split('/')[-1]
-print("Downloading: " + filename)
+#     if token:
+#         params = { 'id' : id, 'confirm' : token }
+#         response = session.get(URL, params = params, stream = True)
 
-# Download
-with open(filename,'wb') as output_file:
-    output_file.write(req.content)
-print('Downloading Completed')
+#     save_response_content(response, destination)    
 
-# Extract
-zipfile = zipfile.ZipFile(BytesIO(req.content))
-zipfile.extractall(OUPUT_ROOT)
+# def get_confirm_token(response):
+#     for key, value in response.cookies.items():
+#         if key.startswith('download_warning'):
+#             return value
+
+#     return None
+
+# def save_response_content(response, destination):
+#     CHUNK_SIZE = 32768
+
+#     with open(destination, "wb") as f:
+#         for chunk in response.iter_content(CHUNK_SIZE):
+#             if chunk: # filter out keep-alive new chunks
+#                 f.write(chunk)
+
+
+
+# id = '10dKi82fW2arlKnOahNv9i5igfiydwMnc'
+
+# destination_ = ''
+
+# download_file_from_google_drive(id, destination_)
+
+# sample_url = 'https://1drv.ms/u/s!AivreF7B9rL4kK8Hx1vT4PRjtbE1iA?e=fxM7Kx' # OneDrive
+
+# req = requests.get(sample_url)
+
+# # Extract
+# zipfile = zipfile.ZipFile(BytesIO(req.content))
+# zipfile.extractall('New Folder')
+
+# url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/SABR.zip'
+
+# MODEL_NAME = 'SABR'
+# OUPUT_ROOT = r'C:\temp\sdevpy\stovol\models'
+
+# base_url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/'
+# model_url = base_url + MODEL_NAME + ".zip"
+
+# req = requests.get(model_url)
+
+# filename = url.split('/')[-1]
+# print("Downloading: " + filename)
+
+# # Download
+# with open(filename,'wb') as output_file:
+#     output_file.write(req.content)
+# print('Downloading Completed')
+
+# # Extract
+# zipfile = zipfile.ZipFile(BytesIO(req.content))
+# zipfile.extractall(OUPUT_ROOT)
 
 
 # url = "https://raw.githubusercontent.com/sebgur/SDev.Python/main/samples/McHeston_samples.tsv"

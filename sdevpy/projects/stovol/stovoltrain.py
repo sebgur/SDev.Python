@@ -22,6 +22,8 @@ from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
 
 
+# Make small demo versions of the samples and implement DOWNLOAD_DATASET for TRAIN = True
+# Get back to Colab to test generate from downloaded models (which works locally), Colab to train
 # Fine-train models
 # Store data in Kaggle
 
@@ -35,6 +37,7 @@ MODEL_ID = "SABR_3L_64n" # Pre-trained model ID (we can pre-train several versio
 SHIFT = 0.03
 USE_TRAINED = True
 DOWNLOAD_MODELS = True # Only used when USE_TRAINED is True
+DOWNLOAD_DATASETS = True # Use when already created/downloaded
 TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
@@ -67,6 +70,9 @@ if USE_TRAINED and DOWNLOAD_MODELS:
     url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/stovol.zip'
     print("> Downloading and unzipping models from: " + url)
     filemanager.download_unzip(url, model_folder)
+
+if DOWNLOAD_DATASETS:
+    print("> Downloading datasets from: ")
 
 # ################ Select generator ###############################################################
 # Select generator. The number of expiries and surface size are irrelevant as here we do not

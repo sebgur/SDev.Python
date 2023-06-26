@@ -71,8 +71,8 @@ if __name__ == "__main__":
     print(test_y)
 
     # Test merging
-    FOLDER = r"C:\temp\sdevpy\stovol\samples\test"
-    NUM_SAMPLES = 4
-    DATA_FILE = r"C:\temp\sdevpy\stovol\samples\test.tsv"
+    FOLDER = r"W:\Sandbox\SDev.Python\samples\SABR"
+    NUM_SAMPLES = 50000
+    DATA_FILE = r"W:\Sandbox\SDev.Python\samples\SABR.tsv"
     DATA_DF = retrieve_data(FOLDER, NUM_SAMPLES, export_file=DATA_FILE, shuffle=True)
     print(DATA_DF)
