@@ -26,11 +26,11 @@ SEED = 42# [123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42]
 print(">> Set up runtime configuration")
 project_folder = os.path.join(settings.WORKFOLDER, "stovol")
 print("> Project folder: " + project_folder)
-data_folder = os.path.join(project_folder, "samples")
-print("> Data folder: " + data_folder)
-filemanager.check_directory(data_folder)
+dataset_folder = os.path.join(project_folder, "datasets")
+print("> Data folder: " + dataset_folder)
+filemanager.check_directory(dataset_folder)
 print("> Chosen model: " + MODEL_TYPE)
-data_file = os.path.join(data_folder, MODEL_TYPE + "_samples.tsv")
+data_file = os.path.join(dataset_folder, MODEL_TYPE + "_data.tsv")
 
 # ################ Select model ###################################################################
 generator = stovolfactory.set_generator(MODEL_TYPE, SHIFT, NUM_EXPIRIES, NUM_STRIKES, NUM_MC,

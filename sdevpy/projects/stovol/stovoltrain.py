@@ -58,10 +58,10 @@ if USE_TRAINED:
 
 project_folder = os.path.join(settings.WORKFOLDER, "stovol")
 print("> Project folder: " + project_folder)
-sample_folder = os.path.join(project_folder, "samples")
-data_folder = os.path.join(sample_folder, MODEL_TYPE)
+dataset_folder = os.path.join(project_folder, "datasets")
+data_folder = os.path.join(dataset_folder, MODEL_TYPE)
 print("> Data folder: " + data_folder)
-data_file = os.path.join(sample_folder, MODEL_TYPE + "_samples.tsv")
+data_file = os.path.join(dataset_folder, MODEL_TYPE + "_data.tsv")
 print("> Data file: " + data_file)
 model_folder = os.path.join(project_folder, "models")
 print("> Model folder: " + model_folder)
@@ -72,7 +72,9 @@ if USE_TRAINED and DOWNLOAD_MODELS:
     filemanager.download_unzip(url, model_folder)
 
 if DOWNLOAD_DATASETS:
-    print("> Downloading datasets from: ")
+    url = 'https://github.com/sebgur/SDev.Python/raw/main/samples/samples.zip'
+    print("> Downloading and unzipping datasets from: " + url)
+    filemanager.download_unzip(url, dataset_folder)
 
 # ################ Select generator ###############################################################
 # Select generator. The number of expiries and surface size are irrelevant as here we do not
