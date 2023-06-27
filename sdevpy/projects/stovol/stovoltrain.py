@@ -22,7 +22,6 @@ from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
 
 
-# Make small demo versions of the samples and implement DOWNLOAD_DATASET for TRAIN = True
 # Get back to Colab to test generate from downloaded models (which works locally), Colab to train
 # Fine-train models
 # Store data in Kaggle
@@ -87,7 +86,9 @@ generator = set_generator(MODEL_TYPE, shift=SHIFT, num_mc=NUM_MC, points_per_yea
 # performance of the pre-trained model
 print(">> Preparing datasets")
 # Retrieve data from dataset folder
+print(f"> Requested {NUM_SAMPLES:,} samples")
 datasets.retrieve_data(data_folder, NUM_SAMPLES, shuffle=True, export_file=data_file)
+print("> Exporting dataset to file: " + data_file)
 # Retrieve dataset
 print("> Reading dataset from file: " + data_file)
 x_set, y_set, data_df = generator.retrieve_datasets(data_file, shuffle=True)
