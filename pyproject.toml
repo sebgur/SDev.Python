@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sdevpy"
-version = "0.1.4"
+version = "0.1.5"
 authors = [
   { name="Sebastien Gurrieri", email="sebgur@gmail.com" },
 ]
