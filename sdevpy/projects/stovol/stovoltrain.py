@@ -27,28 +27,28 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # Store data in Kaggle
 
 # ################ Runtime configuration ##########################################################
-MODEL_TYPE = "SABR"
+# MODEL_TYPE = "SABR"
 # MODEL_TYPE = "McSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
-# MODEL_TYPE = "McHeston"
-MODEL_ID = "SABR_3L_64n" # Pre-trained model ID (we can pre-train several versions)
+MODEL_TYPE = "McHeston"
+MODEL_ID = "McHeston" # Pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
 USE_TRAINED = True
-DOWNLOAD_MODELS = True # Only used when USE_TRAINED is True
-DOWNLOAD_DATASETS = True # Use when already created/downloaded
+DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
+DOWNLOAD_DATASETS = False # Use when already created/downloaded
 TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
 NUM_SAMPLES = 500 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 100
+EPOCHS = 200
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
-NUM_MC = 100 * 1000 # 100 * 1000
-POINTS_PER_YEAR = 25 # 25
+NUM_MC = 250000 #100 * 1000 # 100 * 1000
+POINTS_PER_YEAR = 50# 25 # 25
 
 print(">> Set up runtime configuration")
 print("> Chosen model type: " + MODEL_TYPE)
@@ -139,8 +139,8 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1.0e-1
-    FINAL_LR = 1.0e-3
+    INIT_LR = 1.5e-3
+    FINAL_LR = 5.0e-4
     DECAY = 0.97
     STEPS = 250
     lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
@@ -196,7 +196,7 @@ if SHOW_VOL_CHARTS:
     print("> Choosing a sample parameter set to display chart")
     NUM_STRIKES = 100
     PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25, 'Gamma': 0.7, 'Kappa': 1.0,
-                'Theta': 0.05, 'Xi': 0.50 }
+                'Theta': 0.03, 'Xi': 0.35 }
     FWD = 0.028
 
     # Any number of expiries can be calculated, but for optimum display choose no more than 6

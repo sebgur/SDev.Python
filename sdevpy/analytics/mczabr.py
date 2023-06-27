@@ -42,7 +42,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     sqrtmrho2 = np.sqrt(1.0 - rho**2)
     vol_floor = 0.0001
 
-    print(f'Gamma: {gamma:.2f}')
+    # print(f'Gamma: {gamma:.2f}')
 
     # Draw all gaussians
     # gaussians = rand.gaussians(num_steps, num_mc, num_factors, rand_method)
