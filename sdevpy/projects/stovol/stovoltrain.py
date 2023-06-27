@@ -67,12 +67,12 @@ model_folder = os.path.join(project_folder, "models")
 print("> Model folder: " + model_folder)
 
 if USE_TRAINED and DOWNLOAD_MODELS:
-    url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/stovol.zip'
+    url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/models.zip'
     print("> Downloading and unzipping models from: " + url)
     filemanager.download_unzip(url, model_folder)
 
 if DOWNLOAD_DATASETS:
-    url = 'https://github.com/sebgur/SDev.Python/raw/main/samples/samples.zip'
+    url = 'https://github.com/sebgur/SDev.Python/raw/main/datasets/stovol/datasets.zip'
     print("> Downloading and unzipping datasets from: " + url)
     filemanager.download_unzip(url, dataset_folder)
 
