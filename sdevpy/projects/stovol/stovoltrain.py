@@ -30,9 +30,9 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # MODEL_TYPE = "SABR"
 # MODEL_TYPE = "McSABR"
 # MODEL_TYPE = "FbSABR"
-# MODEL_TYPE = "McZABR"
-MODEL_TYPE = "McHeston"
-MODEL_ID = "McHeston" # Pre-trained model ID (we can pre-train several versions)
+MODEL_TYPE = "McZABR"
+# MODEL_TYPE = "McHeston"
+MODEL_ID = MODEL_TYPE # "McHeston" # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
 USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
@@ -41,28 +41,33 @@ TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 500 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 50 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 200
+EPOCHS = 100
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
-NUM_MC = 250000 #100 * 1000 # 100 * 1000
+NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 50# 25 # 25
+project_folder = os.path.join(settings.WORKFOLDER, "stovol")
 
 print(">> Set up runtime configuration")
 print("> Chosen model type: " + MODEL_TYPE)
 if USE_TRAINED:
     print("> Pre-trained model ID: " + MODEL_ID)
 
-project_folder = os.path.join(settings.WORKFOLDER, "stovol")
+filemanager.check_directory(project_folder)
 print("> Project folder: " + project_folder)
+
 dataset_folder = os.path.join(project_folder, "datasets")
 data_folder = os.path.join(dataset_folder, MODEL_TYPE)
+filemanager.check_directory(data_folder)
 print("> Data folder: " + data_folder)
 data_file = os.path.join(dataset_folder, MODEL_TYPE + "_data.tsv")
 print("> Data file: " + data_file)
+
 model_folder = os.path.join(project_folder, "models")
+filemanager.check_directory(model_folder)
 print("> Model folder: " + model_folder)
 
 if USE_TRAINED and DOWNLOAD_MODELS:
@@ -139,8 +144,8 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1.5e-3
-    FINAL_LR = 5.0e-4
+    INIT_LR = 1.0e-1
+    FINAL_LR = 1.0e-3
     DECAY = 0.97
     STEPS = 250
     lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
