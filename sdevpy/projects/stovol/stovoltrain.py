@@ -22,17 +22,14 @@ from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
 
 
-# Get back to Colab to test generate from downloaded models (which works locally), Colab to train
-# Fine-train models
-# Store data in Kaggle
-
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
 # MODEL_TYPE = "McSABR"
 # MODEL_TYPE = "FbSABR"
-MODEL_TYPE = "McZABR"
-# MODEL_TYPE = "McHeston"
-MODEL_ID = MODEL_TYPE # "McHeston" # For pre-trained model ID (we can pre-train several versions)
+# MODEL_TYPE = "McZABR"
+MODEL_TYPE = "McHeston"
+# MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
+MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
 USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
@@ -41,14 +38,14 @@ TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 50 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 500 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 100
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
 NUM_MC = 100 * 1000 # 100 * 1000
-POINTS_PER_YEAR = 50# 25 # 25
+POINTS_PER_YEAR = 25# 25
 project_folder = os.path.join(settings.WORKFOLDER, "stovol")
 
 print(">> Set up runtime configuration")
