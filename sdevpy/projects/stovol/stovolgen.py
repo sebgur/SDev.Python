@@ -16,13 +16,13 @@ MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
 SHIFT = 0.03
-NUM_SAMPLES = 100 * 1000
+NUM_SAMPLES = 120 * 1000
 # The 4 parameters below are only relevant for models whose reference is calculated by MC
 NUM_EXPIRIES = 10
 NUM_STRIKES = 5
 NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25 # 25
-SEED = 6789# [123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42]
+SEED = 2288# [123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42]
 
 print(">> Set up runtime configuration")
 project_folder = os.path.join(settings.WORKFOLDER, "stovol")
@@ -42,7 +42,7 @@ generator = stovolfactory.set_generator(MODEL_TYPE, SHIFT, NUM_EXPIRIES, NUM_STR
 # RANGES = {'Ttm': [1.0 / 12.0, 35.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041], 'LnVol': [0.05, 0.5],
 #           'Beta': [0.1, 0.9], 'Nu': [0.1, 1.0], 'Rho': [-0.6, 0.6]}
 # FBSABR
-RANGES = {'Ttm': [1.0 / 12.0, 10.0], 'K': [0.01, 0.99], 'F': [-0.01, 0.05], 'LnVol': [0.05, 0.5],
+RANGES = {'Ttm': [1.0 / 12.0, 5.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041], 'LnVol': [0.05, 0.5],
           'Beta': [0.25, 0.75], 'Nu': [0.1, 1.0], 'Rho': [-0.6, 0.6]}
 # # ZABR
 # RANGES = {'Ttm': [1.0 / 12.0, 35.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041], 'LnVol': [0.05, 0.5],

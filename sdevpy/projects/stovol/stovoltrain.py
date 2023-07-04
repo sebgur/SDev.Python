@@ -26,21 +26,21 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # MODEL_TYPE = "SABR"
 # MODEL_TYPE = "McSABR"
 # MODEL_TYPE = "FbSABR"
-# MODEL_TYPE = "McZABR"
-MODEL_TYPE = "McHeston"
+MODEL_TYPE = "McZABR"
+# MODEL_TYPE = "McHeston"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
 MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
-USE_TRAINED = True
+USE_TRAINED = False
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
-TRAIN = False
+TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
 NUM_SAMPLES = 500 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 100
+EPOCHS = 200
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)

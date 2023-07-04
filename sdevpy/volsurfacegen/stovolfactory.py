@@ -13,13 +13,13 @@ def set_generator(type_, shift=0.03, num_expiries=10, num_strikes=5, num_mc=1000
     if type_ == "SABR":
         generator = SabrGenerator(shift, num_expiries, num_strikes, seed)
     elif type_ == "McSABR":
-        generator = McSabrGenerator(shift, num_expiries, num_strikes, num_mc, points_per_year)
+        generator = McSabrGenerator(shift, num_expiries, num_strikes, num_mc, points_per_year, seed)
     elif type_ == "FbSABR":
-        generator = FbSabrGenerator(num_expiries, num_strikes, num_mc, points_per_year)
+        generator = FbSabrGenerator(num_expiries, num_strikes, num_mc, points_per_year, seed)
     elif type_ == "McZABR":
-        generator = McZabrGenerator(shift, num_expiries, num_strikes, num_mc, points_per_year)
+        generator = McZabrGenerator(shift, num_expiries, num_strikes, num_mc, points_per_year, seed)
     elif type_ == "McHeston":
-        generator = McHestonGenerator(shift, num_expiries, num_strikes, num_mc, points_per_year)
+        generator = McHestonGenerator(shift, num_expiries, num_strikes, num_mc, points_per_year, seed)
     else:
         raise ValueError("Unknown model: " + type_)
 
