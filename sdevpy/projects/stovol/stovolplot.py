@@ -1,8 +1,10 @@
 """ Plot helpers for XSABR project """
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from sdevpy.analytics import bachelier
 from sdevpy.analytics import black
+from sdevpy.tools import clipboard
 
 
 def plot_transform_surface(expiries, strikes, are_calls, fwd, ref_prices, mod_prices, title_,
@@ -17,7 +19,6 @@ def plot_transform_surface(expiries, strikes, are_calls, fwd, ref_prices, mod_pr
     num_charts = expiries.shape[0]
     num_cols = 2
     num_rows = int(num_charts / num_cols)
-    # print("num_rows: " + str(num_rows))
     ylabel = 'Price' if transform == 'Price' else 'Vol'
 
     fig, axs = plt.subplots(num_rows, num_cols, layout="constrained")
@@ -41,72 +42,40 @@ def plot_transform_surface(expiries, strikes, are_calls, fwd, ref_prices, mod_pr
 def transform_surface(expiries, strikes, are_calls, fwd, prices, transform='ShiftedBlackScholes'):
     """ Tranform prices into: Price, ShiftedBlackScholes (3%) and Bachelier (normal vols). """
     # Transform prices
-    trans_prices = []
+    # trans_prices = []
+    num_expiries = expiries.shape[0]
+    num_strikes = strikes.shape[1]
     if transform == 'Price':
         trans_prices = prices
     elif transform == 'ShiftedBlackScholes':
+        trans_prices = np.ndarray(shape=(num_expiries, num_strikes))
         shift = 0.03
         sfwd = fwd + shift
         for i, expiry in enumerate(expiries):
             strikes_ = strikes[i]
             are_calls_ = are_calls[i]
-            trans_prices_ = []
+            # trans_prices_ = []
             for j, strike in enumerate(strikes_):
                 sstrike = strike + shift
-                trans_prices_.append(black.implied_vol(expiry, sstrike, are_calls_[j], sfwd,
-                                                       prices[i, j]))
-            trans_prices.append(trans_prices_)
+                trans_prices[i, j] = black.implied_vol(expiry, sstrike, are_calls_[j], sfwd,
+                                                       prices[i, j])
+                # trans_prices_.append(black.implied_vol(expiry, sstrike, are_calls_[j], sfwd,
+                #                                        prices[i, j]))
+            # trans_prices.append(trans_prices_)
     elif transform == 'Bachelier':
+        trans_prices = np.ndarray(shape=(num_expiries, num_strikes))
         for i, expiry in enumerate(expiries):
             strikes_ = strikes[i]
             are_calls_ = are_calls[i]
-            trans_prices_ = []
+            # trans_prices_ = []
             for j, strike in enumerate(strikes_):
-                trans_prices_.append(bachelier.implied_vol(expiry, strike, are_calls_[j], fwd,
-                                                           prices[i, j]))
-            trans_prices.append(trans_prices_)
+                trans_prices[i, j] = bachelier.implied_vol(expiry, strike, are_calls_[j], fwd,
+                                                           prices[i, j])
+            #     trans_prices_.append(bachelier.implied_vol(expiry, strike, are_calls_[j], fwd,
+            #                                                prices[i, j]))
+            # trans_prices.append(trans_prices_)
     else:
         raise ValueError("Unknown transform type: " + transform)
 
     return trans_prices
-
-
-# def strike_ladder(expiry, spread_ladder, fwd, test_params, generator, model,
-#                   transform='ShiftedBlackScholes'):
-#     """ Plot volatilities along a ladder of strike spreads """
-#     is_call = generator.is_call
-
-#     # Calculate prices
-#     rf_prc, md_prc, strikes, sprds = generator.price_strike_ladder(model, expiry, spread_ladder,
-#                                                                    fwd, test_params)
-
-#     # Invert to normal vols
-#     rf_nvols = []
-#     md_nvols = []
-#     if transform is 'ShiftedBlackScholes':
-#         shift = 0.03
-#         for i, strike in enumerate(strikes):
-#             sstrike = strike + shift
-#             sfwd = fwd + shift
-#             rf_nvols.append(black.implied_vol(expiry, sstrike, is_call, sfwd, rf_prc[i]))
-#             md_nvols.append(black.implied_vol(expiry, sstrike, is_call, sfwd, md_prc[i]))
-#     elif transform is 'Bachelier':
-#         for i, strike in enumerate(strikes):
-#             rf_nvols.append(bachelier.implied_vol(expiry, strike, is_call, fwd, rf_prc[i]))
-#             md_nvols.append(bachelier.implied_vol(expiry, strike, is_call, fwd, md_prc[i]))
-#     else:
-#         raise ValueError("Unknown transform type: " + transform)
-
-#     lnvol = test_params['LnVol']
-#     beta = test_params['Beta']
-#     nu = test_params['Nu']
-#     rho = test_params['Rho']
-#     # Plot
-#     plt.title(f'T={expiry:.2f}, F={fwd * 100:.2f}, LnVol={lnvol * 100:.2f}, Beta={beta:.2f}' +
-#               f',\n Nu={nu*100:.2f}, Rho={rho * 100:.2f}')
-
-#     plt.xlabel('Spread')
-#     plt.ylabel('Volatility')
-#     plt.plot(sprds, rf_nvols, color='blue', label='Reference')
-#     plt.plot(sprds, md_nvols, color='red', label='Model')
-#     plt.legend(loc='upper right')
+    # return np.asarray(trans_prices)

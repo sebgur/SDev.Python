@@ -16,7 +16,7 @@ from sdevpy.machinelearning.callbacks import RefCallback
 from sdevpy.machinelearning import datasets
 from sdevpy.tools import filemanager
 from sdevpy.tools.timer import Stopwatch
-from sdevpy.tools import clipboard
+# from sdevpy.tools import clipboard
 from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
 from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
@@ -34,7 +34,7 @@ SHIFT = 0.03
 USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
-TRAIN = True
+TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
@@ -141,8 +141,8 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1.0e-3
-    FINAL_LR = 5.0e-4
+    INIT_LR = 1.0e-1
+    FINAL_LR = 1.0e-3
     DECAY = 0.97
     STEPS = 250
     lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
@@ -202,15 +202,17 @@ if SHOW_VOL_CHARTS:
     FWD = 0.028
 
     # Any number of expiries can be calculated, but for optimum display choose no more than 6
-    # EXPIRIES = np.asarray([0.125, 0.250, 0.5, 1.00, 2.0, 5.0]).reshape(-1, 1)
-    EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.00, 10.0, 30.0]).reshape(-1, 1)
+    if MODEL_TYPE == "FbSABR":
+        EXPIRIES = np.asarray([0.25, 0.50, 1.0, 2.0, 5.0, 10.0]).reshape(-1, 1) # Only trained up to 5y
+    else:
+        EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.0, 10.0, 30.0]).reshape(-1, 1)
     NUM_EXPIRIES = EXPIRIES.shape[0]
     METHOD = 'Percentiles'
     PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
     PERCENTS = np.asarray([PERCENTS] * NUM_EXPIRIES)
 
     strikes = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
-    clipboard.export2d(strikes)
+    # clipboard.export2d(strikes)
     ARE_CALLS = [[False] * NUM_STRIKES] * NUM_EXPIRIES # All puts
     # ARE_CALLS = [[False if s < FWD else True for s in expks] for expks in strikes] # Puts/calls
     # print(ARE_CALLS)
@@ -240,7 +242,6 @@ if SHOW_VOL_CHARTS:
     TRANSFORM = "ShiftedBlackScholes"
     xplt.plot_transform_surface(EXPIRIES, strikes, ARE_CALLS, FWD, ref_prices, mod_prices,
                                 TITLE, transform=TRANSFORM)
-
 
 # Show training history
 if TRAIN:
