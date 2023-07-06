@@ -24,21 +24,21 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
-MODEL_TYPE = "McSABR"
-# MODEL_TYPE = "FbSABR"
+# MODEL_TYPE = "McSABR"
+MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
 MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
-USE_TRAINED = False
+USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
 TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 500 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 50 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 100
 BATCH_SIZE = 1000
@@ -141,7 +141,7 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1.0e-1
+    INIT_LR = 1.0e-2
     FINAL_LR = 1.0e-3
     DECAY = 0.97
     STEPS = 250
