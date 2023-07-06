@@ -20,6 +20,10 @@ Jupyter notebooks are available for demo under ./notebooks.
 Trained models are saved under ./models/stovol. Sample training data is provided under ./datasets/stovol. However, these are only small sets for demo
 (50k samples). The larger sets we used for training (500k-2m) can be downloaded from our [Kaggle account](https://www.kaggle.com/sebastiengurrieri/datasets).
 
+The notebook ./notebooks/StoVol Dataset Generation.ipynb can be used to generate samples (beware of setting up output paths to your local drive).
+The notebook ./notebooks/StoVol Training.ipynb can be used to train models (pre-trained or not) on the samples. The .py scripts corresponding to these
+notebooks are under sdevpy/projects/stovol.
+
 ## Other Tools
 
 The package contains various other tools including Black-Scholes/Bachelier formulas, Monte-Carlo simulation of vanilla prices and 

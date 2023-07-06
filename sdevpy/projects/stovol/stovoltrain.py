@@ -24,8 +24,8 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 # ################ Runtime configuration ##########################################################
 # MODEL_TYPE = "SABR"
-# MODEL_TYPE = "McSABR"
-MODEL_TYPE = "FbSABR"
+MODEL_TYPE = "McSABR"
+# MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
@@ -38,9 +38,9 @@ TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 50 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 500 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 100
+EPOCHS = 200
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
@@ -142,7 +142,7 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 if TRAIN:
     # Learning rate scheduler
     INIT_LR = 1.0e-2
-    FINAL_LR = 1.0e-3
+    FINAL_LR = 1.0e-4
     DECAY = 0.97
     STEPS = 250
     lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
