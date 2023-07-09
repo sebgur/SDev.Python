@@ -1,12 +1,12 @@
-""" Calculate PV and Greeks of an option basket using AAD on Monte-Carlo simulation """
-import time as tm
+""" Calculate PV and Greeks of a call option on a single Black-Scholes underlying. We compare
+    standard MC with Greeks obtained by bump and reprice vs AAD MC vs Closed-Form. """
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from sdevpy.montecarlo import smoothers
 from sdevpy import settings
 from sdevpy.analytics import black
-
+from sdevpy.tools.timer import Stopwatch
 
 # ################ Runtime configuration ##########################################################
 # Parameters
@@ -125,8 +125,8 @@ def calculate_std(spot_, vol_, time_, rate_, num_mc):
 
 # Test bumps
 NUM_MC = 100 * 1000
+print(f">> Running {NUM_MC:,} Standard MC Simulations")
 values = calculate_std(SPOT, VOL, EXPIRY, RATE, NUM_MC)
-
 print_val([v[0] for v in values])
 
 # ################ AAD Monte-Carlo ###############################################################
@@ -184,12 +184,14 @@ def calculate_aad(spot_, vol_, time_, rate_, num_mc):
 
 # Test AAD with smoothing
 NUM_MC = 100 * 1000
+print(f">> Running {NUM_MC:,} AAD MC Simulations")
 values = calculate_aad(SPOT, VOL, EXPIRY, RATE, NUM_MC)
 
 print_val(values, is_pv_vector=True)
 
 ############# Test against CF #####################################################################
 # Calculate with closed-form
+print(">> Calculating closed-form (CF)")
 values = black.price_and_greeks(EXPIRY, STRIKE, SPOT, VOL, RATE, DIV)
 print_val(values)
 
@@ -198,8 +200,10 @@ print_val(values)
 NUM_POINTS = 100  # Number of loops/points in the charts
 MIN_S = 20.0
 MAX_S = 200.0
+NUM_MC = 10 * 1000  # Number of simulations
 spots = np.linspace(MIN_S, MAX_S, NUM_POINTS, dtype='double')  # spot ladder
-print(f"Displaying {NUM_POINTS:,} points over spot range [{MIN_S:,}, {MAX_S:,}]")
+print(f">> Calculating {NUM_POINTS:,} points with {NUM_MC:,} simulations over spot range " +
+      f"[{MIN_S:,}, {MAX_S:,}]")
 
 # Vectorize for broadcasting
 vols = np.ones(NUM_POINTS, dtype='float32') * VOL
@@ -207,31 +211,32 @@ times = np.ones(NUM_POINTS, dtype='float32') * EXPIRY
 rates = np.ones(NUM_POINTS, dtype='float32') * RATE
 
 # Bump method
-print("Calculating with bumps...")
-NUM_MC = 20 * 1000  # Number of simulations
+print("> Calculating with bumps...")
 print(f"Number of simulations: {NUM_MC:,}")
-time_bmp = tm.time()
+timer_bmp = Stopwatch("Bump-MC")
+timer_bmp.trigger()
 results_bmp = calculate_std(spots, vols, times, rates, NUM_MC)
-time_bmp = tm.time() - time_bmp
+timer_bmp.stop()
 
 # AAD
 print("Calculating with AAD...")
-NUM_MC = 20 * 1000  # Number of simulations
 print(f"Number of simulations: {NUM_MC:,}")
-time_aad = tm.time()
+timer_aad = Stopwatch("AAD-MC")
+timer_aad.trigger()
 results_aad = calculate_aad(spots, vols, times, rates, NUM_MC)
-time_aad = tm.time() - time_aad
+timer_aad.stop()
 
 # AD closed-form
-print("Calculating with AD closed-form...")
-time_adcf = tm.time()
+print("Calculating with closed-form...")
+timer_cf = Stopwatch("CF")
+timer_cf.trigger()
 results_adcf = black.price_and_greeks(times, STRIKE, spots, vols, rates, DIV)
-time_adcf = tm.time() - time_adcf
+timer_cf.stop()
 
 print("Calculation complete!")
-print(f'Runtime(Bumps): {time_bmp:.1f}s')
-print(f'Runtime(AAD): {time_aad:.1f}s')
-print(f'Runtime(AD-CF): {time_adcf:.1f}s')
+timer_bmp.print()
+timer_aad.print()
+timer_cf.print()
 
 #### Charts
 results_bmp = np.array(results_bmp)
@@ -252,11 +257,11 @@ def plot_value(plt_idx, name, result_idx, legend_location):
     plt.title(name)
     plt.xlabel('Spot')
     plt.plot(spots[start:end], results_bmp[result_idx][start:end], 'green', alpha=0.7,
-             label='Bumps')
+             label='Bump-MC')
     plt.plot(spots[start:end], results_adcf[result_idx][start:end], color='blue', alpha=0.8,
-             label='AD-CF')
+             label='CF')
     plt.plot(spots[start:end], results_aad[result_idx][start:end], color='red',
-             label='AAD')
+             label='AAD-MC')
     plt.legend(loc=legend_location)
 
 # Plot results

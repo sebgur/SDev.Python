@@ -24,6 +24,11 @@ The notebook ./notebooks/StoVol Dataset Generation.ipynb can be used to generate
 The notebook ./notebooks/StoVol Training.ipynb can be used to train models (pre-trained or not) on the samples. The .py scripts corresponding to these
 notebooks are under sdevpy/projects/stovol.
 
+## AAD Monte-Carlo
+
+In script ./projects/aad/aad_mc.py, we show how to calculate 1st and 2nd order Greeks on a Monte-Carlo
+simulation of Black-Scholes model (1 asset) using AAD. We compare the results with standard Monte-Carlo Greeks by Finite Differences and the closed-form. We make use of payoff smoothers for both AAD and Standard MC.
+
 ## Other Tools
 
 The package contains various other tools including Black-Scholes/Bachelier formulas, Monte-Carlo simulation of vanilla prices and 
