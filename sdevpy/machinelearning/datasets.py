@@ -59,6 +59,11 @@ def clip_dataframe(df, size):
         return df
     else:
         return df.iloc[range(0, size)]
+    
+def shuffle_dataframe(df, frac=1):
+    """ Shuffle dataframe """
+    df = df.sample(frac=frac)
+    return df
 
 
 if __name__ == "__main__":

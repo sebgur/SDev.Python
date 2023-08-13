@@ -4,14 +4,12 @@ import numpy as np
 import pandas as pd
 import scipy.stats as sp
 from sdevpy.analytics import bachelier
-# from sdevpy.analytics import black
+from sdevpy.machinelearning import datasets
 
 
 class SmileGenerator(ABC):
     """ Base class for smile generation """
     def __init__(self, shift=0.0, num_expiries=15, num_strikes=10, seed=42):
-        # self.num_curve_parameters = 0
-        # self.num_vol_parameters = 0
         self.is_call = False  # Use put options by default
         self.shift = shift
         self.num_strikes = num_strikes
@@ -28,13 +26,22 @@ class SmileGenerator(ABC):
     def price(self, expiries, strikes, are_calls, fwd, parameters):
         """ Calculate option price under the specified model and its parameters """
 
-    @abstractmethod
     def retrieve_datasets(self, data_file, shuffle=False):
         """ Retrieve dataset stored in tsv file """
+        data_df = SmileGenerator.from_file(data_file, shuffle)
+        x_set, y_set = self.retrieve_datasets_from_df(data_df, False)
+        return x_set, y_set, data_df
 
-    # @abstractmethod
-    # def price_surface_ref(self, expiries, strikes, are_calls, fwd, parameters):
-    #     """ Calculate a surface of prices for given parameters using the generating model """
+    def retrieve_datasets_from_df(self, data_df, shuffle=False):
+        """ Retrieve dataset from dataframe """
+        if shuffle:
+            data_df = datasets.shuffle_dataframe(data_df)
+
+        return self.retrieve_datasets_no_shuffle(data_df)
+
+    @abstractmethod
+    def retrieve_datasets_no_shuffle(self, data_df):
+        """ Retrieve dataset from dataframe without shuffling """
 
     def price_surface_ref(self, expiries, strikes, are_calls, fwd, parameters):
         """ Calculate a surface of prices for given parameters using the generating model """
@@ -65,10 +72,6 @@ class SmileGenerator(ABC):
 
         return strikes
 
-    # def num_parameters(self):
-    #     """ Total number of parameters (curve + vol) """
-    #     return self.num_curve_parameters + self.num_vol_parameters
-
     def to_nvol(self, data_df, cleanse=True, min_vol=0.0001, max_vol=0.1):
         """ Calculate normal implied vol and remove errors. Further remove points that are not
             in the given min/max range """
@@ -92,20 +95,6 @@ class SmileGenerator(ABC):
             except (Exception,):
                 nvol.append(-9999)
 
-        # Add test on Shifted BS
-        # shift = 0.03
-        # bsvol = []
-        # for i in range(num_samples):
-        #     if i % num_print == 0:
-        #         print(f"Converting to lognormal vol, batch {int(i/num_print)+1:,} out of
-        #                   {num_batches:,}")
-        #     try:
-        #         bsvol.append(black.implied_vol(t[i], strike[i] + shift, self.is_call,
-        #                    fwd[i] + shift, price[i]))
-        #     except (Exception,):
-        #         bsvol.append(-9999)
-
-
         np.seterr(divide='warn')  # Set back to warning
 
         data_df['NVol'] = nvol
@@ -115,8 +104,6 @@ class SmileGenerator(ABC):
         if cleanse:
             data_df = data_df.drop(data_df[data_df.NVol > max_vol].index)
             data_df = data_df.drop(data_df[data_df.NVol < min_vol].index)
-            # data_df = data_df.drop(data_df[data_df.BSVol < 0.01].index)
-            # data_df = data_df.drop(data_df[data_df.BSVol > 0.99].index)
 
         return data_df
 

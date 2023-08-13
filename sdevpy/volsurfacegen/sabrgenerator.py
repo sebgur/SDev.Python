@@ -109,9 +109,7 @@ class SabrGenerator(SmileGenerator):
 
         return np.asarray(prices)
 
-    def retrieve_datasets(self, data_file, shuffle=False):
-        data_df = SmileGenerator.from_file(data_file, shuffle)
-
+    def retrieve_datasets_no_shuffle(self, data_df):
         # Retrieve suitable data
         t = data_df.Ttm
         strike = data_df.K
@@ -128,7 +126,8 @@ class SabrGenerator(SmileGenerator):
         y_set = np.asarray(nvol)
         y_set = np.reshape(y_set, (num_samples, 1))
 
-        return x_set, y_set, data_df
+        return x_set, y_set
+
 
     def price_surface_mod(self, model, expiries, strikes, are_calls, fwd, parameters):
         # Retrieve parameters
