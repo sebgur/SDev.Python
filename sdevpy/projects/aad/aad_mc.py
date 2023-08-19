@@ -51,7 +51,7 @@ def print_val(values_, is_pv_vector=False):
     print(f"Volga: {values_[6]:,.4f}")
     print(f"Vanna: {values_[7]:,.4f}")
 
-# ################ Standard Monte-Carlo #########################################################
+# ################ Standard Monte-Carlo ###############################################################################
 # Standard simulator
 def simulate_std(spot_, vol_, time_, rate_, gaussians):
     """ Standard MC simulation for PV """
