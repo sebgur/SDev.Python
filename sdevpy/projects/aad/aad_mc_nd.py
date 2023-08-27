@@ -35,9 +35,9 @@ VOL_MAX = 0.40
 DIV_MIN = -0.01
 DIV_MAX = 0.04
 
-SPOT = rng_init.uniform(SPOT_MIN, SPOT_MAX, DIM).reshape(-1, 1)
-VOL = rng_init.uniform(VOL_MIN, VOL_MAX, DIM).reshape(-1, 1)
-DIV = rng_init.uniform(DIV_MIN, DIV_MAX, DIM).reshape(-1, 1)
+SPOT = rng_init.uniform(SPOT_MIN, SPOT_MAX, DIM).reshape(1, -1)
+VOL = rng_init.uniform(VOL_MIN, VOL_MAX, DIM).reshape(1, -1)
+DIV = rng_init.uniform(DIV_MIN, DIV_MAX, DIM).reshape(1, -1)
 
 g_mean = np.zeros(shape=(DIM))
 # Correlation matrix
@@ -49,10 +49,10 @@ for i in range(DIM):
 cov = correl.copy()
 for i in range(len(correl)):
     for j in range(len(correl)):
-        cov[i, j] *= VOL[i] * VOL[j]
+        cov[i, j] *= VOL[0, i] * VOL[0, j]
 
 # Payoff
-STRIKE = 1.0
+STRIKE = [1.0, 1.5]
 MATURITY = 2.5
 TYPE = "Put"
 W = -1.0 if TYPE == "Put" else 1.0
@@ -62,41 +62,49 @@ STDEV = VOL * np.sqrt(MATURITY)
 VAR = STDEV**2
 DF = np.exp(-RATE * MATURITY)
 
-print(SPOT)
-print(VOL)
-print(DIV)
-print(correl)
-print(cov)
-print(W)
-print(STDEV)
+print("SPOT\n", SPOT)
+print("VOL\n", VOL)
+print("DIV\n", DIV)
+print("correl\n", correl)
+print("cov\n", cov)
+print("W\n", W)
+print("VAR\n", VAR)
+print("STDEV\n", STDEV)
 
 ############### Bumps #############################################################################
 def pv_mc(spot, gaussians):
     # Calculate deterministic forward
     fwd = spot * np.exp((RATE - DIV) * MATURITY)
-    print(fwd)
+    print("fwd\n", fwd)
 
     # Calculate final spot paths
-    # future_spot = fwd * np.exp(-0.5 * VAR  + STDEV * gaussians)
-    # print(future_spot)
+    print(STDEV.shape)
+    future_spot = fwd * np.exp(-0.5 * VAR  + STDEV * gaussians)
+    print("future_spot\n", future_spot)
 
-    # # Calculate discounted payoff
-    # perf = future_spot / fixings - 1.0
-    # wperf = tf.reduce_min(perf, axis=1, keepdims=True)
-    # floored_rate = floor + tf_smooth_max(wperf, floor)
-    # eff_rate = cap - tf_smooth_max(-floored_rate, -cap)
-    # payoff = df * notional * eff_rate
+    # Calculate discounted payoff
+    prod = np.prod(future_spot, axis=1, keepdims=True)
+    print("prod\n", prod)
+    diff = prod - STRIKE
+    print("diff\n", diff)
+    ddiff = DF * diff
+    print("discdiff\n", ddiff)
 
-    # # Reduce
-    # pv = tf.reduce_mean(payoff, axis=0)
+    # Reduce
+    pv = np.sum(ddiff, axis=0) / NUM_MC
 
-    # return pv.numpy()[0]
+    return pv
 
 
 g = rng_mc.multivariate_normal(g_mean, correl, size=NUM_MC)
-print(g)
-pv_mc(SPOT, g)
+print(g.shape)
+print("g\n", g)
+mc_pv = pv_mc(SPOT, g)
 
+print("PV\n", mc_pv)
+d = mc_pv[0] - mc_pv[1]
+print(d)
+print(d / DF)
 
 ############### AAD ###############################################################################
 
