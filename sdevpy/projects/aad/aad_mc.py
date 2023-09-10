@@ -65,7 +65,7 @@ def simulate_std(spot_, vol_, time_, rate_, gaussians):
     # Calculate discounted payoff
     df = np.exp(-rate_ * time_)
     if USE_SMOOTHER_STD:
-        payoff = df * smoothers.smooth_call(future_spot, STRIKE)  # Use smoothing
+        payoff = df * smoothers.smooth_max_diff(future_spot, STRIKE)  # Use smoothing
     else:
         payoff = df * np.maximum(future_spot - STRIKE, 0)
 
@@ -156,7 +156,7 @@ def calculate_aad(spot_, vol_, time_, rate_, num_mc):
 
             # Calculate discounted payoff
             df = tf.math.exp(-tf_rate * tf_time)
-            payoff = df * smoothers.tf_smooth_call(future_spot, STRIKE)
+            payoff = df * smoothers.tf_smooth_max_diff(future_spot, STRIKE)
 
             # Reduce
             pv = tf.reduce_mean(payoff, axis=0)

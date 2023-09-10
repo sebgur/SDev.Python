@@ -2,11 +2,14 @@
     of bumps vs AAD as the dimension increases. """
 import numpy as np
 import tensorflow as tf
-# import matplotlib.pyplot as plt
+from scipy.stats import norm
+import matplotlib.pyplot as plt
+from sdevpy.analytics import black
+from sdevpy.montecarlo import smoothers
 
-# Closed-form for PV, Compare with MC
 # Closed-form for delta, Compare with MC
 # Closed-form for gamma, Compare with MC
+# Pick 2 directions and display 7 matrices
 # AAD MC
 # Comparison
 # Can we do a loop and draw the evolution chart in dimension?
@@ -15,8 +18,8 @@ import tensorflow as tf
 #   losing the data
 
 ############### Runtime configuration #############################################################
-DIM = 2
-NUM_MC = 100
+DIM = 4
+NUM_MC = 20000
 DTYPE = 'float64'
 SEED1 = 1234
 SEED2 = 42
@@ -42,21 +45,25 @@ DIV = rng_init.uniform(DIV_MIN, DIV_MAX, DIM)#.reshape(1, -1)
 
 g_mean = np.zeros(shape=(DIM))
 # Correlation matrix
-correlation = 0.50
+correlation = 0.5
 correl = np.ones((DIM, DIM), dtype=DTYPE) * correlation
 for i in range(DIM):
     correl[i, i] = 1.0
 # Covariance matrix
-cov = correl.copy()
+COV = correl.copy()
 for i in range(len(correl)):
     for j in range(len(correl)):
-        cov[i, j] *= VOL[i] * VOL[j]
+        COV[i, j] *= VOL[i] * VOL[j]
 
 # Payoff
-STRIKE = np.asarray([0.9, 1.0, 1.1])
+NUM_STRIKES = 50
+STRIKE = np.linspace(0.1, 4.5, NUM_STRIKES)
+# STRIKE = np.asarray([0.9, 1.0, 1.1])
 MATURITY = 2.5
 TYPE = "Put"
+# TYPE = "Call"
 W = -1.0 if TYPE == "Put" else 1.0
+IS_CALL = False if TYPE == 'Put' else True
 
 # Calculate deterministic quantities
 STDEV = VOL * np.sqrt(MATURITY)
@@ -86,7 +93,7 @@ def pv_mc(spot, gaussians, strikes):
     # Calculate discounted payoff
     prod = np.prod(future_spot, axis=1, keepdims=True)
     # print("prod\n", prod)
-    diff = prod - strikes
+    diff = smoothers.smooth_max_diff(strikes, prod)
     # print("diff\n", diff)
     ddiff = DF * diff
     # print("discdiff\n", ddiff)
@@ -100,7 +107,7 @@ def pv_mc(spot, gaussians, strikes):
 # Trigger MC PV
 g = rng_mc.multivariate_normal(g_mean, correl, size=NUM_MC)
 mc_pv = pv_mc(SPOT, g, STRIKE)
-print("MC-PV\n", mc_pv)
+# print("MC-PV\n", mc_pv)
 
 def bump_spot(spot, bump, index):
     b_spot = spot.copy()
@@ -119,27 +126,27 @@ def greeks_mc(gaussians, strikes, pv, calculate_gammas):
         pv_u = pv_mc(bump_spot(SPOT, BUMP, i), gaussians, strikes)
         shift_i = SPOT[i] * BUMP
 
-    if calculate_gammas is False:
-        delta[i] = (pv_u - pv) / shift_i
-    else:
-        # gamma = np.ndarray(shape=(DIM, DIM, num_strikes))
-        # Bumps down for gammas (one-sided deltas otherwise)
-        pv_d = pv_mc(bump_spot(SPOT, -BUMP, i), gaussians, strikes)
-        delta[i] = (pv_u - pv_d) / (2.0 * shift_i)
-        gamma[i, i] = (pv_u + pv_d - 2.0 * pv) / np.power(shift_i, 2.0)
+        if calculate_gammas is False:
+            delta[i] = (pv_u - pv) / shift_i
+        else:
+            # gamma = np.ndarray(shape=(DIM, DIM, num_strikes))
+            # Bumps down for gammas (one-sided deltas otherwise)
+            pv_d = pv_mc(bump_spot(SPOT, -BUMP, i), gaussians, strikes)
+            delta[i] = (pv_u - pv_d) / (2.0 * shift_i)
+            gamma[i, i] = (pv_u + pv_d - 2.0 * pv) / np.power(shift_i, 2.0)
 
-        # Crosses
-        for j in range(i + 1, DIM):
-            shift_j = SPOT[j] * BUMP
-            spot_uu = bump_spot(bump_spot(SPOT, BUMP, i), BUMP, j)
-            spot_ud = bump_spot(bump_spot(SPOT, BUMP, i), -BUMP, j)
-            spot_du = bump_spot(bump_spot(SPOT, -BUMP, i), BUMP, j)
-            spot_dd = bump_spot(bump_spot(SPOT, -BUMP, i), -BUMP, j)
-            pv_uu = pv_mc(spot_uu, gaussians, strikes)
-            pv_ud = pv_mc(spot_ud, gaussians, strikes)
-            pv_du = pv_mc(spot_du, gaussians, strikes)
-            pv_dd = pv_mc(spot_dd, gaussians, strikes)
-            gamma[i, j] = (pv_uu - pv_ud - pv_du + pv_dd) / (4.0 * shift_i * shift_j)
+            # Crosses
+            for j in range(i + 1, DIM):
+                shift_j = SPOT[j] * BUMP
+                spot_uu = bump_spot(bump_spot(SPOT, BUMP, i), BUMP, j)
+                spot_ud = bump_spot(bump_spot(SPOT, BUMP, i), -BUMP, j)
+                spot_du = bump_spot(bump_spot(SPOT, -BUMP, i), BUMP, j)
+                spot_dd = bump_spot(bump_spot(SPOT, -BUMP, i), -BUMP, j)
+                pv_uu = pv_mc(spot_uu, gaussians, strikes)
+                pv_ud = pv_mc(spot_ud, gaussians, strikes)
+                pv_du = pv_mc(spot_du, gaussians, strikes)
+                pv_dd = pv_mc(spot_dd, gaussians, strikes)
+                gamma[i, j] = (pv_uu - pv_ud - pv_du + pv_dd) / (4.0 * shift_i * shift_j)
 
     if calculate_gammas: # symmetric crosses
         for i in range(DIM):
@@ -149,19 +156,61 @@ def greeks_mc(gaussians, strikes, pv, calculate_gammas):
     return delta, gamma
 
 # Trigger MC Greeks
-delta, gamma = greeks_mc(g, STRIKE, mc_pv, calculate_gammas=True)
-print("MC-Delta\n", delta)
-print("MC-Gamma\n", gamma)
+mc_delta, mc_gamma = greeks_mc(g, STRIKE, mc_pv, calculate_gammas=True)
+# print("MC-Delta\n", delta)
+# print("MC-Gamma\n", gamma)
 
 ############### CF ################################################################################
+N = norm.cdf
 def pv_cf(spot, strikes):
-    return 0
+    fwd = spot * np.exp((RATE - DIV) * MATURITY)
+    prod_fwd = np.prod(fwd)
+    svar = np.sum(VAR)
+    scov = np.sum(COV)
+    fwd_correc = (scov * MATURITY - svar) / 2.0
+    prod_fwd = prod_fwd * np.exp(fwd_correc)
+    prod_vol = np.sqrt(scov)
 
-cf_pv = pv_cf(SPOT, STRIKE)
-print("CF-PV\n", cf_pv)
+    pv = DF * black.price(MATURITY, strikes, IS_CALL, prod_fwd, prod_vol)
 
+    delta = np.ndarray(shape=(DIM, strikes.shape[0]))
+    prod_stdev = prod_vol * np.sqrt(MATURITY)
+    d1 = np.log(prod_fwd / strikes) / prod_stdev + 0.5 * prod_stdev
+    nd1 = N(W * d1)
+    for index in range(DIM):
+        delta[index] = DF * W * (prod_fwd / spot[index]) * nd1 
+
+    return pv, delta
+
+cf_pv, cf_delta = pv_cf(SPOT, STRIKE)
+# print("CF-PV\n", cf_pv)
 
 ############### AAD ###############################################################################
 
 
 ############### Numerical results #################################################################
+index1 = 2
+index2 = 3
+fig, axs = plt.subplots(2, 2, layout="constrained")
+fig.suptitle("MC vs CF", size='x-large', weight='bold')
+fig.set_size_inches(12, 8)
+axs[0, 0].plot(STRIKE, mc_pv, color='red', label='MC')
+axs[0, 0].plot(STRIKE, cf_pv, color='blue', label='CF')
+axs[0, 0].set_xlabel('Strike')
+axs[0, 0].set_title("PV")
+axs[0, 0].legend(loc='upper right')
+
+axs[1, 0].plot(STRIKE, mc_delta[index1], color='red', label='MC')
+axs[1, 0].plot(STRIKE, cf_delta[index1], color='blue', label='CF')
+axs[1, 0].set_xlabel('Strike')
+axs[1, 0].set_title("Delta index 1")
+axs[1, 0].legend(loc='upper right')
+
+axs[1, 1].plot(STRIKE, mc_delta[index2], color='red', label='MC')
+axs[1, 1].plot(STRIKE, cf_delta[index2], color='blue', label='CF')
+axs[1, 1].set_xlabel('Strike')
+axs[1, 1].set_title("Delta index 1")
+axs[1, 1].legend(loc='upper right')
+
+
+plt.show()
