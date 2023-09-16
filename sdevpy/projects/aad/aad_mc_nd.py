@@ -191,11 +191,59 @@ cf_pv, cf_delta, cf_gamma = value_cf(SPOT, STRIKE)
 # print("CF-Gamma\n", cf_gamma)
 
 ############### AAD ###############################################################################
+def value_aad(spot, strikes):
+    rng = np.random.RandomState(seed)
+    gaussians = rng.normal(0.0, 1.0, (num_mc, 1))
 
+    tf_spot = tf.convert_to_tensor(spot_, dtype='float32')
+    tf_vol = tf.convert_to_tensor(vol_)
+    tf_time = tf.convert_to_tensor(time_, dtype='float32')
+    tf_rate = tf.convert_to_tensor(rate_, dtype='float32')
+    tf_div = tf.constant(div)
+  
+    with tf.GradientTape(persistent=True) as tape:
+        tape.watch([tf_spot, tf_vol, tf_time, tf_rate])
+        with tf.GradientTape(persistent=True) as tape2nd:
+            tape2nd.watch([tf_spot, tf_vol])
+
+            # Calculate deterministic forward
+            fwd = tf_spot * tf.math.exp((tf_rate - tf_div) * tf_time)
+
+            # Calculate final spot paths
+            stdev = tf_vol * tf.math.sqrt(tf_time)
+            future_spot = fwd * tf.math.exp(-0.5 * stdev * stdev + stdev * gaussians)
+
+            # Calculate discounted payoff
+            df = tf.math.exp(-tf_rate * tf_time)
+            payoff = df * tf_smooth_max(future_spot, strike)
+
+            # Reduce
+            pv = tf.reduce_mean(payoff, axis=0)
+
+        # Calculate delta and vega
+        g_delta = tape2nd.gradient(pv, tf_spot)
+        g_vega = tape2nd.gradient(pv, tf_vol)
+       
+    delta = tape.gradient(pv, tf_spot)
+    gamma = tape.gradient(g_delta, tf_spot)
+    vega = tape.gradient(pv, tf_vol)
+    theta = tape.gradient(pv, tf_time)
+    dv01 = tape.gradient(pv, tf_rate)
+    volga = tape.gradient(g_vega, tf_vol)
+    vanna = tape.gradient(g_delta, tf_vol)
+    
+    # Scale
+    vega = vega.numpy() * vega_scaling
+    theta = -theta.numpy() * theta_scaling
+    dv01 = dv01.numpy() * rate_scaling
+    volga = volga.numpy() * np.power(vega_scaling, 2)
+    vanna = vanna.numpy() * vega_scaling
+
+    return [pv.numpy(), delta.numpy(), gamma.numpy(), vega, theta, dv01, volga, vanna]
 
 ############### Numerical results #################################################################
-index1 = 1
-index2 = 3
+DIM1 = 1
+DIM2 = 3
 fig, axs = plt.subplots(3, 2, layout="constrained")
 fig.suptitle("MC vs CF", size='x-large', weight='bold')
 fig.set_size_inches(12, 8)
@@ -208,29 +256,29 @@ axs[0, 0].set_title("PV")
 axs[0, 0].legend(loc='upper right')
 
 # Delta
-axs[1, 0].plot(STRIKE, mc_delta[index1], color='red', label='MC')
-axs[1, 0].plot(STRIKE, cf_delta[index1], color='blue', label='CF')
+axs[1, 0].plot(STRIKE, mc_delta[DIM1], color='red', label='MC')
+axs[1, 0].plot(STRIKE, cf_delta[DIM1], color='blue', label='CF')
 axs[1, 0].set_xlabel('Strike')
-axs[1, 0].set_title("Delta index 1")
+axs[1, 0].set_title("Delta dimension " + str(DIM1))
 axs[1, 0].legend(loc='upper right')
 
-axs[1, 1].plot(STRIKE, mc_delta[index2], color='red', label='MC')
-axs[1, 1].plot(STRIKE, cf_delta[index2], color='blue', label='CF')
+axs[1, 1].plot(STRIKE, mc_delta[DIM2], color='red', label='MC')
+axs[1, 1].plot(STRIKE, cf_delta[DIM2], color='blue', label='CF')
 axs[1, 1].set_xlabel('Strike')
-axs[1, 1].set_title("Delta index 1")
+axs[1, 1].set_title("Delta dimension " + str(DIM2))
 axs[1, 1].legend(loc='upper right')
 
 # Gamma
-axs[2, 0].plot(STRIKE, mc_gamma[index1][index1], color='red', label='MC')
-axs[2, 0].plot(STRIKE, cf_gamma[index1][index1], color='blue', label='CF')
+axs[2, 0].plot(STRIKE, mc_gamma[DIM1][DIM1], color='red', label='MC')
+axs[2, 0].plot(STRIKE, cf_gamma[DIM1][DIM1], color='blue', label='CF')
 axs[2, 0].set_xlabel('Strike')
-axs[2, 0].set_title("Delta index 1")
+axs[2, 0].set_title("Gamma dimension " + str(DIM1))
 axs[2, 0].legend(loc='upper right')
 
-axs[2, 1].plot(STRIKE, mc_gamma[index1][index2], color='red', label='MC')
-axs[2, 1].plot(STRIKE, cf_gamma[index1][index2], color='blue', label='CF')
+axs[2, 1].plot(STRIKE, mc_gamma[DIM1][DIM2], color='red', label='MC')
+axs[2, 1].plot(STRIKE, cf_gamma[DIM1][DIM2], color='blue', label='CF')
 axs[2, 1].set_xlabel('Strike')
-axs[2, 1].set_title("Delta index 1")
+axs[2, 1].set_title("Cross-Gamma dimensions " + str(DIM1) + "/" + str(DIM2))
 axs[2, 1].legend(loc='upper right')
 
 plt.show()
