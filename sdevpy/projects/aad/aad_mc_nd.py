@@ -6,13 +6,24 @@ from scipy.stats import norm
 import matplotlib.pyplot as plt
 from sdevpy.analytics import black
 from sdevpy.montecarlo import smoothers
+from sdevpy.tools.timer import Stopwatch
 
-# AAD MC
-# Loop that outputs  its results to text at every iteration to avoid losing the data
+# In this script we calculate PV, Delta and Gamma for a hypothetical product
+# (an option on the multiplicated spots) using Monte-Carlo with bumps, closed-form
+# and Monte-Carlo with Algorithm Differentiation (AD).
+
+# We measure the runtime of the bump and AD MCs to compare their performances. We
+# find that the one-off costs of AD to build the dependency graf and its memory 
+# storage is rather heavy, and AD only starts winning against bumps in very heavy
+# configurations.
+
+# More precisely, we find that AD wins all the more as the number of simulation increases.
+# For instance, while AD wins from dimension 15 at 20k simulations, it wins already
+# from dimension 8 at 100k simulations.
 
 ############### Runtime configuration #############################################################
-DIM = 2
-NUM_MC = 1000#500 * 1000 #50000
+DIM = 15
+NUM_MC = 20000#500 * 1000 #50000
 DTYPE = 'float64'
 SEED_INIT = 1234
 SEED_MC = 42
@@ -52,7 +63,7 @@ for i in range(len(CORR_MATRIX)):
         COV[i, j] *= VOL[i] * VOL[j]
 
 # Payoff
-NUM_STRIKES = 50
+NUM_STRIKES = 2
 STRIKE = np.linspace(0.1, 4.5, NUM_STRIKES)
 # STRIKE = np.asarray([0.9, 1.0, 1.1])
 MATURITY = 1.5
@@ -141,10 +152,15 @@ def value_mc(spot, strikes, gaussians, calc_gammas):
     return pv, delta, gamma
 
 # Trigger MC valuation
+print("<><> MC Valuation <><>")
+mc_timer = Stopwatch("MC")
+mc_timer.trigger()
 g = rng_mc.multivariate_normal(G_MEAN, CORR_MATRIX, size=NUM_MC)
 mc_pv, mc_delta, mc_gamma = value_mc(SPOT, STRIKE, g, calc_gammas=True)
-print("MC-PV\n", mc_pv)
-print("MC-Delta\n", mc_delta)
+mc_timer.stop()
+# print("MC-PV\n", mc_pv)
+# print("MC-Delta\n", mc_delta)
+# print(mc_gamma.shape)
 # print("MC-Gamma\n", mc_gamma)
 
 ############### CF ################################################################################
@@ -190,6 +206,7 @@ def value_cf(spot, strikes):
     return pv, delta, gamma
 
 # Trigger CF valuation
+print("<><> CF Valuation <><>")
 cf_pv, cf_delta, cf_gamma = value_cf(SPOT, STRIKE)
 # print("CF-PV\n", cf_pv)
 # print("CF-Delta\n", cf_delta)
@@ -205,57 +222,63 @@ def value_ad(spot, strikes, gaussians, calc_gammas):
     tf_rate = tf.constant(RATE, dtype=DTYPE)
     tf_div = tf.constant(DIV, dtype=DTYPE)
     tf_strikes = tf.constant(strikes, dtype=DTYPE)
-  
-    with tf.GradientTape(persistent=True) as tape:
-        tape.watch([tf_spot])
 
-        # Calculate deterministic forward
-        fwd = tf_spot * tf.math.exp((tf_rate - tf_div) * tf_time)
+    if calc_gammas is False:
+        with tf.GradientTape(persistent=False) as tape:
+            tape.watch([tf_spot])
 
-        # Calculate final spot paths
-        future_spot = fwd * tf.math.exp(-0.5 * tf_var  + tf_stdev * gaussians)
+            # Calculate deterministic forward
+            fwd = tf_spot * tf.math.exp((tf_rate - tf_div) * tf_time)
 
-        # Calculate discounted payoff
-        prod = tf.math.reduce_prod(future_spot, axis=1, keepdims=True)
-        if IS_CALL:
-            diff = smoothers.tf_smooth_max_diff(prod, tf_strikes)
-        else:
-            diff = smoothers.tf_smooth_max_diff(tf_strikes, prod)
+            # Calculate final spot paths
+            future_spot = fwd * tf.math.exp(-0.5 * tf_var  + tf_stdev * gaussians)
 
-        ddiff = DF * diff
+            # Calculate discounted payoff
+            prod = tf.math.reduce_prod(future_spot, axis=1, keepdims=True)
+            if IS_CALL:
+                diff = smoothers.tf_smooth_max_diff(prod, tf_strikes)
+            else:
+                diff = smoothers.tf_smooth_max_diff(tf_strikes, prod)
 
-        # Reduce
-        pv = tf.math.reduce_sum(ddiff, axis=0) / NUM_MC
+            ddiff = DF * diff
 
+            # Reduce
+            pv = tf.math.reduce_sum(ddiff, axis=0) / NUM_MC
 
-    # with tf.GradientTape(persistent=True) as tape:
-    #     tape.watch([tf_spot])
-    #     with tf.GradientTape(persistent=True) as tape2nd:
-    #         tape2nd.watch([tf_spot])
+        delta = tape.jacobian(pv, tf_spot)
+        gamma = None
 
-    #         # Calculate deterministic forward
-    #         fwd = tf_spot * tf.math.exp((tf_rate - tf_div) * tf_time)
+    else:
+        with tf.GradientTape(persistent=False) as tape:
+            tape.watch([tf_spot])
+            with tf.GradientTape(persistent=False) as tape2:
+                tape2.watch([tf_spot])
 
-    #         # Calculate final spot paths
-    #         stdev = tf_vol * tf.math.sqrt(tf_time)
-    #         future_spot = fwd * tf.math.exp(-0.5 * stdev * stdev + stdev * gaussians)
+                # Calculate deterministic forward
+                fwd = tf_spot * tf.math.exp((tf_rate - tf_div) * tf_time)
 
-    #         # Calculate discounted payoff
-    #         df = tf.math.exp(-tf_rate * tf_time)
-    #         payoff = df * tf_smooth_max(future_spot, strikes)
+                # Calculate final spot paths
+                future_spot = fwd * tf.math.exp(-0.5 * tf_var  + tf_stdev * gaussians)
 
-    #         # Reduce
-    #         pv = tf.reduce_mean(payoff, axis=0)
+                # Calculate discounted payoff
+                prod = tf.math.reduce_prod(future_spot, axis=1, keepdims=True)
+                if IS_CALL:
+                    diff = smoothers.tf_smooth_max_diff(prod, tf_strikes)
+                else:
+                    diff = smoothers.tf_smooth_max_diff(tf_strikes, prod)
 
-    #     # Calculate delta and vega
-    #     g_delta = tape2nd.gradient(pv, tf_spot)
-       
-    # delta = tape.gradient(pv, tf_spot)
-    # gamma = tape.gradient(g_delta, tf_spot)
+                ddiff = DF * diff
 
-    delta = tape.jacobian(pv, tf_spot)
-    gamma = None
+                # Reduce
+                pv = tf.math.reduce_sum(ddiff, axis=0) / NUM_MC
+
+            delta = tape2.jacobian(pv, tf_spot)
+
+        gamma = tape.jacobian(delta, tf_spot)
+
     delta = delta.numpy().transpose()
+    if calc_gammas:
+        gamma = gamma.numpy().transpose()
     # print(delta.shape)
     # tdelta = delta.transpose()
     # print(tdelta)
@@ -263,12 +286,20 @@ def value_ad(spot, strikes, gaussians, calc_gammas):
     return pv.numpy(), delta, gamma
 
 # Trigger AD valuation
+print("<><> AD Valuation <><>")
+ad_timer = Stopwatch("AD")
+ad_timer.trigger()
 g = rng_ad.multivariate_normal(G_MEAN, CORR_MATRIX, size=NUM_MC)
 ad_pv, ad_delta, ad_gamma = value_ad(SPOT, STRIKE, g, calc_gammas=True)
-print("AD-PV\n", ad_pv)
-print("AD-Delta\n", ad_delta)
-print("AD-Gamma\n", ad_gamma)
+ad_timer.stop()
+# print("AD-PV\n", ad_pv)
+# print("AD-Delta\n", ad_delta)
+# print(ad_gamma.shape)
+# print("AD-Gamma\n", ad_gamma)
 
+# Print timers
+mc_timer.print()
+ad_timer.print()
 
 ############### Numerical results #################################################################
 DIM1 = 0
@@ -303,12 +334,14 @@ axs[1, 1].legend(loc='upper right')
 # Gamma
 axs[2, 0].plot(STRIKE, mc_gamma[DIM1][DIM1], color='red', label='MC')
 axs[2, 0].plot(STRIKE, cf_gamma[DIM1][DIM1], color='blue', label='CF')
+axs[2, 0].plot(STRIKE, ad_gamma[DIM1][DIM1], color='green', label='AD')
 axs[2, 0].set_xlabel('Strike')
 axs[2, 0].set_title("Gamma dimension " + str(DIM1))
 axs[2, 0].legend(loc='upper right')
 
 axs[2, 1].plot(STRIKE, mc_gamma[DIM1][DIM2], color='red', label='MC')
 axs[2, 1].plot(STRIKE, cf_gamma[DIM1][DIM2], color='blue', label='CF')
+axs[2, 1].plot(STRIKE, ad_gamma[DIM1][DIM2], color='green', label='AD')
 axs[2, 1].set_xlabel('Strike')
 axs[2, 1].set_title("Cross-Gamma dimensions " + str(DIM1) + "/" + str(DIM2))
 axs[2, 1].legend(loc='upper right')
