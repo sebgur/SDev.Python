@@ -11,17 +11,19 @@ from sdevpy.montecarlo import smoothers
 # Loop that outputs  its results to text at every iteration to avoid losing the data
 
 ############### Runtime configuration #############################################################
-DIM = 8
-NUM_MC = 500 * 1000 #50000
+DIM = 2
+NUM_MC = 1000#500 * 1000 #50000
 DTYPE = 'float64'
-SEED1 = 1234
-SEED2 = 42
+SEED_INIT = 1234
+SEED_MC = 42
+SEED_AD = 4321#SEED_MC
 
 BUMP = 0.01
 
 tf.keras.backend.set_floatx(DTYPE)
-rng_init = np.random.RandomState(SEED1)
-rng_mc = np.random.RandomState(SEED2)
+rng_init = np.random.RandomState(SEED_INIT)
+rng_mc = np.random.RandomState(SEED_MC)
+rng_ad = np.random.RandomState(SEED_AD)
 
 # Market data
 RATE = 0.02
@@ -36,16 +38,17 @@ SPOT = rng_init.uniform(SPOT_MIN, SPOT_MAX, DIM)
 VOL = rng_init.uniform(VOL_MIN, VOL_MAX, DIM)
 DIV = rng_init.uniform(DIV_MIN, DIV_MAX, DIM)
 
-g_mean = np.zeros(shape=(DIM))
+# Random numbers
+G_MEAN = np.zeros(shape=(DIM))
 # Correlation matrix
-correlation = 0.5
-correl = np.ones((DIM, DIM), dtype=DTYPE) * correlation
+CORR = 0.5
+CORR_MATRIX = np.ones((DIM, DIM), dtype=DTYPE) * CORR
 for i in range(DIM):
-    correl[i, i] = 1.0
+    CORR_MATRIX[i, i] = 1.0
 # Covariance matrix
-COV = correl.copy()
-for i in range(len(correl)):
-    for j in range(len(correl)):
+COV = CORR_MATRIX.copy()
+for i in range(len(CORR_MATRIX)):
+    for j in range(len(CORR_MATRIX)):
         COV[i, j] *= VOL[i] * VOL[j]
 
 # Payoff
@@ -65,8 +68,8 @@ DF = np.exp(-RATE * MATURITY)
 
 print("SPOT\n", SPOT)
 
-############### Bumps #############################################################################
-def pv_mc(spot, gaussians, strikes):
+############### MC ################################################################################
+def pv_mc(spot, strikes, gaussians):
     # Calculate deterministic forward
     fwd = spot * np.exp((RATE - DIV) * MATURITY)
 
@@ -87,18 +90,12 @@ def pv_mc(spot, gaussians, strikes):
 
     return pv
 
-
-# Trigger MC PV
-g = rng_mc.multivariate_normal(g_mean, correl, size=NUM_MC)
-mc_pv = pv_mc(SPOT, g, STRIKE)
-# print("MC-PV\n", mc_pv)
-
 def bump_spot(spot, bump, index):
     b_spot = spot.copy()
     b_spot[index] *= (1.0 + bump)
     return b_spot
 
-def greeks_mc(gaussians, strikes, pv, calc_gammas):
+def greeks_mc(spot, strikes, gaussians, pv, calc_gammas):
     """ Calculate all bumps """
     num_strikes = strikes.shape[0]
     delta = np.ndarray(shape=(DIM, num_strikes))
@@ -107,28 +104,28 @@ def greeks_mc(gaussians, strikes, pv, calc_gammas):
     # Single bumps
     for idx in range(DIM):
         # Bumps up
-        pv_u = pv_mc(bump_spot(SPOT, BUMP, idx), gaussians, strikes)
-        shift_i = SPOT[idx] * BUMP
+        pv_u = pv_mc(bump_spot(spot, BUMP, idx), strikes, gaussians)
+        shift_i = spot[idx] * BUMP
 
         if calc_gammas is False:
             delta[idx] = (pv_u - pv) / shift_i
         else:
             # Bumps down for gammas (one-sided deltas otherwise)
-            pv_d = pv_mc(bump_spot(SPOT, -BUMP, idx), gaussians, strikes)
+            pv_d = pv_mc(bump_spot(spot, -BUMP, idx), strikes, gaussians)
             delta[idx] = (pv_u - pv_d) / (2.0 * shift_i)
             gamma[idx, idx] = (pv_u + pv_d - 2.0 * pv) / np.power(shift_i, 2.0)
 
             # Crosses
             for j in range(idx + 1, DIM):
-                shift_j = SPOT[j] * BUMP
-                spot_uu = bump_spot(bump_spot(SPOT, BUMP, idx), BUMP, j)
-                spot_ud = bump_spot(bump_spot(SPOT, BUMP, idx), -BUMP, j)
-                spot_du = bump_spot(bump_spot(SPOT, -BUMP, idx), BUMP, j)
-                spot_dd = bump_spot(bump_spot(SPOT, -BUMP, idx), -BUMP, j)
-                pv_uu = pv_mc(spot_uu, gaussians, strikes)
-                pv_ud = pv_mc(spot_ud, gaussians, strikes)
-                pv_du = pv_mc(spot_du, gaussians, strikes)
-                pv_dd = pv_mc(spot_dd, gaussians, strikes)
+                shift_j = spot[j] * BUMP
+                spot_uu = bump_spot(bump_spot(spot, BUMP, idx), BUMP, j)
+                spot_ud = bump_spot(bump_spot(spot, BUMP, idx), -BUMP, j)
+                spot_du = bump_spot(bump_spot(spot, -BUMP, idx), BUMP, j)
+                spot_dd = bump_spot(bump_spot(spot, -BUMP, idx), -BUMP, j)
+                pv_uu = pv_mc(spot_uu, strikes, gaussians)
+                pv_ud = pv_mc(spot_ud, strikes, gaussians)
+                pv_du = pv_mc(spot_du, strikes, gaussians)
+                pv_dd = pv_mc(spot_dd, strikes, gaussians)
                 gamma[idx, j] = (pv_uu - pv_ud - pv_du + pv_dd) / (4.0 * shift_i * shift_j)
 
     if calc_gammas: # symmetric crosses
@@ -138,9 +135,16 @@ def greeks_mc(gaussians, strikes, pv, calc_gammas):
 
     return delta, gamma
 
-# Trigger MC Greeks
-mc_delta, mc_gamma = greeks_mc(g, STRIKE, mc_pv, calc_gammas=True)
-# print("MC-Delta\n", mc_delta)
+def value_mc(spot, strikes, gaussians, calc_gammas):
+    pv = pv_mc(spot, strikes, gaussians)
+    delta, gamma = greeks_mc(spot, strikes, gaussians, pv, calc_gammas)
+    return pv, delta, gamma
+
+# Trigger MC valuation
+g = rng_mc.multivariate_normal(G_MEAN, CORR_MATRIX, size=NUM_MC)
+mc_pv, mc_delta, mc_gamma = value_mc(SPOT, STRIKE, g, calc_gammas=True)
+print("MC-PV\n", mc_pv)
+print("MC-Delta\n", mc_delta)
 # print("MC-Gamma\n", mc_gamma)
 
 ############### CF ################################################################################
@@ -185,72 +189,98 @@ def value_cf(spot, strikes):
 
     return pv, delta, gamma
 
+# Trigger CF valuation
 cf_pv, cf_delta, cf_gamma = value_cf(SPOT, STRIKE)
 # print("CF-PV\n", cf_pv)
-# print("MC-Delta\n", mc_delta)
+# print("CF-Delta\n", cf_delta)
 # print("CF-Gamma\n", cf_gamma)
 
-############### AAD ###############################################################################
-def value_aad(spot, strikes):
-    rng = np.random.RandomState(seed)
-    gaussians = rng.normal(0.0, 1.0, (num_mc, 1))
-
-    tf_spot = tf.convert_to_tensor(spot_, dtype='float32')
-    tf_vol = tf.convert_to_tensor(vol_)
-    tf_time = tf.convert_to_tensor(time_, dtype='float32')
-    tf_rate = tf.convert_to_tensor(rate_, dtype='float32')
-    tf_div = tf.constant(div)
+############### AD ################################################################################
+def value_ad(spot, strikes, gaussians, calc_gammas):
+    # Convert to tensors
+    tf_spot = tf.convert_to_tensor(spot, dtype=DTYPE)
+    tf_var = tf.constant(VAR, dtype=DTYPE)
+    tf_stdev = tf.constant(STDEV, dtype=DTYPE)
+    tf_time = tf.constant(MATURITY, dtype=DTYPE)
+    tf_rate = tf.constant(RATE, dtype=DTYPE)
+    tf_div = tf.constant(DIV, dtype=DTYPE)
+    tf_strikes = tf.constant(strikes, dtype=DTYPE)
   
     with tf.GradientTape(persistent=True) as tape:
-        tape.watch([tf_spot, tf_vol, tf_time, tf_rate])
-        with tf.GradientTape(persistent=True) as tape2nd:
-            tape2nd.watch([tf_spot, tf_vol])
+        tape.watch([tf_spot])
 
-            # Calculate deterministic forward
-            fwd = tf_spot * tf.math.exp((tf_rate - tf_div) * tf_time)
+        # Calculate deterministic forward
+        fwd = tf_spot * tf.math.exp((tf_rate - tf_div) * tf_time)
 
-            # Calculate final spot paths
-            stdev = tf_vol * tf.math.sqrt(tf_time)
-            future_spot = fwd * tf.math.exp(-0.5 * stdev * stdev + stdev * gaussians)
+        # Calculate final spot paths
+        future_spot = fwd * tf.math.exp(-0.5 * tf_var  + tf_stdev * gaussians)
 
-            # Calculate discounted payoff
-            df = tf.math.exp(-tf_rate * tf_time)
-            payoff = df * tf_smooth_max(future_spot, strike)
+        # Calculate discounted payoff
+        prod = tf.math.reduce_prod(future_spot, axis=1, keepdims=True)
+        if IS_CALL:
+            diff = smoothers.tf_smooth_max_diff(prod, tf_strikes)
+        else:
+            diff = smoothers.tf_smooth_max_diff(tf_strikes, prod)
 
-            # Reduce
-            pv = tf.reduce_mean(payoff, axis=0)
+        ddiff = DF * diff
 
-        # Calculate delta and vega
-        g_delta = tape2nd.gradient(pv, tf_spot)
-        g_vega = tape2nd.gradient(pv, tf_vol)
+        # Reduce
+        pv = tf.math.reduce_sum(ddiff, axis=0) / NUM_MC
+
+
+    # with tf.GradientTape(persistent=True) as tape:
+    #     tape.watch([tf_spot])
+    #     with tf.GradientTape(persistent=True) as tape2nd:
+    #         tape2nd.watch([tf_spot])
+
+    #         # Calculate deterministic forward
+    #         fwd = tf_spot * tf.math.exp((tf_rate - tf_div) * tf_time)
+
+    #         # Calculate final spot paths
+    #         stdev = tf_vol * tf.math.sqrt(tf_time)
+    #         future_spot = fwd * tf.math.exp(-0.5 * stdev * stdev + stdev * gaussians)
+
+    #         # Calculate discounted payoff
+    #         df = tf.math.exp(-tf_rate * tf_time)
+    #         payoff = df * tf_smooth_max(future_spot, strikes)
+
+    #         # Reduce
+    #         pv = tf.reduce_mean(payoff, axis=0)
+
+    #     # Calculate delta and vega
+    #     g_delta = tape2nd.gradient(pv, tf_spot)
        
-    delta = tape.gradient(pv, tf_spot)
-    gamma = tape.gradient(g_delta, tf_spot)
-    vega = tape.gradient(pv, tf_vol)
-    theta = tape.gradient(pv, tf_time)
-    dv01 = tape.gradient(pv, tf_rate)
-    volga = tape.gradient(g_vega, tf_vol)
-    vanna = tape.gradient(g_delta, tf_vol)
-    
-    # Scale
-    vega = vega.numpy() * vega_scaling
-    theta = -theta.numpy() * theta_scaling
-    dv01 = dv01.numpy() * rate_scaling
-    volga = volga.numpy() * np.power(vega_scaling, 2)
-    vanna = vanna.numpy() * vega_scaling
+    # delta = tape.gradient(pv, tf_spot)
+    # gamma = tape.gradient(g_delta, tf_spot)
 
-    return [pv.numpy(), delta.numpy(), gamma.numpy(), vega, theta, dv01, volga, vanna]
+    delta = tape.jacobian(pv, tf_spot)
+    gamma = None
+    delta = delta.numpy().transpose()
+    # print(delta.shape)
+    # tdelta = delta.transpose()
+    # print(tdelta)
+
+    return pv.numpy(), delta, gamma
+
+# Trigger AD valuation
+g = rng_ad.multivariate_normal(G_MEAN, CORR_MATRIX, size=NUM_MC)
+ad_pv, ad_delta, ad_gamma = value_ad(SPOT, STRIKE, g, calc_gammas=True)
+print("AD-PV\n", ad_pv)
+print("AD-Delta\n", ad_delta)
+print("AD-Gamma\n", ad_gamma)
+
 
 ############### Numerical results #################################################################
-DIM1 = 1
-DIM2 = 3
+DIM1 = 0
+DIM2 = 1
 fig, axs = plt.subplots(3, 2, layout="constrained")
-fig.suptitle("MC vs CF", size='x-large', weight='bold')
+fig.suptitle("AD vs MC Bumps vs CF", size='x-large', weight='bold')
 fig.set_size_inches(12, 8)
 
 # PV
 axs[0, 0].plot(STRIKE, mc_pv, color='red', label='MC')
 axs[0, 0].plot(STRIKE, cf_pv, color='blue', label='CF')
+axs[0, 0].plot(STRIKE, ad_pv, color='green', label='AD')
 axs[0, 0].set_xlabel('Strike')
 axs[0, 0].set_title("PV")
 axs[0, 0].legend(loc='upper right')
@@ -258,12 +288,14 @@ axs[0, 0].legend(loc='upper right')
 # Delta
 axs[1, 0].plot(STRIKE, mc_delta[DIM1], color='red', label='MC')
 axs[1, 0].plot(STRIKE, cf_delta[DIM1], color='blue', label='CF')
+axs[1, 0].plot(STRIKE, ad_delta[DIM1], color='green', label='AD')
 axs[1, 0].set_xlabel('Strike')
 axs[1, 0].set_title("Delta dimension " + str(DIM1))
 axs[1, 0].legend(loc='upper right')
 
 axs[1, 1].plot(STRIKE, mc_delta[DIM2], color='red', label='MC')
 axs[1, 1].plot(STRIKE, cf_delta[DIM2], color='blue', label='CF')
+axs[1, 1].plot(STRIKE, ad_delta[DIM2], color='green', label='AD')
 axs[1, 1].set_xlabel('Strike')
 axs[1, 1].set_title("Delta dimension " + str(DIM2))
 axs[1, 1].legend(loc='upper right')
