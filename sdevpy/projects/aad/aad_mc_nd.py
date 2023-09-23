@@ -50,7 +50,7 @@ VOL = rng_init.uniform(VOL_MIN, VOL_MAX, DIM)
 DIV = rng_init.uniform(DIV_MIN, DIV_MAX, DIM)
 
 # Random numbers
-G_MEAN = np.zeros(shape=(DIM))
+G_MEAN = np.zeros(shape=DIM)
 # Correlation matrix
 CORR = 0.5
 CORR_MATRIX = np.ones((DIM, DIM), dtype=DTYPE) * CORR

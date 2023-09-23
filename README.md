@@ -26,8 +26,9 @@ notebooks are under sdevpy/projects/stovol.
 
 ## AAD Monte-Carlo
 
-In script ./projects/aad/aad_mc.py, we show how to calculate 1st and 2nd order Greeks on a Monte-Carlo
-simulation of Black-Scholes model (1 asset) using AAD. We compare the results with standard Monte-Carlo Greeks by Finite Differences and the closed-form. We make use of payoff smoothers for both AAD and Standard MC.
+In script ./projects/aad/aad_mc.py, we show how to calculate 1st and 2nd order Greeks on a Monte-Carlo simulation of Black-Scholes model (1 asset) using AAD. We compare the results with standard Monte-Carlo Greeks by Finite Differences and the closed-form. We make use of payoff smoothers for both AAD and Standard MC.
+
+In ./projects/aad/aad_mc_nd.py, we compare AAD to standard MC and Closed-Form on a product with generic dimension. We can then benchmark the performance of AAD compared to MC bump-based sensitivities varying dimension and number of simulations.
 
 ## Other Tools
 
