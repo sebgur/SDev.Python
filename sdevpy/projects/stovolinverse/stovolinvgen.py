@@ -1,6 +1,6 @@
-""" Generate training data for Stochastic Local Vol models. We implement the direct map here.
-    Datasets of parameters (inputs) vs prices/implied vols (outputs) are generated to later train
-    a network that learns the so-called 'direct' calculation, i.e. prices from parameter. """
+""" Generate training data for Stochastic Local Vol models. We implement the inverse map here.
+    Datasets of parameters (outputs) vs prices/implied vols (inputs) are generated to later train
+    a network that learns the so-called 'inverse' calculation, i.e. parameters from prices. """
 import os
 from datetime import datetime
 from sdevpy.volsurfacegen import stovolfactory
@@ -16,13 +16,13 @@ from sdevpy.tools.timer import Stopwatch
 # Compare vegas
 
 # ################ Runtime configuration ##########################################################
-# MODEL_TYPE = "SABR"
-MODEL_TYPE = "McSABR"
+MODEL_TYPE = "SABR"
+# MODEL_TYPE = "McSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
 SHIFT = 0.03
-NUM_SAMPLES = 35 * 1000
+NUM_SAMPLES = 1 * 100
 # The 4 parameters below are only relevant for models whose reference is calculated by MC
 NUM_EXPIRIES = 10
 NUM_STRIKES = 5
