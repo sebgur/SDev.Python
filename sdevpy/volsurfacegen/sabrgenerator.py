@@ -9,6 +9,7 @@ from sdevpy.analytics import black
 from sdevpy.analytics import bachelier
 from sdevpy.volsurfacegen.smilegenerator import SmileGenerator
 from sdevpy.tools import filemanager
+from sdevpy.tools import constants
 
 
 class SabrGenerator(SmileGenerator):
@@ -97,12 +98,20 @@ class SabrGenerator(SmileGenerator):
     def generate_samples_inverse(self, num_samples, rg, spreads):
         shift = self.shift
 
+        min_fwd = -shift - spreads[0] / 10000 + constants.BPS10
+        min_fwd = max(min_fwd, rg['F'][0])
+
+        n_spreads = np.asarray(spreads).reshape(-1, 1) / 10000.0
+        print(spreads)
+        print(n_spreads.shape)
+
         num_strikes = len(spreads)
         surface_size = num_strikes * self.num_expiries
         print(f"Number of strikes: {num_strikes:,}")
         print(f"Number of expiries: {self.num_expiries:,}")
         print(f"Surface size: {surface_size:,}")
         print(f"Number of samples: {num_samples:,}")
+        print(f"Minimum forward: {min_fwd * 100:,.2f}%")
 
         # Derive number of surfaces to generate
         num_surfaces = int(num_samples / surface_size)# + 1)
@@ -128,23 +137,13 @@ class SabrGenerator(SmileGenerator):
             expiries = self.rng.uniform(rg['Ttm'][0], rg['Ttm'][1], self.num_expiries)
             # Need to sort these expiries
             expiries = np.unique(expiries)
-            fwd = self.rng.uniform(rg['F'][0], rg['F'][1], 1)[0]
-            vol = lnvol[j]
+            fwd = self.rng.uniform(min_fwd, rg['F'][1], 1)[0]
+            # vol = lnvol[j]
 
-            # Draw strikes
+            # Calculate strikes
             ks = []
             for exp_idx in range(self.num_expiries):
-                # Spread method
-                # spread = self.rng.uniform(-300, 300, self.num_strikes)
-                # k = fwd + spread / 10000.0
-                # k = np.maximum(k, -shift + constants.BPS10)
-
-                # Percentile method
-                stdev = vol * np.sqrt(expiries[exp_idx])
-                percentiles = self.rng.uniform(rg['K'][0], rg['K'][1], self.num_strikes)
-                k = (fwd + shift) * np.exp(-0.5 * stdev * stdev + stdev * sp.norm.ppf(percentiles))
-                k = k - shift
-
+                k = fwd + n_spreads
                 ks.append(k)
 
             ks = np.asarray(ks)
@@ -153,25 +152,45 @@ class SabrGenerator(SmileGenerator):
             params = {'LnVol': lnvol[j], 'Beta': beta[j], 'Nu': nu[j], 'Rho': rho[j]}
 
             # Calculate prices
-            price = self.price(expiries, ks, self.are_calls, fwd, params)
+            price = self.price_straddle(expiries, ks, fwd, params)
 
             # Flatten the results
             for exp_idx, expiry in enumerate(expiries):
-                ts.extend([expiry] * self.num_strikes)
-                # strikes.extend(ks[exp_idx])
-                fwds.extend([fwd] * self.num_strikes)
-                lnvols.extend([lnvol[j]] * self.num_strikes)
-                betas.extend([beta[j]] * self.num_strikes)
-                nus.extend([nu[j]] * self.num_strikes)
-                rhos.extend([rho[j]] * self.num_strikes)
-                prices.extend(price[exp_idx])
+                ts.append(expiry)
+                fwds.append(fwd)
+                lnvols.append(lnvol[j])
+                betas.append(beta[j])
+                nus.append(nu[j])
+                rhos.append(rho[j])
+                prices.append(price[exp_idx])
+
+        # Create strike headers
+        strike_headers = ['K' + str(j) for j in range(num_strikes)]
+
+        # Transpose prices
+        df_prices = np.asarray(prices)
+        df_prices = df_prices.transpose()
 
         # Put in dataframe
-        df = pd.DataFrame({'Ttm': ts, 'F': fwds, 'LnVol': lnvols, 'Beta': betas,
-                           'Nu': nus, 'Rho': rhos, 'Price': prices})
-        df.columns = ['Ttm', 'K', 'F', 'LnVol', 'Beta', 'Nu', 'Rho', 'Price']
+        data_dic = { 'Ttm': ts, 'F': fwds, 'LnVol': lnvols, 'Beta': betas,
+                     'Nu': nus, 'Rho': rhos }
+        columns = ['Ttm', 'F', 'LnVol', 'Beta', 'Nu', 'Rho']
+        for j in range(num_strikes):
+            data_dic[strike_headers[j]] = df_prices[j]
+            columns.append(strike_headers[j])
+        
+        df = pd.DataFrame(data_dic)
+        df.columns = columns
 
         return df
+    
+        # df = pd.DataFrame({'Ttm': ts, 'F': fwds, 'LnVol': lnvols, 'Beta': betas,
+        #                    'Nu': nus, 'Rho': rhos, 'Price': prices})
+        # df.columns = ['Ttm', 'K', 'F', 'LnVol', 'Beta', 'Nu', 'Rho', 'Price']
+
+        # return df
+
+        # return ts, fwds, lnvols, betas, nus, rhos, prices
 
     def price(self, expiries, strikes, are_calls, fwd, parameters):
         expiries_ = np.asarray(expiries).reshape(-1, 1)
@@ -272,10 +291,10 @@ class SabrGenerator(SmileGenerator):
 
 if __name__ == "__main__":
     # Test generation
-    NUM_SAMPLES = 150 #100 * 1000
+    NUM_SAMPLES = 200 #100 * 1000
     MODEL_TYPE = 'SABR'
     SHIFT = 0.03
-    project_folder = os.path.join(settings.WORKFOLDER, "stovol")
+    project_folder = os.path.join(settings.WORKFOLDER, "stovolinv")
     data_folder = os.path.join(project_folder, "samples")
     filemanager.check_directory(data_folder)
     file = os.path.join(data_folder, MODEL_TYPE + "_samples_test.tsv")
@@ -284,13 +303,42 @@ if __name__ == "__main__":
     ranges = {'Ttm': [1.0 / 12.0, 35.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041],
               'LnVol': [0.05, 0.50], 'Beta': [0.1, 0.9], 'Nu': [0.1, 1.0], 'Rho': [-0.6, 0.6]}
     print("Generating " + str(NUM_SAMPLES) + " samples")
-    data_df_ = generator.generate_samples(NUM_SAMPLES, ranges)
-    print(data_df_)
-    print("Cleansing data")
-    data_df_ = generator.to_nvol(data_df_)
+
+    # [Inverse Map]
+    SPREADS = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
+    data_df_ = generator.generate_samples_inverse(NUM_SAMPLES, ranges, SPREADS)
+
+    # print(ts)
+    # print(fwds)
+    # print(lnvols)
+    # print(len(prices))
+    # print(prices[0])
+    # print(prices[1])
+    # print(prices[2])
+
+    # l_prices = np.asarray(prices)
+    # print(l_prices.shape)
+    # r_prices = l_prices.transpose()
+    # print(r_prices.shape)
+
+    # print(l_prices[0])
+    # print(l_prices[1])
+    # print(l_prices[2])
+
+    # print(r_prices[0])
+
     print("Output to file: " + file)
     generator.to_file(data_df_, file)
     print("Complete!")
+
+    # [Direct Map]
+    # data_df_ = generator.generate_samples(NUM_SAMPLES, ranges)
+    # print(data_df_)
+    # print("Cleansing data")
+    # data_df_ = generator.to_nvol(data_df_)
+    # print("Output to file: " + file)
+    # generator.to_file(data_df_, file)
+    # print("Complete!")
 
     # Test price ref
     # NUM_STRIKES = 100

@@ -30,6 +30,10 @@ class SmileGenerator(ABC):
     def price(self, expiries, strikes, are_calls, fwd, parameters):
         """ Calculate option price under the specified model and its parameters """
 
+    @abstractmethod
+    def price_straddle(self, expiries, strikes, fwd, parameters):
+        """ Calculate straddle price under the specified model and its parameters """
+
     def retrieve_datasets(self, data_file, shuffle=False):
         """ Retrieve dataset stored in tsv file """
         data_df = SmileGenerator.from_file(data_file, shuffle)
