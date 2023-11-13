@@ -10,7 +10,7 @@ from sdevpy.tools.timer import Stopwatch
 
 # ################ ToDo ###########################################################################
 # Generate random sets of SABR parameters
-# Calculate output prices on fixed spread grid (possibly with holes?)
+# Calculate output prices on fixed spread grid
 # Train network on prices as inputs, SABR as output
 # Compare against solving with optimizer
 # Compare vegas
@@ -28,7 +28,8 @@ NUM_EXPIRIES = 10
 NUM_STRIKES = 5
 NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25 # 25
-SEED = 4549# [123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42]
+SEED = 4549 # [123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42]
+SPREADS = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
 
 print(">> Set up runtime configuration")
 project_folder = os.path.join(settings.WORKFOLDER, "stovol")
@@ -65,7 +66,7 @@ print(">> Generate dataset")
 print(f"> Generate {NUM_SAMPLES:,} price samples")
 timer_gen = Stopwatch("Generating Samples")
 timer_gen.trigger()
-data_df = generator.generate_samples(NUM_SAMPLES, RANGES)
+data_df = generator.generate_samples_inverse(NUM_SAMPLES, RANGES)
 # full_data_file = os.path.join(data_folder, MODEL_TYPE + "_samples_full.tsv")
 # generator.to_file(data_df, full_data_file)
 timer_gen.stop()

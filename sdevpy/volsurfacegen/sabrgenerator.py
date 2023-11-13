@@ -94,6 +94,85 @@ class SabrGenerator(SmileGenerator):
 
         return df
 
+    def generate_samples_inverse(self, num_samples, rg, spreads):
+        shift = self.shift
+
+        num_strikes = len(spreads)
+        surface_size = num_strikes * self.num_expiries
+        print(f"Number of strikes: {num_strikes:,}")
+        print(f"Number of expiries: {self.num_expiries:,}")
+        print(f"Surface size: {surface_size:,}")
+        print(f"Number of samples: {num_samples:,}")
+
+        # Derive number of surfaces to generate
+        num_surfaces = int(num_samples / surface_size)# + 1)
+        print(f"Number of surfaces/parameter samples: {num_surfaces:,}")
+
+        # Draw parameters
+        lnvol = self.rng.uniform(rg['LnVol'][0], rg['LnVol'][1], num_surfaces)
+        beta = self.rng.uniform(rg['Beta'][0], rg['Beta'][1], num_surfaces)
+        nu = self.rng.uniform(rg['Nu'][0], rg['Nu'][1], num_surfaces)
+        rho = self.rng.uniform(rg['Rho'][0], rg['Rho'][1], num_surfaces)
+
+        # Calculate prices per surface
+        ts = []
+        # strikes = []
+        fwds = []
+        lnvols = []
+        betas = []
+        nus = []
+        rhos = []
+        prices = []
+        for j in range(num_surfaces):
+            print(f"Surface generation number {j+1:,}/{num_surfaces:,}")
+            expiries = self.rng.uniform(rg['Ttm'][0], rg['Ttm'][1], self.num_expiries)
+            # Need to sort these expiries
+            expiries = np.unique(expiries)
+            fwd = self.rng.uniform(rg['F'][0], rg['F'][1], 1)[0]
+            vol = lnvol[j]
+
+            # Draw strikes
+            ks = []
+            for exp_idx in range(self.num_expiries):
+                # Spread method
+                # spread = self.rng.uniform(-300, 300, self.num_strikes)
+                # k = fwd + spread / 10000.0
+                # k = np.maximum(k, -shift + constants.BPS10)
+
+                # Percentile method
+                stdev = vol * np.sqrt(expiries[exp_idx])
+                percentiles = self.rng.uniform(rg['K'][0], rg['K'][1], self.num_strikes)
+                k = (fwd + shift) * np.exp(-0.5 * stdev * stdev + stdev * sp.norm.ppf(percentiles))
+                k = k - shift
+
+                ks.append(k)
+
+            ks = np.asarray(ks)
+
+            # Draw parameters
+            params = {'LnVol': lnvol[j], 'Beta': beta[j], 'Nu': nu[j], 'Rho': rho[j]}
+
+            # Calculate prices
+            price = self.price(expiries, ks, self.are_calls, fwd, params)
+
+            # Flatten the results
+            for exp_idx, expiry in enumerate(expiries):
+                ts.extend([expiry] * self.num_strikes)
+                # strikes.extend(ks[exp_idx])
+                fwds.extend([fwd] * self.num_strikes)
+                lnvols.extend([lnvol[j]] * self.num_strikes)
+                betas.extend([beta[j]] * self.num_strikes)
+                nus.extend([nu[j]] * self.num_strikes)
+                rhos.extend([rho[j]] * self.num_strikes)
+                prices.extend(price[exp_idx])
+
+        # Put in dataframe
+        df = pd.DataFrame({'Ttm': ts, 'F': fwds, 'LnVol': lnvols, 'Beta': betas,
+                           'Nu': nus, 'Rho': rhos, 'Price': prices})
+        df.columns = ['Ttm', 'K', 'F', 'LnVol', 'Beta', 'Nu', 'Rho', 'Price']
+
+        return df
+
     def price(self, expiries, strikes, are_calls, fwd, parameters):
         expiries_ = np.asarray(expiries).reshape(-1, 1)
         shifted_k = strikes + self.shift
@@ -105,6 +184,22 @@ class SabrGenerator(SmileGenerator):
                 iv = sabr.implied_vol_vec(expiry, sk, shifted_f, parameters)
                 price = black.price(expiry, sk, are_calls[i][j], shifted_f, iv)
                 k_prices.append(price[0])
+            prices.append(k_prices)
+
+        return np.asarray(prices)
+
+    def price_straddle(self, expiries, strikes, fwd, parameters):
+        expiries_ = np.asarray(expiries).reshape(-1, 1)
+        shifted_k = strikes + self.shift
+        shifted_f = fwd + self.shift
+        prices = []
+        for i, expiry in enumerate(expiries_):
+            k_prices = []
+            for j, sk in enumerate(shifted_k[i]):
+                iv = sabr.implied_vol_vec(expiry, sk, shifted_f, parameters)
+                call_price = black.price(expiry, sk, True, shifted_f, iv)
+                put_price = black.price(expiry, sk, False, shifted_f, iv)
+                k_prices.append(call_price[0] + put_price[0])
             prices.append(k_prices)
 
         return np.asarray(prices)
@@ -127,7 +222,6 @@ class SabrGenerator(SmileGenerator):
         y_set = np.reshape(y_set, (num_samples, 1))
 
         return x_set, y_set
-
 
     def price_surface_mod(self, model, expiries, strikes, are_calls, fwd, parameters):
         # Retrieve parameters
