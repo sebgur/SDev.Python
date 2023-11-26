@@ -22,8 +22,14 @@ from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
 
 # ################ ToDo ###########################################################################
+# Retrieve data: need to find a way to split between inputs an outputs. That should easy to do
+# by counting the headers, but that won't tell us the values of the spread. For now, we'll have
+# to assume them by hard-coding. But we could store this information in the additional json
+# like we were using in the direct map?
 # Train network on prices as inputs, SABR as output
 # Compare against solving with optimizer
+# This method should allow us to calculate the sensitivity to market by AAD. That's quite an 
+# advantage, as for the regular method we can't AAD through calibration/optimization.
 # Compare vegas
 
 # ################ Runtime configuration ##########################################################
@@ -35,7 +41,7 @@ MODEL_TYPE = "SABR"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
 MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
-USE_TRAINED = True
+USE_TRAINED = False
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
 TRAIN = True
@@ -50,7 +56,7 @@ SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
 NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25# 25
-project_folder = os.path.join(settings.WORKFOLDER, "stovol")
+project_folder = os.path.join(settings.WORKFOLDER, "stovolinv")
 
 print(">> Set up runtime configuration")
 print("> Chosen model type: " + MODEL_TYPE)
@@ -72,12 +78,12 @@ filemanager.check_directory(model_folder)
 print("> Model folder: " + model_folder)
 
 if USE_TRAINED and DOWNLOAD_MODELS:
-    url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovol/models.zip'
+    url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovolinv/models.zip'
     print("> Downloading and unzipping models from: " + url)
     filemanager.download_unzip(url, model_folder)
 
 if DOWNLOAD_DATASETS:
-    url = 'https://github.com/sebgur/SDev.Python/raw/main/datasets/stovol/datasets.zip'
+    url = 'https://github.com/sebgur/SDev.Python/raw/main/datasets/stovolinv/datasets.zip'
     print("> Downloading and unzipping datasets from: " + url)
     filemanager.download_unzip(url, dataset_folder)
 
@@ -93,11 +99,11 @@ generator = set_generator(MODEL_TYPE, shift=SHIFT, num_mc=NUM_MC, points_per_yea
 print(">> Preparing datasets")
 # Retrieve data from dataset folder
 print(f"> Requested {NUM_SAMPLES:,} samples")
-datasets.retrieve_data(data_folder, NUM_SAMPLES, shuffle=True, export_file=data_file)
+datasets.retrieve_data_inverse(data_folder, NUM_SAMPLES, shuffle=True, export_file=data_file)
 print("> Exporting dataset to file: " + data_file)
 # Retrieve dataset
 print("> Reading dataset from file: " + data_file)
-x_set, y_set, data_df = generator.retrieve_datasets(data_file, shuffle=True)
+x_set, y_set, data_df = generator.retrieve_datasets_inverse(data_file, shuffle=True)
 input_dim = x_set.shape[1]
 output_dim = y_set.shape[1]
 print("> Input dimension: " + str(input_dim))
