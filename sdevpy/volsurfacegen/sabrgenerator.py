@@ -178,19 +178,11 @@ class SabrGenerator(SmileGenerator):
         for j in range(num_strikes):
             data_dic[strike_headers[j]] = df_prices[j]
             columns.append(strike_headers[j])
-        
+
         df = pd.DataFrame(data_dic)
         df.columns = columns
 
         return df
-    
-        # df = pd.DataFrame({'Ttm': ts, 'F': fwds, 'LnVol': lnvols, 'Beta': betas,
-        #                    'Nu': nus, 'Rho': rhos, 'Price': prices})
-        # df.columns = ['Ttm', 'K', 'F', 'LnVol', 'Beta', 'Nu', 'Rho', 'Price']
-
-        # return df
-
-        # return ts, fwds, lnvols, betas, nus, rhos, prices
 
     def price(self, expiries, strikes, are_calls, fwd, parameters):
         expiries_ = np.asarray(expiries).reshape(-1, 1)
@@ -307,25 +299,6 @@ if __name__ == "__main__":
     # [Inverse Map]
     SPREADS = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
     data_df_ = generator.generate_samples_inverse(NUM_SAMPLES, ranges, SPREADS)
-
-    # print(ts)
-    # print(fwds)
-    # print(lnvols)
-    # print(len(prices))
-    # print(prices[0])
-    # print(prices[1])
-    # print(prices[2])
-
-    # l_prices = np.asarray(prices)
-    # print(l_prices.shape)
-    # r_prices = l_prices.transpose()
-    # print(r_prices.shape)
-
-    # print(l_prices[0])
-    # print(l_prices[1])
-    # print(l_prices[2])
-
-    # print(r_prices[0])
 
     print("Output to file: " + file)
     generator.to_file(data_df_, file)
