@@ -271,7 +271,29 @@ class SabrGenerator(SmileGenerator):
         return md_prices.reshape(num_expiries, num_strikes)
 
     def retrieve_inverse_datasets_no_shuffle(self, data_df):
-        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        # Retrieve model specific data
+        t = data_df.Ttm
+        fwd = data_df.F
+        lnvol = data_df.LnVol
+        beta = data_df.Beta
+        nu = data_df.Nu
+        rho = data_df.Rho
+
+        # Start inputs
+        x_set = np.column_stack((t, fwd))
+
+        # Add prices prices
+        n_strikes = data_df.shape[1] - 6
+        print(data_df.Ttm.shape)
+        print("> Number of strikes: " + str(n_strikes))
+        for i in range(n_strikes):
+            header = 'K' + str(i)
+            x_set = np.column_stack((x_set, data_df[header]))
+
+        # Outputs
+        y_set = np.column_stack((lnvol, beta, nu, rho))
+
+        return x_set, y_set
 
     # def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
     #     if input_method == 'Percentiles':

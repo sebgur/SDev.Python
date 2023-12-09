@@ -1,6 +1,6 @@
 """ Just to test things """
 # import tensorflow as tf
-# import numpy as np
+import numpy as np
 # import scipy.stats as sp
 # import json
 # import matplotlib.pyplot as plt
@@ -9,9 +9,18 @@
 #import pandas as pd
 # from io import BytesIO
 
-# To know Python version is 32 or 64 bits
-# import struct
-# print(struct.calcsize("P") * 8)
+# ###################### column_stack #############################################################
+a = np.asarray(['a', 'b', 'c', 'd'])
+b = np.asarray(['1', '2', '3', '4'])
+c = np.asarray(['aa', 'bb', 'cc', 'dd'])
+d = np.asarray(['11', '22', '33', '44'])
+
+print(a.shape)
+e = np.column_stack((a, b))
+f = np.column_stack((c, d))
+print(e)
+print(f)
+print(np.column_stack((e, f)))
 
 # URL = 'https://drive.google.com/file/d/10dKi82fW2arlKnOahNv9i5igfiydwMnc/view?usp=sharing'
 
@@ -48,8 +57,6 @@
 #         for chunk in response.iter_content(CHUNK_SIZE):
 #             if chunk: # filter out keep-alive new chunks
 #                 f.write(chunk)
-
-
 
 # id = '10dKi82fW2arlKnOahNv9i5igfiydwMnc'
 

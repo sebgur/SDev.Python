@@ -118,7 +118,7 @@ x_set, y_set, data_df = generator.retrieve_inverse_datasets(data_file, shuffle=T
 input_dim = x_set.shape[1]
 output_dim = y_set.shape[1]
 print("> Input dimension: " + str(input_dim))
-print("> Output dimension: " + str(output_dim))
+print("> Output dimension (parameters): " + str(output_dim))
 print("> Dataset extract")
 print(data_df.head())
 # Split into training and test sets
