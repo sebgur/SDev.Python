@@ -4,11 +4,14 @@
     pre-trained state or trained from scratch. Pre-trained models can be loaded and training
     resumed. """
 import os
+from sdevpy import settings
 from datetime import datetime
 import numpy as np
+# from silence_tensorflow import silence_tensorflow
+# silence_tensorflow()
 import tensorflow as tf
+# tf.get_logger().setLevel(tf._logging.ERROR)  # or any {DEBUG, INFO, WARN, ERROR, FATAL}
 import matplotlib.pyplot as plt
-from sdevpy import settings
 from sdevpy.machinelearning.topology import compose_model
 from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model
 from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay
@@ -21,6 +24,7 @@ from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
 from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
 
+
 # ################ ToDo ###########################################################################
 # Retrieve data: need to find a way to split between inputs an outputs. That should easy to do
 # by counting the headers, but that won't tell us the values of the spread. For now, we'll have
@@ -31,6 +35,13 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # This method should allow us to calculate the sensitivity to market by AAD. That's quite an 
 # advantage, as for the regular method we can't AAD through calibration/optimization.
 # Compare vegas
+
+# ################ Module versions ################################################################
+print("TensorFlow version: " + tf.__version__)
+# print("Keras version: " + tf.keras.__version__)
+print("NumPy version: " + np.__version__)
+# print("SciPy version: " + scipy.__version__)
+# print("SciKit version: " + sk.__version__)
 
 # ################ Runtime configuration ##########################################################
 MODEL_TYPE = "SABR"
@@ -99,11 +110,11 @@ generator = set_generator(MODEL_TYPE, shift=SHIFT, num_mc=NUM_MC, points_per_yea
 print(">> Preparing datasets")
 # Retrieve data from dataset folder
 print(f"> Requested {NUM_SAMPLES:,} samples")
-datasets.retrieve_data_inverse(data_folder, NUM_SAMPLES, shuffle=True, export_file=data_file)
+datasets.retrieve_data(data_folder, NUM_SAMPLES, shuffle=True, export_file=data_file)
 print("> Exporting dataset to file: " + data_file)
 # Retrieve dataset
 print("> Reading dataset from file: " + data_file)
-x_set, y_set, data_df = generator.retrieve_datasets_inverse(data_file, shuffle=True)
+x_set, y_set, data_df = generator.retrieve_inverse_datasets(data_file, shuffle=True)
 input_dim = x_set.shape[1]
 output_dim = y_set.shape[1]
 print("> Input dimension: " + str(input_dim))

@@ -3,6 +3,8 @@
     a network that learns the so-called 'inverse' calculation, i.e. parameters from prices. """
 import os
 from datetime import datetime
+from silence_tensorflow import silence_tensorflow
+silence_tensorflow()
 from sdevpy.volsurfacegen import stovolfactory
 from sdevpy import settings
 from sdevpy.tools import filemanager
@@ -15,7 +17,7 @@ MODEL_TYPE = "SABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
 SHIFT = 0.03
-NUM_SAMPLES = 2 * 100
+NUM_SAMPLES = 20 * 1000
 # The 4 parameters below are only relevant for models whose reference is calculated by MC
 NUM_EXPIRIES = 15
 NUM_MC = 100 * 1000 # 100 * 1000

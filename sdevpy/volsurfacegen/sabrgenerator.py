@@ -270,6 +270,9 @@ class SabrGenerator(SmileGenerator):
         md_prices = np.asarray(md_prices)
         return md_prices.reshape(num_expiries, num_strikes)
 
+    def retrieve_inverse_datasets_no_shuffle(self, data_df):
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+
     # def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
     #     if input_method == 'Percentiles':
     #         lnvol = parameters['LnVol']

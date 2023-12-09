@@ -51,6 +51,24 @@ class SmileGenerator(ABC):
     def retrieve_datasets_no_shuffle(self, data_df):
         """ Retrieve dataset from dataframe without shuffling """
 
+    def retrieve_inverse_datasets(self, data_file, shuffle=False):
+        """ Retrieve inverse dataset stored in tsv file """
+        data_df = SmileGenerator.from_file(data_file, shuffle)
+        x_set, y_set = self.retrieve_inverse_datasets_from_df(data_df, False)
+        return x_set, y_set, data_df
+
+    def retrieve_inverse_datasets_from_df(self, data_df, shuffle=False):
+        """ Retrieve inverse dataset from dataframe """
+        if shuffle:
+            data_df = datasets.shuffle_dataframe(data_df)
+
+        return self.retrieve_inverse_datasets_no_shuffle(data_df)
+
+    @abstractmethod
+    def retrieve_inverse_datasets_no_shuffle(self, data_df):
+        """ Retrieve inverse dataset from dataframe without shuffling """
+        raise NotImplementedError("Method not implemented yet for chosen model")
+
     def price_surface_ref(self, expiries, strikes, are_calls, fwd, parameters):
         """ Calculate a surface of prices for given parameters using the generating model """
         return self.price(expiries, strikes, are_calls, fwd, parameters)

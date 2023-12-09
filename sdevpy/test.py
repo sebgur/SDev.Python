@@ -10,8 +10,8 @@
 # from io import BytesIO
 
 # To know Python version is 32 or 64 bits
-import struct
-print(struct.calcsize("P") * 8)
+# import struct
+# print(struct.calcsize("P") * 8)
 
 # URL = 'https://drive.google.com/file/d/10dKi82fW2arlKnOahNv9i5igfiydwMnc/view?usp=sharing'
 
