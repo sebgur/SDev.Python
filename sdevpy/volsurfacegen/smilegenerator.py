@@ -29,11 +29,19 @@ class SmileGenerator(ABC):
     @abstractmethod
     def price(self, expiries, strikes, are_calls, fwd, parameters):
         """ Calculate option price under the specified model and its parameters """
+        # ToDo: couldn't we identify this with price_surface_ref? Ideally rename as
+        # price_options_ref given that now we have price_straddles_ref
 
     @abstractmethod
-    def price_straddle(self, expiries, strikes, fwd, parameters):
-        """ Calculate straddle price under the specified model and its parameters """
+    def price_straddles_ref(self, expiries, strikes, fwd, parameters):
+        """ Calculate straddle prices under the specified model and its parameters """
 
+    @abstractmethod
+    def price_straddles_mod(self, model, expiries, strikes, fwd, mkt_prices):
+        """ Calculate straddle prices for given parameters using the learning model """
+        raise NotImplementedError("Straddle pricing with model not implemented yet")
+
+    # #### Retrieve direct datasets ####
     def retrieve_datasets(self, data_file, shuffle=False):
         """ Retrieve dataset stored in tsv file """
         data_df = SmileGenerator.from_file(data_file, shuffle)
@@ -51,6 +59,7 @@ class SmileGenerator(ABC):
     def retrieve_datasets_no_shuffle(self, data_df):
         """ Retrieve dataset from dataframe without shuffling """
 
+    # #### Retrieve inverse datasets ####
     def retrieve_inverse_datasets(self, data_file, shuffle=False):
         """ Retrieve inverse dataset stored in tsv file """
         data_df = SmileGenerator.from_file(data_file, shuffle)
@@ -70,7 +79,7 @@ class SmileGenerator(ABC):
         raise NotImplementedError("Method not implemented yet for chosen model")
 
     def price_surface_ref(self, expiries, strikes, are_calls, fwd, parameters):
-        """ Calculate a surface of prices for given parameters using the generating model """
+        """ Calculate a surface of prices for given parameters using the reference model """
         return self.price(expiries, strikes, are_calls, fwd, parameters)
 
     @abstractmethod

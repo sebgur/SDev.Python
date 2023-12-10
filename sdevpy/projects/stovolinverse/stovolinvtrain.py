@@ -7,10 +7,7 @@ import os
 from sdevpy import settings
 from datetime import datetime
 import numpy as np
-# from silence_tensorflow import silence_tensorflow
-# silence_tensorflow()
 import tensorflow as tf
-# tf.get_logger().setLevel(tf._logging.ERROR)  # or any {DEBUG, INFO, WARN, ERROR, FATAL}
 import matplotlib.pyplot as plt
 from sdevpy.machinelearning.topology import compose_model
 from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model
@@ -26,12 +23,12 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 
 # ################ ToDo ###########################################################################
-# Retrieve data: need to find a way to split between inputs an outputs. That should easy to do
-# by counting the headers, but that won't tell us the values of the spread. For now, we'll have
-# to assume them by hard-coding. But we could store this information in the additional json
-# like we were using in the direct map?
-# Train network on prices as inputs, SABR as output
-# Compare against solving with optimizer
+# For each expiry, get the parameters from the trained model, calculate prices
+# For each expiry, calibrate parameters to these prices using an optimizer, calculate prices
+# Draw charts of optimized model, trained model, and scatter of training points
+# Compare RMSE on training points between optimized model and trained model
+# Implement Circular Learning Rate
+# Tune topology/hyperparameters
 # This method should allow us to calculate the sensitivity to market by AAD. That's quite an 
 # advantage, as for the regular method we can't AAD through calibration/optimization.
 # Compare vegas
@@ -52,16 +49,16 @@ MODEL_TYPE = "SABR"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
 MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
-USE_TRAINED = False
+USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
-TRAIN = True
+TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 500 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 1000#2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 2000
+EPOCHS = 250
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
@@ -163,8 +160,8 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 if TRAIN:
     # Learning rate scheduler
     INIT_LR = 1.0e-2
-    FINAL_LR = 1.0e-4
-    DECAY = 0.97
+    FINAL_LR = 1.0e-3
+    DECAY = 0.99 # 0.97
     STEPS = 250
     lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
 
@@ -208,11 +205,11 @@ print(">> Analyse results")
 # Check performance
 train_pred = model.predict(x_train)
 train_rmse = bps_rmse(train_pred, y_train)
-print(f"> RMSE(nvol) on training set: {train_rmse:,.2f}")
+print(f"> RMSE on training set: {train_rmse:,.2f}")
 
 test_pred = model.predict(x_test)
 test_rmse = bps_rmse(test_pred, y_test)
-print(f"> RMSE(nvol) on test set: {test_rmse:,.2f}")
+print(f"> RMSE on test set: {test_rmse:,.2f}")
 
 # Generate strike spread axis
 if SHOW_VOL_CHARTS:
@@ -228,41 +225,51 @@ if SHOW_VOL_CHARTS:
     else:
         EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.0, 10.0, 30.0]).reshape(-1, 1)
     NUM_EXPIRIES = EXPIRIES.shape[0]
-    METHOD = 'Percentiles'
-    PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
-    PERCENTS = np.asarray([PERCENTS] * NUM_EXPIRIES)
 
-    strikes = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
-    # clipboard.export2d(strikes)
-    ARE_CALLS = [[False] * NUM_STRIKES] * NUM_EXPIRIES # All puts
-    # ARE_CALLS = [[False if s < FWD else True for s in expks] for expks in strikes] # Puts/calls
-    # print(ARE_CALLS)
+    # Calculate market strikes and prices on the training spreads
+    # ToDo: ideally we shouldn't hardcode them but retrieve from knowledge of the datasets
+    # and/or the saved model
+    TRAINING_SPREADS = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
+    TRAINING_SPREADS = np.asarray(TRAINING_SPREADS)
+    TRAINING_SPREADS = np.tile(TRAINING_SPREADS, (NUM_EXPIRIES, 1))
+    mkt_strikes = TRAINING_SPREADS / 10000.0 + FWD
+    # print(mkt_strikes)
+    mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS)
+    print(mkt_prices)
 
-    print("> Calculating chart surface with reference model")
-    timer_ref = Stopwatch("Reference surface calculation")
-    timer_ref.trigger()
-    ref_prices = generator.price_surface_ref(EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
-    timer_ref.stop()
+    # Use model to get parameters at each expiry, then calculate parameters and then prices
+    mod_prices, mod_params = generator.price_straddles_mod(model, EXPIRIES, FWD, mkt_prices)
+
+    # METHOD = 'Percentiles'
+    # PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
+    # PERCENTS = np.asarray([PERCENTS] * NUM_EXPIRIES)
+
+    # strikes = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
+
+    # print("> Calculating chart surface with reference model")
+    # timer_ref = Stopwatch("Reference surface calculation")
+    # timer_ref.trigger()
+    # ref_prices = generator.price_straddle(EXPIRIES, strikes, FWD, PARAMS)
+    # timer_ref.stop()
     # clipboard.export2d(ref_prices)
-    print("> Calculating chart surface with trained model")
-    timer_mod = Stopwatch("Model surface calculation")
-    timer_mod.trigger()
-    mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
-    timer_mod.stop()
-    # clipboard.export2d(mod_prices)
-    print(f"> Ref-Mod RMSE(price): {bps_rmse(ref_prices, mod_prices):.2f}")
+    # print("> Calculating chart surface with trained model")
+    # timer_mod = Stopwatch("Model surface calculation")
+    # timer_mod.trigger()
+    # mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
+    # timer_mod.stop()
+    # print(f"> Ref-Mod RMSE(price): {bps_rmse(ref_prices, mod_prices):.2f}")
 
     # Display timers
-    timer_ref.print()
-    timer_mod.print()
+    # timer_ref.print()
+    # timer_mod.print()
 
     # Available tranforms: Price, ShiftedBlackScholes, Bachelier
-    TITLE = f"{MODEL_TYPE} smile sections, forward={FWD*100:.2f}"#,%\n parameters={PARAMS}"
+    # TITLE = f"{MODEL_TYPE} smile sections, forward={FWD*100:.2f}"#,%\n parameters={PARAMS}"
     # TRANSFORM = "Bachelier"
     # TRANSFORM = "Price"
-    TRANSFORM = "ShiftedBlackScholes"
-    xplt.plot_transform_surface(EXPIRIES, strikes, ARE_CALLS, FWD, ref_prices, mod_prices,
-                                TITLE, transform=TRANSFORM)
+    # TRANSFORM = "ShiftedBlackScholes"
+    # xplt.plot_transform_surface(EXPIRIES, strikes, ARE_CALLS, FWD, ref_prices, mod_prices,
+    #                             TITLE, transform=TRANSFORM)
 
 # Show training history
 if TRAIN:

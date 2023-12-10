@@ -152,7 +152,7 @@ class SabrGenerator(SmileGenerator):
             params = {'LnVol': lnvol[j], 'Beta': beta[j], 'Nu': nu[j], 'Rho': rho[j]}
 
             # Calculate prices
-            price = self.price_straddle(expiries, ks, fwd, params)
+            price = self.price_straddles_ref(expiries, ks, fwd, params)
 
             # Flatten the results
             for exp_idx, expiry in enumerate(expiries):
@@ -199,7 +199,7 @@ class SabrGenerator(SmileGenerator):
 
         return np.asarray(prices)
 
-    def price_straddle(self, expiries, strikes, fwd, parameters):
+    def price_straddles_ref(self, expiries, strikes, fwd, parameters):
         expiries_ = np.asarray(expiries).reshape(-1, 1)
         shifted_k = strikes + self.shift
         shifted_f = fwd + self.shift
