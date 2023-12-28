@@ -9,18 +9,32 @@ import numpy as np
 #import pandas as pd
 # from io import BytesIO
 
-# ###################### column_stack #############################################################
-a = np.asarray(['a', 'b', 'c', 'd'])
-b = np.asarray(['1', '2', '3', '4'])
-c = np.asarray(['aa', 'bb', 'cc', 'dd'])
-d = np.asarray(['11', '22', '33', '44'])
+# ###################### fit SABR straddles #######################################################
 
-print(a.shape)
-e = np.column_stack((a, b))
-f = np.column_stack((c, d))
-print(e)
-print(f)
-print(np.column_stack((e, f)))
+
+params = {'LnVol': 0.25, 'Beta': 0.50, 'Nu': 0.50, 'Rho': -0.30}
+fwd = 3.5 / 100
+
+# Calculate prices
+expiries = [1.5]
+spreads = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
+strikes = fwd + spreads / 10000.0
+generator = SabrGenerator(SHIFT)
+prices = generator.price_straddles_ref(expiries, strikes, fwd, params)
+
+
+# ###################### column_stack #############################################################
+# a = np.asarray(['a', 'b', 'c', 'd'])
+# b = np.asarray(['1', '2', '3', '4'])
+# c = np.asarray(['aa', 'bb', 'cc', 'dd'])
+# d = np.asarray(['11', '22', '33', '44'])
+
+# print(a.shape)
+# e = np.column_stack((a, b))
+# f = np.column_stack((c, d))
+# print(e)
+# print(f)
+# print(np.column_stack((e, f)))
 
 # URL = 'https://drive.google.com/file/d/10dKi82fW2arlKnOahNv9i5igfiydwMnc/view?usp=sharing'
 
