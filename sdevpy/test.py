@@ -8,6 +8,7 @@ import numpy as np
 # import io
 #import pandas as pd
 # from io import BytesIO
+from sdevpy.volsurfacegen import sabrgenerator
 
 # ###################### fit SABR straddles #######################################################
 
@@ -16,12 +17,25 @@ params = {'LnVol': 0.25, 'Beta': 0.50, 'Nu': 0.50, 'Rho': -0.30}
 fwd = 3.5 / 100
 
 # Calculate prices
-expiries = [1.5]
-spreads = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
-strikes = fwd + spreads / 10000.0
-generator = SabrGenerator(SHIFT)
+expiries = np.asarray([0.5, 1.5])
+# print(expiries.shape)
+print("Expiries\n", expiries)
+n_expiries = expiries.shape[0]
+spreads = np.asarray([-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]).reshape(1, -1)
+# print(spreads.shape)
+# print(spreads)
+n_strikes = spreads.shape[1]
+spreads = np.tile(spreads, (n_expiries, 1))
+# print(spreads.shape)
+print("Spreads\n", spreads)
+strikes = fwd + np.asarray(spreads) / 10000.0
+print("Strikes\n", strikes)
+SHIFT = 0.03
+generator = sabrgenerator.SabrGenerator(SHIFT)
 prices = generator.price_straddles_ref(expiries, strikes, fwd, params)
+print("Prices\n", prices)
 
+# Fit
 
 # ###################### column_stack #############################################################
 # a = np.asarray(['a', 'b', 'c', 'd'])

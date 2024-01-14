@@ -36,10 +36,10 @@ class SmileGenerator(ABC):
     def price_straddles_ref(self, expiries, strikes, fwd, parameters):
         """ Calculate straddle prices under the specified model and its parameters """
 
-    @abstractmethod
-    def price_straddles_mod(self, model, expiries, strikes, fwd, mkt_prices):
-        """ Calculate straddle prices for given parameters using the learning model """
-        raise NotImplementedError("Straddle pricing with model not implemented yet")
+    # @abstractmethod
+    # def price_straddles_mod(self, model, expiries, strikes, fwd, mkt_prices):
+    #     """ Calculate straddle prices for given parameters using the learning model """
+    #     raise NotImplementedError("Straddle pricing with model not implemented yet")
 
     # #### Retrieve direct datasets ####
     def retrieve_datasets(self, data_file, shuffle=False):
