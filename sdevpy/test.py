@@ -3,12 +3,15 @@
 import numpy as np
 # import scipy.stats as sp
 # import json
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 # import requests, zipfile
 # import io
 #import pandas as pd
 # from io import BytesIO
 from sdevpy.volsurfacegen import sabrgenerator
+from sdevpy.maths import metrics
+from sdevpy.maths import optimization
+from sdevpy.analytics import sabr
 
 # ###################### fit SABR straddles #######################################################
 
@@ -19,23 +22,87 @@ fwd = 3.5 / 100
 # Calculate prices
 expiries = np.asarray([0.5, 1.5])
 # print(expiries.shape)
-print("Expiries\n", expiries)
+print("Expiries ", expiries.shape, "\n", expiries)
 n_expiries = expiries.shape[0]
 spreads = np.asarray([-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]).reshape(1, -1)
-# print(spreads.shape)
-# print(spreads)
 n_strikes = spreads.shape[1]
 spreads = np.tile(spreads, (n_expiries, 1))
-# print(spreads.shape)
-print("Spreads\n", spreads)
+print("Spreads ", spreads.shape, "\n", spreads)
 strikes = fwd + np.asarray(spreads) / 10000.0
-print("Strikes\n", strikes)
+print("Strikes ", strikes.shape, "\n", strikes)
 SHIFT = 0.03
 generator = sabrgenerator.SabrGenerator(SHIFT)
 prices = generator.price_straddles_ref(expiries, strikes, fwd, params)
-print("Prices\n", prices)
+print("Prices ", prices.shape, "\n", prices)
 
-# Fit
+# Objective function
+def f(x, *args):
+    params_ = {'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]}
+    # x_ = x[0]
+    # a = args[0]
+    # b = args[1]
+    # c = args[2]
+    # prod = a * b * c
+    generator_ = sabrgenerator.SabrGenerator(SHIFT)
+    prices_ = generator_.price_straddles_ref(expiries, strikes, fwd, params_)
+    return metrics.rmse(prices_, prices)
+
+
+# Choose method
+method = 'Nelder-Mead'
+# method = "Powell" # Success x^4
+# method = "CG"
+# method = "BFGS"
+# method = "L-BFGS-B"
+# method = "TNC"
+# method = "COBYLA" # Success x^4
+# method = "SLSQP"
+# method = "trust-constr"
+# method = "DE" # Success x^4
+
+# Create the optimizer
+optimizer = optimization.create_optimizer(method)
+
+# Define the bounds
+lw_bounds = [0.0001, 0.1, 0.01, -0.9]
+up_bounds = [10.0, 0.9, 10.0, 0.9]
+bounds = optimization.create_bounds(lw_bounds, up_bounds)
+
+# Optimize
+init_point = [0.20, 0.5, 0.20, 0.0]
+result = optimizer.minimize(f, x0=init_point, args=(), bounds=bounds)
+
+for key in result.keys():
+    if key in result:
+        print(key + "\n", result[key])
+
+x = result.x
+fun = result.fun
+# print("Keys\n", result.keys())
+
+# Calculate implied vols
+opt_params = {'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]}
+target_ivs = []
+optimum_ivs = []
+shifted_fwd = fwd + SHIFT
+plt_spreads = np.linspace(-300, 300, 100)
+shifted_strikes = shifted_fwd + np.asarray(plt_spreads) / 10000.0
+for i, expiry in enumerate(expiries):
+    target_ivs_ = []
+    optimum_ivs_ = []
+    for sk in shifted_strikes:
+        target_iv = sabr.implied_vol_vec(expiry, sk, shifted_fwd, params)
+        optimum_iv = sabr.implied_vol_vec(expiry, sk, shifted_fwd, opt_params)
+        target_ivs_.append(target_iv)
+        optimum_ivs_.append(optimum_iv)
+
+    target_ivs.append(target_ivs_)
+    optimum_ivs.append(optimum_ivs_)
+
+# Plot
+plt.plot(plt_spreads, target_ivs[0], color='blue', alpha=0.8, label='Target')
+plt.plot(plt_spreads, optimum_ivs[0], color='red', alpha=1.0, label='Fit')
+plt.show()
 
 # ###################### column_stack #############################################################
 # a = np.asarray(['a', 'b', 'c', 'd'])

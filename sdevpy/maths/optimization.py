@@ -23,6 +23,9 @@ def create_optimizer(method):
     
     return optimizer
 
+def create_bounds(lw_bounds, up_bounds):
+    return opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
+
 
 class Optimizer:
     # def __init__(self):
