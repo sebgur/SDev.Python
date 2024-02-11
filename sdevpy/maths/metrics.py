@@ -3,6 +3,9 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 import tensorflow as tf
 
+def rmsew(set1, set2, weights):
+    """ Root Mean Squared Error with weights """
+    return np.sqrt(mean_squared_error(set1, set2, sample_weight=weights))
 
 def rmse(set1, set2):
     """ Root Mean Squared Error """

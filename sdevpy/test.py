@@ -13,43 +13,48 @@ from sdevpy.maths import metrics
 from sdevpy.maths import optimization
 from sdevpy.analytics import sabr
 
-# ###################### fit SABR straddles #######################################################
-
-
-params = {'LnVol': 0.25, 'Beta': 0.50, 'Nu': 0.50, 'Rho': -0.30}
+# ###################### Fit SABR straddles #######################################################
+params_gen = {'LnVol': 0.25, 'Beta': 0.50, 'Nu': 0.50, 'Rho': -0.30}
 fwd = 3.5 / 100
+print(f"Generating params: {params_gen}")
 
 # Calculate prices
-expiries = np.asarray([0.5, 1.5])
-# print(expiries.shape)
+expiries = np.asarray([1 / 52, 1 / 12, 0.5, 1.0, 5.0, 10.0])
 print("Expiries ", expiries.shape, "\n", expiries)
 n_expiries = expiries.shape[0]
 spreads = np.asarray([-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]).reshape(1, -1)
 n_strikes = spreads.shape[1]
-spreads = np.tile(spreads, (n_expiries, 1))
 print("Spreads ", spreads.shape, "\n", spreads)
+spreads = np.tile(spreads, (n_expiries, 1))
+# print("Spreads ", spreads.shape, "\n", spreads)
 strikes = fwd + np.asarray(spreads) / 10000.0
-print("Strikes ", strikes.shape, "\n", strikes)
+# print("Strikes ", strikes.shape, "\n", strikes)
 SHIFT = 0.03
 generator = sabrgenerator.SabrGenerator(SHIFT)
-prices = generator.price_straddles_ref(expiries, strikes, fwd, params)
-print("Prices ", prices.shape, "\n", prices)
+prices = generator.price_straddles_ref(expiries, strikes, fwd, params_gen)
+# print("Prices ", prices.shape, "\n", prices)
+weights = np.asarray([100, 10, 10, 10, 5, 2, 1, 2, 5, 10, 10, 10, 100])
 
 # Objective function
 def f(x, *args):
-    params_ = {'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]}
-    # x_ = x[0]
-    # a = args[0]
-    # b = args[1]
-    # c = args[2]
-    # prod = a * b * c
+    params_ = {'LnVol': x[0], 'Beta': args[1], 'Nu': x[1], 'Rho': x[2]}
+    # params_ = {'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]}
+    idx_ = args[0]
     generator_ = sabrgenerator.SabrGenerator(SHIFT)
-    prices_ = generator_.price_straddles_ref(expiries, strikes, fwd, params_)
-    return metrics.rmse(prices_, prices)
+    # print('Index: ', str(idx_))
+    expiries_ = np.asarray([expiries[idx_]])
+    strikes_ = np.asarray([strikes[idx_]])
+    # print('Expiries: ', expiries_)
+    # print('Strikes: ', strikes_)
+    prices_ = generator_.price_straddles_ref(expiries_, strikes_, fwd, params_)
+    # prices_ = generator_.price_straddles_ref(expiries, strikes, fwd, params_)
+    # print('Prices: ', prices_)
+    # print('Target prices: ', prices[idx_])
+    return 10000.0 * metrics.rmsew(prices_, [prices[idx_]], [weights])
 
 
 # Choose method
-method = 'Nelder-Mead'
+# method = 'Nelder-Mead'
 # method = "Powell" # Success x^4
 # method = "CG"
 # method = "BFGS"
@@ -58,30 +63,45 @@ method = 'Nelder-Mead'
 # method = "COBYLA" # Success x^4
 # method = "SLSQP"
 # method = "trust-constr"
-# method = "DE" # Success x^4
+method = "DE" # Success x^4
 
 # Create the optimizer
 optimizer = optimization.create_optimizer(method)
 
-# Define the bounds
-lw_bounds = [0.0001, 0.1, 0.01, -0.9]
-up_bounds = [10.0, 0.9, 10.0, 0.9]
+# Define bounds and initial point (3d)
+lw_bounds = [0.0001, 0.01, -0.9]
+up_bounds = [10.0, 10.0, 0.9]
 bounds = optimization.create_bounds(lw_bounds, up_bounds)
+init_point = [0.20, 0.20, 0.0]
+
+# # Define bounds and initial point (4d)
+# lw_bounds = [0.0001, 0.1, 0.01, -0.9]
+# up_bounds = [10.0, 0.9, 10.0, 0.9]
+# bounds = optimization.create_bounds(lw_bounds, up_bounds)
+# init_point = [0.20, 0.5, 0.20, 0.0]
+
 
 # Optimize
-init_point = [0.20, 0.5, 0.20, 0.0]
-result = optimizer.minimize(f, x0=init_point, args=(), bounds=bounds)
+fixed_beta = 0.50
+params_opt = []
+for i in range(n_expiries):
+    result = optimizer.minimize(f, x0=init_point, args=(i, fixed_beta), bounds=bounds)
+    x = result.x
+    fun = result.fun
+    params_opt.append({'LnVol': x[0], 'Beta': fixed_beta, 'Nu': x[1], 'Rho': x[2]})
+    print(f'Optimum parameters at T = {expiries[i]:.3f}: {params_opt[i]}')
+    print(f'Optimum objective at T = {expiries[i]:.3f}: {fun}')
 
-for key in result.keys():
-    if key in result:
-        print(key + "\n", result[key])
+# for key in result.keys():
+#     if key in result:
+#         print(key + "\n", result[key])
 
-x = result.x
-fun = result.fun
+# x = result.x
+# fun = result.fun
 # print("Keys\n", result.keys())
 
 # Calculate implied vols
-opt_params = {'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]}
+# opt_params = {'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]}
 target_ivs = []
 optimum_ivs = []
 shifted_fwd = fwd + SHIFT
@@ -91,8 +111,8 @@ for i, expiry in enumerate(expiries):
     target_ivs_ = []
     optimum_ivs_ = []
     for sk in shifted_strikes:
-        target_iv = sabr.implied_vol_vec(expiry, sk, shifted_fwd, params)
-        optimum_iv = sabr.implied_vol_vec(expiry, sk, shifted_fwd, opt_params)
+        target_iv = sabr.implied_vol_vec(expiry, sk, shifted_fwd, params_gen)
+        optimum_iv = sabr.implied_vol_vec(expiry, sk, shifted_fwd, params_opt[i])
         target_ivs_.append(target_iv)
         optimum_ivs_.append(optimum_iv)
 
@@ -100,9 +120,52 @@ for i, expiry in enumerate(expiries):
     optimum_ivs.append(optimum_ivs_)
 
 # Plot
-plt.plot(plt_spreads, target_ivs[0], color='blue', alpha=0.8, label='Target')
-plt.plot(plt_spreads, optimum_ivs[0], color='red', alpha=1.0, label='Fit')
+fig, axs = plt.subplots(3, 2, layout="constrained")
+fig.suptitle("AD vs MC Bumps vs CF", size='x-large', weight='bold')
+fig.set_size_inches(12, 8)
+
+# PV
+axs[0, 0].plot(plt_spreads, target_ivs[0], color='red', label='Target')
+axs[0, 0].plot(plt_spreads, optimum_ivs[0], color='blue', label='Fit')
+axs[0, 0].set_xlabel('Spread')
+axs[0, 0].set_title("Vol")
+axs[0, 0].legend(loc='upper right')
+
+axs[0, 1].plot(plt_spreads, target_ivs[1], color='red', label='Target')
+axs[0, 1].plot(plt_spreads, optimum_ivs[1], color='blue', label='Fit')
+axs[0, 1].set_xlabel('Spread')
+axs[0, 1].set_title("Vol")
+axs[0, 1].legend(loc='upper right')
+
+axs[1, 0].plot(plt_spreads, target_ivs[2], color='red', label='Target')
+axs[1, 0].plot(plt_spreads, optimum_ivs[2], color='blue', label='Fit')
+axs[1, 0].set_xlabel('Spread')
+axs[1, 0].set_title("Vol")
+axs[1, 0].legend(loc='upper right')
+
+axs[1, 1].plot(plt_spreads, target_ivs[3], color='red', label='Target')
+axs[1, 1].plot(plt_spreads, optimum_ivs[3], color='blue', label='Fit')
+axs[1, 1].set_xlabel('Spread')
+axs[1, 1].set_title("Vol")
+axs[1, 1].legend(loc='upper right')
+
+axs[2, 0].plot(plt_spreads, target_ivs[4], color='red', label='Target')
+axs[2, 0].plot(plt_spreads, optimum_ivs[4], color='blue', label='Fit')
+axs[2, 0].set_xlabel('Spread')
+axs[2, 0].set_title("Vol")
+axs[2, 0].legend(loc='upper right')
+
+axs[2, 1].plot(plt_spreads, target_ivs[5], color='red', label='Target')
+axs[2, 1].plot(plt_spreads, optimum_ivs[5], color='blue', label='Fit')
+axs[2, 1].set_xlabel('Spread')
+axs[2, 1].set_title("Vol")
+axs[2, 1].legend(loc='upper right')
+
+# plt.plot(plt_spreads, target_ivs[0], color='blue', alpha=0.8, label='Target')
+# plt.plot(plt_spreads, optimum_ivs[0], color='red', alpha=1.0, label='Fit')
 plt.show()
+
+
 
 # ###################### column_stack #############################################################
 # a = np.asarray(['a', 'b', 'c', 'd'])
