@@ -1,6 +1,7 @@
 """ Optimization """
 # https://machinelearningmastery.com/how-to-use-nelder-mead-optimization-in-python/
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
+# For DE: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html
 
 from abc import abstractmethod
 import numpy as np
@@ -13,11 +14,15 @@ SCIPY_OPTIMIZERS = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'C
                     'trust-exact', 'trust-krylov', 'DE']
 
 
-def create_optimizer(method):
+# Available strategies for DE
+# best1bin, best1exp, best2exp, best2bin, rand1bin, rand1exp, rand2bin, rand2exp,
+# randtobest1bin, randtobest1exp, currenttobest1bin, currenttobest1exp
+
+def create_optimizer(method, **kwargs):
     """ Create an optimizer. Currently only supporting SciPy """
     optimizer = None
     if method in SCIPY_OPTIMIZERS:
-        optimizer = SciPyOptimizer(method)
+        optimizer = SciPyOptimizer(method, **kwargs)
     else:
         raise RuntimeError("Optimizer type not supported: " + method)
     
@@ -37,25 +42,60 @@ class Optimizer:
 
 class SciPyOptimizer(Optimizer):
     """ Wrapper for SciPy optimizers, including differential_evolution """
-    def __init__(self, method = 'Powell'):
+    def __init__(self, method = 'Powell', **kwargs):
         self.method_ = method
         self.std_minimizers = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA',
-                                'SLSQP', 'trust-constr', 'Newton-CG', 'dogleg', 'trust-ncg',
-                                'trust-exact', 'trust-krylov']
+                               'SLSQP', 'trust-constr', 'Newton-CG', 'dogleg', 'trust-ncg',
+                               'trust-exact', 'trust-krylov']
 
         self.other_minimizers = ['DE']
+
+        self.kwargs = kwargs
         
         if self.method_ not in self.std_minimizers and self.method_ not in self.other_minimizers:
             raise RuntimeError("Method " + self.method_ + " not found in SciPy")
 
-    def minimize(self, f, x0, args, bounds):
+    def minimize(self, f, x0=None, args=(), bounds=None):
         result = None
         if self.method_ in self.std_minimizers:
-            result = opt.minimize(f, x0, args, method=self.method_, bounds=bounds)
+            tol = self.kwargs.get('tol', None)
+            result = opt.minimize(f, x0, args, method=self.method_, bounds=bounds,
+                                  tol=tol)
         elif self.method_== 'DE':
-            result = opt.differential_evolution(f, x0=x0, args=args, bounds=bounds)
+            atol = self.kwargs.get('atol', 0)
+            popsize = self.kwargs.get('popsize', 15)
+            strategy = self.kwargs.get('strategy', 'best1bin')
+            recombination = self.kwargs.get('recombination', 0.7)
+            mutation = self.kwargs.get('mutation', (0.5, 1.0))
+            result = opt.differential_evolution(f, x0=x0, args=args, bounds=bounds, atol=atol,
+                                                popsize=popsize, strategy=strategy,
+                                                recombination=recombination)
         else:
             raise RuntimeError("Method " + self.method_ + " not recognized")
+        
+        return result
+
+class MultiOptimizer(Optimizer):
+    """ Wrapper for SciPy optimizers, including differential_evolution """
+    def __init__(self, methods = ['L-BFGS-B', 'DE'], mtol=1e-4, **kwargs):
+        self.methods_ = methods
+        self.mtol_ = mtol
+        self.kwargs = kwargs
+
+        self.optimizers_ = []
+        for method in self.methods_:
+            self.optimizers_.append(create_optimizer(method, **kwargs))
+
+    def minimize(self, f, x0=None, args=(), bounds=None):
+        result = None
+        for i, optimizer in enumerate(self.optimizers_):
+            print("Try optimization using " + self.methods_[i] + ": ", end='')
+            result = optimizer.minimize(f, x0, args, bounds)
+            if result.fun < self.mtol_:
+                print("SUCCESS!")
+                break
+            else:
+                print("FAILURE")
         
         return result
 

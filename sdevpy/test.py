@@ -33,7 +33,7 @@ SHIFT = 0.03
 generator = sabrgenerator.SabrGenerator(SHIFT)
 prices = generator.price_straddles_ref(expiries, strikes, fwd, params_gen)
 # print("Prices ", prices.shape, "\n", prices)
-weights = np.asarray([100, 10, 10, 10, 5, 2, 1, 2, 5, 10, 10, 10, 100])
+weights = np.asarray([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
 # Objective function
 def f(x, *args):
@@ -55,18 +55,24 @@ def f(x, *args):
 
 # Choose method
 # method = 'Nelder-Mead'
-# method = "Powell" # Success x^4
-# method = "CG"
-# method = "BFGS"
-# method = "L-BFGS-B"
-# method = "TNC"
-# method = "COBYLA" # Success x^4
-# method = "SLSQP"
-# method = "trust-constr"
-method = "DE" # Success x^4
+# method = "Powell"
+method = "L-BFGS-B"
+# method = "DE"
 
 # Create the optimizer
-optimizer = optimization.create_optimizer(method)
+atol = 1e-4 # Relevant for DE
+popsize = 5 # Relevant for DE
+strategy = 'rand2exp' # Relevant for DE: best1bin, best1exp, best2exp, rand1exp
+recombination = 0.7 # Relevant for DE
+mutation = (0.5, 1.0) # Relevant for DE
+# tol = 1e-8 # Relevant for non-DE
+# optimizer = optimization.create_optimizer(method, atol=atol, popsize=popsize, strategy=strategy,
+#                                           mutation=mutation, recombination=recombination,
+#                                           tol=tol)
+
+optimizer = optimization.MultiOptimizer(["L-BFGS-B", "DE"], mtol=atol, atol=atol, popsize=popsize, strategy=strategy,
+                                          mutation=mutation, recombination=recombination)
+
 
 # Define bounds and initial point (3d)
 lw_bounds = [0.0001, 0.01, -0.9]
@@ -80,12 +86,22 @@ init_point = [0.20, 0.20, 0.0]
 # bounds = optimization.create_bounds(lw_bounds, up_bounds)
 # init_point = [0.20, 0.5, 0.20, 0.0]
 
+import scipy.optimize as opt
 
 # Optimize
 fixed_beta = 0.50
 params_opt = []
+x = None
 for i in range(n_expiries):
+    # result = optimizer.minimize(f, x0=init_point, args=(i, fixed_beta), bounds=bounds)
+    print(f"Optimizing at T = {expiries[i]}...")
+    # if i == 0:
     result = optimizer.minimize(f, x0=init_point, args=(i, fixed_beta), bounds=bounds)
+    # result = opt.differential_evolution(f, args=(i, fixed_beta), bounds=bounds, atol=1e-4,
+    #                                     popsize=5, strategy='best2bin')
+    # else:
+    #     result = opt.differential_evolution(f, x0=x, args=(i, fixed_beta), bounds=bounds, atol=1e-5)
+
     x = result.x
     fun = result.fun
     params_opt.append({'LnVol': x[0], 'Beta': fixed_beta, 'Nu': x[1], 'Rho': x[2]})
@@ -121,44 +137,44 @@ for i, expiry in enumerate(expiries):
 
 # Plot
 fig, axs = plt.subplots(3, 2, layout="constrained")
-fig.suptitle("AD vs MC Bumps vs CF", size='x-large', weight='bold')
+fig.suptitle("SABR Smiles Fit vs Target", size='x-large', weight='bold')
 fig.set_size_inches(12, 8)
 
 # PV
 axs[0, 0].plot(plt_spreads, target_ivs[0], color='red', label='Target')
 axs[0, 0].plot(plt_spreads, optimum_ivs[0], color='blue', label='Fit')
 axs[0, 0].set_xlabel('Spread')
-axs[0, 0].set_title("Vol")
+axs[0, 0].set_title(f"Fit vs Target at T={expiries[0]}")
 axs[0, 0].legend(loc='upper right')
 
 axs[0, 1].plot(plt_spreads, target_ivs[1], color='red', label='Target')
 axs[0, 1].plot(plt_spreads, optimum_ivs[1], color='blue', label='Fit')
 axs[0, 1].set_xlabel('Spread')
-axs[0, 1].set_title("Vol")
+axs[0, 1].set_title(f"Fit vs Target at T={expiries[1]}")
 axs[0, 1].legend(loc='upper right')
 
 axs[1, 0].plot(plt_spreads, target_ivs[2], color='red', label='Target')
 axs[1, 0].plot(plt_spreads, optimum_ivs[2], color='blue', label='Fit')
 axs[1, 0].set_xlabel('Spread')
-axs[1, 0].set_title("Vol")
+axs[1, 0].set_title(f"Fit vs Target at T={expiries[2]}")
 axs[1, 0].legend(loc='upper right')
 
 axs[1, 1].plot(plt_spreads, target_ivs[3], color='red', label='Target')
 axs[1, 1].plot(plt_spreads, optimum_ivs[3], color='blue', label='Fit')
 axs[1, 1].set_xlabel('Spread')
-axs[1, 1].set_title("Vol")
+axs[1, 1].set_title(f"Fit vs Target at T={expiries[3]}")
 axs[1, 1].legend(loc='upper right')
 
 axs[2, 0].plot(plt_spreads, target_ivs[4], color='red', label='Target')
 axs[2, 0].plot(plt_spreads, optimum_ivs[4], color='blue', label='Fit')
 axs[2, 0].set_xlabel('Spread')
-axs[2, 0].set_title("Vol")
+axs[2, 0].set_title(f"Fit vs Target at T={expiries[4]}")
 axs[2, 0].legend(loc='upper right')
 
 axs[2, 1].plot(plt_spreads, target_ivs[5], color='red', label='Target')
 axs[2, 1].plot(plt_spreads, optimum_ivs[5], color='blue', label='Fit')
 axs[2, 1].set_xlabel('Spread')
-axs[2, 1].set_title("Vol")
+axs[2, 1].set_title(f"Fit vs Target at T={expiries[5]}")
 axs[2, 1].legend(loc='upper right')
 
 # plt.plot(plt_spreads, target_ivs[0], color='blue', alpha=0.8, label='Target')
