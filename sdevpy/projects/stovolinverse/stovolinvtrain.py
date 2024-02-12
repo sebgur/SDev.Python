@@ -25,6 +25,7 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # ################ ToDo ###########################################################################
 # For each expiry, get the parameters from the trained model, calculate prices
 # For each expiry, calibrate parameters to these prices using an optimizer, calculate prices
+# Apply comparison on the test set
 # Draw charts of optimized model, trained model, and scatter of training points
 # Compare RMSE on training points between optimized model and trained model
 # Implement Circular Learning Rate
