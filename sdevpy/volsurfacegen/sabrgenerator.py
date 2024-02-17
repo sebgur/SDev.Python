@@ -215,6 +215,43 @@ class SabrGenerator(SmileGenerator):
 
         return np.asarray(prices)
 
+    def price_straddles_mod(self, model, expiries, strikes, fwd, mkt_prices, src_params):
+        """ Calculate straddle prices for given parameters using the learning model """
+        # print("Expiries ", expiries.shape, "\n", expiries)
+        # print("Strikes ", strikes.shape, "\n", strikes)
+        # print("FWD ", fwd)
+        # print("Mkt Prices ", mkt_prices.shape, "\n", mkt_prices)
+
+        # Prepare input points for the model
+        n_expiries = expiries.shape[0]
+        points = np.c_[expiries, np.ones(n_expiries) * fwd]
+        # print(points)
+        points = np.c_[points, mkt_prices]
+        # print(points)
+
+        # Evaluation model
+        params = model.predict(points)
+
+        # Format params
+        mod_params = []
+        for p in params:
+            mod_params.append({'LnVol': p[0], 'Beta': p[1], 'Nu': p[2], 'Rho': p[3] })
+
+        # Calculate market prices from
+        mod_prices = []
+        for i, expiry in enumerate(expiries):
+            expiry_ = np.asarray([expiry])
+            # print(expiry)
+            strikes_ = np.asarray([strikes[i]])
+            # print(strikes_)
+            # print(mod_params[i])
+            # mod_prices_ = self.price_straddles_ref(expiry_, strikes_, fwd, src_params)
+            mod_prices_ = self.price_straddles_ref(expiry_, strikes_, fwd, mod_params[i])
+            # print(mod_prices)
+            mod_prices.append(mod_prices_[0])
+
+        return mod_params, np.asarray(mod_prices)
+
     def retrieve_datasets_no_shuffle(self, data_df):
         # Retrieve suitable data
         t = data_df.Ttm

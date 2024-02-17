@@ -53,11 +53,11 @@ SHIFT = 0.03
 USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
-TRAIN = False
+TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 1000#2 * 1000 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 100000#2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 250
 BATCH_SIZE = 1000
@@ -236,10 +236,58 @@ if SHOW_VOL_CHARTS:
     mkt_strikes = TRAINING_SPREADS / 10000.0 + FWD
     # print(mkt_strikes)
     mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS)
-    print(mkt_prices)
+    # print(mkt_prices)
 
     # Use model to get parameters at each expiry, then calculate parameters and then prices
-    mod_prices, mod_params = generator.price_straddles_mod(model, EXPIRIES, FWD, mkt_prices)
+    mod_params, mod_prices = generator.price_straddles_mod(model, EXPIRIES, mkt_strikes, FWD,
+                                                           mkt_prices, PARAMS)
+
+    # print(mod_params)
+    # print(mod_prices)
+
+    fig, axs = plt.subplots(3, 2, layout="constrained")
+    fig.suptitle("SABR Smiles Fit vs Target", size='x-large', weight='bold')
+    fig.set_size_inches(12, 8)
+
+    # PV
+    plot_spreads = TRAINING_SPREADS[0]
+    axs[0, 0].plot(plot_spreads, mkt_prices[0], color='red', label='Target')
+    axs[0, 0].plot(plot_spreads, mod_prices[0], color='blue', label='Fit')
+    axs[0, 0].set_xlabel('Spread')
+    axs[0, 0].set_title(f"Fit vs Target at T={EXPIRIES[0]}")
+    axs[0, 0].legend(loc='upper right')
+
+    axs[0, 1].plot(plot_spreads, mkt_prices[1], color='red', label='Target')
+    axs[0, 1].plot(plot_spreads, mod_prices[1], color='blue', label='Fit')
+    axs[0, 1].set_xlabel('Spread')
+    axs[0, 1].set_title(f"Fit vs Target at T={EXPIRIES[1]}")
+    axs[0, 1].legend(loc='upper right')
+
+    axs[1, 0].plot(plot_spreads, mkt_prices[2], color='red', label='Target')
+    axs[1, 0].plot(plot_spreads, mod_prices[2], color='blue', label='Fit')
+    axs[1, 0].set_xlabel('Spread')
+    axs[1, 0].set_title(f"Fit vs Target at T={EXPIRIES[2]}")
+    axs[1, 0].legend(loc='upper right')
+
+    axs[1, 1].plot(plot_spreads, mkt_prices[3], color='red', label='Target')
+    axs[1, 1].plot(plot_spreads, mod_prices[3], color='blue', label='Fit')
+    axs[1, 1].set_xlabel('Spread')
+    axs[1, 1].set_title(f"Fit vs Target at T={EXPIRIES[3]}")
+    axs[1, 1].legend(loc='upper right')
+
+    axs[2, 0].plot(plot_spreads, mkt_prices[4], color='red', label='Target')
+    axs[2, 0].plot(plot_spreads, mod_prices[4], color='blue', label='Fit')
+    axs[2, 0].set_xlabel('Spread')
+    axs[2, 0].set_title(f"Fit vs Target at T={EXPIRIES[4]}")
+    axs[2, 0].legend(loc='upper right')
+
+    axs[2, 1].plot(plot_spreads, mkt_prices[5], color='red', label='Target')
+    axs[2, 1].plot(plot_spreads, mod_prices[5], color='blue', label='Fit')
+    axs[2, 1].set_xlabel('Spread')
+    axs[2, 1].set_title(f"Fit vs Target at T={EXPIRIES[5]}")
+    axs[2, 1].legend(loc='upper right')
+
+    plt.show()
 
     # METHOD = 'Percentiles'
     # PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
