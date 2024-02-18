@@ -26,13 +26,10 @@ spreads = np.asarray([-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 20
 n_strikes = spreads.shape[1]
 print("Spreads ", spreads.shape, "\n", spreads)
 spreads = np.tile(spreads, (n_expiries, 1))
-# print("Spreads ", spreads.shape, "\n", spreads)
 strikes = fwd + np.asarray(spreads) / 10000.0
-# print("Strikes ", strikes.shape, "\n", strikes)
 SHIFT = 0.03
 generator = sabrgenerator.SabrGenerator(SHIFT)
 prices = generator.price_straddles_ref(expiries, strikes, fwd, params_gen)
-# print("Prices ", prices.shape, "\n", prices)
 weights = np.asarray([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
 # Objective function
@@ -41,15 +38,9 @@ def f(x, *args):
     # params_ = {'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]}
     idx_ = args[0]
     generator_ = sabrgenerator.SabrGenerator(SHIFT)
-    # print('Index: ', str(idx_))
     expiries_ = np.asarray([expiries[idx_]])
     strikes_ = np.asarray([strikes[idx_]])
-    # print('Expiries: ', expiries_)
-    # print('Strikes: ', strikes_)
     prices_ = generator_.price_straddles_ref(expiries_, strikes_, fwd, params_)
-    # prices_ = generator_.price_straddles_ref(expiries, strikes, fwd, params_)
-    # print('Prices: ', prices_)
-    # print('Target prices: ', prices[idx_])
     return 10000.0 * metrics.rmsew(prices_, [prices[idx_]], [weights])
 
 
@@ -93,9 +84,7 @@ fixed_beta = 0.50
 params_opt = []
 x = None
 for i in range(n_expiries):
-    # result = optimizer.minimize(f, x0=init_point, args=(i, fixed_beta), bounds=bounds)
     print(f"Optimizing at T = {expiries[i]}...")
-    # if i == 0:
     result = optimizer.minimize(f, x0=init_point, args=(i, fixed_beta), bounds=bounds)
     # result = opt.differential_evolution(f, args=(i, fixed_beta), bounds=bounds, atol=1e-4,
     #                                     popsize=5, strategy='best2bin')
@@ -111,10 +100,6 @@ for i in range(n_expiries):
 # for key in result.keys():
 #     if key in result:
 #         print(key + "\n", result[key])
-
-# x = result.x
-# fun = result.fun
-# print("Keys\n", result.keys())
 
 # Calculate implied vols
 # opt_params = {'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]}
@@ -177,11 +162,7 @@ axs[2, 1].set_xlabel('Spread')
 axs[2, 1].set_title(f"Fit vs Target at T={expiries[5]}")
 axs[2, 1].legend(loc='upper right')
 
-# plt.plot(plt_spreads, target_ivs[0], color='blue', alpha=0.8, label='Target')
-# plt.plot(plt_spreads, optimum_ivs[0], color='red', alpha=1.0, label='Fit')
 plt.show()
-
-
 
 # ###################### column_stack #############################################################
 # a = np.asarray(['a', 'b', 'c', 'd'])

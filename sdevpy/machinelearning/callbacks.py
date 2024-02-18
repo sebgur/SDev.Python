@@ -48,7 +48,7 @@ class SDevPyCallback(keras.callbacks.Callback):
         self.epochs.append(epoch)
         loss = logs['loss']
         scale = self.y_scaler.scale_[0]
-        loss = loss * scale
+        # loss = loss * scale
         self.losses.append(loss)
         if self.optimizer is not None:
             lr = self.optimizer.learning_rate.numpy()

@@ -11,7 +11,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from sdevpy.machinelearning.topology import compose_model
 from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model
-from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay
+from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay, CyclicalExponentialDecay
 from sdevpy.machinelearning.callbacks import RefCallback
 from sdevpy.machinelearning import datasets
 from sdevpy.tools import filemanager
@@ -23,10 +23,14 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 
 # ################ ToDo ###########################################################################
-# For each expiry, get the parameters from the trained model, calculate prices
+# We could generate market points from SABR, then generate a new set from a slightly different
+# set of SABR parameters such as a rho move, a nu move, etc. Then re-calibrate by optimization
+# vs using the network and see if they produce expected move. For instance if the second
+# market is a rho move of +10%, do the standard optimization and the network produce a set
+# of parameters that correspond to +10% in rho?
+# Then we can create a new market that corresponds to an infinitesimal move in the generating
+# SABR parameters, and see if that translates into an expected infinitesimal move in the result.
 # For each expiry, calibrate parameters to these prices using an optimizer, calculate prices
-# Apply comparison on the test set
-# Draw charts of optimized model, trained model, and scatter of training points
 # Compare RMSE on training points between optimized model and trained model
 # Implement Circular Learning Rate
 # Tune topology/hyperparameters
@@ -50,7 +54,7 @@ MODEL_TYPE = "SABR"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
 MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
-USE_TRAINED = True
+USE_TRAINED = False
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
 TRAIN = True
@@ -164,7 +168,9 @@ if TRAIN:
     FINAL_LR = 1.0e-3
     DECAY = 0.99 # 0.97
     STEPS = 250
-    lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
+    PERIOD = 50
+    lr_schedule = CyclicalExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS, PERIOD)
+    # lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
 
     # Optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
@@ -207,6 +213,7 @@ print(">> Analyse results")
 train_pred = model.predict(x_train)
 train_rmse = bps_rmse(train_pred, y_train)
 print(f"> RMSE on training set: {train_rmse:,.2f}")
+print(f"> RMSE on training set(TF): {tf_bps_rmse(train_pred, y_train):,.2f}")
 
 test_pred = model.predict(x_test)
 test_rmse = bps_rmse(test_pred, y_test)
