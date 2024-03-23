@@ -114,7 +114,7 @@ class SabrGenerator(SmileGenerator):
         print(f"Minimum forward: {min_fwd * 100:,.2f}%")
 
         # Derive number of surfaces to generate
-        num_surfaces = int(num_samples / surface_size)# + 1)
+        num_surfaces = int(num_samples / self.num_expiries)# + 1)
         print(f"Number of surfaces/parameter samples: {num_surfaces:,}")
 
         # Draw parameters

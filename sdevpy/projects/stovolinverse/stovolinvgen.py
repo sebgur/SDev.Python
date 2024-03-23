@@ -15,12 +15,12 @@ MODEL_TYPE = "SABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
 SHIFT = 0.03
-NUM_SAMPLES = 1000 * 1000
+NUM_SAMPLES = 100 * 1000
 # The 4 parameters below are only relevant for models whose reference is calculated by MC
 NUM_EXPIRIES = 15
 NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25 # 25
-SEED = 1234 # [4321, 4444, 2151, 100, 888, 72, 3204, 2151, 1234, 42]
+SEED = 1357 # [1357, 8642, 1000, 8888, 4444, 2222, 1111, 4321, 1234, 42]
 SPREADS = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
 
 print(">> Set up runtime configuration")

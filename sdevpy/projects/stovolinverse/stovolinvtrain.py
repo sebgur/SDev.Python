@@ -17,7 +17,7 @@ from sdevpy.machinelearning import datasets
 from sdevpy.tools import filemanager
 from sdevpy.tools.timer import Stopwatch
 # from sdevpy.tools import clipboard
-from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
+from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse, tf_mse, mse, tf_rmse, rmse
 from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
 
@@ -61,9 +61,9 @@ TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 100000#2 * 1000 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 1000 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 250
+EPOCHS = 200
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
@@ -165,10 +165,10 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 if TRAIN:
     # Learning rate scheduler
     INIT_LR = 1.0e-2
-    FINAL_LR = 1.0e-3
+    FINAL_LR = 1.0e-4
     DECAY = 0.99 # 0.97
     STEPS = 250
-    PERIOD = 50
+    PERIOD = 500
     lr_schedule = CyclicalExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS, PERIOD)
     # lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
 
@@ -187,7 +187,7 @@ if TRAIN:
     # Callbacks
     EPOCH_SAMPLING = 5
     callback = RefCallback(x_test, y_test, bps_rmse, optimizer=optimizer,
-                           epoch_sampling=EPOCH_SAMPLING)
+                           epoch_sampling=EPOCH_SAMPLING, x_train=x_train, y_train=y_train)
 
     # Train the network
     print(">> Training ANN model")
@@ -213,7 +213,7 @@ print(">> Analyse results")
 train_pred = model.predict(x_train)
 train_rmse = bps_rmse(train_pred, y_train)
 print(f"> RMSE on training set: {train_rmse:,.2f}")
-print(f"> RMSE on training set(TF): {tf_bps_rmse(train_pred, y_train):,.2f}")
+# print(f"> RMSE on training set(TF): {tf_bps_rmse(train_pred, y_train):,.2f}")
 
 test_pred = model.predict(x_test)
 test_rmse = bps_rmse(test_pred, y_test)
