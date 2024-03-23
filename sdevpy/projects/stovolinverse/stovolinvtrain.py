@@ -9,6 +9,7 @@ from datetime import datetime
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import pandas as pd
 from sdevpy.machinelearning.topology import compose_model
 from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model
 from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay, CyclicalExponentialDecay
@@ -23,6 +24,8 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 
 # ################ ToDo ###########################################################################
+# Compare RMSE on training points between optimized model and trained model
+
 # We could generate market points from SABR, then generate a new set from a slightly different
 # set of SABR parameters such as a rho move, a nu move, etc. Then re-calibrate by optimization
 # vs using the network and see if they produce expected move. For instance if the second
@@ -30,14 +33,11 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # of parameters that correspond to +10% in rho?
 # Then we can create a new market that corresponds to an infinitesimal move in the generating
 # SABR parameters, and see if that translates into an expected infinitesimal move in the result.
-# For each expiry, calibrate parameters to these prices using an optimizer, calculate prices
-# Compare RMSE on training points between optimized model and trained model
-# Implement Circular Learning Rate
-# Tune topology/hyperparameters
+
 # This method should allow us to calculate the sensitivity to market by AAD. That's quite an 
 # advantage, as for the regular method we can't AAD through calibration/optimization.
-# Compare vegas
 
+# Compare vegas
 # ################ Module versions ################################################################
 print("TensorFlow version: " + tf.__version__)
 # print("Keras version: " + tf.keras.__version__)
@@ -54,14 +54,14 @@ MODEL_TYPE = "SABR"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
 MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
-USE_TRAINED = False
+USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
-TRAIN = True
+TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 1000 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 10 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 200
 BATCH_SIZE = 1000
@@ -247,10 +247,39 @@ if SHOW_VOL_CHARTS:
 
     # Use model to get parameters at each expiry, then calculate parameters and then prices
     mod_params, mod_prices = generator.price_straddles_mod(model, EXPIRIES, mkt_strikes, FWD,
-                                                           mkt_prices, PARAMS)
-
+                                                           mkt_prices)
     # print(mod_params)
     # print(mod_prices)
+
+    # Calibrate prices by optimization
+    weights = np.asarray([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    cal_params, cal_prices = generator.calibrate(EXPIRIES, mkt_strikes, FWD, mkt_prices, weights)
+    # print(cal_params)
+    # print(cal_prices)
+
+    # Display parameters
+    data = {'Expiry': EXPIRIES[:, 0]}
+    df = pd.DataFrame(data)
+    df['LnVol-TGT'] = [PARAMS['LnVol']] * NUM_EXPIRIES
+    df['LnVol-MOD'] = [x['LnVol'] for x in mod_params]
+    df['LnVol-CAL'] = [x['LnVol'] for x in cal_params]
+    print(df.to_string(index=False))
+    df = pd.DataFrame(data)
+    df['Beta-TGT'] = [PARAMS['Beta']] * NUM_EXPIRIES
+    df['Beta-MOD'] = [x['Beta'] for x in mod_params]
+    df['Beta-CAL'] = [x['Beta'] for x in cal_params]
+    print(df.to_string(index=False))
+    df = pd.DataFrame(data)
+    df['Nu-TGT'] = [PARAMS['Nu']] * NUM_EXPIRIES
+    df['Nu-MOD'] = [x['Nu'] for x in mod_params]
+    df['Nu-CAL'] = [x['Nu'] for x in cal_params]
+    print(df.to_string(index=False))
+    df = pd.DataFrame(data)
+    df['Rho-TGT'] = [PARAMS['Rho']] * NUM_EXPIRIES
+    df['Rho-MOD'] = [x['Rho'] for x in mod_params]
+    df['Rho-CAL'] = [x['Rho'] for x in cal_params]
+    print(df.to_string(index=False))
+
 
     fig, axs = plt.subplots(3, 2, layout="constrained")
     fig.suptitle("SABR Smiles Fit vs Target", size='x-large', weight='bold')
@@ -259,37 +288,43 @@ if SHOW_VOL_CHARTS:
     # PV
     plot_spreads = TRAINING_SPREADS[0]
     axs[0, 0].plot(plot_spreads, mkt_prices[0], color='red', label='Target')
-    axs[0, 0].plot(plot_spreads, mod_prices[0], color='blue', label='Fit')
+    axs[0, 0].plot(plot_spreads, mod_prices[0], color='blue', label='Model')
+    axs[0, 0].plot(plot_spreads, cal_prices[0], 'g--', alpha=0.8, label='Calibration')
     axs[0, 0].set_xlabel('Spread')
     axs[0, 0].set_title(f"Fit vs Target at T={EXPIRIES[0]}")
     axs[0, 0].legend(loc='upper right')
 
     axs[0, 1].plot(plot_spreads, mkt_prices[1], color='red', label='Target')
-    axs[0, 1].plot(plot_spreads, mod_prices[1], color='blue', label='Fit')
+    axs[0, 1].plot(plot_spreads, mod_prices[1], color='blue', label='Model')
+    axs[0, 1].plot(plot_spreads, cal_prices[1], 'g--', alpha=0.8, label='Calibration')
     axs[0, 1].set_xlabel('Spread')
     axs[0, 1].set_title(f"Fit vs Target at T={EXPIRIES[1]}")
     axs[0, 1].legend(loc='upper right')
 
     axs[1, 0].plot(plot_spreads, mkt_prices[2], color='red', label='Target')
-    axs[1, 0].plot(plot_spreads, mod_prices[2], color='blue', label='Fit')
+    axs[1, 0].plot(plot_spreads, mod_prices[2], color='blue', label='Model')
+    axs[1, 0].plot(plot_spreads, cal_prices[2], 'g--', alpha=0.8, label='Calibration')
     axs[1, 0].set_xlabel('Spread')
     axs[1, 0].set_title(f"Fit vs Target at T={EXPIRIES[2]}")
     axs[1, 0].legend(loc='upper right')
 
     axs[1, 1].plot(plot_spreads, mkt_prices[3], color='red', label='Target')
-    axs[1, 1].plot(plot_spreads, mod_prices[3], color='blue', label='Fit')
+    axs[1, 1].plot(plot_spreads, mod_prices[3], color='blue', label='Model')
+    axs[1, 1].plot(plot_spreads, cal_prices[3], 'g--', alpha=0.8, label='Calibration')
     axs[1, 1].set_xlabel('Spread')
     axs[1, 1].set_title(f"Fit vs Target at T={EXPIRIES[3]}")
     axs[1, 1].legend(loc='upper right')
 
     axs[2, 0].plot(plot_spreads, mkt_prices[4], color='red', label='Target')
-    axs[2, 0].plot(plot_spreads, mod_prices[4], color='blue', label='Fit')
+    axs[2, 0].plot(plot_spreads, mod_prices[4], color='blue', label='Model')
+    axs[2, 0].plot(plot_spreads, cal_prices[4], 'g--', alpha=0.8, label='Calibration')
     axs[2, 0].set_xlabel('Spread')
     axs[2, 0].set_title(f"Fit vs Target at T={EXPIRIES[4]}")
     axs[2, 0].legend(loc='upper right')
 
     axs[2, 1].plot(plot_spreads, mkt_prices[5], color='red', label='Target')
-    axs[2, 1].plot(plot_spreads, mod_prices[5], color='blue', label='Fit')
+    axs[2, 1].plot(plot_spreads, mod_prices[5], color='blue', label='Model')
+    axs[2, 1].plot(plot_spreads, cal_prices[5], 'g--', alpha=0.8, label='Calibration')
     axs[2, 1].set_xlabel('Spread')
     axs[2, 1].set_title(f"Fit vs Target at T={EXPIRIES[5]}")
     axs[2, 1].legend(loc='upper right')

@@ -89,7 +89,7 @@ class MultiOptimizer(Optimizer):
     def minimize(self, f, x0=None, args=(), bounds=None):
         result = None
         for i, optimizer in enumerate(self.optimizers_):
-            print("Try optimization using " + self.methods_[i] + ": ", end='')
+            print("Trying optimization using " + self.methods_[i] + ": ", end='')
             result = optimizer.minimize(f, x0, args, bounds)
             if result.fun < self.mtol_:
                 print("SUCCESS!")

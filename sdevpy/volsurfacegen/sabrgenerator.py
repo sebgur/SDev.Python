@@ -10,6 +10,8 @@ from sdevpy.analytics import bachelier
 from sdevpy.volsurfacegen.smilegenerator import SmileGenerator
 from sdevpy.tools import filemanager
 from sdevpy.tools import constants
+from sdevpy.maths import metrics
+from sdevpy.maths import optimization as opt
 
 
 class SabrGenerator(SmileGenerator):
@@ -215,7 +217,7 @@ class SabrGenerator(SmileGenerator):
 
         return np.asarray(prices)
 
-    def price_straddles_mod(self, model, expiries, strikes, fwd, mkt_prices, src_params):
+    def price_straddles_mod(self, model, expiries, strikes, fwd, mkt_prices):
         """ Calculate straddle prices for given parameters using the learning model """
         # print("Expiries ", expiries.shape, "\n", expiries)
         # print("Strikes ", strikes.shape, "\n", strikes)
@@ -332,6 +334,59 @@ class SabrGenerator(SmileGenerator):
 
         return x_set, y_set
 
+    def calibrate(self, expiries, strikes, fwd, mkt_prices, weights):
+        # method = 'Nelder-Mead'
+        # method = "Powell"
+        # method = "L-BFGS-B"
+        # method = "DE"
+
+        # Create the optimizer
+        atol = 1e-2 # Relevant for DE
+        popsize = 5 # Relevant for DE
+        strategy = 'best1bin' # Relevant for DE: best1bin, best1exp, best2exp, rand1exp
+        recombination = 0.7 # Relevant for DE
+        mutation = (0.5, 1.0) # Relevant for DE
+        # tol = 1e-8 # Relevant for non-DE
+        # optimizer = optimization.create_optimizer(method, atol=atol, popsize=popsize, strategy=strategy,
+        #                                           mutation=mutation, recombination=recombination,
+        #                                           tol=tol)
+
+        optim = opt.MultiOptimizer(["L-BFGS-B", "Nelder-Mead", "DE"], mtol=atol, atol=atol, popsize=popsize,
+                                   strategy=strategy, mutation=mutation, recombination=recombination)
+
+
+        # Define bounds and initial point (4d)
+        lw_bounds = [0.0001, 0.1, 0.01, -0.9]
+        up_bounds = [2.0, 0.9, 2.0, 0.9]
+        bounds = opt.create_bounds(lw_bounds, up_bounds)
+        init_point = [0.25, 0.5, 0.20, -0.30]
+
+        cal_params = []
+        num_expiries = expiries.shape[0]
+        for i in range(num_expiries):
+            print(f"Optimizing at T = {expiries[i]}...")
+            args = (self, expiries[i], strikes[i], fwd, mkt_prices[i], weights)
+            result = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)
+            x = result.x
+            fun = result.fun
+            cal_params.append({'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]})
+            # cal_params.append({'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25})
+
+            # print(f'Optimum parameters at T = {expiries[i]:.3f}: {cal_params[i]}')
+            # print(f'Optimum objective at T = {expiries[i]:.3f}: {fun}')
+
+        # Calculate model prices at calibrated parameters
+        cal_prices = []
+        print("Calculing calibrated prices")
+        for i in range(num_expiries):
+            expiries_ = np.asarray([expiries[i]])
+            strikes_ = np.asarray([strikes[i]])
+            cal_prices_ = self.price_straddles_ref(expiries_, strikes_, fwd, cal_params[i])
+            cal_prices.append(cal_prices_[0])
+
+        return cal_params, cal_prices
+
+
     # def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
     #     if input_method == 'Percentiles':
     #         lnvol = parameters['LnVol']
@@ -341,6 +396,19 @@ class SabrGenerator(SmileGenerator):
     #     else:
     #         return SmileGenerator.convert_strikes(expiries, strike_inputs, fwd, parameters,
     #                                               input_method)
+
+
+# Objective function
+def sabr_obj(x, *args):
+    params_ = {'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]}
+    generator_ = args[0]
+    expiries_ = np.asarray([args[1]])
+    strikes_ = np.asarray([args[2]])
+    fwd_ = args[3]
+    targets = args[4]
+    weights = args[5]
+    prices_ = generator_.price_straddles_ref(expiries_, strikes_, fwd_, params_)
+    return 10000.0 * metrics.rmsew(prices_, [targets], [weights])
 
 
 if __name__ == "__main__":
