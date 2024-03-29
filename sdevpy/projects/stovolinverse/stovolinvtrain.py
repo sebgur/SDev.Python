@@ -24,8 +24,6 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 
 # ################ ToDo ###########################################################################
-# Compare RMSE on training points between optimized model and trained model
-
 # We could generate market points from SABR, then generate a new set from a slightly different
 # set of SABR parameters such as a rho move, a nu move, etc. Then re-calibrate by optimization
 # vs using the network and see if they produce expected move. For instance if the second
@@ -248,12 +246,15 @@ if SHOW_VOL_CHARTS:
     # Use model to get parameters at each expiry, then calculate parameters and then prices
     mod_params, mod_prices = generator.price_straddles_mod(model, EXPIRIES, mkt_strikes, FWD,
                                                            mkt_prices)
-    # print(mod_params)
+    rmse_mkt_mod = bps_rmse(mkt_prices, mod_prices)
     # print(mod_prices)
 
     # Calibrate prices by optimization
     weights = np.asarray([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     cal_params, cal_prices = generator.calibrate(EXPIRIES, mkt_strikes, FWD, mkt_prices, weights)
+    rmse_mkt_cal = bps_rmse(mkt_prices, cal_prices)
+    print(f"RMSE market-model: {rmse_mkt_mod:,.2f}")
+    print(f"RMSE market-calibration: {rmse_mkt_cal:,.2f}")
     # print(cal_params)
     # print(cal_prices)
 
