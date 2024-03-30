@@ -7,6 +7,7 @@ import tensorflow as tf
 import joblib
 import absl.logging
 from sdevpy.tools import jsonmanager
+from sdevpy.tools import filemanager
 
 class LearningModel:
     """ Wrapper class for machine learning models, including scalers, and simplifying
@@ -54,10 +55,12 @@ class LearningModel:
 
     def save(self, path):
         """ Save model and its scalers to files """
+        filemanager.check_directory(path)
         # Save keras model first. Turn dummy warning off temporarily.
         verbosity = absl.logging.get_verbosity()
         absl.logging.set_verbosity(absl.logging.ERROR)
-        self.model.save(path)
+        model_file = os.path.join(path, "model.keras")
+        self.model.save(model_file)
         absl.logging.set_verbosity(verbosity)
 
         # Save scalers
@@ -132,7 +135,8 @@ def load_learning_model(path, compile_=False):
     if os.path.exists(path) is False:
         raise RuntimeError("Model folder does not exist: " + path)
 
-    keras_model = tf.keras.models.load_model(path, compile=compile_)
+    model_file = os.path.join(path, "model.keras")
+    keras_model = tf.keras.models.load_model(model_file, compile=compile_)
 
     x_scaler_file, y_scaler_file = scaler_files(path)
     if os.path.exists(x_scaler_file) and os.path.exists(y_scaler_file):

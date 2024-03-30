@@ -20,7 +20,7 @@ def compose_model(num_inputs, num_outputs, hidden_layers, neurons, dropout=0.2):
     model = tf.keras.Sequential()
 
     # Input layer
-    model.add(tf.keras.Input(num_inputs))
+    model.add(tf.keras.Input(shape=(num_inputs,)))
 
     # Hidden layers
     for layer in hidden_layers:
