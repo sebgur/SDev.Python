@@ -137,6 +137,42 @@ class SmileGenerator(ABC):
 
         return data_df
 
+    # def to_straddle_nvol(self, data_df, cleanse=True, min_vol=0.0001, max_vol=0.1):
+    #     """ Calculate normal implied vol and remove errors. Further remove points that are not
+    #         in the given min/max range """
+    #     # Calculate normal vols
+    #     np.seterr(divide='raise')  # To catch errors and warnings
+    #     n_strikes = data_df.shape[1] - 6
+    #     t = data_df.Ttm
+    #     fwd = data_df.F
+    #     # strike = data_df.K
+    #     # price = data_df.Price
+    #     nvol = []
+    #     num_samples = t.shape[0]
+    #     num_print = 10000
+    #     num_batches = int(num_samples / num_print) + 1
+    #     batch_id = 0
+    #     for i in range(num_samples):
+    #         if i % num_print == 0:
+    #             batch_id = batch_id + 1
+    #             print(f"Converting to normal vol, batch {batch_id:,} out of {num_batches:,}")
+    #         try:
+    #             nvol.append(bachelier.implied_vol(t[i], strike[i], self.is_call, fwd[i], price[i]))
+    #         except (Exception,):
+    #             nvol.append(-9999)
+
+    #     np.seterr(divide='warn')  # Set back to warning
+
+    #     data_df['NVol'] = nvol
+    #     # data_df['BSVol'] = bsvol
+
+    #     # Remove out of range
+    #     if cleanse:
+    #         data_df = data_df.drop(data_df[data_df.NVol > max_vol].index)
+    #         data_df = data_df.drop(data_df[data_df.NVol < min_vol].index)
+
+    #     return data_df
+
     def target_is_call(self):
         """ True if the fit target is call options, False if puts """
         return self.is_call

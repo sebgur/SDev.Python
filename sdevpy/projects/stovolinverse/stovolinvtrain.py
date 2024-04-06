@@ -52,14 +52,14 @@ MODEL_TYPE = "SABR"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
 MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
-USE_TRAINED = True
+USE_TRAINED = False
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
-TRAIN = False
+TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 10 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 100 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 200
 BATCH_SIZE = 1000
@@ -67,6 +67,7 @@ SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
 NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25# 25
+USE_NVOL = True
 project_folder = os.path.join(settings.WORKFOLDER, "stovolinv")
 
 print(">> Set up runtime configuration")
@@ -164,10 +165,11 @@ if TRAIN:
     # Learning rate scheduler
     INIT_LR = 1.0e-2
     FINAL_LR = 1.0e-4
-    DECAY = 0.99 # 0.97
-    STEPS = 250
-    PERIOD = 500
-    lr_schedule = CyclicalExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS, PERIOD)
+    TARGET_EPOCH = EPOCHS * 0.90  # Epoch by which we plan to be down to 110% of final LR
+    PERIODS = 10  # Number of oscillation periods until target epoch
+
+    lr_schedule = CyclicalExponentialDecay(NUM_SAMPLES, BATCH_SIZE, TARGET_EPOCH, INIT_LR, FINAL_LR,
+                                           PERIODS)
     # lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
 
     # Optimizer
@@ -183,7 +185,7 @@ if TRAIN:
     keras_model.compile(loss=tf_bps_rmse, optimizer=optimizer)
 
     # Callbacks
-    EPOCH_SAMPLING = 5
+    EPOCH_SAMPLING = 1
     callback = RefCallback(x_test, y_test, bps_rmse, optimizer=optimizer,
                            epoch_sampling=EPOCH_SAMPLING, x_train=x_train, y_train=y_train)
 
@@ -240,12 +242,15 @@ if SHOW_VOL_CHARTS:
     TRAINING_SPREADS = np.tile(TRAINING_SPREADS, (NUM_EXPIRIES, 1))
     mkt_strikes = TRAINING_SPREADS / 10000.0 + FWD
     # print(mkt_strikes)
-    mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS)
+    # mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS)
+    mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, True)
     # print(mkt_prices)
 
     # Use model to get parameters at each expiry, then calculate parameters and then prices
     mod_params, mod_prices = generator.price_straddles_mod(model, EXPIRIES, mkt_strikes, FWD,
                                                            mkt_prices)
+
+    mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, False)
     rmse_mkt_mod = bps_rmse(mkt_prices, mod_prices)
     # print(mod_prices)
 

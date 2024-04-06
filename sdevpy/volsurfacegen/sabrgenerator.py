@@ -97,7 +97,9 @@ class SabrGenerator(SmileGenerator):
 
         return df
 
-    def generate_samples_inverse(self, num_samples, rg, spreads):
+    def generate_samples_inverse(self, num_samples, rg, spreads, use_nvol=False,
+                                 min_vol=0.0001, max_vol=0.2):
+        np.seterr(divide='raise')  # To catch errors and warnings
         shift = self.shift
 
         min_fwd = -shift - spreads[0] / 10000 + constants.BPS10
@@ -154,7 +156,7 @@ class SabrGenerator(SmileGenerator):
             params = {'LnVol': lnvol[j], 'Beta': beta[j], 'Nu': nu[j], 'Rho': rho[j]}
 
             # Calculate prices
-            price = self.price_straddles_ref(expiries, ks, fwd, params)
+            price = self.price_straddles_ref(expiries, ks, fwd, params, use_nvol)
 
             # Flatten the results
             for exp_idx, expiry in enumerate(expiries):
@@ -165,6 +167,8 @@ class SabrGenerator(SmileGenerator):
                 nus.append(nu[j])
                 rhos.append(rho[j])
                 prices.append(price[exp_idx])
+
+        np.seterr(divide='warn')  # Set back to warning
 
         # Create strike headers
         strike_headers = ['K' + str(j) for j in range(num_strikes)]
@@ -184,6 +188,12 @@ class SabrGenerator(SmileGenerator):
         df = pd.DataFrame(data_dic)
         df.columns = columns
 
+        # Cleanse
+        if use_nvol:
+            for j in range(num_strikes):
+                df = df.drop(df[df[strike_headers[j]] > max_vol].index)
+                df = df.drop(df[df[strike_headers[j]] < min_vol].index)
+
         return df
 
     def price(self, expiries, strikes, are_calls, fwd, parameters):
@@ -201,18 +211,29 @@ class SabrGenerator(SmileGenerator):
 
         return np.asarray(prices)
 
-    def price_straddles_ref(self, expiries, strikes, fwd, parameters):
+    def price_straddles_ref(self, expiries, strikes, fwd, parameters, output_nvol=False):
         expiries_ = np.asarray(expiries).reshape(-1, 1)
         shifted_k = strikes + self.shift
         shifted_f = fwd + self.shift
         prices = []
         for i, expiry in enumerate(expiries_):
             k_prices = []
-            for j, sk in enumerate(shifted_k[i]):
-                iv = sabr.implied_vol_vec(expiry, sk, shifted_f, parameters)
-                call_price = black.price(expiry, sk, True, shifted_f, iv)
-                put_price = black.price(expiry, sk, False, shifted_f, iv)
-                k_prices.append(call_price[0] + put_price[0])
+            if output_nvol:
+                for (k, sk) in zip(strikes[i], shifted_k[i]):  # Normal vols
+                    iv = sabr.implied_vol_vec(expiry, sk, shifted_f, parameters)
+                    is_call = True
+                    price = black.price(expiry, sk, is_call, shifted_f, iv)
+                    try:
+                        n_vol = bachelier.implied_vol(expiry, k, is_call, fwd, price)[0]
+                    except (Exception,):
+                        n_vol = -9999
+                    k_prices.append(n_vol)
+            else:
+                for sk in shifted_k[i]:  # Straddle prices
+                    iv = sabr.implied_vol_vec(expiry, sk, shifted_f, parameters)
+                    call_price = black.price(expiry, sk, True, shifted_f, iv)
+                    put_price = black.price(expiry, sk, False, shifted_f, iv)
+                    k_prices.append(call_price[0] + put_price[0])
             prices.append(k_prices)
 
         return np.asarray(prices)
