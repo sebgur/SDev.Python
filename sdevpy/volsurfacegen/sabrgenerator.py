@@ -238,19 +238,12 @@ class SabrGenerator(SmileGenerator):
 
         return np.asarray(prices)
 
-    def price_straddles_mod(self, model, expiries, strikes, fwd, mkt_prices):
+    def price_straddles_mod(self, model, expiries, strikes, fwd, mkt_prices, output_nvol=False):
         """ Calculate straddle prices for given parameters using the learning model """
-        # print("Expiries ", expiries.shape, "\n", expiries)
-        # print("Strikes ", strikes.shape, "\n", strikes)
-        # print("FWD ", fwd)
-        # print("Mkt Prices ", mkt_prices.shape, "\n", mkt_prices)
-
         # Prepare input points for the model
         n_expiries = expiries.shape[0]
         points = np.c_[expiries, np.ones(n_expiries) * fwd]
-        # print(points)
         points = np.c_[points, mkt_prices]
-        # print(points)
 
         # Evaluation model
         params = model.predict(points)
@@ -264,13 +257,8 @@ class SabrGenerator(SmileGenerator):
         mod_prices = []
         for i, expiry in enumerate(expiries):
             expiry_ = np.asarray([expiry])
-            # print(expiry)
             strikes_ = np.asarray([strikes[i]])
-            # print(strikes_)
-            # print(mod_params[i])
-            # mod_prices_ = self.price_straddles_ref(expiry_, strikes_, fwd, src_params)
-            mod_prices_ = self.price_straddles_ref(expiry_, strikes_, fwd, mod_params[i])
-            # print(mod_prices)
+            mod_prices_ = self.price_straddles_ref(expiry_, strikes_, fwd, mod_params[i], output_nvol)
             mod_prices.append(mod_prices_[0])
 
         return mod_params, np.asarray(mod_prices)
@@ -355,7 +343,7 @@ class SabrGenerator(SmileGenerator):
 
         return x_set, y_set
 
-    def calibrate(self, expiries, strikes, fwd, mkt_prices, weights):
+    def calibrate(self, expiries, strikes, fwd, mkt_prices, weights, output_nvol=False):
         # method = 'Nelder-Mead'
         # method = "Powell"
         # method = "L-BFGS-B"
@@ -402,7 +390,7 @@ class SabrGenerator(SmileGenerator):
         for i in range(num_expiries):
             expiries_ = np.asarray([expiries[i]])
             strikes_ = np.asarray([strikes[i]])
-            cal_prices_ = self.price_straddles_ref(expiries_, strikes_, fwd, cal_params[i])
+            cal_prices_ = self.price_straddles_ref(expiries_, strikes_, fwd, cal_params[i], output_nvol)
             cal_prices.append(cal_prices_[0])
 
         return cal_params, cal_prices

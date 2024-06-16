@@ -24,6 +24,9 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 
 # ################ ToDo ###########################################################################
+# Start additional script with simplified function starting from trained model only, to test
+# against classic calibration, shifting parameters, sensies, etc.
+
 # We could generate market points from SABR, then generate a new set from a slightly different
 # set of SABR parameters such as a rho move, a nu move, etc. Then re-calibrate by optimization
 # vs using the network and see if they produce expected move. For instance if the second
@@ -52,16 +55,16 @@ MODEL_TYPE = "SABR"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
 MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
-USE_TRAINED = False
+USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
 TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 100 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 200 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 200
+EPOCHS = 50
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
@@ -147,6 +150,7 @@ else:
     print(">> Composing new model")
     # Initialize the model
     HIDDEN_LAYERS = ['softplus', 'softplus', 'softplus']
+    # NUM_NEURONS = 128
     NUM_NEURONS = 64
     DROP_OUT = 0.0
     keras_model = compose_model(input_dim, output_dim, HIDDEN_LAYERS, NUM_NEURONS, DROP_OUT)
@@ -163,14 +167,14 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1.0e-2
-    FINAL_LR = 1.0e-4
+    INIT_LR = 1.0e-2#1.0e-2
+    FINAL_LR = 1.0e-3#1.0e-4
     TARGET_EPOCH = EPOCHS * 0.90  # Epoch by which we plan to be down to 110% of final LR
     PERIODS = 10  # Number of oscillation periods until target epoch
 
-    lr_schedule = CyclicalExponentialDecay(NUM_SAMPLES, BATCH_SIZE, TARGET_EPOCH, INIT_LR, FINAL_LR,
-                                           PERIODS)
-    # lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
+    # lr_schedule = CyclicalExponentialDecay(NUM_SAMPLES, BATCH_SIZE, TARGET_EPOCH, INIT_LR, FINAL_LR,
+    #                                        PERIODS)
+    lr_schedule = FlooredExponentialDecay(NUM_SAMPLES, BATCH_SIZE, TARGET_EPOCH, INIT_LR, FINAL_LR)
 
     # Optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
@@ -241,23 +245,25 @@ if SHOW_VOL_CHARTS:
     TRAINING_SPREADS = np.asarray(TRAINING_SPREADS)
     TRAINING_SPREADS = np.tile(TRAINING_SPREADS, (NUM_EXPIRIES, 1))
     mkt_strikes = TRAINING_SPREADS / 10000.0 + FWD
-    # print(mkt_strikes)
-    # mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS)
-    mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, True)
-    # print(mkt_prices)
+
+    # Calculate market prices and vols
+    mkt_vols = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, True)
+    mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, False)
 
     # Use model to get parameters at each expiry, then calculate parameters and then prices
-    mod_params, mod_prices = generator.price_straddles_mod(model, EXPIRIES, mkt_strikes, FWD,
-                                                           mkt_prices)
+    mod_params, mod_vols = generator.price_straddles_mod(model, EXPIRIES, mkt_strikes, FWD,
+                                                           mkt_vols, True)
+    # mod_vols = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, mod_params, True)
 
-    mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, False)
-    rmse_mkt_mod = bps_rmse(mkt_prices, mod_prices)
+    # mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, False)
+    rmse_mkt_mod = bps_rmse(mkt_vols, mod_vols)
     # print(mod_prices)
 
     # Calibrate prices by optimization
     weights = np.asarray([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
-    cal_params, cal_prices = generator.calibrate(EXPIRIES, mkt_strikes, FWD, mkt_prices, weights)
-    rmse_mkt_cal = bps_rmse(mkt_prices, cal_prices)
+    cal_params, cal_vols = generator.calibrate(EXPIRIES, mkt_strikes, FWD, mkt_prices, weights, True)
+    # cal_vols = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, cal_params, True)
+    rmse_mkt_cal = bps_rmse(mkt_vols, cal_vols)
     print(f"RMSE market-model: {rmse_mkt_mod:,.2f}")
     print(f"RMSE market-calibration: {rmse_mkt_cal:,.2f}")
     # print(cal_params)
@@ -293,80 +299,49 @@ if SHOW_VOL_CHARTS:
 
     # PV
     plot_spreads = TRAINING_SPREADS[0]
-    axs[0, 0].plot(plot_spreads, mkt_prices[0], color='red', label='Target')
-    axs[0, 0].plot(plot_spreads, mod_prices[0], color='blue', label='Model')
-    axs[0, 0].plot(plot_spreads, cal_prices[0], 'g--', alpha=0.8, label='Calibration')
+    axs[0, 0].plot(plot_spreads, mkt_vols[0], color='red', label='Target')
+    axs[0, 0].plot(plot_spreads, mod_vols[0], color='blue', label='Model')
+    axs[0, 0].plot(plot_spreads, cal_vols[0], 'g--', alpha=0.8, label='Calibration')
     axs[0, 0].set_xlabel('Spread')
     axs[0, 0].set_title(f"Fit vs Target at T={EXPIRIES[0]}")
     axs[0, 0].legend(loc='upper right')
 
-    axs[0, 1].plot(plot_spreads, mkt_prices[1], color='red', label='Target')
-    axs[0, 1].plot(plot_spreads, mod_prices[1], color='blue', label='Model')
-    axs[0, 1].plot(plot_spreads, cal_prices[1], 'g--', alpha=0.8, label='Calibration')
+    axs[0, 1].plot(plot_spreads, mkt_vols[1], color='red', label='Target')
+    axs[0, 1].plot(plot_spreads, mod_vols[1], color='blue', label='Model')
+    axs[0, 1].plot(plot_spreads, cal_vols[1], 'g--', alpha=0.8, label='Calibration')
     axs[0, 1].set_xlabel('Spread')
     axs[0, 1].set_title(f"Fit vs Target at T={EXPIRIES[1]}")
     axs[0, 1].legend(loc='upper right')
 
-    axs[1, 0].plot(plot_spreads, mkt_prices[2], color='red', label='Target')
-    axs[1, 0].plot(plot_spreads, mod_prices[2], color='blue', label='Model')
-    axs[1, 0].plot(plot_spreads, cal_prices[2], 'g--', alpha=0.8, label='Calibration')
+    axs[1, 0].plot(plot_spreads, mkt_vols[2], color='red', label='Target')
+    axs[1, 0].plot(plot_spreads, mod_vols[2], color='blue', label='Model')
+    axs[1, 0].plot(plot_spreads, cal_vols[2], 'g--', alpha=0.8, label='Calibration')
     axs[1, 0].set_xlabel('Spread')
     axs[1, 0].set_title(f"Fit vs Target at T={EXPIRIES[2]}")
     axs[1, 0].legend(loc='upper right')
 
-    axs[1, 1].plot(plot_spreads, mkt_prices[3], color='red', label='Target')
-    axs[1, 1].plot(plot_spreads, mod_prices[3], color='blue', label='Model')
-    axs[1, 1].plot(plot_spreads, cal_prices[3], 'g--', alpha=0.8, label='Calibration')
+    axs[1, 1].plot(plot_spreads, mkt_vols[3], color='red', label='Target')
+    axs[1, 1].plot(plot_spreads, mod_vols[3], color='blue', label='Model')
+    axs[1, 1].plot(plot_spreads, cal_vols[3], 'g--', alpha=0.8, label='Calibration')
     axs[1, 1].set_xlabel('Spread')
     axs[1, 1].set_title(f"Fit vs Target at T={EXPIRIES[3]}")
     axs[1, 1].legend(loc='upper right')
 
-    axs[2, 0].plot(plot_spreads, mkt_prices[4], color='red', label='Target')
-    axs[2, 0].plot(plot_spreads, mod_prices[4], color='blue', label='Model')
-    axs[2, 0].plot(plot_spreads, cal_prices[4], 'g--', alpha=0.8, label='Calibration')
+    axs[2, 0].plot(plot_spreads, mkt_vols[4], color='red', label='Target')
+    axs[2, 0].plot(plot_spreads, mod_vols[4], color='blue', label='Model')
+    axs[2, 0].plot(plot_spreads, cal_vols[4], 'g--', alpha=0.8, label='Calibration')
     axs[2, 0].set_xlabel('Spread')
     axs[2, 0].set_title(f"Fit vs Target at T={EXPIRIES[4]}")
     axs[2, 0].legend(loc='upper right')
 
-    axs[2, 1].plot(plot_spreads, mkt_prices[5], color='red', label='Target')
-    axs[2, 1].plot(plot_spreads, mod_prices[5], color='blue', label='Model')
-    axs[2, 1].plot(plot_spreads, cal_prices[5], 'g--', alpha=0.8, label='Calibration')
+    axs[2, 1].plot(plot_spreads, mkt_vols[5], color='red', label='Target')
+    axs[2, 1].plot(plot_spreads, mod_vols[5], color='blue', label='Model')
+    axs[2, 1].plot(plot_spreads, cal_vols[5], 'g--', alpha=0.8, label='Calibration')
     axs[2, 1].set_xlabel('Spread')
     axs[2, 1].set_title(f"Fit vs Target at T={EXPIRIES[5]}")
     axs[2, 1].legend(loc='upper right')
 
     plt.show()
-
-    # METHOD = 'Percentiles'
-    # PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
-    # PERCENTS = np.asarray([PERCENTS] * NUM_EXPIRIES)
-
-    # strikes = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
-
-    # print("> Calculating chart surface with reference model")
-    # timer_ref = Stopwatch("Reference surface calculation")
-    # timer_ref.trigger()
-    # ref_prices = generator.price_straddle(EXPIRIES, strikes, FWD, PARAMS)
-    # timer_ref.stop()
-    # clipboard.export2d(ref_prices)
-    # print("> Calculating chart surface with trained model")
-    # timer_mod = Stopwatch("Model surface calculation")
-    # timer_mod.trigger()
-    # mod_prices = generator.price_surface_mod(model, EXPIRIES, strikes, ARE_CALLS, FWD, PARAMS)
-    # timer_mod.stop()
-    # print(f"> Ref-Mod RMSE(price): {bps_rmse(ref_prices, mod_prices):.2f}")
-
-    # Display timers
-    # timer_ref.print()
-    # timer_mod.print()
-
-    # Available tranforms: Price, ShiftedBlackScholes, Bachelier
-    # TITLE = f"{MODEL_TYPE} smile sections, forward={FWD*100:.2f}"#,%\n parameters={PARAMS}"
-    # TRANSFORM = "Bachelier"
-    # TRANSFORM = "Price"
-    # TRANSFORM = "ShiftedBlackScholes"
-    # xplt.plot_transform_surface(EXPIRIES, strikes, ARE_CALLS, FWD, ref_prices, mod_prices,
-    #                             TITLE, transform=TRANSFORM)
 
 # Show training history
 if TRAIN:
