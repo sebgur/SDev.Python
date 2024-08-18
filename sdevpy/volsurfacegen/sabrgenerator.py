@@ -332,7 +332,6 @@ class SabrGenerator(SmileGenerator):
 
         # Add prices prices
         n_strikes = data_df.shape[1] - 6
-        print(data_df.Ttm.shape)
         print("> Number of strikes: " + str(n_strikes))
         for i in range(n_strikes):
             header = 'K' + str(i)

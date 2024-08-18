@@ -27,6 +27,9 @@ from sdevpy.projects.stovol import stovolplot as xplt
 # Start additional script with simplified function starting from trained model only, to test
 # against classic calibration, shifting parameters, sensies, etc.
 
+# Draw ladder of parameters based on gradual moves in the market and compare smoothness of parameter
+# outputs between ML and optimization
+
 # We could generate market points from SABR, then generate a new set from a slightly different
 # set of SABR parameters such as a rho move, a nu move, etc. Then re-calibrate by optimization
 # vs using the network and see if they produce expected move. For instance if the second
@@ -62,9 +65,9 @@ TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 200 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 1000 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 50
+EPOCHS = 300
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
@@ -151,8 +154,8 @@ else:
     # Initialize the model
     HIDDEN_LAYERS = ['softplus', 'softplus', 'softplus']
     # NUM_NEURONS = 128
-    NUM_NEURONS = 64
-    DROP_OUT = 0.0
+    NUM_NEURONS = 512
+    DROP_OUT = 0.05
     keras_model = compose_model(input_dim, output_dim, HIDDEN_LAYERS, NUM_NEURONS, DROP_OUT)
     topology = { 'layers': HIDDEN_LAYERS, 'neurons': NUM_NEURONS, 'dropout': DROP_OUT}
 
@@ -167,8 +170,8 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1.0e-2#1.0e-2
-    FINAL_LR = 1.0e-3#1.0e-4
+    INIT_LR = 1.0e-3#1.0e-2
+    FINAL_LR = 1.0e-4#1.0e-4
     TARGET_EPOCH = EPOCHS * 0.90  # Epoch by which we plan to be down to 110% of final LR
     PERIODS = 10  # Number of oscillation periods until target epoch
 
@@ -227,9 +230,9 @@ print(f"> RMSE on test set: {test_rmse:,.2f}")
 if SHOW_VOL_CHARTS:
     print("> Choosing a sample parameter set to display chart")
     NUM_STRIKES = 100
-    PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25, 'Gamma': 0.7, 'Kappa': 1.0,
+    PARAMS = { 'LnVol': 0.30, 'Beta': 0.5, 'Nu': 0.50, 'Rho': -0.10, 'Gamma': 0.7, 'Kappa': 1.0,
                 'Theta': 0.03, 'Xi': 0.35 }
-    FWD = 0.028
+    FWD = 0.055
 
     # Any number of expiries can be calculated, but for optimum display choose no more than 6
     if MODEL_TYPE == "FbSABR":
