@@ -17,19 +17,12 @@ from sdevpy.machinelearning.callbacks import RefCallback
 from sdevpy.machinelearning import datasets
 from sdevpy.tools import filemanager
 from sdevpy.tools.timer import Stopwatch
-# from sdevpy.tools import clipboard
 from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse, tf_mse, mse, tf_rmse, rmse
 from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
 
 
 # ################ ToDo ###########################################################################
-# Start additional script with simplified function starting from trained model only, to test
-# against classic calibration, shifting parameters, sensies, etc.
-
-# Draw ladder of parameters based on gradual moves in the market and compare smoothness of parameter
-# outputs between ML and optimization
-
 # We could generate market points from SABR, then generate a new set from a slightly different
 # set of SABR parameters such as a rho move, a nu move, etc. Then re-calibrate by optimization
 # vs using the network and see if they produce expected move. For instance if the second
@@ -56,7 +49,7 @@ MODEL_TYPE = "SABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
-MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
+MODEL_ID = "SABR" # MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
 USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
@@ -154,8 +147,8 @@ else:
     # Initialize the model
     HIDDEN_LAYERS = ['softplus', 'softplus', 'softplus']
     # NUM_NEURONS = 128
-    NUM_NEURONS = 512
-    DROP_OUT = 0.05
+    NUM_NEURONS = 128
+    DROP_OUT = 0.0
     keras_model = compose_model(input_dim, output_dim, HIDDEN_LAYERS, NUM_NEURONS, DROP_OUT)
     topology = { 'layers': HIDDEN_LAYERS, 'neurons': NUM_NEURONS, 'dropout': DROP_OUT}
 
