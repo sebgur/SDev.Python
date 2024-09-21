@@ -58,7 +58,7 @@ TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 1000 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 4000 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 300
 BATCH_SIZE = 1000
@@ -232,6 +232,7 @@ if SHOW_VOL_CHARTS:
         EXPIRIES = np.asarray([0.25, 0.50, 1.0, 2.0, 5.0, 10.0]).reshape(-1, 1) # Only trained up to 5y
     else:
         EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.0, 10.0, 30.0]).reshape(-1, 1)
+        # EXPIRIES = np.asarray([0.25, 0.50, 1.0, 2.0, 3.0, 5.0]).reshape(-1, 1)
     NUM_EXPIRIES = EXPIRIES.shape[0]
 
     # Calculate market strikes and prices on the training spreads
