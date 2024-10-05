@@ -20,21 +20,25 @@ from sdevpy.tools.timer import Stopwatch
 from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse, tf_mse, mse, tf_rmse, rmse
 from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt
+from sdevpy.analytics import bachelier
 
 
 # ################ ToDo ###########################################################################
-# We could generate market points from SABR, then generate a new set from a slightly different
-# set of SABR parameters such as a rho move, a nu move, etc. Then re-calibrate by optimization
-# vs using the network and see if they produce expected move. For instance if the second
-# market is a rho move of +10%, do the standard optimization and the network produce a set
-# of parameters that correspond to +10% in rho?
-# Then we can create a new market that corresponds to an infinitesimal move in the generating
-# SABR parameters, and see if that translates into an expected infinitesimal move in the result.
+# At the comparison check between model and calibration, we tried adding random noise to the normal
+# vols used for comparison, on top of their values that come from a chosen SABR model. This way the
+# vols we apply the model/calibration to are not longer exactly SABR.
+# The issue was that the model was going off track very quickly with increasing size of noise.
+# Incidentally, the optimization says "FAILURE" but this is likely to be because the tolerance is
+# very small. We should try to make the tolerance larger and see how it goes.
 
-# This method should allow us to calculate the sensitivity to market by AAD. That's quite an 
-# advantage, as for the regular method we can't AAD through calibration/optimization.
-
-# Compare vegas
+# So the idea would be to include non-SABR points in the training dataset. This could be done by the
+# same noise technique in reverse. Generate random SABR parameters, calculate the normal vols, then
+# add noise on the normal vols, then calculate prices. But then in principle we should calibrate
+# SABR to those prices again, to lear the truly optimium SABR parameters. However, isn't it possible
+# to simply consider the original SABR (before the noise) as the likely optimum? At least, we could
+# start the optimization there. It sounds likely that over a big range of data, these original SABRs
+# could overall be near-optimum enough. Which would then avoid us the trouble of going through the
+# calibration during the training.
 # ################ Module versions ################################################################
 print("TensorFlow version: " + tf.__version__)
 # print("Keras version: " + tf.keras.__version__)
@@ -54,11 +58,11 @@ SHIFT = 0.03
 USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
 DOWNLOAD_DATASETS = False # Use when already created/downloaded
-TRAIN = True
+TRAIN = False
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 4000 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 1000 * 1000#2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
 EPOCHS = 300
 BATCH_SIZE = 1000
@@ -244,12 +248,16 @@ if SHOW_VOL_CHARTS:
     mkt_strikes = TRAINING_SPREADS / 10000.0 + FWD
 
     # Calculate market prices and vols
-    mkt_vols = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, True)
-    mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, False)
+    rel_noise = 0.02
+    noise_thresh = 0.9
+    mkt_vols = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, True,
+                                             rel_noise=rel_noise, noise_thresh=noise_thresh)
+    mkt_prices = bachelier.price_straddles(EXPIRIES, mkt_strikes, FWD, mkt_vols)
+    # mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, False)
 
     # Use model to get parameters at each expiry, then calculate parameters and then prices
     mod_params, mod_vols = generator.price_straddles_mod(model, EXPIRIES, mkt_strikes, FWD,
-                                                           mkt_vols, True)
+                                                         mkt_vols, True)
     # mod_vols = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, mod_params, True)
 
     # mkt_prices = generator.price_straddles_ref(EXPIRIES, mkt_strikes, FWD, PARAMS, False)

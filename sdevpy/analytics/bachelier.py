@@ -12,6 +12,21 @@ def price(expiry, strike, is_call, fwd, vol):
     return stdev * (wd * norm.cdf(wd) + norm.pdf(d))
 
 
+def price_straddles(expiries, strikes, fwd, vols):
+    expiries_ = np.asarray(expiries).reshape(-1, 1)
+    prices = []
+    for i, expiry in enumerate(expiries_):
+        k_prices = []
+        for j, k in enumerate(strikes[i]):
+            iv = vols[i, j]
+            call_price = price(expiry, k, True, fwd, iv)
+            put_price = price(expiry, k, False, fwd, iv)
+            k_prices.append(call_price[0] + put_price[0])
+        prices.append(k_prices)
+
+    return np.asarray(prices)
+
+
 def implied_vol(expiry, strike, is_call, fwd, fwd_price):
     """ P. Jaeckel's method in "Implied Normal Volatility", 6th Jun. 2017 """
     m = fwd - strike

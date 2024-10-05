@@ -20,9 +20,10 @@ NUM_SAMPLES = 1000 * 1000
 NUM_EXPIRIES = 15
 NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25 # 25
-SEED = 8642 # [1357, 8642, 1000, 8888, 4444, 2222, 1111, 4321, 1234, 42]
+SEED = 8888 # [1357, 8642, 1000, 8888, 4444, 2222, 1111, 4321, 1234, 42]
 SPREADS = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
 USE_NVOL = True
+NOISE = 0.01  # Relative size of noise
 
 print(">> Set up runtime configuration")
 project_folder = os.path.join(settings.WORKFOLDER, "stovolinv")
@@ -63,7 +64,7 @@ print(">> Generate dataset")
 print(f"> Generate {NUM_SAMPLES:,} price samples")
 timer_gen = Stopwatch("Generating Samples")
 timer_gen.trigger()
-data_df = generator.generate_samples_inverse(NUM_SAMPLES, RANGES, SPREADS, USE_NVOL)
+data_df = generator.generate_samples_inverse(NUM_SAMPLES, RANGES, SPREADS, USE_NVOL, rel_noise=NOISE)
 timer_gen.stop()
 
 timer_out = Stopwatch("File Output")
