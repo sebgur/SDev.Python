@@ -350,25 +350,26 @@ class SabrGenerator(SmileGenerator):
 
         return x_set, y_set
 
-    def calibrate(self, expiries, strikes, fwd, mkt_prices, weights, output_nvol=False):
+    def calibrate(self, expiries, strikes, fwd, mkt_prices, weights, output_nvol=False,
+                  multi_tol=1e-2, tol=1e-2, de_tol=1e-2):
         # method = 'Nelder-Mead'
         # method = "Powell"
         # method = "L-BFGS-B"
         # method = "DE"
 
         # Create the optimizer
-        atol = 1e-2 # Relevant for DE
-        popsize = 5 # Relevant for DE
-        strategy = 'best1bin' # Relevant for DE: best1bin, best1exp, best2exp, rand1exp
-        recombination = 0.7 # Relevant for DE
-        mutation = (0.5, 1.0) # Relevant for DE
-        # tol = 1e-8 # Relevant for non-DE
-        # optimizer = optimization.create_optimizer(method, atol=atol, popsize=popsize, strategy=strategy,
-        #                                           mutation=mutation, recombination=recombination,
-        #                                           tol=tol)
+        # multi_tol = 1e-2  # For between optimizers
+        # tol = 1e-2 # For non-DE
+        # de_tol = 1e-2 # For DE
+        # de_tol = 1e-2 # For DE
+        popsize = 5 # For DE
+        strategy = 'best1bin' # For DE: best1bin, best1exp, best2exp, rand1exp
+        recombination = 0.7 # For DE
+        mutation = (0.5, 1.0) # For DE
 
-        optim = opt.MultiOptimizer(["L-BFGS-B", "Nelder-Mead", "DE"], mtol=atol, atol=atol, popsize=popsize,
-                                   strategy=strategy, mutation=mutation, recombination=recombination)
+        optim = opt.MultiOptimizer(["L-BFGS-B", "Nelder-Mead", "DE"], tol=tol, mtol=multi_tol,
+                                   atol=de_tol, popsize=popsize, strategy=strategy,
+                                   mutation=mutation, recombination=recombination)
 
 
         # Define bounds and initial point (4d)
@@ -379,12 +380,14 @@ class SabrGenerator(SmileGenerator):
 
         cal_params = []
         num_expiries = expiries.shape[0]
+        nfevs = 0
         for i in range(num_expiries):
             print(f"Optimizing at T = {expiries[i]}...")
             args = (self, expiries[i], strikes[i], fwd, mkt_prices[i], weights)
-            result = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)
+            result, nfev = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)
             x = result.x
             fun = result.fun
+            nfevs = nfevs + nfev
             cal_params.append({'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]})
             # cal_params.append({'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25})
 
@@ -400,7 +403,7 @@ class SabrGenerator(SmileGenerator):
             cal_prices_ = self.price_straddles_ref(expiries_, strikes_, fwd, cal_params[i], output_nvol)
             cal_prices.append(cal_prices_[0])
 
-        return cal_params, cal_prices
+        return cal_params, cal_prices, nfevs
 
 
     # def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):

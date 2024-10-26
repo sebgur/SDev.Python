@@ -8,7 +8,8 @@ from sdevpy.tools import clipboard
 
 
 def plot_transform_surface(expiries, strikes, are_calls, fwd, ref_prices, mod_prices, title_,
-                           transform='ShiftedBlackScholes'):
+                           transform='ShiftedBlackScholes', ref_name='Reference',
+                           mod_name='Model'):
     """ Calculate quantities to display for the surface and display them in charts. Transformed
         quantities available are: Price, ShiftedBlackScholes (3%) and Bachelier (normal vols). """
     # Transform prices
@@ -27,8 +28,8 @@ def plot_transform_surface(expiries, strikes, are_calls, fwd, ref_prices, mod_pr
     for i in range(num_rows):
         for j in range(num_cols):
             k = num_cols * i + j
-            axs[i, j].plot(strikes[k], ref_disp[k], color='blue', label='Reference')
-            axs[i, j].plot(strikes[k], mod_disp[k], color='red', label='Model')
+            axs[i, j].plot(strikes[k], ref_disp[k], color='blue', label=ref_name)
+            axs[i, j].plot(strikes[k], mod_disp[k], color='red', label=mod_name)
             axs[i, j].xaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=1))
             axs[i, j].yaxis.set_major_formatter(mtick.PercentFormatter(xmax=1, decimals=0))
             axs[i, j].set_xlabel('Strike')
