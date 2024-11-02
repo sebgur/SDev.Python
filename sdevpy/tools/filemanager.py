@@ -26,8 +26,7 @@ def download_unzip(zip_url, extract_folder, save_file=False):
 
 def check_directory(path):
     """ Creates directory if it does not already exist """
-    path_exists = os.path.exists(path)
-    if not path_exists:
+    if not os.path.exists(path):
         os.makedirs(path)
 
 

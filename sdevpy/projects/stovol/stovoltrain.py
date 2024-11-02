@@ -23,8 +23,8 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 
 # ################ Runtime configuration ##########################################################
-# MODEL_TYPE = "SABR"
-MODEL_TYPE = "McSABR"
+MODEL_TYPE = "SABR"
+# MODEL_TYPE = "McSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
@@ -38,9 +38,9 @@ TRAIN = True
 if USE_TRAINED is False and TRAIN is False:
     raise RuntimeError("When not using pre-trained models, a new model must be trained")
 
-NUM_SAMPLES = 500 * 1000 # Number of samples to read from sample files
+NUM_SAMPLES = 2 * 1000 * 1000 # Number of samples to read from sample files
 TRAIN_PERCENT = 0.90 # Proportion of dataset used for training (rest used for test)
-EPOCHS = 200
+EPOCHS = 100
 BATCH_SIZE = 1000
 SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
@@ -141,11 +141,12 @@ print(f"> Drop-out rate: {DROP_OUT:.2f}")
 # ################ Train the model ################################################################
 if TRAIN:
     # Learning rate scheduler
-    INIT_LR = 1.0e-2
+    INIT_LR = 1.0e-3
     FINAL_LR = 1.0e-4
-    DECAY = 0.97
-    STEPS = 250
-    lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
+    TARGET_EPOCH = EPOCHS * 0.90  # Epoch by which we plan to be down to 110% of final LR
+    PERIODS = 10  # Number of oscillation periods until target epoch
+    # lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
+    lr_schedule = FlooredExponentialDecay(NUM_SAMPLES, BATCH_SIZE, TARGET_EPOCH, INIT_LR, FINAL_LR)
 
     # Optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
