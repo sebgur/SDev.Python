@@ -98,7 +98,7 @@ class SabrGenerator(SmileGenerator):
         return df
 
     def generate_samples_inverse(self, num_samples, rg, spreads, use_nvol=False,
-                                 min_vol=0.0001, max_vol=0.2, rel_noise=0.0):
+                                 min_vol=0.0001, max_vol=0.2, rel_noise=0.0, noise_prob=0.0):
         np.seterr(divide='raise')  # To catch errors and warnings
         shift = self.shift
 
@@ -156,7 +156,7 @@ class SabrGenerator(SmileGenerator):
             params = {'LnVol': lnvol[j], 'Beta': beta[j], 'Nu': nu[j], 'Rho': rho[j]}
 
             # Calculate prices
-            price = self.price_straddles_ref(expiries, ks, fwd, params, use_nvol, rel_noise)
+            price = self.price_straddles_ref(expiries, ks, fwd, params, use_nvol, rel_noise, noise_prob)
 
             # Flatten the results
             for exp_idx, expiry in enumerate(expiries):
@@ -212,7 +212,7 @@ class SabrGenerator(SmileGenerator):
         return np.asarray(prices)
 
     def price_straddles_ref(self, expiries, strikes, fwd, parameters, output_nvol=False,
-                            rel_noise=0.0, noise_thresh=0.5):
+                            rel_noise=0.0, noise_prob=0.0):
         expiries_ = np.asarray(expiries).reshape(-1, 1)
         shifted_k = strikes + self.shift
         shifted_f = fwd + self.shift
@@ -228,7 +228,7 @@ class SabrGenerator(SmileGenerator):
                         n_vol = bachelier.implied_vol(expiry, k, is_call, fwd, price)[0]
                         # Include noise or not
                         rand = np.random.rand()
-                        use_noise = (rand < noise_thresh)
+                        use_noise = (rand < noise_prob)
                         # Multiply n_vol by noise
                         if use_noise:
                             noise = (np.random.rand() - 0.5) * rel_noise / 0.5
