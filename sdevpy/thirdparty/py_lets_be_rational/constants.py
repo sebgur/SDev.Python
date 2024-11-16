@@ -29,7 +29,9 @@ merchantability, fitness for a particular purpose, or non-infringement.
 
 from __future__ import absolute_import
 
-from _testcapi import DBL_MIN, DBL_MAX
+from sys import float_info
+DBL_MIN, DBL_MAX = float_info.min, float_info.max
+# from _testcapi import DBL_MIN, DBL_MAX
 
 import sys
 from math import sqrt
