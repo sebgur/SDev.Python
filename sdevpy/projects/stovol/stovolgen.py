@@ -10,13 +10,13 @@ from sdevpy.tools.timer import Stopwatch
 
 
 # ################ Runtime configuration ##########################################################
-# MODEL_TYPE = "SABR"
-MODEL_TYPE = "McSABR"
+MODEL_TYPE = "SABR"
+# MODEL_TYPE = "McSABR"
 # MODEL_TYPE = "FbSABR"
 # MODEL_TYPE = "McZABR"
 # MODEL_TYPE = "McHeston"
 SHIFT = 0.03
-NUM_SAMPLES = 35 * 1000
+NUM_SAMPLES = 35 * 100
 # The 4 parameters below are only relevant for models whose reference is calculated by MC
 NUM_EXPIRIES = 10
 NUM_STRIKES = 5

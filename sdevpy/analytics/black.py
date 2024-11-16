@@ -2,7 +2,8 @@
 import numpy as np
 import scipy.stats
 from scipy.optimize import minimize_scalar
-import py_vollib.black.implied_volatility as jaeckel
+# import py_vollib.black.implied_volatility as jaeckel
+from sdevpy.thirdparty.py_vollib.black import implied_volatility as jaeckel
 import tensorflow as tf
 import tensorflow_probability as tfp
 from sdevpy import settings
