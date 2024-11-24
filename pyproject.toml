@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sdevpy"
-version = "1.0.3"
+version = "1.0.4"
 authors = [
   { name="Sebastien Gurrieri", email="sebgur@gmail.com" },
 ]
@@ -17,7 +17,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-	"pandas","pyperclip","py_vollib","numpy","tensorflow",
+	"pandas","pyperclip","numpy","tensorflow",
   "scikit-learn", "tensorflow_probability", "silence_tensorflow"
 ]
 
