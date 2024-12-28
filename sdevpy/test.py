@@ -1,28 +1,31 @@
 """ Just to test things """
 # import tensorflow as tf
-import numpy as np
+# import numpy as np
 # import scipy.stats as sp
 # import json
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 # import requests, zipfile
 # import io
 #import pandas as pd
 # from io import BytesIO
-from sdevpy.volsurfacegen import sabrgenerator
-from sdevpy.maths import metrics
-from sdevpy.maths import optimization
-from sdevpy.analytics import sabr
-from sklearn.preprocessing import StandardScaler
+# from sdevpy.volsurfacegen import sabrgenerator
+# from sdevpy.maths import metrics
+# from sdevpy.maths import optimization
+# from sdevpy.analytics import sabr
+# from sklearn.preprocessing import StandardScaler
+import clr
 
 
-x_scaler=StandardScaler(copy=True)
-x_set = [[0], [1], [2], [3], [4], [5]]
-print(x_set)
-x_scaler.fit(x_set)
-print(x_set)
-x_scaled = x_scaler.transform(x_set)
-print(x_set)
-print(x_scaled)
+clr.AddReference("System.Windows.Forms")
+
+# x_scaler=StandardScaler(copy=True)
+# x_set = [[0], [1], [2], [3], [4], [5]]
+# print(x_set)
+# x_scaler.fit(x_set)
+# print(x_set)
+# x_scaled = x_scaler.transform(x_set)
+# print(x_set)
+# print(x_scaled)
 
 
 # ###################### Fit SABR straddles #######################################################
