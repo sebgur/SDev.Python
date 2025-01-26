@@ -1,20 +1,18 @@
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-import utils as ut
-import mean_reversion as my_mean_rev
+from sdevpy.cointegration import utils as ut
+from sdevpy.cointegration import mean_reversion as my_mean_rev
 from enum import Enum
 from itertools import combinations 
 from tqdm import tqdm # for console progress bar
-import model_settings as settings
+from sdevpy.cointegration import model_settings as settings
 from ta.momentum import RSIIndicator
-
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
 
-# ---------------------------------------------------------------------------  
-# Estimate the weights and Test statistics 
-def johansen_test_estimation(data, asset_name_list, det_order = 0, k_ar_diff = 1):
 
+def johansen_test_estimation(data, asset_name_list, det_order = 0, k_ar_diff = 1):
+    """ Estimate the weights and Test statistics """
     # get the data according to the asset name list 
     df_name_list = data[asset_name_list]
 
@@ -36,11 +34,9 @@ def johansen_test_estimation(data, asset_name_list, det_order = 0, k_ar_diff = 1
 
     return res_dict
     
-#-----------------------------------------------------------------------------------------
-# Compute the diagnostics of a basket 
-# res_dict - from johansen_test_estimation 
-def johansen_test_diag(res_dict, data, asset_name_list, print_diagnostics = True, det_order = 0, k_ar_diff = 1):
 
+def johansen_test_diag(res_dict, data, asset_name_list, print_diagnostics = True, det_order = 0, k_ar_diff = 1):
+    """ Compute the diagnostics of a basket. res_dict - from johansen_test_estimation """
     bool_trace_5pct = res_dict['trace (5%)']
     bool_trace_10pct = res_dict['trace (10%)'] 
     bool_eigen_5pct = res_dict['eigen (5%)'] 
@@ -148,9 +144,8 @@ def johansen_test_diag(res_dict, data, asset_name_list, print_diagnostics = True
     return res_dict
     
     
-# ---------------------------------------------------------------------------
-# Retrieve the trace test statistics from the result of Johansen test in a pretty format
 def trace_stats(res_jo):
+    """ Retrieve the trace test statistics from the result of Johansen test in a pretty format """
     # Find out the size of the vector. This is the number of assets.
     N = len(res_jo.lr1)
 
@@ -170,9 +165,9 @@ def trace_stats(res_jo):
     res_df = pd.DataFrame(data, columns = ['trace', '10%', '5%', '1%'], index = index_list)    
     return res_df
     
-# ---------------------------------------------------------------------------  
-# Retrieve the eigen test statistics from the result of Johansen test in a pretty format
+
 def eigen_stats(res_jo):
+    """ Retrieve the eigen test statistics from the result of Johansen test in a pretty format """
     # Find out the size of the vector. This is the number of assets.
     N = len(res_jo.lr2)
 
@@ -192,10 +187,10 @@ def eigen_stats(res_jo):
     res_df = pd.DataFrame(data, columns = ['eigen', '10%', '5%', '1%'], index = index_list)    
     return res_df
 
-# ---------------------------------------------------------------------------
-# Retrieve the normalized first eigen vector from the result of Johansen test  
-# The normalized vector are the weights of the cointegrated basket
+
 def norm_1st_eigvec(res_jo):
+    """ Retrieve the normalized first eigen vector from the result of Johansen test.
+        The normalized vector are the weights of the cointegrated basket """
     # Size of the eigenvector
     N = len(res_jo.evec)    
     first_eigvec = []
@@ -244,13 +239,13 @@ def check_johansen_test_stats_fast(res_jo):
  
 # -------------------------------------------------------------------------- 
 # This is the main routine in co-integration search jupyter notebook
-# Given a list of start dates, today, list of currency pairs and the fx spot data,
-# compute the Johansen test for all baskets
-# start_list - e.g. ['2010-08-23', '2011-01-23']
-# today - e.g. '2020-05-25'
-# all_name_list - ['EURUSD Curncy', 'GBPUSD Curncy', 'AUDUSD Curncy']
-# df_fx_spot - DataFrame which contains all fx spot data
 def johansen_compute_all_baskets(start_list, today, all_name_list, df_fx_spot):
+    """ Given a list of start dates, today, list of currency pairs and the fx spot data,
+        compute the Johansen test for all baskets
+        start_list - e.g. ['2010-08-23', '2011-01-23']
+        today - e.g. '2020-05-25'
+        all_name_list - ['EURUSD Curncy', 'GBPUSD Curncy', 'AUDUSD Curncy']
+        df_fx_spot - DataFrame which contains all fx spot data """
     
     PLACE_HOLDER = 0.001
     empty_list = []

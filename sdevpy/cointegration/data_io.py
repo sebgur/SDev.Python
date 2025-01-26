@@ -1,12 +1,9 @@
-
-
-
 import pandas as pd   
 import os.path, time    
 
-#--------------------------------------------------------------------------
-# for excel output style
+
 def color_negative_red(value_numeric):    
+    """ For excel output style """
     if value_numeric < 0:
         color = 'red'
     elif value_numeric > 0:
@@ -16,10 +13,9 @@ def color_negative_red(value_numeric):
 
     return 'color: %s' % color
 
-#--------------------------------------------------------------------------  
-# for excel output style  
+
 def color_TRUE_FALSE(value_bool):
-    
+    """ For excel output style """  
     if value_bool:
         color = 'green'
     else:
@@ -27,9 +23,8 @@ def color_TRUE_FALSE(value_bool):
 
     return 'background-color: %s' % color
 
-#--------------------------------------------------------------------------    
-def format_cointegration_seach_output(df):
 
+def format_cointegration_seach_output(df):
     df_formatted = df.style.applymap(color_TRUE_FALSE, subset=['trace (5%)', 
                                                                'trace (10%)',
                                                                'eigen (5%)', 
@@ -42,9 +37,8 @@ def format_cointegration_seach_output(df):
                                                                
     return df_formatted
         
-#--------------------------------------------------------------------------
-def format_rolling_dates_output(df):
 
+def format_rolling_dates_output(df):
     df_formatted = df.style.applymap(color_TRUE_FALSE, subset=['trace (5%)', 
                                                                'trace (10%)',
                                                                'eigen (5%)', 
@@ -53,9 +47,8 @@ def format_rolling_dates_output(df):
                                                                
     return df_formatted
 
-#--------------------------------------------------------------------------
-def read_all_fx_data_name_list_and_compute_ivol_MA(xls_file_name, FROM, TODAY, name_list):
 
+def read_all_fx_data_name_list_and_compute_ivol_MA(xls_file_name, FROM, TODAY, name_list):
     # read in the data from bloomberg
     df_fx_XXXUSD, df_fx_ivol = read_all_fx_data(xls_file_name)
 
@@ -78,11 +71,8 @@ def read_all_fx_data_name_list_and_compute_ivol_MA(xls_file_name, FROM, TODAY, n
     return res_dict
 
 
-
-# ---------------------------------------------------------------------------  
 def is_inverted_quote(key):    
     is_inverted = False
-
     bbg_dict = {'EURUSD Curncy': False, 
                 'GBPUSD Curncy': False, 
                 'AUDUSD Curncy': False, 
@@ -100,16 +90,14 @@ def is_inverted_quote(key):
     
     return is_inverted
    
-#---------------------------------------------------------------------------   
-# XXXUSD Curncy to USDXXX Curncy or vice-versa
+
 def convert_name_ordering(name):    
+    """ XXXUSD Curncy to USDXXX Curncy or vice-versa """
     new_name = name[3:6] + name[0:3] + str(' Curncy')    
     return new_name
 
  
-#---------------------------------------------------------------------------
 def convert_list_to_market_conv(name_list):
-
     N = len(name_list)    
     res_list = []
     
@@ -125,13 +113,9 @@ def convert_list_to_market_conv(name_list):
     return res_list
 
 
-# ---------------------------------------------------------------------------    
 def compute_fx_ivol_with_MA(df_fx_ivol, name_list): 
-    
     df_fx_ivol_name_list = df_fx_ivol[name_list]
-    
     df_ivol_ma = df_fx_ivol.rolling(120).mean()
-	
     df_ivol_ma_name_list = df_ivol_ma[name_list]
 
     # rename all the column names to XXXUSD for easier retrival later
@@ -153,9 +137,22 @@ def compute_fx_ivol_with_MA(df_fx_ivol, name_list):
     
     return df_ivol_with_MA_name_list
     
-# ---------------------------------------------------------------------------    
-def read_all_fx_data(xls_file_name):
 
+def read_fx_spot_data(xls_file):
+    xls = pd.ExcelFile(xls_file)
+
+    df_fx_spot = xls.parse('spot', index_col='Dates')     
+    df_fx_spot = df_spot_fx_to_XXXUSD(df_fx_spot)    
+    
+    from_date = df_fx_spot.iloc[1].name.strftime('%Y-%m-%d')    
+    to_date = df_fx_spot.iloc[-1].name.strftime('%Y-%m-%d')
+    
+    print('FX spot data set is from = ' + str(from_date) + ' to ' + str(to_date))
+    
+    return df_fx_spot
+
+
+def read_all_fx_data(xls_file_name):
     xls = pd.ExcelFile(xls_file_name)
 
     df_fx_spot = xls.parse('spot', index_col='Dates')     
@@ -168,7 +165,7 @@ def read_all_fx_data(xls_file_name):
     
     df_fx_ivol = xls.parse('ivol', index_col='Dates') 
     
-    # rename all the column names to XXXUSD for easier retrival later
+    # rename all the column names to XXXUSD for easier retrieval later
     # note that the ATM implied vol for XXXUSD vs USDXXX is the same.
     df_fx_ivol = df_fx_ivol.rename(columns={'EURUSDV1M Curncy': 'EURUSD Curncy',
                                             'GBPUSDV1M Curncy': 'GBPUSD Curncy', 
@@ -187,14 +184,12 @@ def read_all_fx_data(xls_file_name):
     to_date = df_fx_ivol.iloc[-1].name.strftime('%Y-%m-%d')
     
     print('FX ivol data set is from = ' + str(from_date) + ' to ' + str(to_date))
-    
     print('Data is up to date at : %s' %time.ctime(os.path.getmtime(xls_file_name)))
     
     return df_fx_spot, df_fx_ivol
 
-# ---------------------------------------------------------------------------  
-def read_fx_daily_data(xls_file_name):
 
+def read_fx_daily_data(xls_file_name):
     xls = pd.ExcelFile(xls_file_name)
 
     df_fx_spot = xls.parse('spot', index_col='Dates')     
@@ -210,15 +205,12 @@ def read_fx_daily_data(xls_file_name):
     return df_fx_spot
 
    
-# ---------------------------------------------------------------------------  
 def df_spot_fx_to_XXXUSD(df_fx):
-
     df_fx['USDJPY Curncy'] = 1 / df_fx['USDJPY Curncy']
     df_fx['USDCAD Curncy'] = 1 / df_fx['USDCAD Curncy']
     df_fx['USDCHF Curncy'] = 1 / df_fx['USDCHF Curncy']
     df_fx['USDNOK Curncy'] = 1 / df_fx['USDNOK Curncy']
     df_fx['USDSEK Curncy'] = 1 / df_fx['USDSEK Curncy']
-
     df_fx['USDSGD Curncy'] = 1 / df_fx['USDSGD Curncy']
     df_fx['USDCNH Curncy'] = 1 / df_fx['USDCNH Curncy']
 
@@ -233,5 +225,4 @@ def df_spot_fx_to_XXXUSD(df_fx):
                                   })
 
 
-    return df_fx    
-
+    return df_fx

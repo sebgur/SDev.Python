@@ -279,7 +279,7 @@ class Test_coint_trading(unittest.TestCase):
         self.assertAlmostEqual(retns_to_sell[0], -4497.133724131408, delta=1e-8) 
         self.assertAlmostEqual(retns_to_sell[-1], -60391.157644035135, delta=1e-8)
 
-    # This test is to mimick 'Search for cointegration basket' Jupter Notebook
+    # This test is to mimick 'Search for cointegration basket' Jupyter Notebook
     #
     # johansen_compute_all_baskets
     # filter_cointegration_basket_using_SD_threshold

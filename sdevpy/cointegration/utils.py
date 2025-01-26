@@ -4,8 +4,8 @@ import pandas as pd
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import datetime
-import data_io as myio
-import model_settings as settings
+from sdevpy.cointegration import data_io as myio
+from sdevpy.cointegration import model_settings as settings
 import copy
 
 # ------------------------------------------------------------------ 

@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from scipy.stats import norm
 import statsmodels.api as sm
-import utils as ut
-import model_settings as settings
+from sdevpy.cointegration import utils as ut
+from sdevpy.cointegration import model_settings as settings
  
 # -------------------------------------------
 class MeanRevTimeSeries:
