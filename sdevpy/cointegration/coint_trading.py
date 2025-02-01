@@ -396,9 +396,7 @@ def compute_johansen_test_diag_for_all_coint_baskets(res_df_filtered, df_fx_spot
     return res_df_filtered
 
 #----------------------------------------------------------------------------------------
-
 # Choose the basket such that the current absolute of stdev is above SD_threshold and it is cointegrated
-#
 # res_df - output from the function, johansen_compute_all_baskets 
 # SD_threshold - we filter out basket with SD less than abs(SD_threshold). If SD_threshold = 2, we only show baskets with abs(SD) > 2 
 def filter_cointegration_basket_using_SD_threshold(res_df, SD_threshold):    
@@ -586,7 +584,6 @@ def remove_data_within_x_days(df, today):
     return df[filter_condition]
 
 
-
 # -- Given an array data and buy sell signal, extract the following arrays
 # (1) dates_to_buy - dates that we long the basket
 # (2) retns_to_buy - time series corresponds to dates_to_buy 
@@ -612,7 +609,8 @@ def extract_data_conditions_on_buy_sell_signal(time_series, df_buy_sell_signal, 
     retns_to_sell = df_for_plot.loc[df_for_plot['Sell Signal'] ==1, column_name].values
 
     return dates_to_buy, retns_to_buy, dates_to_sell, retns_to_sell
-    
+ 
+   
 # -------------------------------------- 
 def date_formatter(date, datafreq): 
     
@@ -622,7 +620,8 @@ def date_formatter(date, datafreq):
         date_formatted = pd.to_datetime(date, format='%Y-%m-%d, %H-%M-%S') 
         
     return date_formatted 
-    
+
+
 # ---------------------------------------------------------
 def range_start_range_end_for_stability_test(FROM, TODAY, name_list, jvd, datafreq): 
     
@@ -648,6 +647,7 @@ def range_start_range_end_for_stability_test(FROM, TODAY, name_list, jvd, datafr
             
     return RANGE_START, RANGE_END 
     
+
 # -----------------------------------------------------------
 # ----- Compute the z_score_stability by changing the data start date in 2 months window 
 #       We check the stability by rerun Johansen test using different data.
@@ -813,7 +813,6 @@ def name_list_is_still_cointegrated(FROM, TRADE_DATE, TODAY, df_fx_spot, name_li
     return res_df
 
 
-
 # count the number of True, divided by the total number of elements. 
 # if higher than percentage then we return True 
 def is_true_by_percentage(list_of_booleans, percentage):
@@ -832,12 +831,9 @@ def filter_cointegration_basket_using_trace_10_stability(res_df):
     res_df_filtered = res_df[trace_condition] 
     return res_df_filtered
 
+
 # Choose the basket such that 'Range in SD current' < 0.5. Bigger the range, more the instability.
 def filter_cointegration_basket_using_range_in_SD_current(res_df): 
     range_in_SD_current_condition = res_df['Range in SD current'] < 0.5
     res_df_filtered = res_df[range_in_SD_current_condition]
     return res_df_filtered
-
-
-
-

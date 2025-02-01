@@ -1,5 +1,12 @@
 """ Various utilities for software versions and so on """
 import struct
+import pandas as pd
+
+
+def pd_read_xls(xls_file, col_name, index_col):
+    """ Read Excel file and pick column of data and index """
+    xls = pd.ExcelFile(xls_file)
+    return xls.parse(col_name, index_col=index_col)     
 
 
 def print_python_bit_version():
