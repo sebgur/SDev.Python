@@ -1,32 +1,71 @@
 import os
 import datetime as dt
 import pandas as pd
+import numpy as np
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
 from sdevpy.cointegration import data_io as myio
 
 
-def johansen_test_estimation(data, asset_name_list, det_order = 0, k_ar_diff = 1):
+def johansen_estimation(df_data, det_order = 0, k_ar_diff = 1):
     """ Estimate the weights and test statistics """
-    # get the data according to the asset name list 
-    df_name_list = data[asset_name_list]
-
     # Run Johansen test 
-    res_jo = coint_johansen(df_name_list, det_order, k_ar_diff)
+    res_jo = coint_johansen(df_data, det_order, k_ar_diff)
 
-    # check the trace and eigenvalue test of Johansen 
-    # bool_trace_5pct, bool_trace_10pct, bool_eigen_5pct, bool_eigen_10pct = check_johansen_test_stats_fast(res_jo)
+    # Check the trace and eigenvalue test of Johansen 
+    trace_5pct, trace_10pct, eigen_5pct, eigen_10pct = check_johansen_stats_fast(res_jo)
 
-    # get the normalized lst eigenvector which is the weights 
-    # weights_XXXUSD = norm_1st_eigvec(res_jo)
+    # Get the normalized lst eigenvector which is the weights 
+    weights = norm_1st_eigvec(res_jo)
 
-    # res_dict = {'weights': weights_XXXUSD, 
-    #             'trace (5%)': bool_trace_5pct, 
-    #             'eigen (5%)': bool_eigen_5pct, 
-    #             'trace (10%)': bool_trace_10pct, 
-    #             'eigen (10%)': bool_eigen_10pct
-    #             }
+    return {'weights': weights, 'trace (5%)': trace_5pct, 'eigen (5%)': eigen_5pct, 
+            'trace (10%)': trace_10pct, 'eigen (10%)': eigen_10pct}
 
-    return res_jo
+
+def check_johansen_stats_fast(res_jo):
+    """ Extract test stats for trace/eigen at 5% and 10% confident intervals """
+    
+    # Trace_stats
+    trace_test_stats = res_jo.lr1[0]          
+    trace_10_pct = res_jo.cvt[0][0]
+    trace_5_pct = res_jo.cvt[0][1]
+    #trace_1_pct = res_jo.cvt[0][2]
+    
+    bool_trace_5pct = False
+    if trace_test_stats > trace_5_pct:
+        bool_trace_5pct = True
+     
+    bool_trace_10pct = False 
+    if trace_test_stats > trace_10_pct:
+        bool_trace_10pct = True
+            
+   # Eigen stats           
+    eigen_test_stats = res_jo.lr2[0]          
+    eigen_10_pct = res_jo.cvm[0][0]
+    eigen_5_pct = res_jo.cvm[0][1]
+    #eigen_1_pct = res_jo.cvm[0][2]
+    
+    bool_eigen_5pct = False
+    if eigen_test_stats > eigen_5_pct:
+        bool_eigen_5pct = True
+
+    bool_eigen_10pct = False
+    if eigen_test_stats > eigen_10_pct:
+        bool_eigen_10pct = True        
+    
+    return bool_trace_5pct, bool_trace_10pct, bool_eigen_5pct, bool_eigen_10pct
+
+
+def norm_1st_eigvec(res_jo):
+    """ Retrieve the normalized first eigen vector from the result of Johansen test.
+        The normalized vector are the weights of the cointegrated basket """
+    # Size of the eigenvector
+    N = len(res_jo.evec)    
+    first_eigvec = []
+    for i in range(N):
+        first_eigvec.append(res_jo.evec[i][0])
+    
+    # Normalized with respect to the first element
+    return np.array(first_eigvec) / res_jo.evec[0][0]
 
 
 def convert_to_currency(df, target_ccy):
@@ -55,6 +94,7 @@ def is_fx_for_ticker(ticker, for_ccy='USD'):
 
     return is_fx_for, inverse_ticker
 
+
 if __name__ == "__main__":
     ROOT = r"C:\\temp\\sdevpy\\cointegration"
     FROM = '2015-07-23'
@@ -71,41 +111,32 @@ if __name__ == "__main__":
     # output_file = os.path.join(ROOT, "converted.tsv")
     # converted_df.to_csv(output_file, index=False, sep='\t')
 
+    # New data
+    print("<><><><> Running NEW <><><><>")
     data_file = os.path.join(ROOT, "fx_spots.tsv")
     df_data = pd.read_csv(data_file, sep='\t')
     dates_str = df_data['Dates']
     dates = [dt.datetime.strptime(x, "%Y-%m-%d").date() for x in dates_str]
-    # print(df_data.to_string(max_rows=4, max_cols=6))
     df_data['Dates'] = dates
-    # print(df_data.to_string(max_rows=4, max_cols=6))
-
     df_fx_spots = df_data[df_data['Dates'] >= FROM_DATE]
     df_fx_spots = df_fx_spots[df_fx_spots['Dates'] <= TO_DATE]
-    print(len(df_fx_spots))
-    # print(df_fx_spots.to_string(max_rows=6, max_cols=6))
+    # print(df_data.to_string(max_rows=6, max_cols=6))
 
-    # df_fx_spots = df_data.loc[FROM:TODAY]
-    # print(df_fx_spots.to_string(max_rows=6, max_cols=6))
-    # df_fx_spots.set_index('Dates')
-    # df_fx_spots = df_fx_spots[ticker_list]
-    # print(df_fx_spots.to_string(max_rows=8, max_cols=6))
-    # print(len(df_fx_spots))
+    print(df_fx_spots.head())
+    df_data = df_fx_spots[ticker_list]
+    print(df_data.head())
+    estimation = johansen_estimation(df_data, 0, 1)
+    print(estimation)
 
+    # Old data
+    print("<><><><> Running OLD <><><><>")
     data_file_xls = os.path.join(ROOT, "unit_test_data/bloomberg fx data sheet_for_unit_test.xlsx")
     df_data_xls = myio.read_fx_daily_data(data_file_xls)
-    # print(df_data_xls.dtypes)
-    # print(df_data_xls['Dates'].dtype)
-    print(df_data_xls.to_string(max_rows=4, max_cols=6))
-
     df_fx_spots_xls = df_data_xls.loc[FROM:TODAY]
-    print(len(df_fx_spots_xls))
     df_fx_spots_xls = df_fx_spots_xls[ticker_list]
-    # print(df_fx_spots_xls.to_string(max_rows=4, max_cols=6))
 
-    # print("Running NEW")
-    # # print(df_fx_spots.head())
-    # # estimation = johansen_test_estimation(df_fx_spots, ticker_list, 0, 1)
-
-    # print("Running OLD")
-    # # estimation_xls = johansen_test_estimation(df_fx_spots_xls, ticker_list, 0, 1)
-
+    print(df_fx_spots_xls.head())
+    df_data_xls = df_fx_spots_xls[ticker_list]
+    print(df_data_xls.head())
+    estimation_xls = johansen_estimation(df_data_xls, 0, 1)
+    print(estimation_xls)
