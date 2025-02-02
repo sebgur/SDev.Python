@@ -10,40 +10,38 @@ class MeanRevertingTimeSeries:
         # Compute mean reversion statistics
         res = compute_mean_reversion_params(self.time_series)
         
-        self.half_life_in_days = res['Half Life in days']
-        self.mean_rev_rate_in_days = res['Mean Rev Rate in days']
-        self.mean_rev_level =  res['Mean Rev Level']
+        self.half_life = res['Half Life']
+        self.mr_rate = res['MR Rate']
+        self.mr_level =  res['MR Level']
         
         # Check accuracy of the OLS estimate. The smaller the value, the more accurate the result.
-        self.const_pvalue = res['const p-value']
-        self.Basket_pvalue = res['Basket p-value']   
+        self.const_pvalue = res['Const p-value']
+        self.series_pvalue = res['Series p-value']   
 
         self.stdev = np.std(self.time_series)   
         
         # Compute z score
-        self.z_score_ts = (self.time_series - self.mean_rev_level)/self.stdev
+        self.z_score_ts = (self.time_series - self.mr_level) / self.stdev
         self.z_score_ts = self.z_score_ts.rename('z score')   
 
-    def get_half_life_in_days(self):
-        return self.half_life_in_days
+    def get_half_life(self):
+        return self.half_life
  
-    def get_mean_rev_rate_in_days(self):
-        return self.mean_rev_rate_in_days
+    def get_mr_rate(self):
+        return self.mr_rate
         
-    def get_mean_rev_level(self):
-        return self.mean_rev_level
+    def get_mr_level(self):
+        return self.mr_level
         
     def get_const_pvalue(self):
         return self.const_pvalue    
     
-    def get_Basket_pvalue(self):
-        return self.Basket_pvalue
+    def get_series_pvalue(self):
+        return self.series_pvalue
     
-    # get the value at date 
     def get_level_at_t(self, date):
         return self.time_series.loc[date]
     
-    # get the latest value in the time series
     def get_current_level(self):
         return self.time_series.iloc[-1]
 
@@ -58,67 +56,73 @@ class MeanRevertingTimeSeries:
 
 
 def compute_mean_reversion_params(s): 
-    """ (1) half life
-        (2) mean reversion level
-        (3) mean reversion rate
-        (4) p values of the OLS estimation (the smaller, the better) """
+    """ Estimate mean reversion by assuming the process to be of the form
+        ds = lambda x (sbar - s(t-1))dt + sigma x dW(t) """
+    # Check consistency of input data and rename column
+    cols = s.columns
+    if len(cols) != 1:
+        raise RuntimeError("Column number is unexpected: " + len(cols))
+    
+    s = s.rename(columns={cols[0]: 'Series'})
 
-    # Compute the diff and the shift the position by -1 so that we have dS(t) vs S(t-1)
-    ds = s.diff().shift(-1)     
+    # Compute the diff and the shift the position by -1 to have ds(t) facing s(t-1)
+    ds = s.diff().shift(-1)
     
-    # Skip the last element which is NA    
-    ds = ds.iloc[:-1]           
+    # Skip the last element which is NA
+    ds = ds.iloc[:-1]
     
-    # Skip the last element    
-    s = s.iloc[:-1]                   
+    # Skip the last element of the original series as it's not used
+    s = s.iloc[:-1]
 
     # Perform regression: dS(t) = a + b * S(t-1)    
-    s_const = sm.add_constant(s)    
-    results = sm.OLS(ds, s_const).fit() 
+    s_const = sm.add_constant(s)
+    reg = sm.OLS(ds, s_const).fit()
     
-    # If we assume dS(t) = lambda (S_bar - S(t-1))dt + \sigma dW(t), then
+    # If we assume ds(t) = lambda (sbar - s(t-1))dt + sigma dW(t), then
     # a = lambda * S_bar * dt
     # b = -lambda * dt
-    a = results.params['const']
-    b = results.params['Basket'] 
+    a = reg.params['const']
+    b = reg.params['Series']
     
     # See Clewlow and Strickland's energy derivatives pricing and risk management p28, 29
     # this is the proper way to do it, not using np.mean(basket) to compute the mean
-    mean_rev_level = -a / b
+    mr_level = -a / b
     
     # We expect this is a positive number. This is just a convention that quantopian use.
     if b > 0:
         print('The series is not mean reverting')
     
-    # Solution of the equation: 1/2 = exp(b*T) -> T = -ln(2)/b
-    half_life_in_days = -np.log(2) / b   
+    # Modulo the Brownian noise, the proxe has the solution x(t) = x0 e^{-lambda t}
+    # so the half-life is T1/2 = ln(2) / lambda. To obtain the half-life in number of days,
+    # we need to do T1/2 / dt, which is -ln(2) / b.
+    half_life = -np.log(2) / b # This is a number of days i.e. a number of dt  
     
     # This is -lambda * dt, where dt depends on the data freq. If daily, dt = 1/365.
     # To use this later, all we need is to put the number of days rather than year fraction
     # and we don't need to put the minus sign
     # e.g. 5 days -> exp(mean_rev_rate_in_days * 5) NOT exp(mean_rev_rate_in_days * 5/365)
-    mean_rev_rate_in_days = b
+    mr_rate = b
     
-    return {'Half Life in days': half_life_in_days,
-            'Mean Rev Rate in days': mean_rev_rate_in_days, 'Mean Rev Level': mean_rev_level,
-            'const p-value': results.pvalues['const'], 'Basket p-value': results.pvalues['Basket']}
+    return {'Half Life': half_life, 'MR Rate': mr_rate, 'MR Level': mr_level,
+            'Const p-value': reg.pvalues['const'], 'Series p-value': reg.pvalues['Series']}
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    # Generate a mean reverting time series i.e. a process S(t) defined by
-    # dS(t) = \kappa (S_bar - S(t-1))dt + \sigma dW(t)
-    # where S_bar is the long term mean
-    n_days = 252
+    # Generate a mean reverting time series i.e. a process s(t) defined by
+    # ds(t) = lambda x (sbar - s(t-1))dt + sigma x dW(t)
+    # where sbar is the long term mean and lambda is the mean reversion speed
+    n_days = 252 * 10
     s0 = 119
     sbar = 120
     starget = sbar * 0.99999
     ttarget = 1.0 # in years
     kappa = - np.log((starget - sbar) / (s0 - sbar)) / ttarget
-    print(f"True mean reversion: {kappa:,.6f}")
     dt = 1.0 / 252.0
     sqrt_dt = np.sqrt(dt)
     sigma = 0.1 * s0
+
+    print(f"Simulating time series for {n_days} days")
     t0 = 0.0
     svec = [s0]
     tvec = [t0]
@@ -140,8 +144,16 @@ if __name__ == "__main__":
     # plt.show()
 
     # Run the test and see if it finds its mean reversion
-    df = pd.DataFrame({'T': tvec, 'S': svec})
-    print(df.head())
-    df = df[['S']]
-    res = compute_mean_reversion_params(df)
-    print(res)
+    s = pd.DataFrame({'T': tvec, 'S': svec})
+    s = s[['S']]
+
+    print("Estimation mean reversion parameters")
+    mr_res = compute_mean_reversion_params(s)
+    mr_rate = mr_res['MR Rate']
+    mr_level = mr_res['MR Level']
+
+    print(f"True MR level: {sbar:,.6f}")
+    print(f"Estimated MR level: {mr_level:,.6f}")
+    print(f"True MR speed: {kappa:,.6f}")
+    print(f"Estimated MR speed: {-mr_rate / dt:,.6f}")
+ 

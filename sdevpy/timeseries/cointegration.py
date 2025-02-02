@@ -24,7 +24,7 @@ def johansen_diagnostics(res_dict, data, asset_name_list, print = True):#, det_o
     # get the data according to the asset name list 
     df_name_list = data[asset_name_list]
 
-    # compute the basket of currency with the estimated weights 
+    # Compute the basket of currency with the estimated weights
     johansen_basket = pd.Series(np.dot(df_name_list, weights_XXXUSD), name='Basket') 
     johansen_basket.index = df_name_list.index
 
@@ -38,12 +38,8 @@ def johansen_diagnostics(res_dict, data, asset_name_list, print = True):#, det_o
     daily_hist_normal_vol = ut.compute_last_daily_hist_normal_vol(johansen_basket)
     current_zscore = my_MeanRev_ts.get_current_zscore()
 
-    res_sharpe = mr.compute_sharpe_ratio(mean_rev_level, 
-                                                  mean_rev_rate_in_days,
-                                                  time_in_days, 
-                                                  current_level, 
-                                                  daily_hist_normal_vol, 
-                                                  current_zscore)
+    res_sharpe = mr.compute_sharpe_ratio(mean_rev_level, mean_rev_rate_in_days, time_in_days, 
+                                         current_level, daily_hist_normal_vol, current_zscore)
 
     sharpe_ratio_half_life = res_sharpe['Sharpe Ratio']
 
