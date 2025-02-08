@@ -59,11 +59,12 @@ def compute_mean_reversion_params(s):
     """ Estimate mean reversion by assuming the process to be of the form
         ds = lambda x (sbar - s(t-1))dt + sigma x dW(t) """
     # Check consistency of input data and rename column
-    cols = s.columns
-    if len(cols) != 1:
-        raise RuntimeError("Column number is unexpected: " + len(cols))
+    s.name = 'Series'
+    # cols = s.columns
+    # if len(cols) != 1:
+    #     raise RuntimeError("Column number is unexpected: " + len(cols))
     
-    s = s.rename(columns={cols[0]: 'Series'})
+    # s = s.rename(columns={cols[0]: 'Series'})
 
     # Compute the diff and the shift the position by -1 to have ds(t) facing s(t-1)
     ds = s.diff().shift(-1)
@@ -105,6 +106,42 @@ def compute_mean_reversion_params(s):
     
     return {'Half Life': half_life, 'MR Rate': mr_rate, 'MR Level': mr_level,
             'Const p-value': reg.pvalues['const'], 'Series p-value': reg.pvalues['Series']}
+
+
+def mr_expected_and_variance_change(mr_level, mr_rate, time, current_level, normal_vol):
+    """ dX(t) = lambda * (mu - X(t))*dt + BM
+        mr_level - mu
+        mr_rate_in_days - mean rev rate (assume is -ve) in days
+        time in days - because we estimate using daily data
+        current_level - current level of basket, i.e. X(0)
+        normal_vol - daily standard dev of the basket """
+    exp_lam_T = np.exp(mr_rate * time)
+    exp_2lam_T = np.exp(2.0 * mr_rate * time)
+    level_at_T = current_level * exp_lam_T + mr_level * (1.0 - exp_lam_T)
+
+    # Expectation of return in time_in_days
+    EdX = level_at_T - current_level
+    daily_var = normal_vol * normal_vol
+    
+    # Variance of return in time_in_days    
+    vardX = daily_var / (-2.0 * mr_rate) * (1.0 - exp_2lam_T)  
+    
+    return EdX, vardX 
+
+
+def compute_sharpe_ratio(mr_level, mr_rate, time, current_level, normal_vol, current_zscore):
+    mean_S, var_S = mr_expected_and_variance_change(mr_level, mr_rate, time, current_level, normal_vol)
+    expectation_over_T = 0
+    vol_over_T = np.sqrt(var_S)
+    
+    if current_zscore < 0: # We buy the basket
+        expectation_over_T = mean_S
+    else: # We short the basket
+        expectation_over_T = -mean_S
+
+    sharpe_ratio = expectation_over_T / vol_over_T
+
+    return {'Sharpe Ratio': sharpe_ratio, 'Return Expectation': expectation_over_T, 'Return SD': vol_over_T}
 
 
 if __name__ == "__main__":
