@@ -179,32 +179,31 @@ def read_all_fx_data(xls_file_name):
                                             'USDSGDV1M Curncy': 'SGDUSD Curncy',
                                             'USDCNHV1M Curncy': 'CNHUSD Curncy'                        
                                             })
-    
-    from_date = df_fx_ivol.iloc[1].name.strftime('%Y-%m-%d')    
+
+    from_date = df_fx_ivol.iloc[1].name.strftime('%Y-%m-%d')
     to_date = df_fx_ivol.iloc[-1].name.strftime('%Y-%m-%d')
-    
+
     print('FX ivol data set is from = ' + str(from_date) + ' to ' + str(to_date))
     print('Data is up to date at : %s' %time.ctime(os.path.getmtime(xls_file_name)))
-    
+
     return df_fx_spot, df_fx_ivol
 
 
 def read_fx_daily_data(xls_file_name):
     xls = pd.ExcelFile(xls_file_name)
 
-    df_fx_spot = xls.parse('spot', index_col='Dates')     
-    df_fx_spot = df_spot_fx_to_XXXUSD(df_fx_spot)    
-    
-    from_date = df_fx_spot.iloc[1].name.strftime('%Y-%m-%d')    
+    df_fx_spot = xls.parse('spot', index_col='Dates')
+    df_fx_spot = df_spot_fx_to_XXXUSD(df_fx_spot)
+
+    from_date = df_fx_spot.iloc[1].name.strftime('%Y-%m-%d')
     to_date = df_fx_spot.iloc[-1].name.strftime('%Y-%m-%d')
-    
+
     print('FX spot data set is from = ' + str(from_date) + ' to ' + str(to_date))
-    
     print('Data is up to date at : %s' %time.ctime(os.path.getmtime(xls_file_name)))
-    
+
     return df_fx_spot
 
-   
+
 def df_spot_fx_to_XXXUSD(df_fx):
     df_fx['USDJPY Curncy'] = 1 / df_fx['USDJPY Curncy']
     df_fx['USDCAD Curncy'] = 1 / df_fx['USDCAD Curncy']
@@ -215,14 +214,12 @@ def df_spot_fx_to_XXXUSD(df_fx):
     df_fx['USDCNH Curncy'] = 1 / df_fx['USDCNH Curncy']
 
     # rename the column names
-    df_fx = df_fx.rename(columns={'USDJPY Curncy': 'JPYUSD Curncy', 
+    df_fx = df_fx.rename(columns={'USDJPY Curncy': 'JPYUSD Curncy',
                                   'USDCAD Curncy': 'CADUSD Curncy',
-                                  'USDCHF Curncy': 'CHFUSD Curncy', 
-                                  'USDNOK Curncy': 'NOKUSD Curncy', 
-                                  'USDSEK Curncy': 'SEKUSD Curncy',     
+                                  'USDCHF Curncy': 'CHFUSD Curncy',
+                                  'USDNOK Curncy': 'NOKUSD Curncy',
+                                  'USDSEK Curncy': 'SEKUSD Curncy',
                                   'USDSGD Curncy': 'SGDUSD Curncy',
-                                  'USDCNH Curncy': 'CNHUSD Curncy'
-                                  })
-
+                                  'USDCNH Curncy': 'CNHUSD Curncy'})
 
     return df_fx

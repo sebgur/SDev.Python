@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-import coint_trading as ct
-import utils as ut
-import data_io as myio
-import mean_reversion as my_mean_rev
+from sdevpy.cointegration import coint_trading as ct
+from sdevpy.cointegration import utils as ut
+from sdevpy.cointegration import data_io as myio
+from sdevpy.cointegration import mean_reversion as my_mean_rev
 import math
 from tqdm import tqdm # for console progress bar
 

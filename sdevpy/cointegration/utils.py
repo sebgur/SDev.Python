@@ -245,26 +245,24 @@ def conditional_min_max_change(basket, z_score_time_series, num_days, zscore_ran
     
     notional = settings.ONE_MILLION
 
-    # min change 
-    min_change = filtered_xd_change.min(axis=0)    
-    idx_min = filtered_xd_change.idxmin(axis=0).strftime('%Y-%m-%d')        
+    # min change
+    min_change = filtered_xd_change.min(axis=0)
+    idx_min = filtered_xd_change.idxmin(axis=0).strftime('%Y-%m-%d')
     print('For 1mio notional, min ' + str(num_days) + ' day PnL = ' + str(round(notional * min_change, 2)) + ' at ' + str(idx_min) )
-    
-    # max change     
-    max_change = filtered_xd_change.max(axis=0)    
-    idx_max = filtered_xd_change.idxmax(axis=0).strftime('%Y-%m-%d')    
+
+    # max change
+    max_change = filtered_xd_change.max(axis=0)
+    idx_max = filtered_xd_change.idxmax(axis=0).strftime('%Y-%m-%d')
     print('For 1mio notional, max ' + str(num_days) + ' day PnL = ' + str(round(notional * max_change, 2)) + ' at ' + str(idx_max) )
 
-    
+
 #-------------------------------------------------------------------------------------------
 def compute_x_day_historical_returns(basket, time_in_days=settings.HOLDING_PERIOD_IN_DAYS):
-    
     # compute realized x day basket return
     basket_x_day_return = basket.diff(time_in_days)
 
     # shift the index backward to align with the predcition date
     basket_x_day_return = basket_x_day_return.shift(-time_in_days)
-    
     basket_x_day_return = basket_x_day_return.rename('x days basket return')
 
     return basket_x_day_return
@@ -272,10 +270,10 @@ def compute_x_day_historical_returns(basket, time_in_days=settings.HOLDING_PERIO
 # -----------------------------------------------------------------------------------------------
 # Note that the mean cancels out if we take diff. So we don't need the mean.
 def compute_x_day_historical_returns_in_SD(basket, time_in_days, basket_stdev):
-    res = compute_x_day_historical_returns(basket, time_in_days)    
-    res = res / basket_stdev    
+    res = compute_x_day_historical_returns(basket, time_in_days)
+    res = res / basket_stdev
     return res
-    
+
 # -----------------------------------------------------------------------------------------------    
 def compute_pct_change(time_series, num_of_days, to_shift):    
 
@@ -297,14 +295,13 @@ def compute_pct_change(time_series, num_of_days, to_shift):
 
         # concat to the same dataframe
         df = pd.concat([df, pctChange], axis = 1)
-        
+
     return df
 
 # -----------------------------------------------------------------------------------------------    
-def compute_diff(time_series, num_of_days, to_shift):    
-
+def compute_diff(time_series, num_of_days, to_shift):
     name_tag = time_series.name + ' diff'
-    
+
     # initialize the dataframe
     df = pd.DataFrame()
 
@@ -312,7 +309,7 @@ def compute_diff(time_series, num_of_days, to_shift):
     for i in range(1, num_of_days+1):
         diff = time_series.diff(i)
 
-        if to_shift == settings.ToShiftOrNot.TO_SHIFT: 
+        if to_shift == settings.ToShiftOrNot.TO_SHIFT:
             # shift so that it is corresponding to the trade date
             diff = diff.shift(-i)
 
@@ -321,36 +318,36 @@ def compute_diff(time_series, num_of_days, to_shift):
 
         # concat to the same dataframe
         df = pd.concat([df, diff], axis = 1)
-        
+
     return df
-    
+
 # -----------------------------------------------------------------------------------------
 # compute the min and max loss over x days of a basket over a period of trade dates
 def min_max_return_x_days(basket, time_in_days):
 
     # initialize the dataframe
     df = compute_diff(basket, time_in_days, settings.ToShiftOrNot.TO_SHIFT)
-        
+
     # compute the min and max across the columns
     diff_max = df.max(axis=1)
     diff_max.name = 'max'
-    
+
     diff_min = df.min(axis=1)
     diff_min.name = 'min'
-    
+
     # concate to the dataframe
     df = pd.concat([diff_max, diff_min, df], axis=1)
-    
+
     df = df.dropna()
-    
+
     return df
-    
+
 # -------------------------------------------------------------------------------------------------
 def min_max_return_x_days_in_SD(basket, time_in_days, basket_stdev):
     res = min_max_return_x_days(basket, time_in_days)
     res = res / basket_stdev
     return res
-    
+
 # start and until are in the format of '2020-06-15'
 def generate_Tue_Thur_between_2_dates(start_str, until_str):
 
