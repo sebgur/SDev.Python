@@ -6,17 +6,25 @@
 # import matplotlib.pyplot as plt
 # import requests, zipfile
 # import io
-#import pandas as pd
+# import pandas as pd
 # from io import BytesIO
 # from sdevpy.volsurfacegen import sabrgenerator
 # from sdevpy.maths import metrics
 # from sdevpy.maths import optimization
 # from sdevpy.analytics import sabr
 # from sklearn.preprocessing import StandardScaler
-import clr
+# import clr
+
+import numpy as np
+import pandas as pd
+import yfinance as yf
+import statsmodels.api as sm
+import scipy.optimize as spop
+import matplotlib.pyplot as plt
 
 
-clr.AddReference("System.Windows.Forms")
+
+# clr.AddReference("System.Windows.Forms")
 
 # x_scaler=StandardScaler(copy=True)
 # x_set = [[0], [1], [2], [3], [4], [5]]
