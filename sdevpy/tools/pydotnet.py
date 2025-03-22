@@ -12,7 +12,7 @@ def to_csdate(py_date):
     return DateTime(py_date.year, py_date.month, py_date.day)
 
 
-def to_csdateime(py_date):
+def to_csdatetime(py_date):
     return DateTime(py_date.year, py_date.month, py_date.day,
                     py_date.hour, py_date.minute, py_date.second,
                     int(py_date.microsecond / 1000))
@@ -23,7 +23,7 @@ def to_date(cs_date):
 
 
 def to_nparray(cs_matrix):
-    """ Convert C# object[,] to numpay matrix """
+    """ Convert C# object[,] to numpy matrix """
     try:
         type = cs_matrix.GetType().Name
         if type == 'Object[,]' or type == 'String[,]':
