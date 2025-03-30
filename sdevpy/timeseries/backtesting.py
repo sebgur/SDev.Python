@@ -18,7 +18,6 @@ def backtest_one_trade(FROM, TRADE_DATE, NOW, df_data, weights, zscore_TRADE_DAT
 
     # Compute the stdev as if we were on the TRADE DATE, this is used for computing the return in terms of ZScore
     stdev_to_tdate = np.std(series_up_to_NOW.loc[:TRADE_DATE])
-
     series_tdate_to_NOW = series_up_to_NOW.loc[TRADE_DATE:NOW]
 
     returns2D_from_tdate = tst.x_day_historical_returns_in_SD(series_tdate_to_NOW, 2, stdev_to_tdate).iloc[0]
@@ -72,24 +71,13 @@ def backtest_one_trade(FROM, TRADE_DATE, NOW, df_data, weights, zscore_TRADE_DAT
 
 if __name__ == "__main__":
     ROOT = r"C:\\temp\\sdevpy\\cointegration"
-    TODAY = '2020-06-02'
     FROM = '2013-04-23'
     TRADE_DATE = '2020-01-15'
-    NOW = TODAY
+    NOW = '2020-06-02'
     tickers = ['AUDUSD Curncy', 'NZDUSD Curncy', 'CADUSD Curncy']
     weights = [1.0, -0.77030425, -0.41245188] 
     zscore_TRADE_DATE = -1.508
 
-    # OLD
-    print("<><><><> Running OLD <><><><>")
-    unit_test_file = os.path.join(ROOT, "unit_test_data/bloomberg fx data sheet_for_unit_test.xlsx")
-    df_raw_xls = myio.read_fx_daily_data(unit_test_file) 
-    df_fx_spots_xls = df_raw_xls.loc[FROM:NOW]
-    backtest_xls = btest.back_test_one_trade(FROM, TRADE_DATE, NOW, tickers, weights, zscore_TRADE_DATE, df_fx_spots_xls)
-    print(backtest_xls)
-
-    # NEW
-    print("<><><><> Running NEW <><><><>")
     data_file = os.path.join(ROOT, "fx_spots.tsv")
     df_raw = pd.read_csv(data_file, sep='\t')
     df_raw.set_index('Dates', inplace=True)
@@ -101,7 +89,3 @@ if __name__ == "__main__":
     print(round(10000.0 * (backtest['5D Realized Rtns from Trade Date in SD']- -0.0939747144428266), 4))
     print(round(10000.0 * (backtest['5D max draw down in SD'] - -0.19568917067110778), 4))
     print(round(10000.0 * (backtest['basket stdev on Trade Date'] - 0.017399315329440185), 4))
-
-    # self.assertAlmostEqual(res['5D Realized Rtns from Trade Date in SD'], -0.0939747144428266, delta=1e-11)
-    # self.assertAlmostEqual(res['5D max draw down in SD'], -0.19568917067110778, delta=1e-11) 
-    # self.assertAlmostEqual(res['basket stdev on Trade Date'], 0.017399315329440185, delta=1e-11)

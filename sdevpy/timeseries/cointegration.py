@@ -241,36 +241,12 @@ if __name__ == "__main__":
     ROOT = r"C:\\temp\\sdevpy\\cointegration"
     FROM = '2015-07-23'
     TODAY = '2020-06-02'
-    # FROM_DATE = dt.date(2015, 7, 23)
-    # TO_DATE = dt.date(2020, 6, 2)
     tickers = ['GBPUSD Curncy', 'AUDUSD Curncy', 'NZDUSD Curncy', 'CADUSD Curncy', 'CNHUSD Curncy']
 
-    # # Convert FX spots into USD and output converted data
-    # data_file = os.path.join(ROOT, "test.tsv")
-    # df_data = pd.read_csv(data_file, sep='\t')
-    # df_data.set_index('Dates')
-    # converted_df = convert_to_currency(df_data, "USD")
-    # output_file = os.path.join(ROOT, "converted.tsv")
-    # converted_df.to_csv(output_file, index=False, sep='\t')
-
-    # # Old data
-    # print("<><><><> Running OLD <><><><>")
-    # data_file_xls = os.path.join(ROOT, "unit_test_data/bloomberg fx data sheet_for_unit_test.xlsx")
-    # df_raw_xls = myio.read_fx_daily_data(data_file_xls)
-    # df_fx_spots_xls = df_raw_xls.loc[FROM:TODAY]
-    # df_data_xls = df_fx_spots_xls[tickers]
-    # test_xls = johansen_test(df_data_xls, 0, 1)
-    # diagnostic_old = ct.johansen_test_diag(test_xls, df_data_xls, ticker_list, True, 0, 1)
-    # print(diagnostic_old)
-
-    # New data
-    # print("<><><><> Running NEW <><><><>")
     data_file = os.path.join(ROOT, "fx_spots.tsv")
     df_raw = pd.read_csv(data_file, sep='\t')
     df_raw.set_index('Dates', inplace=True)
     df_fx_spots = df_raw.loc[FROM:TODAY]
-    # dates = [dt.datetime.strptime(x, "%Y-%m-%d").date() for x in dates_str]
-    # print(df_data.to_string(max_rows=6, max_cols=6))
     df_data = df_fx_spots[tickers]
     test = johansen_test(df_data, 0, 1)
     diagnostic = johansen_diagnostics(test, df_data, True, 0, 1)

@@ -525,15 +525,15 @@ class Test_back_testing(unittest.TestCase):
         start_dates = ['2019-06-01', '2019-06-07'] 
         end_dates   = ['2019-06-08', '2019-06-12']
 
-        Sharpe_thresholds = [0.4, 0.8] 
-        ZScore_thresholds = [1.5, 1.8]       
+        Sharpe_thresholds = [0.4, 0.8]
+        ZScore_thresholds = [1.5, 1.8]
 
         df_back_test_summary_table = btest.several_back_test_summary_tables(res_df_back_test, 
                                                                             start_dates, 
                                                                             end_dates, 
                                                                             Sharpe_thresholds, 
                                                                             ZScore_thresholds)
-        
+
         self.assertEqual(df_back_test_summary_table['Period Start'].iloc[0], '2019-06-01') 
         self.assertEqual(df_back_test_summary_table['Period End'].iloc[1], '2019-06-08') 
         self.assertEqual(df_back_test_summary_table['Sharpe threshold'].iloc[2], 0.4) 
