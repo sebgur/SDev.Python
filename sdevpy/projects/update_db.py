@@ -24,6 +24,7 @@ print(names)
 name ='^SPX'
 df = obb.equity.price.historical(name, provider="yfinance", start_date=dt.date(2024, 5, 1),
                                     end_date=dt.date(2024, 5, 25))
+df = df[['close']]
 print(df.head())
 file = os.path.join(db_path, name + ".tsv")
 df.to_csv(file, index=False, sep='\t')
