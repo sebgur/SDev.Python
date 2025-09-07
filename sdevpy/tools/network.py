@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 TARGET = "8.8.8.8"          # You can change this to any reliable IP
 INTERVAL = 5                # Seconds between pings
-LOG_FILE = "wifi_1h.csv"   # Output file
+LOG_FILE = "work_cord.csv"   # Output file
 
 RUN_LOG = False
 

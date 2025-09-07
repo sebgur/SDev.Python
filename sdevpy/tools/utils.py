@@ -34,7 +34,7 @@ def print_python_bit_version():
 if __name__ == '__main__':
     import datetime as dt
     today = dt.date.today()
-    hist_window = DateSpan(years=1)
+    hist_window = DateTimeSpan(years=1)
     hist_start = date_advance(today, hist_window)
     # hist_start = today - relativedelta(days=hist_window[0], months=hist_window[1], years=hist_window[2])
 
