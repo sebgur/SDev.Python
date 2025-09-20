@@ -17,11 +17,19 @@
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
-import statsmodels.api as sm
-import scipy.optimize as spop
-import matplotlib.pyplot as plt
+# import yfinance as yf
+# import statsmodels.api as sm
+# import scipy.optimize as spop
+# import matplotlib.pyplot as plt
 
+def make_vec(a, b, c):
+    return [a, b, c]
+
+
+x, y, z = make_vec(1, 2, 3)
+print(x)
+print(y)
+print(z)
 
 # clr.AddReference("System.Windows.Forms")
 
