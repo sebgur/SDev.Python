@@ -3,7 +3,7 @@ from importlib.metadata import version
 import torch
 import numpy as np
 # from torch.utils.data import Dataset, DataLoader
-# from sdevpy.llms.tokenizers import SimpleTokenizerV1, SimpleTokenizerV2
+from sdevpy.llms.attention import SelfAttentionV1, SelfAttentionV2
 # from sdevpy.projects.raschka import torch_datasetloader as tdsl
 
 print("pytorch version: ", torch.__version__)
@@ -14,6 +14,7 @@ print("pytorch version: ", torch.__version__)
 
 # A context vector is an enriched embedding vector. It is enriched here through the Attention
 # mechanism, by including information from all the other token embeddings in the sequence.
+
 
 print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
 print("<><><><><><><><> Non-trainable self-attention <><><><><><><><><><><><><><><><>")
@@ -141,4 +142,23 @@ print("Attention weights for 2\n", attn_weights_2, "\n")
 # Calculate the context vector by multiplying the weights with the values
 context_vec_2 = attn_weights_2 @ values
 print("Context vector for 2\n", context_vec_2, "\n")
+
+
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><> Compact Self-Attention Class <><><><><><><><><><><><><><><><>")
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
+print("<><><><> Using SelfAttentionV1 class\n")
+torch.manual_seed(123)
+sa_v1 = SelfAttentionV1(d_in, d_out)
+print("Context vectors\n", sa_v1.forward(inputs), "\n")
+
+print("<><><><> Using SelfAttentionV2 class\n")
+torch.manual_seed(789)
+sa_v2 = SelfAttentionV2(d_in, d_out)
+print("Context vectors\n", sa_v2.forward(inputs), "\n")
+
+
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><> Causal Attention <><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
 

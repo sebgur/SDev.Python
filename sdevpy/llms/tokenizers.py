@@ -1,5 +1,6 @@
 import re
 
+
 class SimpleTokenizerV2:
     def __init__(self, vocab):
         self.str_to_int = vocab
@@ -18,6 +19,7 @@ class SimpleTokenizerV2:
         text = re.sub(r'\s+([,.?!"()\'])', r'\1', text) # Replace spaces before specified punctation
         return text
 
+
 class SimpleTokenizerV1:
     def __init__(self, vocab):
         self.str_to_int = vocab
@@ -33,4 +35,3 @@ class SimpleTokenizerV1:
         text = " ".join([self.int_to_str[i] for i in ids])
         text = re.sub(r'\s+([,.?!"()\'])', r'\1', text) # Replace spaces before specified punctation
         return text
-    
