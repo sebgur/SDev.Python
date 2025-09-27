@@ -3,7 +3,7 @@ from importlib.metadata import version
 import torch
 import numpy as np
 # from torch.utils.data import Dataset, DataLoader
-from sdevpy.llms.attention import SelfAttentionV1, SelfAttentionV2
+from sdevpy.llms.attention import SelfAttentionV1, SelfAttentionV2, CausalAttention
 # from sdevpy.projects.raschka import torch_datasetloader as tdsl
 
 print("pytorch version: ", torch.__version__)
@@ -172,7 +172,7 @@ print("Attention scores\n", attn_scores, "\n")
 attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
 print("Attention weights\n", attn_weights, "\n")
 
-# Create a mask where thte values above the diagonal are 0
+# Create a mask where the values above the diagonal are 0
 context_length = attn_scores.shape[0]
 mask_simple = torch.tril(torch.ones(context_length, context_length))
 print("Mask\n", mask_simple, "\n")
@@ -205,3 +205,50 @@ print(dropout(example))
 torch.manual_seed(123)
 print(dropout(attn_weights))
 
+print("<><><><> Using the CausalAttention class")
+# Redo the same first to compare it gives the same thing
+torch.manual_seed(123)
+sa_v1 = SelfAttentionV1(d_in, d_out)
+print("Context vectors\n", sa_v1.forward(inputs), "\n")
+
+print("<><><><> Using SelfAttentionV2 class\n")
+torch.manual_seed(789)
+sa_v2 = SelfAttentionV2(d_in, d_out)
+print("Context vectors\n", sa_v2.forward(inputs), "\n")
+
+
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><> Causal Attention <><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
+print("<><><><> One item to check CausalAttention on batch  <><><><>")
+torch.manual_seed(123)
+sa_v2 = SelfAttentionV2(d_in, d_out)
+queries = sa_v2.W_query(inputs)
+keys = sa_v2.W_key(inputs)
+values = sa_v2.W_value(inputs)
+attn_scores = queries @ keys.T
+print("Attention scores\n", attn_scores, "\n")
+
+# More efficient masking using the property that softmax(-infinity) = 0
+mask = torch.triu(torch.ones(context_length, context_length), diagonal=1)
+masked = attn_scores.masked_fill(mask.bool(), -torch.inf)
+print("Masked attention scores\n", masked, "\n")
+
+# Apply softmax
+attn_weights = torch.softmax(masked / keys.shape[-1]**0.5, dim=-1)
+print("Masked weight\n", attn_weights, "\n")
+
+# Context vector
+context_vec = attn_weights @ values
+print("Context vector\n", context_vec, "\n")
+
+######################################
+print("<><><><> Batch <><><><>")
+torch.manual_seed(123)
+# Batch of two identical token sequences
+batch = torch.stack((inputs, inputs), dim=0)
+print(batch.shape)  # Batch size, #tokens in sequence, embedding dimension
+context_length = batch.shape[1]
+ca = CausalAttention(d_in, d_out, context_length, 0.0)
+context_vecs = ca(batch)
+print("Convext vectors\n", context_vecs, "\n")
