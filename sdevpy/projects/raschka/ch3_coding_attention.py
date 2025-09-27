@@ -196,7 +196,12 @@ print("Masked attention scores\n", masked, "\n")
 attn_weights = torch.softmax(masked / keys.shape[-1]**0.5, dim=-1)
 print("Masked weight(improved)\n", attn_weights, "\n")
 
+# Drop-out on attention after computing the attention weights (common practice)
+torch.manual_seed(123)
+dropout = torch.nn.Dropout(0.5)
+example = torch.ones(6, 6)
+print(dropout(example))
 
-
-
+torch.manual_seed(123)
+print(dropout(attn_weights))
 
