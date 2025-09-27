@@ -34,7 +34,7 @@ class GPTDatasetV1(Dataset):
 
     def text_size(self):
         return self.text_size_
-    
+
 
 def create_dataloader_v1(txt, batch_size=4, max_length=256, stride=128, shuffle=True, drop_last=True,
                          num_workers=0):
@@ -57,9 +57,9 @@ if __name__ == "__main__":
     # MAX_LENGTH: context length
     # BATCH_SIZE: how many pairs (input, target) get loaded at each iteration of the DataLoader
 
-    BATCH_SIZE = 3
+    BATCH_SIZE = 5
     MAX_LENGTH = 4
-    STRIDE = 4  # When STRIDE = MAX_LENGTH, the next input start right after the previous
+    STRIDE = 3  # When STRIDE = MAX_LENGTH, the next input start right after the previous
     dataset, dataloader = create_dataloader_v1(raw_text, batch_size=BATCH_SIZE, max_length=MAX_LENGTH, stride=STRIDE,
                                                shuffle=False)
 
