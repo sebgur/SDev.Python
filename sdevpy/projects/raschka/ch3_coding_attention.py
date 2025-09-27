@@ -161,4 +161,42 @@ print("Context vectors\n", sa_v2.forward(inputs), "\n")
 print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
 print("<><><><><><><><> Causal Attention <><><><><><><><><><><><><><><><><><><><><><>")
 print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
+# Also known as "Masked Attention" restricts a model to only consider previous and current
+# inputs in a sequence when processing any given token, when computing attention scores.
+queries = sa_v2.W_query(inputs)
+keys = sa_v2.W_key(inputs)
+attn_scores = queries @ keys.T
+print("Attention scores\n", attn_scores, "\n")
+
+# Softmax normalization
+attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
+print("Attention weights\n", attn_weights, "\n")
+
+# Create a mask where thte values above the diagonal are 0
+context_length = attn_scores.shape[0]
+mask_simple = torch.tril(torch.ones(context_length, context_length))
+print("Mask\n", mask_simple, "\n")
+
+# Multiply the mask by the attention weights
+masked_simple = attn_weights * mask_simple
+print("Masked weights\n", masked_simple, "\n")
+
+# Renormalize the weights
+row_sums = masked_simple.sum(dim=-1, keepdim=True)
+print("Row sums\n", row_sums, "\n")
+masked_simple_norm = masked_simple / row_sums
+print("Normalized masked weights\n", masked_simple_norm, "\n")
+
+# More efficient masking using the property that softmax(-infinity) = 0
+mask = torch.triu(torch.ones(context_length, context_length), diagonal=1)
+masked = attn_scores.masked_fill(mask.bool(), -torch.inf)
+print("Masked attention scores\n", masked, "\n")
+
+# Apply softmax
+attn_weights = torch.softmax(masked / keys.shape[-1]**0.5, dim=-1)
+print("Masked weight(improved)\n", attn_weights, "\n")
+
+
+
+
 
