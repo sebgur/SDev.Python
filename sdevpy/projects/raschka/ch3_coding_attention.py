@@ -4,6 +4,7 @@ import torch
 import numpy as np
 # from torch.utils.data import Dataset, DataLoader
 from sdevpy.llms.attention import SelfAttentionV1, SelfAttentionV2, CausalAttention
+from sdevpy.llms.attention import MultiHeadAttentionWrapper
 # from sdevpy.projects.raschka import torch_datasetloader as tdsl
 
 print("pytorch version: ", torch.__version__)
@@ -150,12 +151,12 @@ print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><
 print("<><><><> Using SelfAttentionV1 class\n")
 torch.manual_seed(123)
 sa_v1 = SelfAttentionV1(d_in, d_out)
-print("Context vectors\n", sa_v1.forward(inputs), "\n")
+print("Context vectors\n", sa_v1(inputs), "\n")
 
 print("<><><><> Using SelfAttentionV2 class\n")
 torch.manual_seed(789)
 sa_v2 = SelfAttentionV2(d_in, d_out)
-print("Context vectors\n", sa_v2.forward(inputs), "\n")
+print("Context vectors\n", sa_v2(inputs), "\n")
 
 
 print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
@@ -205,22 +206,8 @@ print(dropout(example))
 torch.manual_seed(123)
 print(dropout(attn_weights))
 
-print("<><><><> Using the CausalAttention class")
-# Redo the same first to compare it gives the same thing
-torch.manual_seed(123)
-sa_v1 = SelfAttentionV1(d_in, d_out)
-print("Context vectors\n", sa_v1.forward(inputs), "\n")
 
-print("<><><><> Using SelfAttentionV2 class\n")
-torch.manual_seed(789)
-sa_v2 = SelfAttentionV2(d_in, d_out)
-print("Context vectors\n", sa_v2.forward(inputs), "\n")
-
-
-print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
-print("<><><><><><><><> Causal Attention <><><><><><><><><><><><><><><><><><><><><><>")
-print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
-print("<><><><> One item to check CausalAttention on batch  <><><><>")
+print("<><><><> One item to check CausalAttention class on batch later  <><><><>")
 torch.manual_seed(123)
 sa_v2 = SelfAttentionV2(d_in, d_out)
 queries = sa_v2.W_query(inputs)
@@ -242,8 +229,7 @@ print("Masked weight\n", attn_weights, "\n")
 context_vec = attn_weights @ values
 print("Context vector\n", context_vec, "\n")
 
-######################################
-print("<><><><> Batch <><><><>")
+print("<><><><> CausalAttention class on Batch <><><><>")
 torch.manual_seed(123)
 # Batch of two identical token sequences
 batch = torch.stack((inputs, inputs), dim=0)
@@ -252,3 +238,19 @@ context_length = batch.shape[1]
 ca = CausalAttention(d_in, d_out, context_length, 0.0)
 context_vecs = ca(batch)
 print("Convext vectors\n", context_vecs, "\n")
+
+
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><> Multi-Headed Attention <><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
+print("<><><><> Stack of Single-Head <><><><>")
+torch.manual_seed(123)
+context_length = batch.shape[1]
+d_in, d_out = 3, 2
+num_heads = 2
+mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, 0.0, num_heads=num_heads)
+context_vecs = mha(batch)
+print("Convext vectors\n", context_vecs, "\n")
+print(context_vecs.shape)
+
+

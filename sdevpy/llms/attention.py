@@ -2,6 +2,18 @@ import torch
 import torch.nn as nn
 
 
+class MultiHeadAttentionWrapper(nn.Module):
+    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
+        super().__init__()
+        self.heads = nn.ModuleList([CausalAttention(d_in, d_out, context_length, dropout, qkv_bias)
+                                    for _ in range(num_heads)])
+
+    def forward(self, x):
+        print("First head\n", self.heads[0](x), "\n")
+        print("Second head\n", self.heads[1](x), "\n")
+        return torch.cat([head(x) for head in self.heads], dim=-1)
+
+
 class CausalAttention(nn.Module):
     def __init__(self, d_in, d_out, context_length, dropout, qkv_bias=False):
         super().__init__()
@@ -21,10 +33,11 @@ class CausalAttention(nn.Module):
         attn_scores = queries @ keys.transpose(1, 2)
         attn_scores.masked_fill_(self.mask.bool()[:num_tokens, :num_tokens], -torch.inf)
         attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
-        # attn_weights = self.dropout(attn_weights)
+        attn_weights = self.dropout(attn_weights)
 
         context_vec = attn_weights @ values
         return context_vec
+
 
 class SelfAttentionV2(nn.Module):
     """ Optimized weight initialization scheme, contributing to more stable and effective
