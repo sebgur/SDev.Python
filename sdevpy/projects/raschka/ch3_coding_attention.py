@@ -1,11 +1,7 @@
-import re
 from importlib.metadata import version
 import torch
-import numpy as np
-# from torch.utils.data import Dataset, DataLoader
 from sdevpy.llms.attention import SelfAttentionV1, SelfAttentionV2, CausalAttention
 from sdevpy.llms.attention import MultiHeadAttentionWrapper, MultiHeadAttention
-# from sdevpy.projects.raschka import torch_datasetloader as tdsl
 
 print("pytorch version: ", torch.__version__)
 
