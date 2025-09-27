@@ -1,161 +1,144 @@
 import re
 from importlib.metadata import version
-import tiktoken
 import torch
-from torch.utils.data import Dataset, DataLoader
-from sdevpy.llms.tokenizers import SimpleTokenizerV1, SimpleTokenizerV2
-from sdevpy.projects.raschka import torch_datasetloader as tdsl
+import numpy as np
+# from torch.utils.data import Dataset, DataLoader
+# from sdevpy.llms.tokenizers import SimpleTokenizerV1, SimpleTokenizerV2
+# from sdevpy.projects.raschka import torch_datasetloader as tdsl
 
-print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)
 
-############ Simple regex/parsing examples ################################################
-text = "Hello, world. This, is a test."
-# print("Original text\n", text)
-result = re.split(r'(\s)', text)
-# print("Split according to white spaces\n", result)
+# Originally, translators were based on RNN networks using the encoder-decoder architecture.
+# This had issues with long-term memory.
+# Modern models are based on the Attention mechanism, with the Transformer architecture.
 
-result = re.split(r'([,.]|\s)', text)
-# print("Split punctation\n", result)
+# A context vector is an enriched embedding vector. It is enriched here through the Attention
+# mechanism, by including information from all the other token embeddings in the sequence.
 
-# Remove white spaces
-result = [item.strip() for item in result if item.strip()] # Remove trailing whitespaces, tabs, newlines and returns
-# print("Remove white spaces\n", result)
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><> Non-trainable self-attention <><><><><><><><><><><><><><><><>")
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
+# Define input sequence, output_dim = 3
+inputs = torch.tensor(
+  [[0.43, 0.15, 0.89], # Your     (x^1)
+   [0.55, 0.87, 0.66], # journey  (x^2)
+   [0.57, 0.85, 0.64], # starts   (x^3)
+   [0.22, 0.58, 0.33], # with     (x^4)
+   [0.77, 0.25, 0.10], # one      (x^5)
+   [0.05, 0.80, 0.55]] # step     (x^6)
+)
 
-# Handle more characters
-text = "Hello, world. Is this -- a test?"
-# print("Original text\n", text)
-result = re.split(r'([,.:;?_!"()\']|--|\s)', text)
-result = [item.strip() for item in result if item.strip()]
-# print("Splitting more characters\n", result)
+sequence_size = inputs.shape[0]
+print(f"Sequence size: {sequence_size}", "\n")
+embed_dim = inputs[0].shape
+print(f"Embedding dimension: {embed_dim}", "\n")
 
-############ Build vocabulary ################################################
-# Read text file
-file = "datasets/llms/the-verdict.txt"
-with open(file, "r", encoding="utf-8") as f:
-    raw_text = f.read()
+# Calculate raw attention scores
+# The original token x of which we're calculating the context vector is called the "query".
+# The attention scores are the dot product between the query element and the other elements
+# in the sequence.
+query = inputs[1]
+attn_scores_2 = torch.empty(sequence_size)
+for i, x_i in enumerate(inputs):
+    attn_scores_2[i] = torch.dot(x_i, query)
 
-print(f"Number of characters in text: {len(raw_text)}")
-#print("Head\n", file_data[:99])
+print("Attention scores for query x2:\n", attn_scores_2, "\n")
 
-# Split whole file into tokens
-preprocessed = re.split(r'([,.:;?_!"()\']|--|\s)', raw_text)
-preprocessed = [item.strip() for item in preprocessed if item.strip()]
-print(f"Number of tokens in text: {len(preprocessed)}")
-# print(preprocessed[:12])
+# Normalized attention scores (attention weights)
+attn_weights_2_tmp = attn_scores_2 / attn_scores_2.sum()
+print("Attention weights (simple normalization):\n", attn_weights_2_tmp, "\n")
+print("Attention weight sum:\n", attn_weights_2_tmp.sum(), "\n")
 
-# Build unique set of tokens and sort
-unique_tokens = set(preprocessed)
-all_words = sorted(unique_tokens)
-vocab_size = len(all_words)
-print(f"Vocabulary size (number unique tokens): {vocab_size}")
+# In practice the softmax function is more used for normalization as it has better properties
+# for extreme values and gradient. That is:
+# w_i = exp(x_i) / \Sum_j exp(x_j)
+def softmax_naive(x):
+    return torch.exp(x) / torch.exp(x).sum(dim=0)
 
-# Extract vocabulary dictionary <token, tokenId>
-vocab = {token:integer for integer, token in enumerate(all_words)} # Nice, didn't know we could do that
-# for i, item in enumerate(vocab.items()):
-#     print(item)
-#     if i >= 12:
-#         break
+attn_weights_2_naive = softmax_naive(attn_scores_2)
+print("Attention weights (naive softmax):\n", attn_weights_2_naive, "\n")
+print("Attention weight sum:\n", attn_weights_2_naive.sum(), "\n")
 
-############ Use tokenizer classes ################################################
-# Use tokenizer class
-tokenizer = SimpleTokenizerV1(vocab)
+# Using more optimized softmax version in PyTorch
+attn_weights_2 = torch.softmax(attn_scores_2, dim=0)
+print("Attention weights (PyTorch softmax):\n", attn_weights_2, "\n")
+print("Attention weight sum:\n", attn_weights_2.sum(), "\n")
 
-known_text = """"It's the last he painted, you know,"
- Mrs. Gisburn said with pardonable pride."""
-ids = tokenizer.encode(known_text)
-dctxt = tokenizer.decode(ids)
-# print("Use tokenizer class to encode\n", ids)
-# print("Use tokenizer class to decode\n", dctxt) # Seb: small bugs with space after apostrophe
+# Calculate the context vector for query 2
+context_vec_2 = torch.zeros(embed_dim)
+for i in range(sequence_size):
+    context_vec_2 += inputs[i] * attn_weights_2[i]
 
-# Try to encode a text with a word that's not part of the vocabulary
-# unk_text = "Hello, do you like tea?"
-# print(tokenizer.encode(unk_text))
+print("Convext vector query 2:\n", context_vec_2, "\n")
 
-# Add special tokens for unknown words and end of text
-all_tokens = sorted(list(set(preprocessed)))
-all_tokens.extend(["<|endoftext|>", "<|unk|>"])
-vocab = {token:integer for integer, token in enumerate(all_tokens)}
-vocab_size = len(all_tokens)
-print(f"Vocabulary size (number unique tokens): {vocab_size}")
+# Compute attention weights for all input tokens
+attn_scores = torch.empty(sequence_size, sequence_size)
+for i, x_i in enumerate(inputs):
+    for j, x_j in enumerate(inputs):
+        attn_scores[i, j] = torch.dot(x_i, x_j)
 
-# Use improved tokenizer that recognizes text separation and unknown words
-text1 = "Hello, do you like tea?"
-text2 = "In the sunlit terraces of the palace."
-text = " <|endoftext|> ".join((text1, text2))
-# print(text)
+print("All attention scores\n", attn_scores, "\n")
 
-tokenizer = SimpleTokenizerV2(vocab)
-# print(tokenizer.decode(tokenizer.encode(text)))
+# For better performance, we should use matrix multiplication
+attn_scores = inputs @ inputs.T
+print("All attention scores (matrix mult)\n", attn_scores, "\n")
 
-# Use Byte Pair Encoding (BPE) tokenizer
-tokenizer = tiktoken.get_encoding("gpt2")
-text = ("Hello, do you like tea? <|endoftext|> In the sunlit terraces of the someunknownPlace.")
-integers = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
-# print(integers)
-strings = tokenizer.decode(integers)
-# print(strings)
+attn_weights = torch.softmax(attn_scores, dim=-1) # Same as dim = 1, so inside each vector i.e. per row
+print("All attention weights\n", attn_weights, "\n")
 
-############ Data sampling with sliding windows ################################################
-# Encode the text using the BPE tokenizer
-enc_text = tokenizer.encode(raw_text)
-print(f"Length of the encoded text: {len(enc_text)}")
+# Verify normalization sums on rows
+print("All row sums: ", attn_weights.sum(dim=-1), "\n")
 
-# Remove the first 50 tokens, just for illustration purposes
-enc_sample = enc_text[50:]
+print(inputs)
 
-# Create the windows
-context_size = 4
-x = enc_sample[:context_size]
-y = enc_sample[1:context_size + 1]
-print(f"x: {x}")
-print(f"y: {y}")
+# Compute all context vectors
+print(attn_weights.shape)
+print(inputs.shape)
+all_context_vecs = attn_weights @ inputs
+print("All context vectors\n", all_context_vecs, "\n")
 
-for i in range(1, context_size + 1):
-    context = enc_sample[:i]
-    desired = enc_sample[i]
-    print(tokenizer.decode(context), "---->", tokenizer.decode([desired]))
 
-############ Embedding ################################################
-# Check out a few embeddings
-vocab_size = 6
-output_dim = 3
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><> Scaled Dot-Product Attention <><><><><><><><><><><><><><><><>")
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
+x_2 = inputs[1]
+d_in = inputs.shape[1] # Embedding dimension
+d_out = 2 # Output embedding size (in practice, taken the same as d_in)
+
 torch.manual_seed(123)
-embedding_layer = torch.nn.Embedding(vocab_size, output_dim)
-print(embedding_layer.weight)
+W_query = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=False)
+W_key = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=False)
+W_value = torch.nn.Parameter(torch.rand(d_in, d_out), requires_grad=False)
 
-# Apply embeddings to token ID
-print(embedding_layer(torch.tensor([3])))
+query_2 = x_2 @ W_query
+key_2 = x_2 @ W_key
+value_2 = x_2 @ W_value
+print("Query 2\n", query_2, "\n")
 
-# Apply to multiple IDs
-input_ids = torch.tensor([2, 3, 5, 1])
-print(embedding_layer(input_ids))
+keys = inputs @ W_key
+values = inputs @ W_value
+print("keys.shape: ", keys.shape)
+print("values.shape: ", values.shape)
 
-############ Encoding word position ################################################
-vocab_size = 50257 # Size of BPE tokenizer
-output_dim = 256
-token_embedding_layer = torch.nn.Embedding(vocab_size, output_dim)
+# Calculate one attention score (2-2)
+keys_2 = keys[1]
+attn_score_22 = query_2.dot(keys_2) # Regular dot product
+print("Attention score 22: ", attn_score_22, "\n")
 
-max_length = 4
-dataset, dataloader = tdsl.create_dataloader_v1(raw_text, batch_size=8, max_length=max_length,
-                                                stride=max_length, shuffle=False)
-data_iter = iter(dataloader)
-inputs, targets = next(data_iter)
-print("Token IDs:\n", inputs)
-print("\nInput shape: \n", inputs.shape)
+# Calculate all attention scores for given query (2)
+attn_scores_2 = query_2 @ keys.T
+print("Attention scores for 2\n", attn_scores_2, "\n")
 
-token_embeddings = token_embedding_layer(inputs)
-print("\nToken embedding shape: \n", token_embeddings.shape)
+# Calculate all attention weights (by scaling) for given query (2)
+# The scaling is done by the square root of the embedding dimension, and that is
+# the reason for naming this mechanism "Scaled Dot-Product Attention". This scaling
+# is done to avoid small gradients.
+d_k = keys.shape[-1]
+print(d_k)
+attn_weights_2 = torch.softmax(attn_scores_2 / d_k**0.5, dim=-1)
+print("Attention weights for 2\n", attn_weights_2, "\n")
 
-# Encode position (absolute)
-context_length = max_length
-pos_embedding_layer = torch.nn.Embedding(context_length, output_dim)
-positions = torch.arange(context_length)
-print("\nPositions: \n", positions)
-pos_embeddings = pos_embedding_layer(positions)
-print("\nPosition embedding shape: \n", pos_embeddings.shape)
-
-# Add position to embedding
-input_embeddings = token_embeddings + pos_embeddings
-print(input_embeddings.shape)
+# Calculate the context vector by multiplying the weights with the values
+context_vec_2 = attn_weights_2 @ values
+print("Context vector for 2\n", context_vec_2, "\n")
 
