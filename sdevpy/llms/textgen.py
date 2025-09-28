@@ -7,6 +7,17 @@ import torch
 # other ones represent? Probably not the previous words in the sentence, as they have
 # all been jumbled up.
 
+def text_to_token_ids(text, tokenizer):
+    encoded = tokenizer.encode(text, allowed_special={'<|endoftext|>'})
+    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+    return encoded_tensor
+
+
+def token_ids_to_text(token_ids, tokenizer):
+    flat = token_ids.squeeze(0)
+    return tokenizer.decode(flat.tolist())
+
+
 def generate_text_simple(model, idx, max_new_tokens, context_size):
     # idx contains a batch of sequences of token IDs
     for _ in range(max_new_tokens):

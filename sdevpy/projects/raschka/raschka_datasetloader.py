@@ -45,7 +45,8 @@ def create_dataloader_v1(txt, batch_size=4, max_length=256, stride=128, shuffle=
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last,
                             num_workers=num_workers)
 
-    return dataset, dataloader
+    # return dataset, dataloader # If we want to see the dataset object
+    return dataloader
 
 if __name__ == "__main__":
     file = "datasets/llms/the-verdict.txt"
@@ -60,15 +61,15 @@ if __name__ == "__main__":
     BATCH_SIZE = 5
     MAX_LENGTH = 4
     STRIDE = 3  # When STRIDE = MAX_LENGTH, the next input start right after the previous
-    dataset, dataloader = create_dataloader_v1(raw_text, batch_size=BATCH_SIZE, max_length=MAX_LENGTH, stride=STRIDE,
-                                               shuffle=False)
+    dataloader = create_dataloader_v1(raw_text, batch_size=BATCH_SIZE, max_length=MAX_LENGTH, stride=STRIDE,
+                                      shuffle=False)
 
     data_iter = iter(dataloader)
 
     # A 'batch' returned by the DataLoader is effectively a list of dimension 2 where each item is
     # a tensor. The first item is the tensor of inputs and the second item is the tensor of targets.
 
-    print(f"Text size: {dataset.text_size()}")
+    # print(f"Text size: {dataset.text_size()}")
     print(f"MAX_LENGTH: {MAX_LENGTH}")
     print(f"STRIDE: {STRIDE}")
     print(f"BATCH_SIZE: {BATCH_SIZE}")

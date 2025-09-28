@@ -137,8 +137,8 @@ output_dim = 256
 token_embedding_layer = torch.nn.Embedding(vocab_size, output_dim)
 
 max_length = 4
-dataset, dataloader = tdsl.create_dataloader_v1(raw_text, batch_size=8, max_length=max_length,
-                                                stride=max_length, shuffle=False)
+dataloader = tdsl.create_dataloader_v1(raw_text, batch_size=8, max_length=max_length,
+                                       stride=max_length, shuffle=False)
 data_iter = iter(dataloader)
 inputs, targets = next(data_iter)
 print("Token IDs:\n", inputs)
