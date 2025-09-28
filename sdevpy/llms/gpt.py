@@ -4,6 +4,13 @@ from sdevpy.llms.attention import MultiHeadAttention
 
 
 class GPTModel(nn.Module):
+    """ The model's forward method takes in a batch of sequences of token IDs and it outputs
+        a batch of sequences with the same size, i.e. representing the same number of tokens.
+        However, these tokens are now represented by a whole dimension of logits, rather than
+        by a single token ID as when they entered the model.
+        These logits can then be interpreted/post-processed (through e.g. softmas) as
+        probabilities along the vocabulary direction.
+    """
     def __init__(self, cfg):
         super().__init__()
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])

@@ -152,16 +152,49 @@ print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
 print("<><><><><><><><> Generating Text  <><><><><><><><><><><><><><><><><>")
 print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
 start_context = "Hello, I am"
+print("Input text: " + start_context + "\n")
 encoded = tokenizer.encode(start_context)
-print("Encoded\n", encoded, "\n")
-encoded_tensor = torch.tensor(encoded).unsqueeze(0)
-print("Encoded tensor shape: ", encoded_tensor.shape)
+print("Encoded: ", encoded, "\n")
+encoded_tensor = torch.tensor(encoded).unsqueeze(0) # Make it a 1-element batch
+print("Input tensor: ", encoded_tensor, "\n")
+print("Encoded tensor shape: ", encoded_tensor.shape, "\n")
 
 # Use model
 model.eval() # Eval mode: no more dropout, etc.
+
+# # Generation: step by step (generate_text_simple)
+# max_new_tokens = 6
+# context_size = GPT_CONFIG_124M["context_length"]
+# idx = encoded_tensor
+# # for _ in range(max_new_tokens):
+# idx_cond = idx[:, -context_size:]
+# with torch.no_grad():
+#     logits = model(idx_cond)
+
+# print(f"Raw model output: {logits.shape}\n", logits, "\n")
+# logits = logits[:, -1, :]
+# print(f"Extracted raw last token: {logits.shape}\n", logits, "\n")
+# probas = torch.softmax(logits, dim=-1)
+# print(f"Vocab probabilities: {probas.shape}\n", probas, "\n")
+# # Find the index of the max element along the probability dimension
+# # That's the token ID for the token of max probability
+# idx_next = torch.argmax(probas, dim=-1, keepdim=True)
+# print(f"Index of max prob: {idx_next.shape}\n", idx_next, "\n")
+# max_prob = probas[:, idx_next[0, 0]]
+# print(f"Max prob: {max_prob.shape}\n", max_prob, "\n")
+# print("Sequence before adding new token: ", idx, "\n")
+# print("New token: ", idx_next, "\n")
+# idx = torch.cat((idx, idx_next), dim=1)
+# print("Sequence after adding last word: ", idx, "\n")
+
+# out = idx
+
+# Generation: use wrapper method
 out = tg.generate_text_simple(model=model, idx=encoded_tensor, max_new_tokens=6,
                               context_size=GPT_CONFIG_124M["context_length"])
-print("Output\n", out, "\n")
+
+print("Output tensor: ", out, "\n")
 
 decoded_text = tokenizer.decode(out.squeeze(0).tolist())
-print(decoded_text)
+
+print("Output text: " + decoded_text + "\n")

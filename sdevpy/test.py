@@ -17,19 +17,25 @@
 
 import numpy as np
 import pandas as pd
+import torch
 # import yfinance as yf
 # import statsmodels.api as sm
 # import scipy.optimize as spop
 # import matplotlib.pyplot as plt
 
-def make_vec(a, b, c):
-    return [a, b, c]
+probas_ = [[1, 3, 4, 2]]
+probas = torch.tensor(probas_)
+print(f"Vocab probabilities: {probas.shape}\n", probas, "\n")
+idx_next = torch.argmax(probas, dim=-1, keepdim=True)
+print(f"Index of max prob: {idx_next.shape}\n", idx_next, "\n")
 
+# a = [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]]
+# b = torch.tensor(a)
+# print(b.shape)
 
-x, y, z = make_vec(1, 2, 3)
-print(x)
-print(y)
-print(z)
+# context_size = 4
+# c = b[:, -context_size:]
+# print(c)
 
 # clr.AddReference("System.Windows.Forms")
 
