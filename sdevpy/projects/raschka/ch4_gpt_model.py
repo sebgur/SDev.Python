@@ -4,6 +4,7 @@ import torch.nn as nn
 import tiktoken
 import matplotlib.pyplot as plt
 from sdevpy.llms.gpt import DummyGPTModel, LayerNorm, GELU, FeedForward
+from sdevpy.projects.raschka import raschka_dnn
 
 print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)
@@ -91,5 +92,15 @@ x = torch.rand(2, 3, 768)
 out = ffn(x)
 print(f"Output shape: {out.shape}")
 
+print("<><><><> Shortcut Connections")
+# Also known as skip or residual connections
+layer_sizes = [3, 3, 3, 3, 3, 1]
+sample_input = torch.tensor([[1., 0., -1.]])
+torch.manual_seed(123)
+model_without_shortcut = raschka_dnn.ExampleDeepNeuralNetwork(layer_sizes, use_shortcut=False)
+print("Model without shortcuts\n", model_without_shortcut, "\n")
+raschka_dnn.print_gradients(model_without_shortcut, sample_input)
 
-
+model_with_shortcut = raschka_dnn.ExampleDeepNeuralNetwork(layer_sizes, use_shortcut=True)
+print("Model with shortcuts\n", model_with_shortcut, "\n")
+raschka_dnn.print_gradients(model_with_shortcut, sample_input)
