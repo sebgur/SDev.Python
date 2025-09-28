@@ -5,6 +5,7 @@ import tiktoken
 import matplotlib.pyplot as plt
 from sdevpy.llms.gpt import DummyGPTModel, LayerNorm, FeedForward, TransformerBlock, GPTModel
 from sdevpy.projects.raschka import raschka_dnn
+import sdevpy.llms.textgen as tg
 
 print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)
@@ -150,3 +151,17 @@ print(f"Total size of the model: {total_size_mb:.2f} MB")
 print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
 print("<><><><><><><><> Generating Text  <><><><><><><><><><><><><><><><><>")
 print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
+start_context = "Hello, I am"
+encoded = tokenizer.encode(start_context)
+print("Encoded\n", encoded, "\n")
+encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+print("Encoded tensor shape: ", encoded_tensor.shape)
+
+# Use model
+model.eval() # Eval mode: no more dropout, etc.
+out = tg.generate_text_simple(model=model, idx=encoded_tensor, max_new_tokens=6,
+                              context_size=GPT_CONFIG_124M["context_length"])
+print("Output\n", out, "\n")
+
+decoded_text = tokenizer.decode(out.squeeze(0).tolist())
+print(decoded_text)
