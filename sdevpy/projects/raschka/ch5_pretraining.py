@@ -4,10 +4,13 @@ import tiktoken
 from sdevpy.llms.gpt import GPTModel
 import sdevpy.llms.textgen as tg
 from sdevpy.projects.raschka import raschka_datasetloader as ds
-from sdevpy.llms.training import calc_loss_loader
+from sdevpy.llms.training import calc_loss_loader, train_model_simple
 
 print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)
+
+# Chp 5.1, page 141, reference to large scale dataset of public domain books.
+# Chp 5.2, page 146, learn about learning rate warmup, cosine annealing and gradient clipping
 
 GPT_CONFIG_124M = {
     "vocab_size": 50257,    # Vocabulary size
@@ -87,6 +90,10 @@ loss = torch.nn.functional.cross_entropy(logits_flat, targets_flat)
 print("Loss using Cross-Entropy: ", loss, "\n")
 print("Perplexity: ", torch.exp(loss), "\n")
 
+
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><> Training <><><><><><><><><><><><><><><><><><><><><><><><><><>")
+print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
 print("<><><><> Loss on the entire sets <><><><>")
 file = "datasets/llms/the-verdict.txt"
 with open(file, "r", encoding="utf-8") as f:
@@ -131,4 +138,25 @@ with torch.no_grad():
 
 print("Training loss: ", train_loss)
 print("Validation loss: ", val_loss)
+
+print("<><> Simple training loop")
+torch.manual_seed(123)
+start_text = "Every effort moves you"
+print("Starting text: " + start_text)
+model = GPTModel(GPT_CONFIG_124M)
+model.to(device)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
+num_epochs = 10
+train_losses, val_losses, tokens_seen = train_model_simple(model, train_loader, val_loader, optimizer,
+                                                           device, num_epochs=num_epochs, eval_freq=5,
+                                                           eval_iter=5, start_context=start_text,
+                                                           tokenizer=tokenizer)
+
+file_save = "model-save.pth"
+torch.save({"model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(),}, file_save)
+
+
+
+
+
 
