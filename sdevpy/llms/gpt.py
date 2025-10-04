@@ -25,23 +25,23 @@ class GPTModel(nn.Module):
 
     def forward(self, in_idx):
         batch_size, seq_len = in_idx.shape
-        print(f"Input: {in_idx.shape}")
+        # print(f"Input: {in_idx.shape}")
 
         tok_embeds = self.tok_emb(in_idx)
-        print(f"Token Embedding: {tok_embeds.shape}")
+        # print(f"Token Embedding: {tok_embeds.shape}")
         pos_embeds = self.pos_emb(torch.arange(seq_len, device=in_idx.device))
-        print(f"Position Embedding: {pos_embeds.shape}")
+        # print(f"Position Embedding: {pos_embeds.shape}")
         x = tok_embeds + pos_embeds
-        print(f"Embedding: {x.shape}")
+        # print(f"Embedding: {x.shape}")
 
         x = self.drop_emb(x) # ToDo: what is this doing, again?
-        print(f"After drop-out: {x.shape}")
+        # print(f"After drop-out: {x.shape}")
         x = self.trf_blocks(x)
-        print(f"After Transformers: {x.shape}")
+        # print(f"After Transformers: {x.shape}")
         x = self.final_norm(x)
-        print(f"After Final Normalization: {x.shape}")
+        # print(f"After Final Normalization: {x.shape}")
         logits = self.out_head(x)
-        print(f"Output: {logits.shape}")
+        # print(f"Output: {logits.shape}")
 
         return logits
 
@@ -60,14 +60,20 @@ class TransformerBlock(nn.Module):
 
     def forward(self, x):
         shortcut = x # Shortcut for attention block
+        # print("Transformer(before norm1): ", x.shape)
         x = self.norm1(x)
+        # print("Transformer(before attention): ", x.shape)
         x = self.att(x)
+        # print("Transformer(after attention): ", x.shape)
         x = self.drop_shortcut(x)
         x = x + shortcut # Add the original input back
 
         shortcut = x # Shortcut for feed-forward block
+        # print("Transformer(before norm2): ", x.shape)
         x = self.norm2(x)
+        # print("Transformer(before MLP): ", x.shape)
         x = self.ff(x)
+        # print("Transformer(after MLP): ", x.shape)
         x = self.drop_shortcut(x)
         x = x + shortcut # Add the original input back
 

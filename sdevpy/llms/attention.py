@@ -11,6 +11,7 @@ class MultiHeadAttention(nn.Module):
         self.d_out = d_out
         self.num_heads = num_heads
         self.head_dim = d_out // num_heads # Reduce the projection dim to match desired output dim
+        # print(f"Attention head dimension: {self.head_dim}")
 
         self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)

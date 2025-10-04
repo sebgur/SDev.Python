@@ -4,7 +4,7 @@ import tiktoken
 from sdevpy.llms.gpt import GPTModel
 import sdevpy.llms.textgen as tg
 from sdevpy.projects.raschka import raschka_datasetloader as ds
-from sdevpy.llms.training import calc_loss_loader, train_model_simple
+from sdevpy.llms.training import calc_loss_loader, train_model_simple, plot_losses
 
 print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)
@@ -152,10 +152,11 @@ train_losses, val_losses, tokens_seen = train_model_simple(model, train_loader, 
                                                            eval_iter=5, start_context=start_text,
                                                            tokenizer=tokenizer)
 
-file_save = "model-save.pth"
-torch.save({"model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(),}, file_save)
+# file_save = "model-save.pth"
+# torch.save({"model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(),}, file_save)
 
-
+epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
+plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
 
 
 
