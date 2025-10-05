@@ -1,11 +1,38 @@
 import torch
 
-# ToDo: would be interesting to understand, after training, what are the actual words
-# in the rest of the context output by the model. That is, we only use the last element
-# in the sequence and interpret it as the predicted word, but in reality the model
-# outputs a whole sequence, out of which we only use the last token. But what do the
-# other ones represent? Probably not the previous words in the sentence, as they have
-# all been jumbled up.
+
+def generate(model, idx, max_new_tokens, context_size, temperature=0.0, top_k=None,
+             eos_id=None):
+    for _ in range(max_new_tokens):
+        # print(idx.shape)
+        idx_cond = idx[:, -context_size:]
+        # print(idx_cond.shape)
+        with torch.no_grad():
+            logits = model(idx_cond)
+
+        # print(logits.shape)
+        logits = logits[:, -1, :]
+
+        if top_k is not None:
+            top_logits, _ = torch.topk(logits, top_k)
+            min_val = top_logits[:, -1]
+            logits = torch.where(logits < min_val, torch.tensor(float('-inf')).to(logits.device),
+                                 logits)
+
+        if temperature > 0.0:
+            logits = logits / temperature
+            probs = torch.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
+        else:
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)
+
+        if idx_next == eos_id:
+            break
+
+        idx = torch.cat((idx, idx_next), dim=1)
+
+    return idx
+
 
 def text_to_token_ids(text, tokenizer):
     encoded = tokenizer.encode(text, allowed_special={'<|endoftext|>'})

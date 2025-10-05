@@ -1,6 +1,7 @@
 from importlib.metadata import version
 import torch
 import tiktoken
+import matplotlib.pyplot as plt
 from sdevpy.llms.gpt import GPTModel
 import sdevpy.llms.textgen as tg
 from sdevpy.projects.raschka import raschka_datasetloader as ds
@@ -11,6 +12,12 @@ print("pytorch version: ", torch.__version__)
 
 # Chp 5.1, page 141, reference to large scale dataset of public domain books.
 # Chp 5.2, page 146, learn about learning rate warmup, cosine annealing and gradient clipping
+
+# ToDo: would be interesting to understand, after training, what are the actual words
+# in the rest of the context output by the model. That is, we only use the last element
+# in the sequence and interpret it as the predicted word, but in reality the model
+# outputs a whole sequence, out of which we only use the last token. But what do the
+# other ones represent?
 
 GPT_CONFIG_124M = {
     "vocab_size": 50257,    # Vocabulary size
@@ -139,25 +146,118 @@ with torch.no_grad():
 print("Training loss: ", train_loss)
 print("Validation loss: ", val_loss)
 
-print("<><> Simple training loop")
+# ########################################## TRAIN ##############################################
+# print("<><> Simple training loop")
+# torch.manual_seed(123)
+# start_text = "Every effort moves you"
+# print("Starting text: " + start_text)
+# model = GPTModel(GPT_CONFIG_124M)
+# model.to(device)
+# optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
+# num_epochs = 10
+# train_losses, val_losses, tokens_seen = train_model_simple(model, train_loader, val_loader, optimizer,
+#                                                            device, num_epochs=num_epochs, eval_freq=5,
+#                                                            eval_iter=5, start_context=start_text,
+#                                                            tokenizer=tokenizer)
+
+# # file_save = "model-save.pth"
+# # torch.save({"model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(),}, file_save)
+
+# # epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
+# # plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
+# ##############################################################################################
+
+# ############### LOAD SAVED MODEL #############################################################
+print("<><> Load saved model")
+file = r"C:\\temp\\llms\\model-save.pth"
+# torch.manual_seed(123)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+checkpoint = torch.load(file, map_location=device)
+model = GPTModel(GPT_CONFIG_124M)
+model.load_state_dict(checkpoint["model_state_dict"])
+optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.1)
+optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+# # model.train();
+
+# tokenizer = tiktoken.get_encoding("gpt2")
+
+# start_text = "Every effort moves you"
+
+# start_tensor = tg.text_to_token_ids(start_text, tokenizer)
+model.eval()
+# token_ids = tg.generate_text_simple(model=model, idx=start_tensor, max_new_tokens=25,
+#                                     context_size=GPT_CONFIG_124M["context_length"])
+
+# print("Input: " + start_text)
+# print("Output: " + tg.token_ids_to_text(token_ids, tokenizer).replace(start_text, ''))
+################################################################################################
+
+print("<><> Temperature Scaling")
+vocab = {"closer": 0, "every": 1, "effort": 2, "forward": 3, "inches": 4, "moves": 5,
+         "pizza": 6, "toward": 7, "you": 8, }
+inverse_vocab = {v: k for k, v in vocab.items()}
+
+next_token_logits = torch.tensor([4.51, 0.89, -1.90, 6.75, 1.63, -1.62, -1.89, 6.28, 1.79])
+print("Logits: ", next_token_logits)
+probas = torch.softmax(next_token_logits, dim=0)
+print("Probas: ", probas)
+print("ArgMax: ", torch.argmax(probas))
+next_token_id = torch.argmax(probas).item()
+print("Next token ID: ", next_token_id)
+print(inverse_vocab[next_token_id])
+
+# Probabilitic method using multinomial
+torch.manual_seed(123)
+next_token_id = torch.multinomial(probas, num_samples=1).item()
+print(inverse_vocab[next_token_id])
+
+def print_sampled_tokens(probas):
+    torch.manual_seed(123)
+    sample = [torch.multinomial(probas, num_samples=1).item() for i in range(1000)]
+    sampled_ids = torch.bincount(torch.tensor(sample))
+    for i, freq in enumerate(sampled_ids):
+        print(f"{freq} x {inverse_vocab[i]}")
+
+print_sampled_tokens(probas)
+
+# Temperature scaling
+def softmax_with_temperature(logits, temperature):
+    scaled_logits = logits / temperature
+    return torch.softmax(scaled_logits, dim=0)
+
+temperatures = [1, 0.1, 5]
+scaled_probas = [softmax_with_temperature(next_token_logits, T) for T in temperatures]
+x = torch.arange(len(vocab))
+bar_width = 0.15
+fig, ax = plt.subplots(figsize=(5, 3))
+for i, T in enumerate(temperatures):
+    rects = ax.bar(x + i * bar_width, scaled_probas[i], bar_width, label=f'Temperature={T}')
+ax.set_ylabel('Probability')
+ax.set_xticks(x)
+ax.set_xticklabels(vocab.keys(), rotation=90)
+ax.legend()
+plt.tight_layout()
+plt.show()
+
+# Top-k sampling
+top_k = 3
+top_logits, top_pos = torch.topk(next_token_logits, top_k)
+print("Top logits: ", top_logits)
+print("Top positions: ", top_pos)
+
+new_logits = torch.where(condition=next_token_logits < top_logits[-1],
+                         input=torch.tensor(float('-inf')),other=next_token_logits)
+print(new_logits)
+
+topk_probas = torch.softmax(new_logits, dim=0)
+print(topk_probas)
+
+
+# Better text generation
 torch.manual_seed(123)
 start_text = "Every effort moves you"
-print("Starting text: " + start_text)
-model = GPTModel(GPT_CONFIG_124M)
-model.to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
-num_epochs = 10
-train_losses, val_losses, tokens_seen = train_model_simple(model, train_loader, val_loader, optimizer,
-                                                           device, num_epochs=num_epochs, eval_freq=5,
-                                                           eval_iter=5, start_context=start_text,
-                                                           tokenizer=tokenizer)
+token_ids = tg.generate(model=model, idx=tg.text_to_token_ids(start_text, tokenizer),
+                        max_new_tokens=15, context_size=GPT_CONFIG_124M["context_length"],
+                        top_k=25, temperature=1.4)
 
-# file_save = "model-save.pth"
-# torch.save({"model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(),}, file_save)
-
-epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
-plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses)
-
-
-
-
+print("Output text:\n", tg.token_ids_to_text(token_ids, tokenizer))
