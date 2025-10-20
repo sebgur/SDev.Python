@@ -99,6 +99,8 @@ def load_weights_into_gpt(gpt, params):
 
     gpt.final_norm.scale = assign(gpt.final_norm.scale, params["g"])
     gpt.final_norm.shift = assign(gpt.final_norm.shift, params["b"])
+
+    # This looks like the so-called 'weight tying'
     gpt.out_head.weight = assign(gpt.out_head.weight, params["wte"])
 
 
