@@ -1,0 +1,316 @@
+import torch
+import torch.nn as nn
+import json
+import re
+import pickle
+from typing import Dict, Optional, List
+
+class Tokenizer:
+    """Simple tokenizer for converting text to tokens and back"""
+    
+    def __init__(self, vocab_file: str):
+        """
+        Load vocabulary from file
+        
+        Args:
+            vocab_file: Path to vocabulary file (pickle or json)
+        """
+        # Load vocabulary mappings
+        if vocab_file.endswith('.pkl'):
+            with open(vocab_file, 'rb') as f:
+                vocab_data = pickle.load(f)
+        else:
+            with open(vocab_file, 'r') as f:
+                vocab_data = json.load(f)
+        
+        self.word2idx = vocab_data['word2idx']
+        self.idx2word = vocab_data['idx2word']
+        
+        # Special tokens
+        self.pad_token = vocab_data.get('pad_token', '<pad>')
+        self.unk_token = vocab_data.get('unk_token', '<unk>')
+        self.sos_token = vocab_data.get('sos_token', '<sos>')
+        self.eos_token = vocab_data.get('eos_token', '<eos>')
+        
+        self.pad_idx = self.word2idx[self.pad_token]
+        self.unk_idx = self.word2idx[self.unk_token]
+        self.sos_idx = self.word2idx[self.sos_token]
+        self.eos_idx = self.word2idx[self.eos_token]
+    
+    def encode(self, text: str, max_length: int = 512) -> Dict[str, torch.Tensor]:
+        """
+        Convert text to token indices
+        
+        Args:
+            text: Input text
+            max_length: Maximum sequence length
+            
+        Returns:
+            Dictionary with input_ids and attention_mask
+        """
+        # Simple word tokenization (you might use a better tokenizer)
+        words = text.lower().split()
+        
+        # Convert words to indices
+        indices = [self.word2idx.get(word, self.unk_idx) for word in words]
+        
+        # Truncate if too long
+        if len(indices) > max_length - 2:
+            indices = indices[:max_length - 2]
+        
+        # Add special tokens
+        indices = [self.sos_idx] + indices + [self.eos_idx]
+        
+        # Create attention mask (1 for real tokens, 0 for padding)
+        attention_mask = [1] * len(indices)
+        
+        # Pad to max_length
+        padding_length = max_length - len(indices)
+        indices += [self.pad_idx] * padding_length
+        attention_mask += [0] * padding_length
+        
+        return {
+            'input_ids': torch.tensor([indices], dtype=torch.long),
+            'attention_mask': torch.tensor([attention_mask], dtype=torch.long)
+        }
+    
+    def decode(self, indices: torch.Tensor, skip_special_tokens: bool = True) -> str:
+        """
+        Convert token indices back to text
+        
+        Args:
+            indices: Tensor of token indices
+            skip_special_tokens: Whether to remove special tokens
+            
+        Returns:
+            Decoded text string
+        """
+        # Convert to list if tensor
+        if isinstance(indices, torch.Tensor):
+            indices = indices.tolist()
+        
+        # Convert indices to words
+        words = []
+        for idx in indices:
+            word = self.idx2word.get(str(idx), self.unk_token)
+            
+            # Skip special tokens if requested
+            if skip_special_tokens:
+                if word in [self.pad_token, self.sos_token, self.eos_token]:
+                    continue
+            
+            words.append(word)
+        
+        return ' '.join(words)
+
+
+class JSONExtractor:
+    """Extract structured JSON from text using a trained PyTorch model"""
+    
+    def __init__(self, model_path: str, vocab_path: str, device: Optional[str] = None):
+        """
+        Initialize the extractor with a trained model
+        
+        Args:
+            model_path: Path to saved PyTorch model (.pt or .pth file)
+            vocab_path: Path to vocabulary file (.pkl or .json)
+            device: 'cuda', 'cpu', or None (auto-detect)
+        """
+        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f"Loading model from {model_path}...")
+        
+        # Load tokenizer
+        self.tokenizer = Tokenizer(vocab_path)
+        
+        # Load model
+        checkpoint = torch.load(model_path, map_location=self.device)
+        
+        # If checkpoint contains model state dict
+        if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+            # You need to instantiate your model architecture here
+            # This is a placeholder - replace with your actual model
+            self.model = self._create_model_architecture(checkpoint)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+        else:
+            # If checkpoint is the model itself
+            self.model = checkpoint
+        
+        self.model.to(self.device)
+        self.model.eval()
+        
+        print(f"Model loaded successfully on {self.device}")
+    
+    def _create_model_architecture(self, checkpoint: Dict):
+        """
+        Create your model architecture
+        Replace this with your actual model definition
+        """
+        # Example: If you have model config saved in checkpoint
+        if 'config' in checkpoint:
+            config = checkpoint['config']
+            # model = YourModelClass(config)
+            # return model
+        
+        # Or load architecture from checkpoint
+        raise NotImplementedError(
+            "You need to define your model architecture here. "
+            "Replace this method with your actual model class instantiation."
+        )
+    
+    def extract_json(self, text: str, schema: Optional[Dict] = None, 
+                    max_length: int = 256) -> Dict:
+        """
+        Extract JSON information from text
+        
+        Args:
+            text: Input text to process
+            schema: Optional JSON schema with default values
+            max_length: Maximum length for generated output
+            
+        Returns:
+            Dictionary with extracted information
+        """
+        # Step 1: Tokenize the input text
+        inputs = self.tokenizer.encode(text)
+        
+        # Move to correct device
+        input_ids = inputs['input_ids'].to(self.device)
+        attention_mask = inputs['attention_mask'].to(self.device)
+        
+        # Step 2: Generate output using the model
+        with torch.no_grad():
+            # Simple greedy decoding
+            output_ids = self._generate(input_ids, attention_mask, max_length)
+        
+        # Step 3: Decode the generated tokens to text
+        json_string = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        
+        # Step 4: Parse and validate the JSON
+        result = self._parse_json_safely(json_string)
+        
+        # Step 5: Apply schema defaults if provided
+        if schema:
+            result = self._apply_schema(result, schema)
+        
+        return result
+    
+    def _generate(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, 
+                  max_length: int) -> torch.Tensor:
+        """
+        Generate output sequence using greedy decoding
+        
+        This is a simple implementation. Your model might have its own
+        generate method or you might want to implement beam search.
+        """
+        batch_size = input_ids.size(0)
+        
+        # Start with SOS token
+        generated = torch.full((batch_size, 1), self.tokenizer.sos_idx, 
+                              dtype=torch.long, device=self.device)
+        
+        # Generate tokens one by one
+        for _ in range(max_length):
+            # Get model predictions
+            # Note: Replace this with your model's actual forward method
+            outputs = self.model(input_ids, generated, attention_mask)
+            
+            # Get the last token's predictions
+            next_token_logits = outputs[:, -1, :]
+            
+            # Greedy decoding: take the token with highest probability
+            next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)
+            
+            # Append to generated sequence
+            generated = torch.cat([generated, next_token], dim=1)
+            
+            # Stop if EOS token is generated
+            if next_token.item() == self.tokenizer.eos_idx:
+                break
+        
+        return generated
+    
+    def _parse_json_safely(self, json_string: str) -> Dict:
+        """
+        Attempt to parse JSON with error recovery
+        """
+        try:
+            return json.loads(json_string)
+        except json.JSONDecodeError:
+            fixed_string = self._fix_json_errors(json_string)
+            try:
+                return json.loads(fixed_string)
+            except:
+                return {
+                    "error": "Failed to parse JSON",
+                    "raw_output": json_string
+                }
+    
+    def _fix_json_errors(self, s: str) -> str:
+        """Fix common JSON formatting errors"""
+        s = re.sub(r'^[^{\[]*', '', s)
+        s = re.sub(r'[^}\]]*$', '', s)
+        s = re.sub(r"(?<!')\'(?!s\b)", '"', s)
+        s = re.sub(r',(\s*[}\]])', r'\1', s)
+        return s
+    
+    def _apply_schema(self, result: Dict, schema: Dict) -> Dict:
+        """Apply schema defaults for missing fields"""
+        output = schema.copy()
+        output.update(result)
+        return output
+    
+    def batch_extract(self, texts: List[str], schema: Optional[Dict] = None) -> List[Dict]:
+        """Process multiple texts"""
+        results = []
+        for text in texts:
+            result = self.extract_json(text, schema)
+            results.append(result)
+        return results
+
+
+# Example usage
+if __name__ == "__main__":
+    
+    # Step 1: Initialize the extractor with your trained model
+    extractor = JSONExtractor(
+        model_path="./model.pt",      # Your PyTorch model file
+        vocab_path="./vocab.pkl"       # Your vocabulary file
+    )
+    
+    # Step 2: Define your required JSON format
+    required_schema = {
+        "name": None,
+        "age": None,
+        "occupation": None,
+        "email": None,
+        "phone": None
+    }
+    
+    # Step 3: Read text from a file
+    with open("sample_text.txt", "r") as f:
+        text_content = f.read()
+    
+    # Or use a string directly
+    text_content = """
+    Sarah Johnson is a 32-year-old marketing director at Tech Corp. 
+    You can reach her at sarah.j@techcorp.com or call her at 555-0123.
+    """
+    
+    # Step 4: Extract JSON from the text
+    result = extractor.extract_json(text_content, schema=required_schema)
+    
+    # Step 5: Display the result
+    print("\nExtracted Information:")
+    print(json.dumps(result, indent=2))
+    
+    # Step 6: Process multiple texts
+    multiple_texts = [
+        "Dr. Michael Chen, 45, is a surgeon. Email: m.chen@hospital.org",
+        "Lisa Wong works as a teacher. She is 29 years old."
+    ]
+    
+    batch_results = extractor.batch_extract(multiple_texts, schema=required_schema)
+    
+    for i, result in enumerate(batch_results):
+        print(f"\nText {i+1} result:")
+        print(json.dumps(result, indent=2))

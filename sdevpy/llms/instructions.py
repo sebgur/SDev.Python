@@ -1,0 +1,145 @@
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import json
+import re
+from typing import Dict, Optional
+
+class JSONExtractor:
+    """Extract structured JSON from text using a trained model"""
+    def __init__(self, model_path: str, device: Optional[str] = None):
+        """ Initialize the extractor with a trained model
+        Args:
+            model_path: Path to saved model directory
+            device: 'cuda', 'cpu', or None (auto-detect) """
+        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
+        print(f"Loading model from {model_path}...")
+
+        # Load tokenizer and model
+        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_path)
+        self.model.to(self.device)
+        self.model.eval()  # Set to evaluation mode
+
+        print(f"Model loaded successfully on {self.device}")
+
+    def extract_json(self, text: str, schema: Optional[Dict] = None) -> Dict:
+        """ Extract JSON information from text
+        Args:
+            text: Input text to process
+            schema: Optional JSON schema with default values
+        Returns:
+            Dictionary with extracted information """
+        # Step 1: Tokenize the input text
+        inputs = self.tokenizer(text, max_length=512, truncation=True, padding=True, return_tensors='pt')
+
+        # Move to correct device
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        # Step 2: Generate JSON output
+        with torch.no_grad():
+            outputs = self.model.generate(**inputs, max_length=256,
+                num_beams=5,           # Use beam search for better quality
+                early_stopping=True,
+                temperature=0.7,       # Control randomness
+                do_sample=False        # Deterministic for consistency
+            )
+
+        # Step 3: Decode the generated tokens to text
+        json_string = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+        # Step 4: Parse and validate the JSON
+        result = self._parse_json_safely(json_string)
+
+        # Step 5: Apply schema defaults if provided
+        if schema:
+            result = self._apply_schema(result, schema)
+
+        return result
+
+    def _parse_json_safely(self, json_string: str) -> Dict:
+        """ Attempt to parse JSON with error recovery
+        Args:
+            json_string: String to parse as JSON
+        Returns:
+            Parsed dictionary or error information """
+        try:
+            # Try direct parsing first
+            return json.loads(json_string)
+        except json.JSONDecodeError:
+            # Attempt to fix common issues
+            fixed_string = self._fix_json_errors(json_string)
+            try:
+                return json.loads(fixed_string)
+            except:
+                # If all else fails, return the raw output
+                return {"error": "Failed to parse JSON", "raw_output": json_string}
+
+    def _fix_json_errors(self, s: str) -> str:
+        """Fix common JSON formatting errors"""
+        # Remove text before first { or [
+        s = re.sub(r'^[^{\[]*', '', s)
+        # Remove text after last } or ]
+        s = re.sub(r'[^}\]]*$', '', s)
+        # Fix single quotes to double quotes (careful with apostrophes)
+        s = re.sub(r"(?<!')\'(?!s\b)", '"', s)
+        # Remove trailing commas
+        s = re.sub(r',(\s*[}\]])', r'\1', s)
+        return s
+
+    def _apply_schema(self, result: Dict, schema: Dict) -> Dict:
+        """ Looks like this copies the schema, then fill it in with the fields/values
+            it finds in result? ToDo: test with all kinds of missing/differing data configs """
+        output = schema.copy()
+        output.update(result)
+        return output
+
+    def batch_extract(self, texts: list, schema: Optional[Dict] = None) -> list:
+        """ Process multiple texts at once
+        Args:
+            texts: List of input texts
+            schema: Optional schema to apply to all results
+        Returns:
+            List of extracted JSON dictionaries """
+        results = []
+        for text in texts:
+            result = self.extract_json(text, schema)
+            results.append(result)
+        return results
+
+
+if __name__ == "__main__":
+    # Step 1: Initialize the extractor with your trained model
+    extractor = JSONExtractor(model_path="./text_to_json_model")
+
+    # Step 2: Define your required JSON format (optional schema with defaults)
+    required_schema = {"name": None, "age": None, "occupation": None, "email": None, "phone": None}
+
+    # Step 3: Read text from a file
+    text_content = """
+    Sarah Johnson is a 32-year-old marketing director at Tech Corp. 
+    You can reach her at sarah.j@techcorp.com or call her at 555-0123.
+    She has over 10 years of experience in digital marketing.
+    """
+
+    # Step 4: Extract JSON from the text
+    result = extractor.extract_json(text_content, schema=required_schema)
+
+    # Step 5: Display the result
+    print("\nExtracted Information:")
+    print(json.dumps(result, indent=2))
+
+    # Step 6: Process multiple texts
+    print("\n" + "="*50)
+    print("Batch Processing Example:")
+    print("="*50)
+
+    multiple_texts = [
+        "Dr. Michael Chen, 45, is a surgeon. Email: m.chen@hospital.org",
+        "Lisa Wong works as a teacher. She is 29 years old. Contact: lisa.w@school.edu"
+    ]
+
+    batch_results = extractor.batch_extract(multiple_texts, schema=required_schema)
+
+    for i, result in enumerate(batch_results):
+        print(f"\nText {i+1} result:")
+        print(json.dumps(result, indent=2))

@@ -1,6 +1,41 @@
 import torch
 
 
+class ChatGenerator:
+    def __init__(self, device, model, tokenizer, context_length, token_generator,
+                 max_new_tokens, max_sentences):
+        self.device = device
+        self.model = model
+        self.tokenizer = tokenizer
+        self.context_length = context_length
+        self.token_generator = token_generator
+        self.max_new_tokens = max_new_tokens
+        self.max_sentences = max_sentences
+
+        period = tokenizer.encode(".")[0]
+        exclamation = tokenizer.encode("!")[0]
+        question = tokenizer.encode("?")[0]
+        self.eos_tokens = [period, exclamation, question]
+        self.eot_tokens = [tokenizer.eot_token]
+
+    def dialog(self, start_text):
+        print("Input text:\n", start_text)
+        print()
+        end_text = self.end_text(start_text)
+        print("Output text:\n", self.format_answer(start_text, end_text))
+        print()
+        return end_text
+
+    def end_text(self, start_text):
+        start_tokens = text_to_tokens(start_text, self.tokenizer).to(self.device)
+        tokens = generate(self.model, start_tokens, max_new_tokens=self.max_new_tokens,
+                          context_size=self.context_length, token_generator=self.token_generator,
+                          eos_ids=self.eos_tokens, max_sentences=self.max_sentences,
+                          eot_ids=self.eot_tokens)
+
+        return tokens_to_text(tokens, self.tokenizer)
+
+
 def format_answer(start_text, answer_text):
     answer = answer_text.replace(start_text, '') # Remove input
     answer = answer.lstrip()
