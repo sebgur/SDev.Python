@@ -1,7 +1,7 @@
 """ Json utilities for serializing, deserializing, etc. """
 import json
-from pydantic import BaseModel
-from typing import Optional
+# from pydantic import BaseModel
+# from typing import Optional
 
 def serialize(dic, file):
     """ Serialize dictionary into json file """
@@ -29,29 +29,29 @@ def from_string(jsonstr):
 
 
 if __name__ == "__main__":
-    # # Raw json
-    # DATA = {
-    # "user":
-    #   {
-    #       "name": "seb",
-    #       "age": 16,
-    #       "place": "Singapore"
-    #   }
-    # }
-    # print(DATA["user"])
+    # Raw json
+    DATA = {
+    "user":
+      {
+          "name": "seb",
+          "age": 16,
+          "place": "Singapore"
+      }
+    }
+    print(DATA["user"])
 
-    # FILE = r"C:\\temp\\sdevpy\\test.json"
-    # JSONSTR = to_string(DATA)
-    # print(JSONSTR)
+    FILE = r"C:\\temp\\sdevpy\\test.json"
+    JSONSTR = to_string(DATA)
+    print(JSONSTR)
 
-    # NEWDATA = from_string(JSONSTR)
-    # NEWDATA["user"]["age"] = 12
-    # print(NEWDATA)
+    NEWDATA = from_string(JSONSTR)
+    NEWDATA["user"]["age"] = 12
+    print(NEWDATA)
 
-    # serialize(NEWDATA, FILE)
+    serialize(NEWDATA, FILE)
 
-    # NEWDATA2 = deserialize(FILE)
-    # print(NEWDATA2['user'])
+    NEWDATA2 = deserialize(FILE)
+    print(NEWDATA2['user'])
 
     # Validate using pydantic
     # class Person(BaseModel):
