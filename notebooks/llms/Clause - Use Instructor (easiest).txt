@@ -1,0 +1,25 @@
+pip install instructor transformers
+
+import instructor
+from transformers import pipeline
+from pydantic import BaseModel
+
+class Person(BaseModel):
+    name: str
+    age: int
+    email: str
+
+# One-time setup
+pipe = pipeline("text-generation", model="meta-llama/Llama-3.1-8B-Instruct")
+client = instructor.from_pipeline(pipe)
+
+# Use it like a pipeline
+def extract_person(text: str) -> Person:
+    return client.create(
+        response_model=Person,
+        messages=[{"role": "user", "content": f"Extract: {text}"}]
+    )
+
+# Usage
+person = extract_person("John is 30, john@example.com")
+print(person.model_dump_json())

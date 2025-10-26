@@ -1,0 +1,351 @@
+"""
+Extract structured JSON from text using local Llama model with schema validation
+Uses Hugging Face Transformers + Pydantic for schema enforcement
+"""
+
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+import json
+from pydantic import BaseModel, Field, EmailStr, ValidationError
+from typing import Optional, List
+import re
+
+
+class JSONExtractor:
+    """Extract structured JSON using local Llama model with schema"""
+    
+    def __init__(self, model_name: str = "meta-llama/Llama-3.1-8B-Instruct"):
+        """
+        Initialize with a Llama model
+        
+        Args:
+            model_name: Hugging Face model identifier
+        """
+        print(f"Loading model: {model_name}")
+        
+        # Load model and tokenizer locally
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            torch_dtype=torch.float16,
+            device_map="auto",  # Automatically use GPU if available
+        )
+        
+        print(f"✓ Model loaded on device: {self.model.device}")
+        print(f"✓ Model parameters: {self.model.num_parameters():,}")
+    
+    def extract_with_schema(
+        self, 
+        text: str, 
+        schema_model: BaseModel,
+        max_retries: int = 3
+    ) -> BaseModel:
+        """
+        Extract JSON from text using a Pydantic schema
+        
+        Args:
+            text: Input text to extract from
+            schema_model: Pydantic model defining the schema
+            max_retries: Number of retry attempts if validation fails
+            
+        Returns:
+            Validated Pydantic model instance
+        """
+        # Get JSON schema from Pydantic model
+        schema = schema_model.model_json_schema()
+        
+        # Create prompt with schema
+        prompt = self._create_prompt(text, schema)
+        
+        # Try extraction with retries
+        for attempt in range(max_retries):
+            try:
+                # Generate JSON
+                json_str = self._generate(prompt)
+                
+                # Parse and validate
+                json_data = self._extract_json_from_response(json_str)
+                validated = schema_model.model_validate(json_data)
+                
+                return validated
+                
+            except (json.JSONDecodeError, ValidationError) as e:
+                print(f"Attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    # Modify prompt to be more explicit
+                    prompt = self._create_stricter_prompt(text, schema, str(e))
+                else:
+                    raise ValueError(f"Failed to extract valid JSON after {max_retries} attempts")
+    
+    def extract_with_dict_schema(
+        self,
+        text: str,
+        schema: dict,
+        max_retries: int = 3
+    ) -> dict:
+        """
+        Extract JSON using a dictionary schema (for those not using Pydantic)
+        
+        Args:
+            text: Input text to extract from
+            schema: Dictionary describing the expected structure
+            max_retries: Number of retry attempts
+            
+        Returns:
+            Dictionary with extracted data
+        """
+        prompt = self._create_prompt(text, schema)
+        
+        for attempt in range(max_retries):
+            try:
+                json_str = self._generate(prompt)
+                json_data = self._extract_json_from_response(json_str)
+                
+                # Basic validation - check required keys
+                if self._validate_against_schema(json_data, schema):
+                    return json_data
+                else:
+                    raise ValueError("Schema validation failed")
+                    
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Attempt {attempt + 1} failed: {e}")
+                if attempt >= max_retries - 1:
+                    raise ValueError(f"Failed to extract valid JSON after {max_retries} attempts")
+        
+        return {}
+    
+    def _create_prompt(self, text: str, schema: dict) -> str:
+        """Create extraction prompt with schema"""
+        schema_str = json.dumps(schema, indent=2)
+        
+        prompt = f"""You are a precise data extraction assistant. Extract information from the text and return ONLY valid JSON matching the provided schema.
+
+Schema:
+{schema_str}
+
+Text to extract from:
+{text}
+
+Return ONLY the JSON object, no explanations or markdown. Start with {{ and end with }}.
+
+JSON:"""
+        
+        return prompt
+    
+    def _create_stricter_prompt(self, text: str, schema: dict, error: str) -> str:
+        """Create a stricter prompt after validation failure"""
+        schema_str = json.dumps(schema, indent=2)
+        
+        prompt = f"""CRITICAL: You must return ONLY valid JSON. Previous attempt had this error: {error}
+
+Schema (follow EXACTLY):
+{schema_str}
+
+Text:
+{text}
+
+RULES:
+1. Return ONLY valid JSON
+2. Match the schema exactly
+3. Use correct data types (strings in quotes, numbers without quotes)
+4. No markdown, no explanations
+5. Start with {{ and end with }}
+
+JSON:"""
+        
+        return prompt
+    
+    def _generate(self, prompt: str, max_new_tokens: int = 512) -> str:
+        """Generate text using the model"""
+        
+        # Tokenize with chat template if available
+        if self.tokenizer.chat_template:
+            messages = [{"role": "user", "content": prompt}]
+            inputs = self.tokenizer.apply_chat_template(
+                messages,
+                return_tensors="pt",
+                add_generation_prompt=True
+            )
+        else:
+            inputs = self.tokenizer(prompt, return_tensors="pt").input_ids
+        
+        inputs = inputs.to(self.model.device)
+        
+        # Generate
+        with torch.no_grad():
+            outputs = self.model.generate(
+                inputs,
+                max_new_tokens=max_new_tokens,
+                temperature=0.1,  # Low temperature for consistency
+                do_sample=True,
+                top_p=0.9,
+                pad_token_id=self.tokenizer.eos_token_id
+            )
+        
+        # Decode
+        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # Extract only the new generation (remove prompt)
+        if self.tokenizer.chat_template:
+            # Response is after the last <|start_header_id|>assistant
+            parts = generated_text.split("assistant")
+            if len(parts) > 1:
+                return parts[-1].strip()
+        
+        # Fallback: try to find JSON in response
+        return generated_text
+    
+    def _extract_json_from_response(self, response: str) -> dict:
+        """Extract JSON object from model response"""
+        # Remove markdown code blocks if present
+        response = re.sub(r'```json\s*', '', response)
+        response = re.sub(r'```\s*', '', response)
+        
+        # Find JSON object
+        json_match = re.search(r'\{.*\}', response, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(0)
+            return json.loads(json_str)
+        
+        # Try parsing the entire response
+        return json.loads(response)
+    
+    def _validate_against_schema(self, data: dict, schema: dict) -> bool:
+        """Basic validation against dictionary schema"""
+        if "properties" in schema:
+            required = schema.get("required", [])
+            for field in required:
+                if field not in data:
+                    return False
+        return True
+
+
+# ============================================
+# Example Usage
+# ============================================
+
+# Define your schema using Pydantic (recommended)
+class Person(BaseModel):
+    """Schema for person information"""
+    name: str = Field(..., description="Full name of the person")
+    age: int = Field(..., ge=0, le=150, description="Age in years")
+    email: EmailStr = Field(..., description="Email address")
+    occupation: Optional[str] = Field(None, description="Job title")
+    phone: Optional[str] = Field(None, description="Phone number")
+
+
+class CompanyInfo(BaseModel):
+    """Schema for company information"""
+    company_name: str
+    founded_year: int
+    employees: int
+    headquarters: str
+    products: List[str] = []
+
+
+def example_person_extraction():
+    """Example: Extract person information with schema"""
+    print("="*60)
+    print("EXAMPLE 1: Person Extraction with Pydantic Schema")
+    print("="*60)
+    
+    # Initialize extractor
+    extractor = JSONExtractor("meta-llama/Llama-3.1-8B-Instruct")
+    
+    # Sample text
+    text = """
+    Dr. Sarah Johnson is a 45-year-old cardiologist working at City Hospital.
+    You can reach her at sarah.johnson@hospital.com or call (555) 123-4567.
+    She specializes in cardiovascular surgery and has been practicing for 20 years.
+    """
+    
+    # Extract with schema validation
+    try:
+        person = extractor.extract_with_schema(text, Person)
+        
+        print("\n✅ Extraction successful!")
+        print(f"Name: {person.name}")
+        print(f"Age: {person.age}")
+        print(f"Email: {person.email}")
+        print(f"Occupation: {person.occupation}")
+        print(f"Phone: {person.phone}")
+        
+        print("\n📄 JSON Output:")
+        print(person.model_dump_json(indent=2))
+        
+    except Exception as e:
+        print(f"❌ Extraction failed: {e}")
+
+
+def example_with_dict_schema():
+    """Example: Using dictionary schema instead of Pydantic"""
+    print("\n" + "="*60)
+    print("EXAMPLE 2: Extraction with Dictionary Schema")
+    print("="*60)
+    
+    extractor = JSONExtractor("meta-llama/Llama-3.1-8B-Instruct")
+    
+    # Define schema as dictionary
+    schema = {
+        "type": "object",
+        "properties": {
+            "product_name": {"type": "string"},
+            "price": {"type": "number"},
+            "in_stock": {"type": "boolean"},
+            "categories": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["product_name", "price"]
+    }
+    
+    text = "The MacBook Pro costs $2499 and is currently available. Categories: Laptop, Electronics, Computers"
+    
+    try:
+        result = extractor.extract_with_dict_schema(text, schema)
+        print("\n✅ Extraction successful!")
+        print(json.dumps(result, indent=2))
+        
+    except Exception as e:
+        print(f"❌ Extraction failed: {e}")
+
+
+def example_batch_extraction():
+    """Example: Process multiple texts"""
+    print("\n" + "="*60)
+    print("EXAMPLE 3: Batch Processing")
+    print("="*60)
+    
+    extractor = JSONExtractor("meta-llama/Llama-3.1-8B-Instruct")
+    
+    texts = [
+        "John Doe, 30 years old, software engineer. Email: john@example.com",
+        "Alice Smith is 25 and works as a data scientist. Contact: alice@company.com",
+        "Bob Johnson, age 35, manager at Tech Corp. Phone: 555-0199"
+    ]
+    
+    results = []
+    for i, text in enumerate(texts):
+        print(f"\nProcessing text {i+1}...")
+        try:
+            person = extractor.extract_with_schema(text, Person)
+            results.append(person)
+            print(f"✓ Extracted: {person.name}, {person.age}, {person.email}")
+        except Exception as e:
+            print(f"✗ Failed: {e}")
+    
+    print(f"\n✅ Successfully extracted {len(results)}/{len(texts)} records")
+
+
+if __name__ == "__main__":
+    # Run examples
+    print("Starting JSON extraction examples with Llama model...")
+    print("Note: First run will download the model (~16GB)")
+    print()
+    
+    # Run the examples
+    example_person_extraction()
+    example_with_dict_schema()
+    example_batch_extraction()
+    
+    print("\n" + "="*60)
+    print("All examples completed!")
+    print("="*60)
