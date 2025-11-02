@@ -3,5 +3,6 @@
     "terminal.integrated.env.windows": {"PYTHONPATH": "${workspaceFolder}"},
     //"python.linting.pep8Enabled": true,
     //"python.linting.pylintEnabled": true,
+    // "python.defaultInterpreterPath": "C:\\Python\\venv\\py3.12.10\\Scripts\\python.exe",
     "terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "Bypass"]
 }
