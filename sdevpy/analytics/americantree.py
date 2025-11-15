@@ -20,7 +20,6 @@ def price(payoff, spot, vol, rf_rate, div_rate, disc_rate,
     else:
         tree = TrinomialTree(n_steps)
         return tree.price(payoff, spot, vol, rf_rate, div_rate, disc_rate)
-        # return trinomial_price(payoff, spot, vol, rf_rate, div_rate, disc_rate, n_steps)
 
 
 class Tree(ABC):
@@ -43,7 +42,6 @@ class Tree(ABC):
         # Backward iterations
         pv_vector = final
         for step in range(n_steps - 1, -1, -1):
-            # print(pv_vector.shape)
             pv_vector = self.roll_back(step, payoff, pv_vector, df)
 
         return pv_vector[0]
@@ -69,7 +67,6 @@ class BinomialTree(Tree):
         self.p = 0.0
 
     def spot_vector(self, step_idx):
-        # stdev = vol * np.sqrt(dt)
         u = self.u
         d = self.d
         return np.asarray([spot * u**i * d**(step_idx - i) for i in range(step_idx + 1)])
@@ -144,8 +141,6 @@ class TrinomialTree(Tree):
     def roll_back(self, step_idx, payoff, pv_vector, df):
         vec_stock = self.spot_vector(step_idx)
         expectation = np.zeros(len(vec_stock))
-        # print(f"Expectation: {expectation.shape}")
-        # print(f"PV: {pv_vector.shape}")
 
         for j in range(len(expectation)):
             tmp = pv_vector[j] * self.pd
@@ -155,91 +150,6 @@ class TrinomialTree(Tree):
             expectation[j] = tmp
 
         return df * expectation
-
-# def binomial_spot_vector(step_idx, dt, spot, vol):
-#     stdev = vol * np.sqrt(dt)
-#     u = np.exp(stdev)
-#     d = 1 / u
-
-#     return np.asarray([spot * u**i * d**(step_idx - i) for i in range(step_idx + 1)])
-
-
-# def roll_back_binomial(step, payoff, old_pv, p, u, d, df):
-#     # Check size of old vector
-#     old_length = len(old_pv)
-#     if old_length != step + 2:
-#         raise RuntimeError("Incorrect vector size in binomial tree")
-
-#     cont_v = np.asarray([df * (p * old_pv[i + 1] + (1.0 - p) * old_pv[i]) for i in range(step + 1)])
-
-#     # Check american exercise
-#     if payoff.is_american:
-#         # Calculate exercise value
-#         spots = spot_vector(step, spot, u, d)
-#         exer_v = payoff.exercise_value(spots)
-#         if exer_v.shape != cont_v.shape:
-#             raise RuntimeError("Incompatible shapes between contination and exercise values")
-
-#         # Compare with continuation value
-#         pv = np.maximum(exer_v, cont_v) # ToDo: test
-#     else:
-#         pv = cont_v
-#     # new_vector = []
-
-#     return pv
-
-
-def trinomial_price(payoff, spot, vol, rf_rate, div_rate, disc_rate, n_steps = 4):
-    ttm = payoff.maturity
-    dt = ttm / n_steps
-    df = np.exp(-disc_rate * dt)
-    drift = rf_rate - div_rate
-
-    # Final boundary
-    spots = trinomial_spot_vector(n_steps, dt, spot, vol)
-    final = payoff.value(spots)
-
-    # Calculate risk-neutral probabilities
-    pu = (
-        (np.exp(drift * dt / 2) - np.exp(-vol * np.sqrt(dt / 2))) /
-        (np.exp(vol * np.sqrt(dt / 2)) - np.exp(-vol * np.sqrt(dt / 2)))
-    ) ** 2
-    pd = (
-        (np.exp(vol * np.sqrt(dt / 2)) - np.exp(drift * dt / 2)) /
-        (np.exp(vol * np.sqrt(dt / 2)) - np.exp(-vol * np.sqrt(dt / 2)))
-    ) ** 2
-    pm = 1 - pu - pd
-
-    # Backward iterations
-    pv_vector = final
-    for step in range(n_steps - 1, -1, -1):
-        vec_stock = trinomial_spot_vector(step, dt, spot, vol)
-    # for i in range(1, n_steps + 1):
-        # vec_stock = trinomial_spot_vector(n_steps - i, dt, spot, vol)
-        expectation = np.zeros(len(vec_stock))
-
-        for j in range(len(expectation)):
-            tmp = pv_vector[j] * pd
-            tmp += pv_vector[j + 1] * pm
-            tmp += pv_vector[j + 2] * pu
-
-            expectation[j] = tmp
-        # Discount option payoff
-        pv_vector = df * expectation
-
-    # Return the expected discounted value of the option at t=0
-    return pv_vector[0]
-
-
-def trinomial_spot_vector(step_idx, dt, spot, vol):
-    u = np.exp(vol * np.sqrt(2.0 * dt))
-    d = 1.0 / u
-
-    vec_u = np.cumprod(u * np.ones(step_idx))
-    vec_d = np.cumprod(d * np.ones(step_idx))
-
-    spots = np.concatenate((vec_d[::-1], [1.0], vec_u)) * spot
-    return spots
 
 
 class Payoff:
@@ -273,10 +183,6 @@ if __name__ == "__main__":
     payoff = Payoff(ttm, strike, is_call, is_american)
     binomial_p = price(payoff, spot, vol, rf_rate, div_rate, disc_rate, 'binomial', n_steps)
     print(f"Binomial: {binomial_p}")
-
-    # bin_tree = BinomialTree(n_steps)
-    # bin_p = bin_tree.price(payoff, spot, vol, rf_rate, div_rate, disc_rate)
-    # print(f"Binomial: {bin_p}")
 
     trinomial_p = price(payoff, spot, vol, rf_rate, div_rate, disc_rate, 'trinomial', n_steps)
     print(f"Trinomial: {trinomial_p}")
