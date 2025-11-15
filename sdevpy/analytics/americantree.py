@@ -38,13 +38,14 @@ if __name__ == "__main__":
     disc_rate = 0.03
     payoff = trees.Payoff(ttm, strike, is_call, is_american)
 
-    repeat = 30
+    repeat = 10
     # bin_range = range(50, 54, 2)
     # tri_range = range(20, 24, 2)
-    bin_range = range(200, 800, 20)
-    tri_range = range(100, 500, 25)
+    bin_range = range(200, 2000, 50)
+    tri_range = range(100, 1000, 25)
 
     # Binomial
+    print("\nCalculating Binomial")
     bin_p = []
     bin_t = []
     for n_steps in bin_range:
@@ -56,6 +57,7 @@ if __name__ == "__main__":
         bin_p.append(p)
 
     # Trinomial
+    print("\nCalculating Trinomial")
     tri_p = []
     tri_t = []
     for n_steps in tri_range:
@@ -71,18 +73,25 @@ if __name__ == "__main__":
     print(f"Trinomial(price): {tri_p[-1]:.4f}")
     print(f"Trinomial(time): {tri_t[-1]:.4f}")
 
-    # Calculate vanilla price
-    fwd = spot * np.exp((rf_rate - div_rate) * ttm)
-    vanilla = np.exp(-disc_rate * ttm) * black.price(ttm, strike, is_call, fwd, vol)
-    print(f"Vanilla CF: {vanilla:.4f}")
-    cf_t = np.linspace(0, tri_t[-1], 50)
-    cf_p = [vanilla] * 50
+    # Closed-Form
+    if not payoff.is_american:
+        fwd = spot * np.exp((rf_rate - div_rate) * ttm)
+        cf = np.exp(-disc_rate * ttm) * black.price(ttm, strike, is_call, fwd, vol)
+        print(f"Vanilla CF: {cf:.4f}")
+        cf_t = np.linspace(0, tri_t[-1], 100)
+        cf_p = [0.0] * 100 # Error 0 for vanilla
+
+        # Reframe as relative errors
+        bin_p = [100.0 * (x / cf - 1.0) for x in bin_p]
+        tri_p = [100.0 * (x / cf - 1.0) for x in tri_p]
+
 
     # Plot the results
     plt.figure(figsize=(10, 6))
     plt.plot(bin_t, bin_p, label='Binomial Tree Price')
     plt.plot(tri_t, tri_p, label='Trinomial Tree Price')
-    plt.plot(cf_t, cf_p, label='Vanilla CF Price')
+    if not payoff.is_american:
+        plt.plot(cf_t, cf_p, label='Vanilla CF Price')
     # # plt.plot(steps_range, trinomial_prices, label='Trinomial Tree Price')
     # plt.hlines(bs_price, steps_range[0], steps_range[-1], colors='r', linestyles='dashed', label='Black-Scholes Price')
     plt.title('Convergence to Black-Scholes Price for Call Options')

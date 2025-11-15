@@ -23,7 +23,19 @@ class Tree(ABC):
         # Backward iterations
         pv_vector = final
         for step in range(self.n_steps - 1, -1, -1):
-            pv_vector = self.roll_back(step, payoff, pv_vector, spot, df)
+            # Roll back to calculate continuation value
+            cont_v = self.roll_back(step, payoff, pv_vector, spot, df)
+
+            # If american exercise, calculate optimum value between continuation and exercize
+            if payoff.is_american:
+                spots = self.spot_vector(step, spot)
+                exer_v = payoff.exercise_value(spots)
+                if exer_v.shape != cont_v.shape:
+                    raise RuntimeError("Incompatible shapes between continuation and exercise values")
+
+                pv_vector = np.maximum(exer_v, cont_v) # ToDo: test
+            else:
+                pv_vector = cont_v
 
         return pv_vector[0]
 
@@ -62,25 +74,27 @@ class BinomialTree(Tree):
         self.p = (np.exp(drift * dt) - self.d) / (self.u - self.d)
 
     def roll_back(self, step_idx, payoff, v, spot, df):
-        # Roll-back to calculate continuation value
+        """ Roll-back to calculate continuation value """
         size = step_idx + 1
         p = self.p
+
         cont_v = np.asarray([df * (p * v[i + 1] + (1.0 - p) * v[i]) for i in range(size)])
+        return cont_v
 
-        # Check american exercise
-        if payoff.is_american:
-            # Calculate exercise value
-            spots = self.spot_vector(step_idx, spot)
-            exer_v = payoff.exercise_value(spots)
-            if exer_v.shape != cont_v.shape:
-                raise RuntimeError("Incompatible shapes between continuation and exercise values")
+        # # Check american exercise
+        # if payoff.is_american:
+        #     # Calculate exercise value
+        #     spots = self.spot_vector(step_idx, spot)
+        #     exer_v = payoff.exercise_value(spots)
+        #     if exer_v.shape != cont_v.shape:
+        #         raise RuntimeError("Incompatible shapes between continuation and exercise values")
 
-            # Calculate optimum value
-            pv = np.maximum(exer_v, cont_v) # ToDo: test
-        else:
-            pv = cont_v
+        #     # Calculate optimum value
+        #     pv = np.maximum(exer_v, cont_v) # ToDo: test
+        # else:
+        #     pv = cont_v
 
-        return pv
+        # return pv
 
 
 class TrinomialTree(Tree):
@@ -116,19 +130,15 @@ class TrinomialTree(Tree):
         self.pm = 1.0 - self.pu - self.pd
 
     def roll_back(self, step_idx, payoff, v, spot, df):
-        # Roll-back to calculate continuation value
+        """ Roll-back to calculate continuation value """
         size = 2 * step_idx + 1
-        # vec_stock = self.spot_vector(step_idx, spot)
-        # cont_v = np.zeros(len(vec_stock))
-        # print(size)
-        # print(len(cont_v))
         pd = self.pd
         pm = self.pm
         pu = self.pu
 
         cont_v = np.asarray([df * (pd * v[i] + pm * v[i+1] + pu * v[i+2]) for i in range(size)])
-
         return cont_v
+        # vec_stock = self.spot_vector(step_idx, spot)
 
 
 class Payoff:
