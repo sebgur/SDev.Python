@@ -61,10 +61,11 @@ class BinomialTree(Tree):
         # Transition probability
         self.p = (np.exp(drift * dt) - self.d) / (self.u - self.d)
 
-    def roll_back(self, step_idx, payoff, pv_vector, spot, df):
+    def roll_back(self, step_idx, payoff, v, spot, df):
         # Roll-back to calculate continuation value
+        size = step_idx + 1
         p = self.p
-        cont_v = np.asarray([df * (p * pv_vector[i + 1] + (1.0 - p) * pv_vector[i]) for i in range(step_idx + 1)])
+        cont_v = np.asarray([df * (p * v[i + 1] + (1.0 - p) * v[i]) for i in range(size)])
 
         # Check american exercise
         if payoff.is_american:
@@ -114,20 +115,18 @@ class TrinomialTree(Tree):
         self.pd = ((df_vol_u - df_drift) / (df_vol_u - df_vol_d))** 2
         self.pm = 1.0 - self.pu - self.pd
 
-    def roll_back(self, step_idx, payoff, pv_vector, spot, df):
-        vec_stock = self.spot_vector(step_idx, spot)
-        cont_v = np.zeros(len(vec_stock))
+    def roll_back(self, step_idx, payoff, v, spot, df):
+        # Roll-back to calculate continuation value
+        size = 2 * step_idx + 1
+        # vec_stock = self.spot_vector(step_idx, spot)
+        # cont_v = np.zeros(len(vec_stock))
+        # print(size)
+        # print(len(cont_v))
         pd = self.pd
         pm = self.pm
         pu = self.pu
 
-        for j in range(len(cont_v)):
-            tmp = pv_vector[j] * pd
-            tmp += pv_vector[j + 1] * pm
-            tmp += pv_vector[j + 2] * pu
-            cont_v[j] = tmp
-
-        cont_v = df * cont_v
+        cont_v = np.asarray([df * (pd * v[i] + pm * v[i+1] + pu * v[i+2]) for i in range(size)])
 
         return cont_v
 

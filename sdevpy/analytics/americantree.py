@@ -38,9 +38,10 @@ if __name__ == "__main__":
     disc_rate = 0.03
     payoff = trees.Payoff(ttm, strike, is_call, is_american)
 
-    # n_steps = 100
-    repeat = 20
-    bin_range = range(200, 1000, 20)
+    repeat = 30
+    # bin_range = range(50, 54, 2)
+    # tri_range = range(20, 24, 2)
+    bin_range = range(200, 800, 20)
     tri_range = range(100, 500, 25)
 
     # Binomial
