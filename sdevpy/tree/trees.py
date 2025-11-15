@@ -1,4 +1,8 @@
-""" Implementation of binomial and trinomial trees for Black-Scholes model """
+""" Binomial and trinomial trees for Black-Scholes model.
+    The binomial tree implementation is ours. The trinomial tree implementation
+    design is ours but the numerical code comes from
+    https://github.com/pachacutexx/Option-Pricing
+     """
 import numpy as np
 from abc import ABC, abstractmethod
 
