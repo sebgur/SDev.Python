@@ -62,11 +62,6 @@ class BinomialTree(Tree):
         self.p = (np.exp(drift * dt) - self.d) / (self.u - self.d)
 
     def roll_back(self, step_idx, payoff, pv_vector, spot, df):
-        # Check size of old vector
-        old_length = len(pv_vector)
-        if old_length != step_idx + 2:
-            raise RuntimeError("Incorrect vector size in binomial tree")
-
         # Roll-back to calculate continuation value
         p = self.p
         cont_v = np.asarray([df * (p * pv_vector[i + 1] + (1.0 - p) * pv_vector[i]) for i in range(step_idx + 1)])
@@ -74,7 +69,7 @@ class BinomialTree(Tree):
         # Check american exercise
         if payoff.is_american:
             # Calculate exercise value
-            spots = spot_vector(step_idx, spot)
+            spots = self.spot_vector(step_idx, spot)
             exer_v = payoff.exercise_value(spots)
             if exer_v.shape != cont_v.shape:
                 raise RuntimeError("Incompatible shapes between continuation and exercise values")
@@ -121,16 +116,20 @@ class TrinomialTree(Tree):
 
     def roll_back(self, step_idx, payoff, pv_vector, spot, df):
         vec_stock = self.spot_vector(step_idx, spot)
-        expectation = np.zeros(len(vec_stock))
+        cont_v = np.zeros(len(vec_stock))
+        pd = self.pd
+        pm = self.pm
+        pu = self.pu
 
-        for j in range(len(expectation)):
-            tmp = pv_vector[j] * self.pd
-            tmp += pv_vector[j + 1] * self.pm
-            tmp += pv_vector[j + 2] * self.pu
+        for j in range(len(cont_v)):
+            tmp = pv_vector[j] * pd
+            tmp += pv_vector[j + 1] * pm
+            tmp += pv_vector[j + 2] * pu
+            cont_v[j] = tmp
 
-            expectation[j] = tmp
+        cont_v = df * cont_v
 
-        return df * expectation
+        return cont_v
 
 
 class Payoff:
