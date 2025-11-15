@@ -1,25 +1,32 @@
 """ Just to test things """
 # import tensorflow as tf
 # import pandas as pd
-# import numpy as np
+import numpy as np
 # import scipy.stats as sp
 # import json
 # import matplotlib.pyplot as plt
 # import requests, zipfile
 # import io
-import torch
-import tiktoken
+# import torch
+# import tiktoken
 # import yfinance as yf
 # import statsmodels.api as sm
 # import scipy.optimize as spop
 # from io import BytesIO
-from sdevpy.llms.gpt import GPTModel
-import sdevpy.llms.textgen as tg
+# from sdevpy.llms.gpt import GPTModel
+# import sdevpy.llms.textgen as tg
 # from sdevpy.volsurfacegen import sabrgenerator
 # from sdevpy.maths import metrics
 # from sdevpy.maths import optimization
 # from sdevpy.analytics import sabr
 # from sklearn.preprocessing import StandardScaler
+
+
+################### Broadcasting
+
+for i in range(5, -1, -1):
+    print(str(i))
+
 
 # GPT_CONFIG_124M = {
 #     "vocab_size": 50257,    # Vocabulary size
@@ -54,40 +61,37 @@ import sdevpy.llms.textgen as tg
 # print("Model output\n", model_output)
 
 
-GPT_CONFIG_124M = {
-    "vocab_size": 50257,    # Vocabulary size
-    "context_length": 256, # Context length
-    "emb_dim": 768,         # Embedding dimension
-    "n_heads": 12,          # Number of attention heads
-    "n_layers": 12,         # Number of layers (number of transformer blocks)
-    "drop_rate": 0.1,       # Dropout rate
-    "qkv_bias": False       # Query-Key-Value bias
-}
+# GPT_CONFIG_124M = {
+#     "vocab_size": 50257,    # Vocabulary size
+#     "context_length": 256, # Context length
+#     "emb_dim": 768,         # Embedding dimension
+#     "n_heads": 12,          # Number of attention heads
+#     "n_layers": 12,         # Number of layers (number of transformer blocks)
+#     "drop_rate": 0.1,       # Dropout rate
+#     "qkv_bias": False       # Query-Key-Value bias
+# }
 
-file = r"C:\\temp\\llms\\model-save.pth"
-# torch.manual_seed(123)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-checkpoint = torch.load(file, map_location=device)
-model = GPTModel(GPT_CONFIG_124M)
-model.load_state_dict(checkpoint["model_state_dict"])
-optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.1)
-optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-# model.train();
+# file = r"C:\\temp\\llms\\model-save.pth"
+# # torch.manual_seed(123)
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# checkpoint = torch.load(file, map_location=device)
+# model = GPTModel(GPT_CONFIG_124M)
+# model.load_state_dict(checkpoint["model_state_dict"])
+# optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.1)
+# optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+# # model.train();
 
-tokenizer = tiktoken.get_encoding("gpt2")
+# tokenizer = tiktoken.get_encoding("gpt2")
 
-start_text = "Every effort moves you"
+# start_text = "Every effort moves you"
 
-start_tensor = tg.text_to_token_ids(start_text, tokenizer)
-model.eval()
-token_ids = tg.generate_text_simple(model=model, idx=start_tensor, max_new_tokens=50,
-                                    context_size=GPT_CONFIG_124M["context_length"])
+# start_tensor = tg.text_to_token_ids(start_text, tokenizer)
+# model.eval()
+# token_ids = tg.generate_text_simple(model=model, idx=start_tensor, max_new_tokens=50,
+#                                     context_size=GPT_CONFIG_124M["context_length"])
 
-print("Input: " + start_text)
-print("Output: " + tg.token_ids_to_text(token_ids, tokenizer).replace(start_text, ''))
-
-
-
+# print("Input: " + start_text)
+# print("Output: " + tg.token_ids_to_text(token_ids, tokenizer).replace(start_text, ''))
 
 
 # PyTorch flattening
