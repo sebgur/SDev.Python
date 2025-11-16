@@ -1,14 +1,25 @@
 import numpy as np
-# import matplotlib
-# matplotlib.use('TkAgg')
+import matplotlib
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
-# print(matplotlib.get_backend())
-
-# ----------------------------
+################# ToDo #############################################################
+# * Work out the coefficients in equations, check that build_A and the rest
+#   produce the right coefficients assuming implicit scheme.
+# * Separate scheme into class for later introduction of others.
+# * Test the tridiag solver and move it somewhere else. Check around if there are
+#   more efficient/standard algorithms in numpy or scipy or something. There seems
+#   to be one in scipy.linalg in import solve_banded. Highly optimized.
+# * Check what trapez() method does, see if there's a more up to date version
+# * If it does the integration, which it seems, then extract the last probability
+#   density and integrate to calculate a payoff. Start with forward, then options,
+#   and compare against Black-Scholes.
+# * Identify the mollifier code, wrap it in a function.
+# * Might want to implement the theta scheme as overarching Implicit, Explicit and CN.
+# * Wrap up before moving to analytical early approximation, Crank-Nicolson,
+#   adaptative meshes (near the singularity), non-homogeneous time grid and other tricks.
+####################################################################################
 # Parameters
-# ----------------------------
 S0 = 100.0
 r = 0.01
 q = 0.00
@@ -30,6 +41,8 @@ x = np.linspace(x_min, x_max, Nx)
 dx = x[1] - x[0]
 S = np.exp(x)
 
+# What are x and S? Are they vectors or scalars?
+# According to Quant GPT, this is the implicit scheme.
 def build_A(x, S, t):
     N = len(x)
     mu = (r - q - 0.5 * (sigma_loc(S, t)**2))
@@ -115,6 +128,8 @@ def run_forward_mollifier():
     p = mollifier_init(x, S0, k=1.5)
     t = 0.0
     saved = [(t, p.copy())]
+
+    # Roll-back
     step = 0
     while t < T - 1e-15 and step < 10_000_000:
         a, b, c = build_A(x, S, t)
@@ -128,7 +143,7 @@ def run_forward_mollifier():
         p_new = solve_tridiag(a_tr, diag, c_tr, rhs)
         p_new = np.maximum(p_new, 0.0)
         mass = np.trapz(p_new, x)
-        print(mass)
+        # print(mass)
         if mass <= 0:
             raise RuntimeError("Mass vanished numerically.")
         p_new /= mass
@@ -136,6 +151,7 @@ def run_forward_mollifier():
         step += 1
         target_forward = S0 * np.exp((r - q) * t)
         p_new = shift_to_match_forward(x, p_new, target_forward)
+        # ToDo: but, does it still sum to 1 after shifting to match the forward?
         p = p_new
         if any(abs(t - pt) < 0.5*dt for pt in plot_times):
             saved.append((t, p.copy()))
@@ -144,7 +160,6 @@ def run_forward_mollifier():
 
 if __name__ == "__main__":
     saved = run_forward_mollifier()
-    # print(saved)
 
     # plt.figure(figsize=(8,5))
     # for t, p in saved:
