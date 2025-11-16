@@ -1,0 +1,81 @@
+Analytic
+
+Notes about the analytic script:
+
+t0 is chosen on order 
+𝑑
+𝑥
+2
+/
+𝜎
+2
+dx
+2
+/σ
+2
+ so the initial Gaussian is resolved.
+
+We evaluate coefficients at current time t (a common simple implicit choice). For better accuracy you could evaluate at t+dt.
+
+The tridiagonal assembly uses a conservative-style discretization; it's stable for implicit Euler and cheap (Thomas algorithm).
+
+After each implicit step we floor negatives and renormalize, then shift the density to exactly match the forward 
+𝐹
+(
+𝑡
+)
+=
+𝑆
+0
+𝑒
+(
+𝑟
+−
+𝑞
+)
+𝑡
+F(t)=S
+0
+	​
+
+e
+(r−q)t
+. Shifting is done by interpolation in log-space (keeps positivity if interpolation doesn't overshoot).
+
+Mollifier
+
+Practical notes, caveats and tuning suggestions
+
+Finite-difference vs finite-volume / SG: the FD scheme above is straightforward and implicit-stable, but if you need very strong positivity guarantees and sharper handling of drift-dominated regimes, replace the advection/diffusion flux discretization with Scharfetter–Gummel (finite-volume) — it’s a drop-in flux modification but requires slightly different matrix assembly.
+
+Matching forward by shifting: we match the forward exactly by translating the density in 
+𝑥
+x. This preserves shape but may slightly move mass into boundaries if domain too small — ensure domain is wide enough. Alternatively, you can apply an exponential tilt, but shifting is simpler and robust.
+
+Flooring negatives: clipping to zero and renormalizing is a pragmatic fix; if negative mass becomes large, reduce dt or use more robust positivity-preserving spatial discretization.
+
+t0 selection for analytic: the analytic initialization should use small 
+𝑡
+0
+t
+0
+	​
+
+ that yields a Gaussian resolved on the grid. I used a rule ~ 
+𝑑
+𝑥
+2
+/
+𝜎
+2
+dx
+2
+/σ
+2
+. You can increase t0 to decrease stiffness at early times if needed.
+
+Time stepping: implicit Euler is first-order in time but monotone and robust. After the transient you can swap to Crank–Nicolson for second-order time accuracy, but watch for possible small undershoots (clip/limit).
+
+Boundary conditions: code uses simple one-sided approximations to impose reflecting (zero-flux). If you want absorbing boundaries, change boundary rows appropriately.
+
+Interpolation aliasing: the shift via np.interp is linear interpolation; it is simple and good provided your grid is fine enough. If you prefer higher-order interpolation use scipy.interpolate.interp1d(kind='cubic') (but be careful of overshoot).

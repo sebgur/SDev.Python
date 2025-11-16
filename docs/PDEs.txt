@@ -1,0 +1,558 @@
+Prompt1:
+I would like to develop a forward PDE on the probability density. Are there any good references for how to do that efficiently, smoothly, in a stable fashiong, given the singularity of the Dirac at t = 0?
+
+Response1:
+Avoid representing the Dirac literally. replace δ(x−x0)\delta(x-x_0)δ(x−x0​) by a mollifier (smooth kernel) that approximates the delta at the numerical resolution:
+
+Gaussian mollifier Gε(x)=12πεe−(x−x0)2/(2ε)G_\varepsilon(x)=\frac{1}{\sqrt{2\pi\varepsilon}}e^{-(x-x_0)^2/(2\varepsilon)}Gε​(x)=2πε​1​e−(x−x0​)2/(2ε) with ε\varepsilonε chosen relative to grid spacing hhh and earliest time step Δt \Delta tΔt (typical choice ε∼Ch2\varepsilon \sim C h^2ε∼Ch2 or ε\varepsilonε tied to the diffusion scale).
+
+Or use analytic short-time fundamental solution if the coefficients are smooth and locally nearly constant (see below).
+
+Small-time analytic / asymptotic initialization when possible.
+
+For small ttt you can convolve the delta with the short-time Green’s function (Gaussian with covariance from integrated diffusion), then start the numerical solver at a small t0>0t_0>0t0​>0 using that analytic profile. This removes the singularity entirely.
+
+Enforce discrete mass conservation & optional renormalization.
+
+After a step, check total mass; if slight numerical loss occurs, renormalize or use strictly conservative schemes so renormalization is not needed.
+
+How to treat the δ\deltaδ at t=0t=0t=0 in detail
+Two practical approaches:
+A — Mollify + start at t=0t=0t=0
+Put initial condition p(x,0)=Gε(x−x0)p(x,0)=G_\varepsilon(x-x_0)p(x,0)=Gε​(x−x0​) with ε\varepsilonε chosen so the initial Gaussian is resolved by grid (say full width at half max > 4–6 grid cells). Then evolve with chosen scheme. Convergence: as h,Δt→0h,\Delta t\to0h,Δt→0 and ε→0\varepsilon\to0ε→0 with ε\varepsilonε tied to hhh appropriately, you recover the true solution.
+
+
+B — Analytic short-time start (recommended when possible)
+For small ttt the solution is approximately the fundamental solution (Gaussian with mean moved by initial drift and covariance from diffusion). More precisely, if coefficients are smooth near x0x_0x0​:
+p(x,t)≈1(2π)ddet⁡Σ(t)exp⁡ ⁣(−12(x−xˉ(t))⊤Σ(t)−1(x−xˉ(t)))  p(x,t) \approx \frac{1}{\sqrt{(2\pi)^d\det\Sigma(t)}}\exp\!\Big(-\tfrac12 (x-\bar x(t))^\top\Sigma(t)^{-1}(x-\bar x(t))\Big)p(x,t)≈(2π)ddetΣ(t)​1​exp(−21​(x−xˉ(t))⊤Σ(t)−1(x−xˉ(t)))
+where xˉ(t)\bar x(t)xˉ(t) and Σ(t)\Sigma(t)Σ(t) are short-time expansions (integrals) of drift and diffusion. Use that analytic profile at t=t0t=t_0t=t0​ (small) and start the numerical integrator at t0t_0t0​. This eliminates the singularity entirely and is often more accurate and stable than mollifying numerically.
+
+
+Recommended references
+(Theory & the Fokker–Planck / Kolmogorov equations)
+H. Risken, The Fokker–Planck Equation: Methods of Solution and Applications — classic, excellent on both derivation, properties and some solution methods.
+
+C. Gardiner, Handbook of Stochastic Methods — clear exposition of SDEs and forward/backward equations, useful expansions and short-time kernels.
+
+G. A. Pavliotis, Stochastic Processes and Applications — modern treatment with probabilistic techniques and asymptotics.
+
+(Numerical PDEs — positivity, conservation, and stiff diffusion)
+R. J. LeVeque, Finite Difference Methods for Ordinary and Partial Differential Equations — practical recipes for stability, boundary conditions.
+
+(Spectral methods / Gibbs control)
+J. S. Hesthaven, S. Gottlieb, and D. Gottlieb, Spectral Methods for Time-Dependent Problems — covers filters, spectral viscosity (Tadmor).
+
+(Positivity preserving / limiters)
+X. Zhang & C.-W. Shu, On maximum-principle-satisfying and positivity-preserving high order schemes for conservation laws — construction of positivity preserving time integrators and limiters.
+
+Prompt2:
+High-level recommendations (short)
+
+Solve the Fokker–Planck in log-space 
+Remove the delta analytically or with a mollifier: start the solver at a small.
+User the mollifier OR (but not together) the analytical approximation.
+Make the grid non-uniform (clustering around relevant strikes) or use locally refined mesh.
+
+Regularize / smooth the local-vol surface (monotone cubic, log-spline, small temporal smoothing) and ensure positivity/extrapolation rules to avoid pathological coefficients.
+
+Treating the Dirac at 
+Two practical, robust choices:
+
+(A) Short-time analytic start (recommended)
+
+Use the short-time Gaussian approximation for the law of 
+​
+
+. For a very small 
+𝑡
+0
+t
+0
+	​
+
+,
+
+𝑝
+𝑋
+(
+𝑥
+,
+𝑡
+0
+)
+≈
+1
+2
+𝜋
+ 
+Σ
+(
+𝑡
+0
+)
+exp
+⁡
+(
+−
+(
+𝑥
+−
+𝑥
+ˉ
+(
+𝑡
+0
+)
+)
+2
+2
+Σ
+(
+𝑡
+0
+)
+)
+,
+p
+X
+	​
+
+(x,t
+0
+	​
+
+)≈
+2πΣ(t
+0
+	​
+
+)
+	​
+
+1
+	​
+
+exp(−
+2Σ(t
+0
+	​
+
+)
+(x−
+x
+ˉ
+(t
+0
+	​
+
+))
+2
+	​
+
+),
+
+where to leading order 
+𝑥
+ˉ
+(
+𝑡
+0
+)
+≈
+𝑥
+0
++
+𝜇
+𝑋
+(
+𝑥
+0
+,
+0
+)
+ 
+𝑡
+0
+x
+ˉ
+(t
+0
+	​
+
+)≈x
+0
+	​
+
++μ
+X
+	​
+
+(x
+0
+	​
+
+,0)t
+0
+	​
+
+ and 
+Σ
+(
+𝑡
+0
+)
+≈
+𝜎
+𝑋
+2
+(
+𝑥
+0
+,
+0
+)
+ 
+𝑡
+0
+Σ(t
+0
+	​
+
+)≈σ
+X
+2
+	​
+
+(x
+0
+	​
+
+,0)t
+0
+	​
+
+. (If you want higher accuracy include Jacobian/Itô correction terms.)
+
+Pick 
+𝑡
+0
+t
+0
+	​
+
+ so the initial Gaussian has several grid cells of width: take
+
+t_0 \approx C\frac{h_x^2}{\sigma_X^2_{\max}},
+
+with 
+𝐶
+∈
+[
+0.25
+,
+1
+]
+C∈[0.25,1] and 
+ℎ
+𝑥
+h
+x
+	​
+
+ the local grid spacing near 
+𝑥
+0
+x
+0
+	​
+
+. This makes the initial variance ~
+ℎ
+𝑥
+2
+h
+x
+2
+	​
+
+ and resolves the peak. Then start the PDE solver at 
+𝑡
+0
+t
+0
+	​
+
+ using that profile.
+
+(B) Mollifier / regularization
+
+Initialize 
+𝑝
+𝑋
+(
+𝑥
+,
+0
+)
+=
+𝑁
+(
+𝑥
+0
+,
+𝜀
+2
+)
+p
+X
+	​
+
+(x,0)=N(x
+0
+	​
+
+,ε
+2
+) with 
+𝜀
+≈
+𝑘
+ℎ
+𝑥
+ε≈kh
+x
+	​
+
+, 
+𝑘
+≈
+1
+ ⁣
+−
+ ⁣
+3
+k≈1−3. Evolve from 
+𝑡
+=
+0
+t=0. This works but requires matching 
+𝜀
+ε to the grid — otherwise you either smear too much or create unresolved steepness.
+
+The analytic short-time start (A) usually gives better accuracy and avoids artifacts.
+
+Grid design & boundary conditions
+
+Use log grid 
+𝑥
+=
+ln
+⁡
+𝑆
+x=lnS. Choose 
+[
+𝑥
+min
+⁡
+,
+𝑥
+max
+⁡
+]
+[x
+min
+	​
+
+,x
+max
+	​
+
+] wide enough so tails are negligible for your horizon (e.g. cover several standard deviations).
+
+Use non-uniform mesh (geometric stretching or clustering around 
+ln
+⁡
+𝑆
+0
+lnS
+0
+	​
+
+ and strikes). Finite-volume + SG works on nonuniform meshes.
+
+Boundary conditions: zero net flux (Neumann, 
+𝐹
+=
+0
+F=0) is natural (no mass flow through truncated boundary). For distant boundaries you can also use absorbing BC if you want to allow mass to leave (but that violates conservation). Zero-flux is recommended in practice provided domain is large enough.
+
+Make sure the grid resolves the initial peak: adapt 
+ℎ
+𝑥
+h
+x
+	​
+
+ so the initial Gaussian covers several cells.
+
+Practical handling of 
+𝜎
+l
+o
+c
+σ
+loc
+	​
+
+ (interpolation & regularization)
+
+If 
+𝜎
+l
+o
+c
+(
+𝑆
+,
+𝑡
+)
+σ
+loc
+	​
+
+(S,t) is given at discrete strikes/times:
+
+Interpolate smoothly in 
+𝑆
+S (or 
+𝑥
+=
+ln
+⁡
+𝑆
+x=lnS) — use monotone cubic splines (Fritsch–Carlson), or splines on 
+ln
+⁡
+𝜎
+lnσ to enforce positivity.
+
+Smooth in time if quotes are noisy. Temporal smoothing prevents large oscillations in coefficients that cause numerical trouble.
+
+Extrapolate for 
+𝑆
+S beyond quoted strikes: either flat in log-strike or linear in implied variance with strike — ensure positivity and smoothness.
+
+If parametric, ensure the parameterization enforces 
+𝜎
+l
+o
+c
+>
+0
+σ
+loc
+	​
+
+>0 everywhere. If using implied vol → local vol conversion (Dupire), perform smoothing/regularization in that step.
+
+Suggested working parameters (starting values)
+
+Grid: 200–1000 cells depending on accuracy required. Cluster more cells near ATM/strikes you care about.
+
+𝑡
+0
+t
+0
+	​
+
+ for analytic start: 
+𝑡
+0
+=
+0.5
+ 
+ℎ
+𝑥
+2
+/
+(
+max
+⁡
+𝑥
+∈
+near 
+𝑥
+0
+𝜎
+𝑋
+2
+(
+𝑥
+,
+0
+)
+)
+t
+0
+	​
+
+=0.5h
+x
+2
+	​
+
+/(max
+x∈near x
+0
+	​
+
+	​
+
+σ
+X
+2
+	​
+
+(x,0)). (If that gives an extremely tiny 
+𝑡
+0
+t
+0
+	​
+
+, cap at e.g. 
+10
+−
+8
+10
+−8
+ years or a user-chosen min.)
+
+Time step: for implicit diffusion you can take larger 
+Δ
+𝑡
+Δt (e.g. a fraction of your horizon divided by 1000), but ensure 
+Δ
+𝑡
+≲
+ℎ
+𝑥
+/
+max
+⁡
+∣
+𝜇
+∣
+Δt≲h
+x
+	​
+
+/max∣μ∣ if drift treated explicitly. For drift implicit (full implicit), you can take larger steps but prefer smaller at early times.
+
+Tolerance for clipping negative values: if negative mass < 
+10
+−
+12
+10
+−12
+ you can clip & renormalize; otherwise resolve numerics.
