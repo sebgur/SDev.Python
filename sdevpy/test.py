@@ -1,10 +1,13 @@
 """ Just to test things """
+import os
 # import tensorflow as tf
 # import pandas as pd
 import numpy as np
 # import scipy.stats as sp
 # import json
-# import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
 # import requests, zipfile
 # import io
 # import torch
@@ -21,6 +24,12 @@ import numpy as np
 # from sdevpy.analytics import sabr
 # from sklearn.preprocessing import StandardScaler
 
+
+print(os.getenv('MPLBACKEND'))
+print(matplotlib.get_backend())
+
+plt.plot([1,2,3],[4,5,6])
+plt.show()
 
 ################### Broadcasting
 
