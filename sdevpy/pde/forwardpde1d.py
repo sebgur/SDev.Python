@@ -7,9 +7,6 @@ from scipy.interpolate import interp1d
 # * Work out the coefficients in equations, check that build_A and the rest
 #   produce the right coefficients assuming implicit scheme.
 # * Separate scheme into class for later introduction of others.
-# * Test the tridiag solver and move it somewhere else. Check around if there are
-#   more efficient/standard algorithms in numpy or scipy or something. There seems
-#   to be one in scipy.linalg in import solve_banded. Highly optimized.
 # * Check what trapez() method does, see if there's a more up to date version
 # * If it does the integration, which it seems, then extract the last probability
 #   density and integrate to calculate a payoff. Start with forward, then options,
