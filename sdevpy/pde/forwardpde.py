@@ -24,6 +24,8 @@ from sdevpy.maths import metrics
 # * The choice of time grid during calibration may be guided by the location of the
 #   calibration dates. We could decide a certain number of time steps being between
 #   each market date, with a certain minimum number especially on the first interval.
+# * To check the quality of the calibration, start by comparing against same forward
+#   PDE as used in calibration, and then check against backward PDE.
 
 atm_vol = 0.20
 def local_vol(t, x_grid):
@@ -69,7 +71,7 @@ def roll_forward(p, x, ts, te, local_vol, scheme):
     theta = scheme['theta']
     dx = scheme['dx'] # Assuming homogeneous x grid
     one_m_theta = 1.0 - theta
-    n_spotgrid = x.shape[0]
+    n_x = x.shape[0]
     dt = te - ts
     a = 1.0 / dx**2 + 0.5 / dx
     b = 2.0 / dx**2
@@ -78,11 +80,11 @@ def roll_forward(p, x, ts, te, local_vol, scheme):
     # Calculate result vector using previous probabilities
     lv = local_vol(ts, x)
     one_m_theta_dt_2 = one_m_theta * dt / 2.0
-    y = np.zeros(n_spotgrid)
-    for j in range(n_spotgrid):
+    y = np.zeros(n_x)
+    for j in range(n_x):
         p_tmp = (1.0 - one_m_theta_dt_2 * b * lv[j]**2) * p[j]
 
-        if j < n_spotgrid - 1: # Beyond that the probability is 0
+        if j < n_x - 1: # Beyond that the probability is 0
             p_tmp += one_m_theta_dt_2 * a * lv[j + 1]**2 * p[j + 1]
 
         if j > 0: # Before that the probability is 0
@@ -93,13 +95,13 @@ def roll_forward(p, x, ts, te, local_vol, scheme):
     # Calculate band vectors for tridiagonal system
     lv = local_vol(te, x)
     theta_dt_2 = theta * dt / 2.0
-    upper = np.zeros(n_spotgrid - 1)
-    main = np.zeros(n_spotgrid)
-    lower = np.zeros(n_spotgrid - 1)
-    for j in range(n_spotgrid):
+    upper = np.zeros(n_x - 1)
+    main = np.zeros(n_x)
+    lower = np.zeros(n_x - 1)
+    for j in range(n_x):
         main[j] = (1.0 + theta_dt_2 * b * lv[j]**2)
 
-        if j < n_spotgrid - 1:
+        if j < n_x - 1:
             upper[j] = -theta_dt_2 * a * lv[j + 1]**2
 
         if j > 0:
@@ -110,30 +112,20 @@ def roll_forward(p, x, ts, te, local_vol, scheme):
     return p_new
 
 
-if __name__ == "__main__":
-    maturity = 2.5
-    time_config = {'n_steps': 500}
-    spot_config = {'n_meshes': 200, 'mesh_vol': atm_vol, 'percentile': 1e-6}
-    scheme = {'theta': 1.0, 'mollifier': 1.5}
-    print(f"Time steps: {time_config['n_steps']}")
-    print(f"Spot steps: {spot_config['n_meshes']}")
-
-    ### Build time grid ####
+def forward_pde_density(maturity, time_config, spot_config, scheme):
+    # Build time grid
     t_grid = build_timegrid(maturity, time_config)
-    # print(f"Time grid:\n {t_grid}")
     n_timegrid = t_grid.shape[0]
 
-    #### Build spot grid ####
+    # Build spot grid
     x_grid, dx, spot_idx = build_spotgrid(maturity, spot_config)
     scheme['dx'] = dx
     scheme['spot_idx'] = spot_idx
-    # print(f"Spot grid:\n {x_grid}")
-    # print(f"dx: {dx}")
 
-    #### Initial probability ####
+    # Initial probability
     p = mollifier(x_grid, 0.0, scheme['dx'], scheme['mollifier'])
 
-    #### Backward reduction ####
+    # Backward reduction
     for i in range(n_timegrid - 1):
         ts = t_grid[i]
         te = t_grid[i + 1]
@@ -143,9 +135,49 @@ if __name__ == "__main__":
 
         # Check sum at te
         mass = np.trapezoid(p, x_grid)
-        print(f"Mass: {mass:.6f}")
+        # print(f"Mass: {mass:.6f}")
 
-    #### Display ##################################################################################
+    return x_grid, p
+
+
+if __name__ == "__main__":
+    maturity = 2.5
+    time_config = {'n_steps': 500}
+    spot_config = {'n_meshes': 200, 'mesh_vol': atm_vol, 'percentile': 1e-6}
+    scheme = {'theta': 1.0, 'mollifier': 1.5}
+    print(f"Time steps: {time_config['n_steps']}")
+    print(f"Spot steps: {spot_config['n_meshes']}")
+
+    x_grid, p = forward_pde_density(maturity, time_config, spot_config, scheme)
+
+    # ### Build time grid ####
+    # t_grid = build_timegrid(maturity, time_config)
+    # # print(f"Time grid:\n {t_grid}")
+    # n_timegrid = t_grid.shape[0]
+
+    # #### Build spot grid ####
+    # x_grid, dx, spot_idx = build_spotgrid(maturity, spot_config)
+    # scheme['dx'] = dx
+    # scheme['spot_idx'] = spot_idx
+    # # print(f"Spot grid:\n {x_grid}")
+    # # print(f"dx: {dx}")
+
+    # #### Initial probability ####
+    # p = mollifier(x_grid, 0.0, scheme['dx'], scheme['mollifier'])
+
+    # #### Backward reduction ####
+    # for i in range(n_timegrid - 1):
+    #     ts = t_grid[i]
+    #     te = t_grid[i + 1]
+
+    #     # Roll forward from ts to te
+    #     p = roll_forward(p, x_grid, ts, te, local_vol, scheme)
+
+    #     # Check sum at te
+    #     mass = np.trapezoid(p, x_grid)
+    #     # print(f"Mass: {mass:.6f}")
+
+    #### Diagnostics ##############################################################################
     ## Check probability density ##
     # Range
     n_dev = 4
@@ -172,28 +204,38 @@ if __name__ == "__main__":
     print(f"Int(pde): {np.trapezoid(pde_p, pde_x)}")
     print(f"Diff: {diff:.6f}")
 
+    # Plot
+    plt.plot(pde_x, pde_p, label="PDE", color='red')
+    plt.plot(cf_x, cf_p, label="CF", color='blue')
+    plt.legend()
+    plt.show()
+
     ## Check option prices ##
     spot = 100.0
-    strike = spot
+    strikes = np.linspace(0.50 * spot, 2.0 * spot, 16)
     r = 0.0
     q = 0.0
     r_disc = 0.0
     fwd = spot * np.exp((r - q) * maturity)
-    vol = 0.20
     is_call = True
-    cf_price = black.price(maturity, strike, is_call, fwd, vol)
 
-    print("Calculate price with PDE")
+    print("Calculate prices with Closed-Form")
+    cf_prices = black.price(maturity, strikes, is_call, fwd, atm_vol)
+    # Intrinsic values
+    it_prices = np.maximum(fwd - strikes, 0.0)
+
+    print("Calculate prices with PDE")
     s = fwd * np.exp(x_grid)
-    payoff = np.maximum(s - strike, 0.0)
-    weighted_payoff = payoff * p
-    pde_price = np.trapezoid(weighted_payoff, x_grid)
+    pde_prices = []
+    for k in strikes:
+        payoff = np.maximum(s - k, 0.0)
+        weighted_payoff = payoff * p
+        pde_prices.append(np.trapezoid(weighted_payoff, x_grid))
 
-    print(f"Price(cf): {cf_price}")
-    print(f"Price(pde): {pde_price}")
+    for k, c, p in zip(strikes, cf_prices, pde_prices):
+        print(f"{k:.0f},{c:.2f},{p:.2f}")
 
-    # Plot
-    plt.plot(pde_x, pde_p, label="PDE", color='red')
-    plt.plot(cf_x, cf_p, label="CF", color='blue')
+    plt.plot(strikes, pde_prices - it_prices, label="PDE", color='red')
+    plt.plot(strikes, cf_prices - it_prices, label="CF", color='blue')
     plt.legend()
     plt.show()
