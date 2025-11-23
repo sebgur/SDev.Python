@@ -134,10 +134,10 @@ if __name__ == "__main__":
                 lower[j - 1] = -theta_dt_2 * c * lv[j - 1]**2
 
         # Solve tridiagonal system
-        x = tridiag.solve(upper, main, lower, y)
-        p = x.copy()
+        p = tridiag.solve(upper, main, lower, y)
 
     #### Display ##################################################################################
+    ## Check probability density ##
     # Range
     n_dev = 4
     stdev = atm_vol * np.sqrt(maturity)
@@ -146,12 +146,12 @@ if __name__ == "__main__":
     # PDE
     pde_x = []
     pde_p = []
-    for u, v in zip(x_grid, x):
+    for u, v in zip(x_grid, p):
         if np.abs(u) < x_max:
             pde_x.append(u)
             pde_p.append(v)
 
-    # Closed-form at ATM
+    # Closed-form
     cf_x = np.linspace(-x_max, x_max, 100)
     cf_p = norm.pdf(cf_x, loc=-0.5 * stdev**2, scale=stdev)
 
@@ -163,6 +163,7 @@ if __name__ == "__main__":
     print(f"Int(pde): {np.trapezoid(pde_p, pde_x)}")
     print(f"Diff: {diff:.6f}")
 
+    ## Check option prices ##
     spot = 100.0
     strike = spot
     r = 0.0
