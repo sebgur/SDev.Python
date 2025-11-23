@@ -1,14 +1,10 @@
-Doc:
+"""
 Finite-Volume solver with Scharfetter–Gummel (SG) flux and implicit (Backward Euler) time stepping.
-
-Conservative, positivity-friendly flux discretization (SG) that handles both advection- and diffusion-dominated regimes robustly.
-
-Analytic short-time initialization (you can swap to a mollifier easily).
-
-Floors negatives, renormalizes mass, and matches the forward by shifting (so the first moment equals the known forward).
-
-Script
-# lv_forward_sg_be.py
+Conservative, positivity-friendly flux discretization (SG) that handles both advection and
+diffusion dominated regimes robustly.
+Analytic short-time initialization (can be swapped to a mollifier).
+Floors negatives, renormalizes mass, and matches the forward by shifting.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 

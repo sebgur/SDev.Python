@@ -136,6 +136,10 @@ if __name__ == "__main__":
         # Solve tridiagonal system
         p = tridiag.solve(upper, main, lower, y)
 
+        # Check sum
+        mass = np.trapezoid(p, x_grid)
+        print(f"Mass: {mass:.6f}")
+
     #### Display ##################################################################################
     ## Check probability density ##
     # Range
