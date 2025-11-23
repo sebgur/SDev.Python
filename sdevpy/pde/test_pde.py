@@ -4,7 +4,7 @@ from scipy.stats import norm
 import matplotlib.pyplot as plt
 from sdevpy.maths import tridiag
 from sdevpy.analytics import black
-# from sdevpy.maths import metrics
+from sdevpy.maths import metrics
 
 ########## ToDo ###################################
 # * Would make sense to wrap the PDE resolution forward into function that goes forward
@@ -27,12 +27,13 @@ from sdevpy.analytics import black
 #   calibration dates. We could decide a certain number of time steps being between
 #   each market date, with a certain minimum number especially on the first interval.
 
+atm_vol = 0.20
 def local_vol(t, x_grid):
     """ As a function of log forward moneyness """
-    vol_atm = 0.20
+    # vol_atm = 0.20
     skew = -0.1
-    return np.asarray([vol_atm for x in x_grid])
-    # return np.asarray([np.maximum(0.01, vol_atm + skew * x) for x in x_grid])
+    return np.asarray([atm_vol for x in x_grid])
+    # return np.asarray([np.maximum(0.01, atm_vol + skew * x) for x in x_grid])
 
 
 def build_timegrid(maturity, config):
@@ -58,17 +59,17 @@ def build_spotgrid(maturity, config):
     return x_grid, dx, n_half
 
 
-def mollifier_init(x, x0, dx, k=1.5):
+def mollifier(x, x0, dx, k=1.5):
     eps = (k * dx)**2
     p = np.exp(-0.5 * (x - x0)**2 / eps) / np.sqrt(2.0 * np.pi * eps)
     # p /= np.trapezoid(p, x)
     return p
 
 if __name__ == "__main__":
-    maturity = 1.0
-    time_config = {'n_steps': 200}
-    spot_config = {'n_meshes': 2000, 'mesh_vol': 0.20, 'percentile': 1e-6}
-    scheme = {'theta': 0.5}
+    maturity = 2.5
+    time_config = {'n_steps': 500}
+    spot_config = {'n_meshes': 200, 'mesh_vol': atm_vol, 'percentile': 1e-6}
+    scheme = {'theta': 1.0}
     print(f"Time steps: {time_config['n_steps']}")
     print(f"Spot steps: {spot_config['n_meshes']}")
 
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     # Naive approach (Dirac)
     # p[spot_idx] = 1.0
     # Mollifier
-    p = mollifier_init(x_grid, 0.0, dx, 1.5)
+    p = mollifier(x_grid, 0.0, dx, 1.5)
 
     #### Backward reduction ####
     a = 1.0 / dx**2 + 0.5 / dx
@@ -103,41 +104,22 @@ if __name__ == "__main__":
         # print(f"\nNew time: {te}")
 
         ## Calculate result vector using previous probabilities ##
-        # Calculate local vol vector
         lv = local_vol(ts, x_grid)
-        # print(f"LV at {ts}: {lv}")
-
-        # Calculate result vector
         one_m_theta_dt_2 = one_m_theta * dt / 2.0
         y = np.zeros(n_spotgrid)
         for j in range(n_spotgrid):
             p_tmp = (1.0 - one_m_theta_dt_2 * b * lv[j]**2) * p[j]
-            # if j == spot_idx:
-            #     print(p_tmp)
 
             if j < n_spotgrid - 1: # Beyond that the probability is 0
                 p_tmp += one_m_theta_dt_2 * a * lv[j + 1]**2 * p[j + 1]
 
-            # if j == spot_idx:
-            #     print(p_tmp)
-
             if j > 0: # Before that the probability is 0
                 p_tmp += one_m_theta_dt_2 * c * lv[j - 1]**2 * p[j - 1]
 
-            # if j == spot_idx:
-            #     print(p_tmp)
-
-
             y[j] = p_tmp
 
-        # print(f"y: {y}")
-        # print(f"int(y): {np.trapezoid(y, x_grid)}")
-
         ## Calculate band vectors for tridiagonal system ##
-        # Calculate local vol vector
         lv = local_vol(te, x_grid)
-        # print(f"LV at {te}: {lv}")
-        # Calculate bands
         theta_dt_2 = theta * dt / 2.0
         upper = np.zeros(n_spotgrid - 1)
         main = np.zeros(n_spotgrid)
@@ -153,43 +135,29 @@ if __name__ == "__main__":
 
         # Solve tridiagonal system
         x = tridiag.solve(upper, main, lower, y)
-        # print(f"x: {x}")
-        # print(f"int(x): {np.trapezoid(y, x_grid)}")
         p = x.copy()
 
-    #### Display ####
-    # PDE
-    pde_x = x_grid
-    pde_p = x
-    # pde_x = []
-    # pde_p = []
-    # for u, v in zip(x_grid, x):
-    #     if u > -0.25 and u < 0.25:
-    #         pde_x.append(u)
-    #         pde_p.append(v)
+    #### Display ##################################################################################
+    # Range
+    n_dev = 4
+    stdev = atm_vol * np.sqrt(maturity)
+    x_max = stdev * n_dev
 
-    # plt.plot(pde_x, pde_p, label="PDE", color='red')
+    # PDE
+    pde_x = []
+    pde_p = []
+    for u, v in zip(x_grid, x):
+        if np.abs(u) < x_max:
+            pde_x.append(u)
+            pde_p.append(v)
 
     # Closed-form at ATM
-    atm_vol = 0.20
-    percentile = 1e-4
-    p = norm.ppf(1.0 - percentile)
-    x_max = atm_vol * np.sqrt(maturity) * p
-    cf_x = pde_x
-    # cf_x = np.linspace(-x_max, x_max, 100)
-    cf_p = norm.pdf(cf_x, loc=0.0, scale=atm_vol * np.sqrt(maturity))
-    # plt.plot(cf_x, cf_p, label="CF", color='blue')
-    # plt.legend()
-
-    # print(pde_p)
-    # print(cf_p)
+    cf_x = np.linspace(-x_max, x_max, 100)
+    cf_p = norm.pdf(cf_x, loc=-0.5 * stdev**2, scale=stdev)
 
     # Calculate diffs
-    diff = 0.0
-    for pde, cf in zip(pde_p, cf_p):
-        diff += (pde - cf)**2
-    diff = np.sqrt(diff / len(pde_p))
-    # diff = metrics.rmse(pde_p, cf_p)
+    cf_all = norm.pdf(pde_x, loc=-0.5 * stdev**2, scale=stdev)
+    diff = metrics.rmse(pde_p, cf_all)
 
     print(f"Int(cf): {np.trapezoid(cf_p, cf_x)}")
     print(f"Int(pde): {np.trapezoid(pde_p, pde_x)}")
@@ -205,15 +173,17 @@ if __name__ == "__main__":
     is_call = True
     cf_price = black.price(maturity, strike, is_call, fwd, vol)
 
-    s = fwd * np.exp(pde_x)
+    print("Calculate price with PDE")
+    s = fwd * np.exp(x_grid)
     payoff = np.maximum(s - strike, 0.0)
-    weighted_payoff = payoff * pde_p
+    weighted_payoff = payoff * p
     pde_price = np.trapezoid(weighted_payoff, x_grid)
 
     print(f"Price(cf): {cf_price}")
     print(f"Price(pde): {pde_price}")
-    # print(payoff)
-    # print(pde_p)
 
-
-    # plt.show()
+    # Plot
+    plt.plot(pde_x, pde_p, label="PDE", color='red')
+    plt.plot(cf_x, cf_p, label="CF", color='blue')
+    plt.legend()
+    plt.show()

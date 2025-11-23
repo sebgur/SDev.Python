@@ -13,7 +13,7 @@ def check_trapezoid(x, y):
 
 
 if __name__ == "__main__":
-    n_points = 4
+    n_points = 100
     vol = 0.20
     t = 5.5
     stdev = vol * np.sqrt(t)
