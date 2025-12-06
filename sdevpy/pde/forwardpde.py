@@ -6,36 +6,6 @@ from sdevpy.analytics import black
 from sdevpy.maths import metrics
 from sdevpy.pde import pdeschemes
 
-########## ToDo (basic) #######################################################
-# * Measure difference in runtime and quality between redoing the entire PDE for
-#   every maturity and using step PDEs but then requiring the x-rescaling.
-# * Forward shifting?
-
-########## ToDo (calibration) #################################################
-# * Implement implied vol design, parametric time SVI, piecewise time SVI
-# * Use seaborn to represent diffs between IV and LV prices on quoted pillars
-# * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
-# * For each LV parametric form, record two sets of parameters: those against
-#   moneyness and those against strike, to achieve both stickiness.
-# * During the warmup in the time direction, we can allocate
-#   on each time slice a local vol functional form that is only a function
-#   of the spot. This would be a generalized version of the storage
-#   of the time interpolation indices for an interpolated surface.
-# * A spot parametric local vol would be spot-parametric on predefined
-#   time slices, and would for instance take the same parametric form
-#   over forward time intervals.
-# * We could resolve forward by taking the previous parametric form as
-#   starting point.
-# * We could use SVI as base and if not enough point, fit only to reduced
-#   set of free parameters, the other ones defaulting to good solver starting points.
-# * For the (backward) pricing PDE, also allow the standard case of a fully interpolated
-#   matrix, using cubic splines with flat extrapolation on both ends and arriving flat
-#   first derivative.
-# * The choice of time grid during calibration may be guided by the location of the
-#   calibration dates. We could decide a certain number of time steps being between
-#   each market date, with a certain minimum number especially on the first interval.
-# * To check the quality of the calibration, start by comparing against same forward
-#   PDE as used in calibration, and then check against backward PDE.
 
 def density_step(old_p, old_x, old_dx, t_grid, local_vol, config):
     """ Forward PDE evolution along t_grid, with optional rescaling of meshes at
@@ -116,19 +86,32 @@ def lognormal_density(x, t, vol):
     return p
 
 
-# def mollifier(x, dx, k=1.5):
-#     var = (k * dx)**2
-#     p = np.exp(-0.5 * x**2 / var) / np.sqrt(2.0 * np.pi * var)
-#     p /= np.trapezoid(p, x)
-#     return p
-
-
 def roll_forward(p, x, dx, ts, te, local_vol, pde_config):
     """ Roll the density forward from time ts to te (ts < te) """
     scheme = pdeschemes.scheme(pde_config, ts)
     scheme.local_vol = local_vol
     p_new = scheme.roll_forward(p, x, ts, te, dx)
     return p_new
+
+def shift_to_match_forward(x, p, target_forward):
+    """ Shift the density to match the forward. We are not using this for now.
+        This code was written by Claude and has not been tested. """
+    ex = np.exp(x)
+    cur_forward = np.trapz(ex * p, x)
+    if cur_forward <= 0:
+        p = np.maximum(p, 0)
+        p = p / np.trapz(p, x)
+        return p
+    alpha = np.log(target_forward / cur_forward)
+    x_shifted = x - alpha
+    p_shifted = np.interp(x, x_shifted, p, left=0.0, right=0.0)
+    p_shifted = np.maximum(p_shifted, 0.0)
+    mass = np.trapz(p_shifted, x)
+    if mass <= 0:
+        p_shifted = np.exp(-0.5 * ((x - np.log(S0)) / (0.1))**2)
+        mass = np.trapz(p_shifted, x)
+    p_shifted /= mass
+    return p_shifted
 
 
 class PdeConfig:
@@ -162,7 +145,7 @@ if __name__ == "__main__":
         # return np.asarray([np.maximum(0.01, atm_vol + skew * x) for x in x_grid])
 
     #### Diagnostics #################################################################
-    pde_config = PdeConfig(n_time_steps=50, n_meshes=200, mesh_vol=atm_vol, scheme='rannacher',
+    pde_config = PdeConfig(n_time_steps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher',
                            rescale_x=True, rescale_p=True)
     print(f"Time steps: {pde_config.n_time_steps}")
     print(f"Spot steps: {pde_config.n_meshes}")
@@ -185,10 +168,9 @@ if __name__ == "__main__":
     # Start-up density
     start_time = 1.0 / 365.0 # Make sure no payoff is required before that
     p = lognormal_density(x, start_time, pde_config.mesh_vol)
-    m_var = (pde_config.mollifier * dx)**2
-    m_vol = np.sqrt(m_var / start_time)
-    print(f"Mollifier vol at 1D: {m_vol}")
 
+    start_timer = time.time()
+    total_diff = 0.0
     for mty_idx in range(maturities.shape[0]):
         maturity = maturities[mty_idx]
         if use_batches:
@@ -218,6 +200,7 @@ if __name__ == "__main__":
         # Calculate diffs (ToDo: do on all points x, p)
         cf_all = norm.pdf(pde_x, loc=-0.5 * stdev**2, scale=stdev)
         diff = metrics.rmse(pde_p, cf_all)
+        total_diff += diff
 
         report = {'rmse(dens)': diff, 'int(cf)': np.trapezoid(cf_p, cf_x), 'int(pde)': np.trapezoid(pde_p, pde_x),
                   'pde_x': pde_x, 'pde_p': pde_p, 'cf_x': cf_x, 'cf_p': cf_p}
@@ -242,6 +225,10 @@ if __name__ == "__main__":
 
         reports.append(report)
 
+    # Result
+    runtime = time.time() - start_timer
+    print(f"Runtime: {runtime:.2f}s")
+    print(f"Accuracy: {total_diff*100:.3f}")
 
     # Plot density
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
