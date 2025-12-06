@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 from sdevpy.analytics import black
@@ -6,19 +7,9 @@ from sdevpy.maths import metrics
 from sdevpy.pde import pdeschemes
 
 ########## ToDo (basic) #######################################################
-# * X grid rescaling to happen at first time in batch, this way no rescaling at
-#   end of previous batch. Mass rescaling could happen at the end, optionally.
-# * Check what variance the mollifier implies, and then see what that corresponds
-#   to in terms of days assuming ATM vol.
-# * Analytical expression as additional scheme for early times. We could decide
-#   to simply start the PDE at small t != 0 and forbid any payoff calculations
-#   before that (for instance choose small t = 1D). Or we can be more lenient
-#   and still do the mollifier in case any payoff event happens between t = 0
-#   and the point where we reset the density to its analytical expression.
 # * Measure difference in runtime and quality between redoing the entire PDE for
 #   every maturity and using step PDEs but then requiring the x-rescaling.
 # * Forward shifting?
-# * Decide best scheme
 
 ########## ToDo (calibration) #################################################
 # * Implement implied vol design, parametric time SVI, piecewise time SVI
@@ -46,49 +37,52 @@ from sdevpy.pde import pdeschemes
 # * To check the quality of the calibration, start by comparing against same forward
 #   PDE as used in calibration, and then check against backward PDE.
 
-def density_step(old_p, old_x, old_dx, t_grid, local_vol, pde_config):
+def density_step(old_p, old_x, old_dx, t_grid, local_vol, config):
+    """ Forward PDE evolution along t_grid, with optional rescaling of meshes at
+        beginning of the step and optional rescaling of density at end of the step """
     # Rescale inputs
+    if config.rescale_x:
+        x, dx, spot_idx = build_spotgrid(t_grid[-1], config)
+        p = np.interp(x, old_x, old_p, left=0.0, right=0.0)
+    else:
+        x, dx, p = old_x, old_dx, old_p
 
     # Forward reduction
-    p = old_p
-    x = old_x
-    dx = old_dx
-    n_timegrid = t_grid.shape[0]
-    for i in range(n_timegrid - 1):
-        # Roll forward from ts to te
-        p = roll_forward(p, x, dx, t_grid[i], t_grid[i + 1], local_vol, pde_config)
+    for i in range(t_grid.shape[0] - 1):
+        p = roll_forward(p, x, dx, t_grid[i], t_grid[i + 1], local_vol, config)
 
-        # Check sum at te
+    # Rescale density
+    if config.rescale_p: # Rescale mass to 1.0 at te
         mass = np.trapezoid(p, x)
+        p /= mass
         # print(f"Mass: {mass:.6f}")
 
-    return x, p
+    return x, dx, p
 
 
-def density(maturity, local_vol, pde_config):
+def density(maturity, local_vol, config):
+    """ Simple forward PDE for density, without step rescaling of meshes until maturity """
     # Build time grid
-    t_grid = build_timegrid(0.0, maturity, pde_config)
+    t_grid = build_timegrid(0.0, maturity, config)
     n_timegrid = t_grid.shape[0]
 
     # Build spot grid
-    x, dx, spot_idx = build_spotgrid(maturity, pde_config)
+    x, dx, spot_idx = build_spotgrid(maturity, config)
 
     # Initial probability
-    p = mollifier(x, 0.0, dx, pde_config.mollifier)
+    p = lognormal_density(x, 1.0 / 365.0, config.mesh_vol)
 
     # Forward reduction
     for i in range(n_timegrid - 1):
-        ts = t_grid[i]
-        te = t_grid[i + 1]
+        p = roll_forward(p, x, dx, t_grid[i], t_grid[i + 1], local_vol, config)
 
-        # Roll forward from ts to te
-        p = roll_forward(p, x, dx, ts, te, local_vol, pde_config)
-
-        # Check sum at te
+    # Rescale density
+    if config.rescale_p: # Rescale mass to 1.0 at te
         mass = np.trapezoid(p, x)
+        p /= mass
         # print(f"Mass: {mass:.6f}")
 
-    return x, p
+    return x, dx, p
 
 
 def build_timegrid(t_start, t_end, config):
@@ -114,11 +108,19 @@ def build_spotgrid(maturity, config):
     return x_grid, dx, n_half
 
 
-def mollifier(x, x0, dx, k=1.5):
-    eps = (k * dx)**2
-    p = np.exp(-0.5 * (x - x0)**2 / eps) / np.sqrt(2.0 * np.pi * eps)
-    # p /= np.trapezoid(p, x)
+def lognormal_density(x, t, vol):
+    """ lognormal density to use as mollifier """
+    var = vol**2 * t
+    p = np.exp(-0.5 * x**2 / var) / np.sqrt(2.0 * np.pi * var)
+    p /= np.trapezoid(p, x)
     return p
+
+
+# def mollifier(x, dx, k=1.5):
+#     var = (k * dx)**2
+#     p = np.exp(-0.5 * x**2 / var) / np.sqrt(2.0 * np.pi * var)
+#     p /= np.trapezoid(p, x)
+#     return p
 
 
 def roll_forward(p, x, dx, ts, te, local_vol, pde_config):
@@ -139,6 +141,8 @@ class PdeConfig:
         self.scheme = kwargs.get('scheme', 'Implicit')
         self.theta = kwargs.get('theta', 0.5)
         self.rannacher_time = kwargs.get('rannacher_time', 7.0 / 365.0)
+        self.rescale_x = kwargs.get('rescale_x', True)
+        self.rescale_p = kwargs.get('rescale_p', True)
 
 
 if __name__ == "__main__":
@@ -158,7 +162,8 @@ if __name__ == "__main__":
         # return np.asarray([np.maximum(0.01, atm_vol + skew * x) for x in x_grid])
 
     #### Diagnostics #################################################################
-    pde_config = PdeConfig(n_time_steps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher')
+    pde_config = PdeConfig(n_time_steps=50, n_meshes=200, mesh_vol=atm_vol, scheme='rannacher',
+                           rescale_x=True, rescale_p=True)
     print(f"Time steps: {pde_config.n_time_steps}")
     print(f"Spot steps: {pde_config.n_meshes}")
 
@@ -172,20 +177,27 @@ if __name__ == "__main__":
     reports = []
 
     # Build spot grid (fixed throughout for now)
-    x, dx, spot_idx = build_spotgrid(maturities[-1], pde_config)
+    if use_batches and pde_config.rescale_x:
+        x, dx, spot_idx = build_spotgrid(maturities[0], pde_config)
+    else:
+        x, dx, spot_idx = build_spotgrid(maturities[-1], pde_config)
 
-    # Start with t = 0 density
-    p = mollifier(x, 0.0, dx, pde_config.mollifier)
+    # Start-up density
+    start_time = 1.0 / 365.0 # Make sure no payoff is required before that
+    p = lognormal_density(x, start_time, pde_config.mesh_vol)
+    m_var = (pde_config.mollifier * dx)**2
+    m_vol = np.sqrt(m_var / start_time)
+    print(f"Mollifier vol at 1D: {m_vol}")
 
     for mty_idx in range(maturities.shape[0]):
         maturity = maturities[mty_idx]
         if use_batches:
-            ts = 0.0 if mty_idx == 0 else maturities[mty_idx - 1]
+            ts = start_time if mty_idx == 0 else maturities[mty_idx - 1]
             te = maturities[mty_idx]
             step_grid = build_timegrid(ts, te, pde_config)
-            x, p = density_step(p, x, dx, step_grid, my_lv, pde_config)
+            x, dx, p = density_step(p, x, dx, step_grid, my_lv, pde_config)
         else:
-            x, p = density(maturity, my_lv, pde_config)
+            x, dx, p = density(maturity, my_lv, pde_config)
 
         ## Check density ##
         stdev = atm_vol * np.sqrt(maturity)

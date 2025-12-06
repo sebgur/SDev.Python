@@ -23,7 +23,6 @@ if __name__ == "__main__":
     # Interpolations
     spline = CubicSpline(x, y, bc_type='natural')
 
-
     k = np.linspace(-1.0, 5.0, num=100)
     func = rebonato(k)
     scipy_interp = spline(k)
