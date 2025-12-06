@@ -4,7 +4,7 @@ from sdevpy.maths import tridiag
 
 
 def scheme(config, ts):
-    scheme_type = config['type'].upper()
+    scheme_type = config.scheme.upper()
     if scheme_type == 'IMPLICIT':
         return ImplicitScheme()
     elif scheme_type == 'CN':
@@ -14,7 +14,7 @@ def scheme(config, ts):
     elif scheme_type == 'EXPLICIT':
         return ExplicitScheme()
     elif scheme_type == 'RANNACHER':
-        rt = config['rannacher_time']
+        rt = config.rannacher_time
         eps = 1e-8
         if rt < ts - eps:
             return ImplicitScheme()
