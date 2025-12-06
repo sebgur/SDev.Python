@@ -1,20 +1,14 @@
 import numpy as np
-from scipy.linalg import solve_banded
 from scipy.stats import norm
 import matplotlib.pyplot as plt
-from sdevpy.maths import tridiag
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
 from sdevpy.pde import pdeschemes
 
 ########## ToDo (basic) #######################################################
-# * Write explicit code for implicit scheme to be faster at runtime
-# * Write diagnostic that looks at several maturities in one flow
-# * Implement x grid rescaling at given times. Then do the rescaling at all
-#   the calibration times. Need to test that by extracting several densities
-#   out of the forward sweep and testing their accuracies across time.
+# * Time batching: give vector of times and batch between times
 # * X grid rescaling to happen at first time in batch, this way no rescaling at
-#   end of previous batch. Mass rescaling could happen at the end.
+#   end of previous batch. Mass rescaling could happen at the end, optionally.
 # * Analytical expression as additional scheme for early times. This is not really
 #   instead of the mollifier. Need to make good decision for where in time
 #   the PDE/roll-forward starts, basically. 1D is an obvious candidate. We could
@@ -24,8 +18,11 @@ from sdevpy.pde import pdeschemes
 #   that time. The use of the analytical should therefore be optional, to allow possibly someone to refuse
 #   to use it in order to go to earlier time steps.
 # * Forward shifting?
+# * Decide best scheme
 
 ########## ToDo (calibration) #################################################
+# * Implement implied vol design, parametric time SVI, piecewise time SVI
+# * Use seaborn to represent diffs between IV and LV prices on quoted pillars
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
 # * For each LV parametric form, record two sets of parameters: those against
 #   moneyness and those against strike, to achieve both stickiness.
@@ -49,8 +46,14 @@ from sdevpy.pde import pdeschemes
 # * To check the quality of the calibration, start by comparing against same forward
 #   PDE as used in calibration, and then check against backward PDE.
 
+def density_step(old_p, old_x, old_dx, old_t, new_t, local_vol, time_config, spot_config, config):
+    # Start without rescaling
 
-def forward_pde_density(maturity, local_vol, time_config, spot_config, config):
+    # Starting point
+    return 0
+
+
+def density(maturity, local_vol, time_config, spot_config, config):
     # Build time grid
     t_grid = build_timegrid(maturity, time_config)
     n_timegrid = t_grid.shape[0]
@@ -63,14 +66,13 @@ def forward_pde_density(maturity, local_vol, time_config, spot_config, config):
     # Initial probability
     p = mollifier(x, 0.0, config['dx'], config['mollifier'])
 
-    # Backward reduction
+    # Forward reduction
     for i in range(n_timegrid - 1):
         ts = t_grid[i]
         te = t_grid[i + 1]
 
         # Roll forward from ts to te
         p = roll_forward(p, x, ts, te, local_vol, config)
-        # p = roll_forward(p, x, ts, te, local_vol, scheme)
 
         # Check sum at te
         mass = np.trapezoid(p, x)
@@ -118,63 +120,14 @@ def roll_forward(p, x, ts, te, local_vol, config):
     return p_new
 
 
-# def roll_forward(p, x, ts, te, local_vol, scheme):
-#     """ Roll the density forward from time ts to te (ts < te) """
-#     theta = scheme['theta']
-#     dx = scheme['dx'] # Assuming homogeneous x grid
-#     one_m_theta = 1.0 - theta
-#     n_x = x.shape[0]
-#     dt = te - ts
-#     a = 1.0 / dx**2 + 0.5 / dx
-#     b = 2.0 / dx**2
-#     c = 1.0 / dx**2 - 0.5 / dx
-
-#     # Calculate result vector using previous probabilities
-#     lv = local_vol(ts, x)
-#     one_m_theta_dt_2 = one_m_theta * dt / 2.0
-#     y = np.zeros(n_x)
-#     for j in range(n_x):
-#         p_tmp = (1.0 - one_m_theta_dt_2 * b * lv[j]**2) * p[j]
-
-#         if j < n_x - 1: # Beyond that the probability is 0
-#             p_tmp += one_m_theta_dt_2 * a * lv[j + 1]**2 * p[j + 1]
-
-#         if j > 0: # Before that the probability is 0
-#             p_tmp += one_m_theta_dt_2 * c * lv[j - 1]**2 * p[j - 1]
-
-#         y[j] = p_tmp
-
-#     # Calculate band vectors for tridiagonal system
-#     lv = local_vol(te, x)
-#     theta_dt_2 = theta * dt / 2.0
-#     upper = np.zeros(n_x - 1)
-#     main = np.zeros(n_x)
-#     lower = np.zeros(n_x - 1)
-#     for j in range(n_x):
-#         main[j] = (1.0 + theta_dt_2 * b * lv[j]**2)
-
-#         if j < n_x - 1:
-#             upper[j] = -theta_dt_2 * a * lv[j + 1]**2
-
-#         if j > 0:
-#             lower[j - 1] = -theta_dt_2 * c * lv[j - 1]**2
-
-#     # Solve tridiagonal system
-#     p_new = tridiag.solve(upper, main, lower, y)
-
-#     # ToDo: Rescale/recenter here if required?
-
-#     return p_new
-
-
 if __name__ == "__main__":
-    maturity = 2.5
     spot = 100.0
     r = 0.04
     q = 0.01
-    r_disc = 0.025
-    fwd = spot * np.exp((r - q) * maturity)
     atm_vol = 0.20
+    maturities = np.array([0.1, 0.5, 1.0, 2.5, 5.0, 10.0])
+    n_rows = 3
+    n_cols = 2 # n_rows * n_cols must match number of maturities
 
     def my_lv(t, x_grid):
         """ As a function of log forward moneyness """
@@ -183,73 +136,102 @@ if __name__ == "__main__":
         return np.asarray([atm_vol for x in x_grid])
         # return np.asarray([np.maximum(0.01, atm_vol + skew * x) for x in x_grid])
 
-    #### Diagnostics (single run) #################################################################
-    time_config = {'n_steps': 500}
-    spot_config = {'n_meshes': 200, 'mesh_vol': atm_vol, 'percentile': 1e-6}
+    #### Diagnostics #################################################################
+    time_config = {'n_steps': 50}
+    spot_config = {'n_meshes': 250, 'mesh_vol': atm_vol, 'percentile': 1e-6}
     scheme_config = {'mollifier': 1.5, 'type': 'Rannacher', 'theta': 1.0, 'rannacher_time': 0.1}
     print(f"Time steps: {time_config['n_steps']}")
     print(f"Spot steps: {spot_config['n_meshes']}")
 
-    # Calculate probability density
-    x, p = forward_pde_density(maturity, my_lv, time_config, spot_config, scheme_config)
+    n_dev = 4 # Distribution display range in number of stdevs
 
-    ## Check density ##
-    # Range
-    n_dev = 4
-    stdev = atm_vol * np.sqrt(maturity)
-    x_max = stdev * n_dev
+    pde_xs = []
+    pde_ps = []
+    cf_xs = []
+    cf_ps = []
+    reports = []
+    for maturity in maturities:
+        # Calculate probability density
+        x, p = density(maturity, my_lv, time_config, spot_config, scheme_config)
 
-    # PDE
-    pde_x = []
-    pde_p = []
-    for u, v in zip(x, p):
-        if np.abs(u) < x_max:
-            pde_x.append(u)
-            pde_p.append(v)
+        ## Check density ##
+        stdev = atm_vol * np.sqrt(maturity)
+        x_max = stdev * n_dev # Display range
 
-    # Closed-form
-    cf_x = np.linspace(-x_max, x_max, 100)
-    cf_p = norm.pdf(cf_x, loc=-0.5 * stdev**2, scale=stdev)
+        # PDE
+        pde_x = []
+        pde_p = []
+        for u, v in zip(x, p):
+            if np.abs(u) < x_max:
+                pde_x.append(u)
+                pde_p.append(v)
 
-    # Calculate diffs
-    cf_all = norm.pdf(pde_x, loc=-0.5 * stdev**2, scale=stdev)
-    diff = metrics.rmse(pde_p, cf_all)
+        # Closed-form (display)
+        cf_x = np.linspace(-x_max, x_max, 100)
+        cf_p = norm.pdf(cf_x, loc=-0.5 * stdev**2, scale=stdev)
 
-    print(f"Int(cf): {np.trapezoid(cf_p, cf_x)}")
-    print(f"Int(pde): {np.trapezoid(pde_p, pde_x)}")
-    print(f"Diff: {diff:.6f}")
+        # Calculate diffs (ToDo: do on all points x, p)
+        cf_all = norm.pdf(pde_x, loc=-0.5 * stdev**2, scale=stdev)
+        diff = metrics.rmse(pde_p, cf_all)
 
-    # Plot
-    plt.plot(pde_x, pde_p, label="PDE", color='red')
-    plt.plot(cf_x, cf_p, label="CF", color='blue')
-    plt.legend()
-    plt.title("Density, PDE vs CF")
+        report = {'rmse(dens)': diff, 'int(cf)': np.trapezoid(cf_p, cf_x), 'int(pde)': np.trapezoid(pde_p, pde_x),
+                  'pde_x': pde_x, 'pde_p': pde_p, 'cf_x': cf_x, 'cf_p': cf_p}
+
+        ## Check option prices ##
+        strikes = np.linspace(0.50 * spot, 2.0 * spot, 16)
+        is_call = True
+        fwd = spot * np.exp((r - q) * maturity)
+        cf_prices = black.price(maturity, strikes, is_call, fwd, atm_vol)
+        it_prices = np.maximum(fwd - strikes, 0.0) # Intrinsic values
+
+        s = fwd * np.exp(x)
+        pde_prices = []
+        for k in strikes:
+            payoff = np.maximum(s - k, 0.0)
+            weighted_payoff = payoff * p
+            pde_prices.append(np.trapezoid(weighted_payoff, x))
+
+        report['strikes'] = strikes
+        report['pde_prices'] = pde_prices - it_prices
+        report['cf_prices'] = cf_prices - it_prices
+
+        reports.append(report)
+
+
+    # Plot density
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            mty_idx = n_cols * i + j
+            r = reports[mty_idx]
+            ax = axes[i, j]
+            ax.plot(r['pde_x'], r['pde_p'], label="PDE", color='red')
+            ax.plot(r['cf_x'], r['cf_p'], label="CF", color='blue')
+            ax.set_title(maturities[mty_idx])
+            ax.set_xlabel('log-fwd moneyness)')
+            ax.set_ylabel('density')
+            ax.legend()
+
+    fig.suptitle('Density, PDE vs CF', fontsize=16, fontweight='bold')
+    plt.tight_layout()
     plt.show()
 
-    ## Check option prices ##
-    strikes = np.linspace(0.50 * spot, 2.0 * spot, 16)
-    is_call = True
+    # Plot prices
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            ax = axes[i, j]
+            mty_idx = n_cols * i + j
+            r = reports[mty_idx]
+            ax.plot(r['strikes'], r['pde_prices'], label="PDE", color='red')
+            ax.plot(r['strikes'], r['cf_prices'], label="CF", color='blue')
+            ax.set_title(maturities[mty_idx])
+            ax.set_xlabel('strike')
+            ax.set_ylabel('price')
+            ax.legend()
 
-    print("Calculate prices with Closed-Form")
-    cf_prices = black.price(maturity, strikes, is_call, fwd, atm_vol)
-    # Intrinsic values
-    it_prices = np.maximum(fwd - strikes, 0.0)
-
-    print("Calculate prices with PDE")
-    s = fwd * np.exp(x)
-    pde_prices = []
-    for k in strikes:
-        payoff = np.maximum(s - k, 0.0)
-        weighted_payoff = payoff * p
-        pde_prices.append(np.trapezoid(weighted_payoff, x))
-
-    for k, c, p in zip(strikes, cf_prices, pde_prices):
-        print(f"{k:.0f},{c:.2f},{p:.2f}")
-
-    plt.plot(strikes, pde_prices - it_prices, label="PDE", color='red')
-    plt.plot(strikes, cf_prices - it_prices, label="CF", color='blue')
-    plt.legend()
-    plt.title("Option prices, PDE vs CF")
+    fig.suptitle('Option prices, PDE vs CF', fontsize=16, fontweight='bold')
+    plt.tight_layout()
     plt.show()
 
     #### Diagnostics (convergence) ################################################################

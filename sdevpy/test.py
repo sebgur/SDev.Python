@@ -6,7 +6,6 @@ import numpy as np
 # import scipy.stats as sp
 # import json
 import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 # import requests, zipfile
 # import io
@@ -25,16 +24,43 @@ import matplotlib.pyplot as plt
 # from sklearn.preprocessing import StandardScaler
 
 
-print(os.getenv('MPLBACKEND'))
-print(matplotlib.get_backend())
+fig, axes = plt.subplots(2, 2, figsize=(10, 8))
 
-plt.plot([1,2,3],[4,5,6])
+x = np.linspace(0, 10, 100)
+
+
+# Top-left subplot
+axes[0, 0].plot(x, np.sin(x))
+axes[0, 0].set_title('Sine Wave')
+axes[0, 0].set_xlabel('x')
+axes[0, 0].set_ylabel('sin(x)')
+
+# Top-right subplot
+axes[0, 1].plot(x, np.cos(x), color='orange')
+axes[0, 1].set_title('Cosine Wave')
+axes[0, 1].set_xlabel('x')
+axes[0, 1].set_ylabel('cos(x)')
+
+# Bottom-left subplot
+axes[1, 0].plot(x, x**2, color='green')
+axes[1, 0].set_title('Quadratic Function')
+axes[1, 0].set_xlabel('x')
+axes[1, 0].set_ylabel('x²')
+
+# Bottom-right subplot
+axes[1, 1].plot(x, np.exp(x/5), color='red')
+axes[1, 1].set_title('Exponential Function')
+axes[1, 1].set_xlabel('x')
+axes[1, 1].set_ylabel('exp(x/5)')
+
+# Add an overall title for the entire figure
+fig.suptitle('Multiple Subplots Example', fontsize=16, fontweight='bold')
+
+# Adjust spacing between subplots
+plt.tight_layout()
+
 plt.show()
 
-################### Broadcasting
-
-for i in range(5, -1, -1):
-    print(str(i))
 
 
 # GPT_CONFIG_124M = {
