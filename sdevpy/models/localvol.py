@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from sdevpy.models.svi import *
 
 ########## ToDo (calibration) #################################################
-# * Implement local vol design
+# * Implement calibration by sections
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
 # * During the warmup in the time direction, we can allocate
@@ -21,31 +22,6 @@ from abc import ABC, abstractmethod
 # * To check the quality of the calibration, start by comparing against same forward
 #   PDE as used in calibration, and then check against backward PDE.
 
-class InterpolatedParametricLocalVol(LocalVol):
-    def __init__(self, t_grid, param_grid):
-        self.t_grid = t_grid
-        # Strip parameters
-        n_times = t_grid.shape[0]
-        shape = param_grid.shape
-        if shape[0] != n_times:
-            raise RuntimeError("Incorrect sizes between time grid and parameters")
-
-        # self.alnv_grid = parameter_grid[:, 0]
-        # self.b_grid = parameter_grid[:, 1]
-        # self.rho_grid = parameter_grid[:, 2]
-        # self.m_grid = parameter_grid[:, 3]
-        # self.sigma_grid = parameter_grid[:, 4]
-        for t_idx, t in enumerate(self.t_grid):
-            self.check_params(t, param_grid[t_idx])
-
-    def check_params(t, params):
-        return 0
-
-    def update_params(t_idx, new_params):
-        return 0
-
-
-
 class LocalVol(ABC):
     """ Base class for local vols """
     @abstractmethod
@@ -59,5 +35,29 @@ class LocalVol(ABC):
         pass
 
 
+class InterpolatedParamLocalVol(LocalVol):
+    def __init__(self, t_grid, section_grid):
+        self.t_grid = t_grid
+        self.section_grid = section_grid
+        # Size consistency
+        if len(section_grid) != t_grid.shape[0]:
+            raise RuntimeError("Incorrect sizes between time grid and section grid")
+
+    def value(self, t, x):
+        return 0
+
+    def section(self, t):
+        return 0
+
+    def check_params(self, t_idx):
+        return self.section_grid[t_idx].check_params()
+
+    def update_params(self, t_idx, new_params):
+        self.section_grid[t_idx].update_params(new_params)
+
+
 if __name__ == "__main__":
+    t_grid = np.array([0.1, 0.25, 0.5, 1.0, 2.0, 5.0])
+    section_grid = [SviSection() for i in range(t_grid.shape[0])]
+    lv = InterpolatedParamLocalVol(t_grid, section_grid)
     print("Hello")
