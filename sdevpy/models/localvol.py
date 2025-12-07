@@ -1,6 +1,17 @@
 from abc import ABC, abstractmethod
 from sdevpy.models.svi import *
 
+########## ToDo (LocalVol) #################################################
+# * Implement/Finish testing the time lookup with tolerance
+# * Include it in the definition of the localVol
+# * Initialize LV
+# * Create objective function, constraints, with pre-calculation of weighted
+#   payoff that doesn't depend on vols, define it as a generic payoff in a
+#   payoff class.
+# * Define the payoff class's core algebraic operations for Add, Multiply, etc.
+# * Refresh optimizer implementation, get definition/control of stopping
+#   criteria.
+
 ########## ToDo (calibration) #################################################
 # * Implement calibration by sections
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
@@ -9,18 +20,17 @@ from sdevpy.models.svi import *
 #   on each time slice a local vol functional form that is only a function
 #   of the spot. This would be a generalized version of the storage
 #   of the time interpolation indices for an interpolated surface.
-# * A spot parametric local vol would be spot-parametric on predefined
-#   time slices, and would for instance take the same parametric form
-#   over forward time intervals.
 # * We could resolve forward by taking the previous parametric form as
 #   starting point.
-# * We could use SVI as base and if not enough point, fit only to reduced
-#   set of free parameters, the other ones defaulting to good solver starting points.
 # * For the (backward) pricing PDE, also allow the standard case of a fully interpolated
 #   matrix, using cubic splines with flat extrapolation on both ends and arriving flat
 #   first derivative.
 # * To check the quality of the calibration, start by comparing against same forward
-#   PDE as used in calibration, and then check against backward PDE.
+#   PDE as used in calibration. Define a simple method that calculates the whole
+#   surface. Then implement and check against backward PDE.
+# * Make notebook that illustrates the whole flow.
+# * Introduce unit testing. Cleanup package, upload to pypi.
+# * Make Colab, post.
 
 class LocalVol(ABC):
     """ Base class for local vols """

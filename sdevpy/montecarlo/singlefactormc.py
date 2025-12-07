@@ -5,3 +5,6 @@ Would it be worth making it multi-factor from the start?
 
 Or is it better to simulate by date?
 """
+
+# * For Sobol, use scipy.starts import qmc, has scrambling. But need BB.
+# * For BB: Ask AI to implement using numpy, or translate own code.
