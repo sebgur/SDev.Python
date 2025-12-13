@@ -61,7 +61,7 @@ class TimeGridBuilder(ABC):
 
 class SimpleTimeGridBuilder(TimeGridBuilder):
     """ Specific TimeGridBuilder with a fine grid that is simply a homogeneous grid until last
-        point"""
+        point """
     def __init__(self, points_per_year=1):
         TimeGridBuilder.__init__(self)
         self.points_per_year_ = points_per_year
