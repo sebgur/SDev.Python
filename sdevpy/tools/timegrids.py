@@ -2,20 +2,23 @@
 from abc import ABC, abstractmethod
 from datetime import date
 import numpy as np
+from sdevpy.tools import algos
 
 
 class TimeGridBuilder(ABC):
     """ Base class for time grid builders """
     def __init__(self):
-        self.epsilon_ = 1e-10
+        self.atol_ = 1e-11
         self.time_grid_ = []
+        self.valdate = None
 
     def reset(self):
         """ Resetting to fresh state """
         self.time_grid_ = []
 
-    def add_dates(self, val_date, dates):
+    def add_dates(self, valdate, dates):
         """ Add vector of dates respectively to valuation date """
+        self.valdate = valdate
         times = []
         for d in dates:
             times.append(model_time(val_date, d))
@@ -23,7 +26,9 @@ class TimeGridBuilder(ABC):
         self.time_grid_.extend(times)
 
     def add_grid(self, times):
-        """ Add vector of times """
+        """ Add vector of times. This function is risky when used in conjonction with dates,
+            as the consistency of date conversion to times vs input times is the user's
+            responsibility here. """
         self.time_grid_.extend(times.reshape(-1))
 
     def refine(self):
@@ -32,8 +37,8 @@ class TimeGridBuilder(ABC):
 
     def clean(self):
         """ Remove negative times and duplicates, then sort in ascending order """
-        self.time_grid_ = [t for t in self.time_grid_ if t > self.epsilon_]
-        self.time_grid_ = np.unique(self.time_grid_)
+        self.time_grid_ = [t for t in self.time_grid_ if t > self.atol_]
+        self.time_grid_ = algos.unique_sorted(self.time_grid_, self.atol_)
 
     def complete_grid(self):
         """ Add a fine grid, clean and return the final grid """
@@ -44,6 +49,10 @@ class TimeGridBuilder(ABC):
     def max(self):
         """ Largest point on the grid """
         return np.max(self.time_grid_)
+
+    def upper_bound(self, date):
+        time = model_time(self.valdate, date)
+        return algos.upper_bound(self.time_grid_, time, self.atol_)
 
     @abstractmethod
     def fine_grid(self):
@@ -74,6 +83,7 @@ def model_time(date1, date2):
     span = date2 - date1
     return span.days / 365.0
 
+
 if __name__ == "__main__":
     base = date(2023, 1, 24)
     fixing = date(2022, 1, 24)
@@ -82,11 +92,8 @@ if __name__ == "__main__":
     settlement = date(2026, 1, 24)
     builder = SimpleTimeGridBuilder(5)
     builder.add_dates(base, [fixing, settlement, expiry, monitor, settlement])
-    # print(builder.time_grid_)
     builder.refine()
-    # print(builder.time_grid_)
     builder.clean()
-    # print(builder.time_grid_)
 
     # Test MC situation
     time_grid_builder = SimpleTimeGridBuilder(points_per_year=5)
@@ -101,5 +108,6 @@ if __name__ == "__main__":
     time_grid_builder.clean()
     tg = time_grid_builder.time_grid_
     print(tg)
-    # time_grid = time_grid_builder.complete_grid()
+
+    # Test query of outside point relatively to the grid
 
