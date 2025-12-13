@@ -8,3 +8,4 @@ Or is it better to simulate by date?
 
 # * For Sobol, use scipy.starts import qmc, has scrambling. But need BB.
 # * For BB: Ask AI to implement using numpy, or translate own code.
+# * Define the payoff class's core algebraic operations for Add, Multiply, etc.
