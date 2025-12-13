@@ -71,9 +71,8 @@ if __name__ == "__main__":
     lv = localvol.InterpolatedParamLocalVol(expiry_grid, section_grid)
 
     ## Set up forward PDE ##
-    print(vol_surface[0])
-    mesh_vol = vol_surface[0].mean()
-    print(f"Mean vol: {mesh_vol*100:.2f}%")
+    mesh_vol = vol_surface.mean()
+    print(f"Mesh vol: {mesh_vol*100:.2f}%")
     pde_config = fpde.PdeConfig(n_time_steps=50, n_meshes=250, mesh_vol=mesh_vol, scheme='rannacher',
                                 rescale_x=True, rescale_p=True)
     print(f"Time steps: {pde_config.n_time_steps}")
