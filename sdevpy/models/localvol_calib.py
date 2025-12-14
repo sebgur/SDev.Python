@@ -1,6 +1,7 @@
 import datetime as dt
 import numpy as np
 from scipy.stats import norm
+import matplotlib.pyplot as plt
 from sdevpy.models import svi
 from sdevpy.tools import timegrids
 from sdevpy.models import localvol
@@ -92,9 +93,33 @@ if __name__ == "__main__":
     p = fpde.lognormal_density(x, start_time, pde_config.mesh_vol)
 
     # Initial parameters for the first expiry
+    params_init = svi.sample_params(expiry_grid[0])
 
+    ## Loop over expiries ##
+    exp_idx = 0
     # Initialize the LV slice
+    lv.update_params(exp_idx, params_init)
+    # print(lv.params(exp_idx))
+    # print(lv.params(exp_idx + 1))
+
     # Use it to calculate the probability density at the next expiry
+    expiry = expiry_grid[exp_idx]
+    ts = start_time if exp_idx == 0 else expiry_grid[exp_idx - 1]
+    te = expiry_grid[exp_idx]
+    step_grid = fpde.build_timegrid(ts, te, pde_config)
+    old_x = x.copy()
+    old_p = p.copy()
+    x, dx, p = fpde.density_step(p, x, dx, step_grid, lv.value, pde_config)
+
+    old_lv = lv.value(ts, old_x)
+    new_lv = lv.value(te, x)
+    plt.plot(old_x, old_lv, color='blue')
+    plt.plot(x, new_lv, color='red')
+
+    # plt.plot(old_x, old_p, color='blue')
+    # plt.plot(x, p, color='red')
+    plt.show()
+
     # Calculate the PDE options at the next expiry
     # Calculate the objective function at the next expiry
     # Optimize the objective function

@@ -24,8 +24,8 @@ class InterpolatedParamLocalVol(LocalVol):
             raise RuntimeError("Incorrect sizes between time grid and section grid")
 
     def value(self, t, logm):
-        t_idx = algos.upper_bound(t_grid, t)
-        return section_grid[t_idx].value(t, logm)
+        t_idx = algos.upper_bound(self.t_grid, t)
+        return self.section_grid[t_idx].value(t, logm)
 
     def section(self, t):
         return 0
@@ -35,6 +35,9 @@ class InterpolatedParamLocalVol(LocalVol):
 
     def update_params(self, t_idx, new_params):
         self.section_grid[t_idx].update_params(new_params)
+
+    def params(self, t_idx):
+        return self.section_grid[t_idx].params
 
 
 if __name__ == "__main__":

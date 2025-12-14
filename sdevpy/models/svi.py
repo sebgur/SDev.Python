@@ -51,7 +51,7 @@ def svi_check_params(params, check_butterfly=False):
 
     is_ok = True
     # Check constraints
-    if a < 0.0 or b < 0.0 or abs(rho) >= 1 or sigma <= 0.0:
+    if a < 0.0 or b < 0.0 or abs(rho) >= 1 or sigma < 0.0:
         is_ok = False
 
     if is_ok:
@@ -73,19 +73,29 @@ def svi_formula(t, x, params):
     return svi(t, x, *params)
 
 
+def sample_params(t):
+    """ Guess parameters for display or optimization initial point """
+    a = 0.25**2 * t
+    b = 0.0
+    rho, m = 0.0, 0.0
+    sigma = 0.0
+    return np.array([a, b, rho, m, sigma])
+
+
 if __name__ == "__main__":
-    t = 1.5
+    t = 1/365
     alnv = 0.25
-    a = alnv**2 * np.sqrt(t) # a > 0
-    b = 0.2 # b > 0
+    a = alnv**2 * t # a > 0
+    b = 0.0 #a / np.log(2) # b > 0
     rho = 0.0 # -1 < rho < 1
-    m = 0.5 # No constraints
-    sigma = 0.25 # > 0
+    m = 0.0# No constraints
+    sigma = 0.0 #0.5 / np.sqrt(t) # > 0
     params = [a, b, rho, m, sigma]
 
     k = np.linspace(0.2, 3.0, 100)
     x = np.log(k)
 
     vol = svi_formula(t, x, params)
-    plt.plot(k, vol)
+    print(svi_formula(t, m, params))
+    plt.plot(x, vol)
     plt.show()
