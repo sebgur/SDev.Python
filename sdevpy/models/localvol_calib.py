@@ -2,7 +2,7 @@ import datetime as dt
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
-from sdevpy.models import svi
+from sdevpy.models import svivol
 from sdevpy.tools import timegrids
 from sdevpy.models import localvol
 from sdevpy.pde import forwardpde as fpde
@@ -36,12 +36,12 @@ def generate_sample_data(valdate, terms):
         expiry = valdate + dt.timedelta(days=int(term * 365.25))
         fwd = spot * np.exp((r - q) * term)
         base_std = base_vol * np.sqrt(term)
-        a, b, rho, m, sigma = base_std**2, 0.1, 0.0, 0.5, 0.25
+        a, b, rho, m, sigma = base_vol, 0.1, 0.0, 0.5, 0.25
         strikes, vols = [], []
         for p in percents:
             logm = -0.5 * base_std**2 + base_std * norm.ppf(p)
             strikes.append(fwd * np.exp(logm))
-            vols.append(svi.svi(term, logm, a, b, rho, m, sigma))
+            vols.append(svivol.svivol(term, logm, a, b, rho, m, sigma))
 
         expiries.append(expiry)
         fwds.append(fwd)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Create an LV with suitable slices
-    section_grid = [svi.SviSection() for i in range(len(expiry_grid))]
+    section_grid = [svivol.SviVolSection() for i in range(len(expiry_grid))]
     lv = localvol.InterpolatedParamLocalVol(expiry_grid, section_grid)
 
     ## Set up forward PDE ##
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     p = fpde.lognormal_density(x, start_time, pde_config.mesh_vol)
 
     # Initial parameters for the first expiry
-    params_init = svi.sample_params(expiry_grid[0])
+    params_init = svivol.sample_params(expiry_grid[0])
 
     ## Loop over expiries ##
     exp_idx = 0
