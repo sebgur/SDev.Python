@@ -6,8 +6,13 @@ from sdevpy.models import svivol
 from sdevpy.tools import timegrids
 from sdevpy.models import localvol
 from sdevpy.pde import forwardpde as fpde
+from sdevpy.analytics import black
+from sdevpy.maths import metrics
+
 
 ########## ToDo (calibration) #################################################
+# * Isn't Rannacher's scheme defined the other way around for forward PDE?
+#   Make sure Rannacher throws an error if its time def is not given.
 # * Create objective function, constraints, with pre-calculation of weighted
 #   payoff that doesn't depend on vols.
 # * Refresh optimizer implementation, get definition/control of stopping criteria.
@@ -51,11 +56,59 @@ def generate_sample_data(valdate, terms):
     return np.array(expiries), np.array(fwds), np.array(strike_surface), np.array(vol_surface)
 
 
+class LvObjectiveBuilder:
+    def __init__(self, cf_prices, lv, exp_idx):
+        self.cf_prices = cf_prices
+        self.lv = lv
+        self.exp_idx = exp_idx
+
+    def objective(self, params):
+        self.lv.update_params(self.exp_idx, params)
+
+        # Use it to calculate the probability density at the next expiry
+        expiry = expiry_grid[exp_idx]
+        ts = start_time if exp_idx == 0 else expiry_grid[exp_idx - 1]
+        te = expiry_grid[exp_idx]
+        step_grid = fpde.build_timegrid(ts, te, pde_config)
+        # old_x = x.copy()
+        # old_p = p.copy()
+        # old_lv = lv.value(ts, old_x)
+        x, dx, p = fpde.density_step(p, x, dx, step_grid, lv.value, pde_config)
+        # new_x = x.copy()
+        # new_p = p.copy()
+        # new_lv = lv.value(te, x)
+        # # plt.plot(old_x, old_lv, color='blue')
+        # # plt.plot(new_x, new_lv, color='red')
+        # plt.plot(old_x, old_p, color='blue', label='old')
+        # plt.plot(new_x, new_p, color='red', label='new')
+        # plt.show()
+
+        # Calculate the PDE options at the next expiry
+        s = fwds[exp_idx] * np.exp(x)
+        pde_prices = []
+        for k in strike_surface[exp_idx]: # ToDo: can we do this vectorially over the strikes?
+            payoff = np.maximum(s - k, 0.0)
+            weighted_payoff = payoff * p
+            pde_prices.append(np.trapezoid(weighted_payoff, x))
+
+        print(pde_prices)
+        print()
+        print(cf_prices[exp_idx])
+
+        # Calculate the objective function at the next expiry
+        rmse = metrics.rmse(pde_prices, cf_prices[exp_idx])
+        return rmse
+
+
+
+
+
 if __name__ == "__main__":
     ##### Create IV and forward target data #############################################
     valdate = dt.datetime(2025, 12, 15)
     terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
     expiries, fwds, strike_surface, vol_surface = generate_sample_data(valdate, terms)
+
     print(f"Val date: {valdate.strftime("%Y-%b-%d")}")
     print(f"Expiries: {expiries.shape}")
     # print(f"Expiries: {[d.strftime("%Y-%b-%d") for d in expiries]}")
@@ -66,6 +119,16 @@ if __name__ == "__main__":
     ##### Calibration to target data ####################################################
     # Calibration time grid
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
+
+    # Calibration targets
+    cf_prices = []
+    is_call = True
+    for exp_idx, expiry in enumerate(expiry_grid):
+        fwd = fwds[exp_idx]
+        strikes = strike_surface[exp_idx]
+        vols = vol_surface[exp_idx]
+        cf_price = black.price(expiry, strikes, is_call, fwd, vols)
+        cf_prices.append(cf_price)
 
     # Create an LV with suitable slices
     section_grid = [svivol.SviVolSection() for i in range(len(expiry_grid))]
@@ -85,7 +148,7 @@ if __name__ == "__main__":
     # Time grid
 
     ## Bootstrap initialization ##
-    # Initiate a probability density at t = 0 to start the forward PDE
+    # Initiate the probability density at start_time
     start_time = 1.0 / 365.0
     if expiry_grid[0] <= start_time:
         raise RuntimeError("First expiry too early to use analytical start in forward PDE")
@@ -97,31 +160,44 @@ if __name__ == "__main__":
 
     ## Loop over expiries ##
     exp_idx = 0
+
     # Initialize the LV slice
     lv.update_params(exp_idx, params_init)
-    # print(lv.params(exp_idx))
-    # print(lv.params(exp_idx + 1))
 
     # Use it to calculate the probability density at the next expiry
     expiry = expiry_grid[exp_idx]
     ts = start_time if exp_idx == 0 else expiry_grid[exp_idx - 1]
     te = expiry_grid[exp_idx]
     step_grid = fpde.build_timegrid(ts, te, pde_config)
-    old_x = x.copy()
-    old_p = p.copy()
+    # old_x = x.copy()
+    # old_p = p.copy()
+    # old_lv = lv.value(ts, old_x)
     x, dx, p = fpde.density_step(p, x, dx, step_grid, lv.value, pde_config)
-
-    old_lv = lv.value(ts, old_x)
-    new_lv = lv.value(te, x)
-    plt.plot(old_x, old_lv, color='blue')
-    plt.plot(x, new_lv, color='red')
-
-    # plt.plot(old_x, old_p, color='blue')
-    # plt.plot(x, p, color='red')
-    plt.show()
+    # new_x = x.copy()
+    # new_p = p.copy()
+    # new_lv = lv.value(te, x)
+    # # plt.plot(old_x, old_lv, color='blue')
+    # # plt.plot(new_x, new_lv, color='red')
+    # plt.plot(old_x, old_p, color='blue', label='old')
+    # plt.plot(new_x, new_p, color='red', label='new')
+    # plt.show()
 
     # Calculate the PDE options at the next expiry
+    s = fwds[exp_idx] * np.exp(x)
+    pde_prices = []
+    for k in strike_surface[exp_idx]: # ToDo: can we do this vectorially over the strikes?
+        payoff = np.maximum(s - k, 0.0)
+        weighted_payoff = payoff * p
+        pde_prices.append(np.trapezoid(weighted_payoff, x))
+
+    print(pde_prices)
+    print()
+    print(cf_prices[exp_idx])
+
     # Calculate the objective function at the next expiry
+    diff = metrics.rmse(pde_prices, cf_prices[exp_idx])
+    print(diff)
+
     # Optimize the objective function
     # Retrieve optimum parameters and optimum density
     # Iterate: use previous initial parameters as starting points
