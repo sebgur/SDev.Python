@@ -182,68 +182,21 @@ if __name__ == "__main__":
     print(f"Spot steps: {pde_config.n_meshes}")
 
     # Objective builder
-    start_time = 1.0 / 365.0
     obj_builder = LvObjectiveBuilder(lv, expiry_grid, fwds, strike_surface,
                                      cf_price_surface, pde_config)
 
-    obj_builder.initialize(start_time=start_time)
+    # Initialize PDE
+    obj_builder.initialize()
 
-    # Spot grid
-    x, dx, spot_idx = fpde.build_spotgrid(expiry_grid[0], pde_config)
-
-    ## Bootstrap initialization ##
-    # Initiate the probability density at start_time
-    # start_time = 1.0 / 365.0
-    if expiry_grid[0] <= start_time:
-        raise RuntimeError("First expiry too early to use analytical start in forward PDE")
-
-    p = fpde.lognormal_density(x, start_time, pde_config.mesh_vol)
+    # Get objective
+    objective = obj_builder.objective
 
     # Initial parameters for the first expiry
     params_init = svivol.sample_params(expiry_grid[0])
 
-    ## Loop over expiries ##
-    exp_idx = 0
+    # get old, then retrieve new, then plot again
 
-    # Initialize the LV slice
-    lv.update_params(exp_idx, params_init)
-
-    # Use it to calculate the probability density at the next expiry
-    expiry = expiry_grid[exp_idx]
-    ts = start_time if exp_idx == 0 else expiry_grid[exp_idx - 1]
-    te = expiry_grid[exp_idx]
-    step_grid = fpde.build_timegrid(ts, te, pde_config)
-    # old_x = x.copy()
-    # old_p = p.copy()
-    # old_lv = lv.value(ts, old_x)
-    x, dx, p = fpde.density_step(p, x, dx, step_grid, lv.value, pde_config)
-    # new_x = x.copy()
-    # new_p = p.copy()
-    # new_lv = lv.value(te, x)
-    # # plt.plot(old_x, old_lv, color='blue')
-    # # plt.plot(new_x, new_lv, color='red')
-    # plt.plot(old_x, old_p, color='blue', label='old')
-    # plt.plot(new_x, new_p, color='red', label='new')
-    # plt.show()
-
-    # Calculate the PDE options at the next expiry
-    s = fwds[exp_idx] * np.exp(x)
-    pde_prices = []
-    for k in strike_surface[exp_idx]: # ToDo: can we do this vectorially over the strikes?
-        payoff = np.maximum(s - k, 0.0)
-        weighted_payoff = payoff * p
-        pde_prices.append(np.trapezoid(weighted_payoff, x))
-
-    print(pde_prices)
-    print()
-    print(cf_price_surface[exp_idx])
-
-    # Calculate the objective function at the next expiry
-    diff = metrics.rmse(pde_prices, cf_price_surface[exp_idx])
-    print(diff)
-
-
-    objective = obj_builder.objective
+    # Calculate objective
     rmse = objective(params_init)
     print(rmse)
 
