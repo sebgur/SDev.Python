@@ -12,17 +12,15 @@ from sdevpy.maths.optimization import *
 
 
 ########## ToDo (calibration) #################################################
+# * Express result prices in implied vol terms to get better view on the 
+#   quality of the result.
+# * Check if market data is realistic at late maturities. Doesn't it have too strong
+#   a smile? Can that explain or not the difficulty to fit at the last maturity?
 # * Isn't Rannacher's scheme defined the other way around for forward PDE?
 #   Make sure Rannacher throws an error if its time def is not given.
-# * Refresh optimizer implementation, get definition/control of stopping criteria.
-# * Implement calibration by sections
+# * Get definition/control of optimizer's stopping criteria.
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
-# * During the warmup in the time direction, we can allocate
-#   on each time slice a local vol functional form that is only a function
-#   of the spot. This would be a generalized version of the storage
-#   of the time interpolation indices for an interpolated surface.
-# * Resolve forward by taking the previous parametric form as starting point.
 # * To check the quality of the calibration, start by comparing against same forward
 #   PDE as used in calibration. Define a simple method that calculates the whole
 #   surface. Then implement and check against backward PDE.
