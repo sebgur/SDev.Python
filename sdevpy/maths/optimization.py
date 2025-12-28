@@ -25,7 +25,7 @@ def create_optimizer(method, **kwargs):
         optimizer = SciPyOptimizer(method, **kwargs)
     else:
         raise RuntimeError("Optimizer type not supported: " + method)
-    
+
     return optimizer
 
 def create_bounds(lw_bounds, up_bounds):
@@ -33,8 +33,6 @@ def create_bounds(lw_bounds, up_bounds):
 
 
 class Optimizer:
-    # def __init__(self):
-
     @abstractmethod
     def minimize(self, f, x0, args, bounds):
         """ Minimization """
@@ -49,9 +47,8 @@ class SciPyOptimizer(Optimizer):
                                'trust-exact', 'trust-krylov']
 
         self.other_minimizers = ['DE']
-
         self.kwargs = kwargs
-        
+
         if self.method_ not in self.std_minimizers and self.method_ not in self.other_minimizers:
             raise RuntimeError("Method " + self.method_ + " not found in SciPy")
 
@@ -72,7 +69,7 @@ class SciPyOptimizer(Optimizer):
                                                 recombination=recombination)
         else:
             raise RuntimeError("Method " + self.method_ + " not recognized")
-        
+
         return result
 
 class MultiOptimizer(Optimizer):
@@ -100,7 +97,7 @@ class MultiOptimizer(Optimizer):
                 print("Continuing")
             else:
                 print("Stopping")
-        
+
         return result, nfev
 
 

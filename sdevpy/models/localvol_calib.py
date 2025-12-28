@@ -8,13 +8,12 @@ from sdevpy.models import localvol
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
+from sdevpy.maths.optimization import *
 
 
 ########## ToDo (calibration) #################################################
 # * Isn't Rannacher's scheme defined the other way around for forward PDE?
 #   Make sure Rannacher throws an error if its time def is not given.
-# * Create objective function, constraints, with pre-calculation of weighted
-#   payoff that doesn't depend on vols.
 # * Refresh optimizer implementation, get definition/control of stopping criteria.
 # * Implement calibration by sections
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
@@ -78,6 +77,7 @@ class LvObjectiveBuilder:
         self.fwd = 0.0
         self.strikes = None
         self.cf_prices = None
+        self.pde_prices = None
         self.rmse = 0.0
 
     def objective(self, params):
@@ -89,11 +89,6 @@ class LvObjectiveBuilder:
         self.new_p = p
         self.new_dx = dx
         # new_lv = lv.value(te, x)
-        # # plt.plot(old_x, old_lv, color='blue')
-        # # plt.plot(new_x, new_lv, color='red')
-        # plt.plot(old_x, old_p, color='blue', label='old')
-        # plt.plot(new_x, new_p, color='red', label='new')
-        # plt.show()
 
         # Calculate the PDE options at the next expiry
         s = self.fwd * np.exp(x)
@@ -103,12 +98,9 @@ class LvObjectiveBuilder:
             weighted_payoff = payoff * p
             pde_prices.append(np.trapezoid(weighted_payoff, x))
 
-        # print(pde_prices)
-        # print()
-        # print(cf_prices[exp_idx])
-
         # Calculate the objective function at the next expiry
         rmse = metrics.rmse(pde_prices, self.cf_prices)
+        self.pde_prices = pde_prices
         self.rmse = rmse
         return rmse
 
@@ -195,11 +187,49 @@ if __name__ == "__main__":
     params_init = svivol.sample_params(expiry_grid[0])
 
     # get old, then retrieve new, then plot again
+    old_x = obj_builder.old_x
+    old_p = obj_builder.old_p
 
     # Calculate objective
     rmse = objective(params_init)
+    new_x = obj_builder.new_x
+    new_p = obj_builder.new_p
     print(rmse)
 
+    # plt.plot(old_x, old_p, color='blue', label='old')
+    # plt.plot(new_x, new_p, color='red', label='new')
+    # plt.legend(loc='upper right')
+    # plt.show()
+
     # Optimize the objective function
+    lw_bounds = [0.0, 0.0, -0.99, -0.5, 0.0] # a, b, rho, m, sigma
+    up_bounds = [0.8, 1.0, 0.99, 0.5, 1.0] # a, b, rho, m, sigma
+    # method = 'Nelder-Mead'
+    # method = 'Powell'
+    method = 'L-BFGS-B'
+    tol = 1e-5
+    optimizer = create_optimizer(method, tol=tol)
+    bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
+
+    # Optimize
+    result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+    # for key in result.keys():
+    #     if key in result:
+    #         print(key + "\n", result[key])
+
+    x = result.x
+    fun = result.fun
+
+    print(f"Result x: {x}")
+    print(f"Result f: {fun}")
+
+    y = objective(x)
+    print(f"Result f check: {y}")
+
+    cf_p = np.asarray(obj_builder.cf_prices)
+    pde_p = np.asarray(obj_builder.pde_prices)
+    print(cf_p)
+    print(pde_p)
+
     # Retrieve optimum parameters and optimum density
     # Iterate: use previous initial parameters as starting points
