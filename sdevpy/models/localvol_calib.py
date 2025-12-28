@@ -130,7 +130,8 @@ class LvObjectiveBuilder:
         # First density
         old_p = fpde.lognormal_density(old_x, self.start_time, self.pde_config.mesh_vol)
 
-        self.set_expiry(0, old_x, old_dx, old_p)
+        return old_x, old_dx, old_p
+        # self.set_expiry(0, old_x, old_dx, old_p)
 
 
 
@@ -177,59 +178,69 @@ if __name__ == "__main__":
     obj_builder = LvObjectiveBuilder(lv, expiry_grid, fwds, strike_surface,
                                      cf_price_surface, pde_config)
 
-    # Initialize PDE
-    obj_builder.initialize()
-
     # Get objective
     objective = obj_builder.objective
+
+    # Optimizer config
+    lw_bounds = [0.0, 0.0, -0.99, -1.0, 0.0] # a, b, rho, m, sigma
+    up_bounds = [0.8, 1.0, 0.99, 1.0, 1.0] # a, b, rho, m, sigma
+    # method = 'Nelder-Mead'
+    # method = 'Powell'
+    method = 'L-BFGS-B'
+    tol = 1e-4
+    optimizer = create_optimizer(method, tol=tol)
+    bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
+
+    # Initialize PDE
+    old_x, old_dx, old_p = obj_builder.initialize()
 
     # Initial parameters for the first expiry
     params_init = svivol.sample_params(expiry_grid[0])
 
-    # get old, then retrieve new, then plot again
-    old_x = obj_builder.old_x
-    old_p = obj_builder.old_p
+    # Loop over expiries
+    for exp_idx in range(len(expiry_grid)):
+        print(f"Expiry: {exp_idx}")
+        obj_builder.set_expiry(exp_idx, old_x, old_dx, old_p)
 
-    # Calculate objective
-    rmse = objective(params_init)
-    new_x = obj_builder.new_x
-    new_p = obj_builder.new_p
-    print(rmse)
+        # Calculate objective
+        # old_x = obj_builder.old_x
+        # old_p = obj_builder.old_p
+        # rmse = objective(params_init)
+        # new_x = obj_builder.new_x
+        # new_p = obj_builder.new_p
+        # print(rmse)
 
-    # plt.plot(old_x, old_p, color='blue', label='old')
-    # plt.plot(new_x, new_p, color='red', label='new')
-    # plt.legend(loc='upper right')
-    # plt.show()
+        # plt.plot(old_x, old_p, color='blue', label='old')
+        # plt.plot(new_x, new_p, color='red', label='new')
+        # plt.legend(loc='upper right')
+        # plt.show()
 
-    # Optimize the objective function
-    lw_bounds = [0.0, 0.0, -0.99, -0.5, 0.0] # a, b, rho, m, sigma
-    up_bounds = [0.8, 1.0, 0.99, 0.5, 1.0] # a, b, rho, m, sigma
-    # method = 'Nelder-Mead'
-    # method = 'Powell'
-    method = 'L-BFGS-B'
-    tol = 1e-5
-    optimizer = create_optimizer(method, tol=tol)
-    bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
+        # Optimize
+        optimizer = create_optimizer(method, tol=tol)
+        result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+        sol = result.x
+        fun = result.fun
+        # print(f"Result x: {sol}")
+        print(f"Result f: {fun}")
 
-    # Optimize
-    result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
-    # for key in result.keys():
-    #     if key in result:
-    #         print(key + "\n", result[key])
+        # Set local vol to optimum
+        lv.update_params(exp_idx, sol)
 
-    x = result.x
-    fun = result.fun
+        # Recalculate on optimum to get optimum density
+        rmse = objective(sol)
+        print(rmse)
 
-    print(f"Result x: {x}")
-    print(f"Result f: {fun}")
+        # Prepare next iteration
+        params_init = sol # Use the solution as initial point for next iteration
+        old_x = obj_builder.new_x
+        old_dx = obj_builder.new_dx
+        old_p = obj_builder.new_p
 
-    y = objective(x)
-    print(f"Result f check: {y}")
-
-    cf_p = np.asarray(obj_builder.cf_prices)
-    pde_p = np.asarray(obj_builder.pde_prices)
-    print(cf_p)
-    print(pde_p)
-
-    # Retrieve optimum parameters and optimum density
-    # Iterate: use previous initial parameters as starting points
+        # Check optimization result
+        # y = objective(x)
+        # print(f"Result f check: {y}")
+        # print(f"Result f check: {obj_builder.rmse}")
+        cf_p = np.asarray(obj_builder.cf_prices)
+        pde_p = np.asarray(obj_builder.pde_prices)
+        print(cf_p)
+        print(pde_p)
