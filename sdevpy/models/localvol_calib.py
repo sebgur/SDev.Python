@@ -12,10 +12,7 @@ from sdevpy.maths.optimization import *
 
 
 ########## ToDo (calibration) #################################################
-# * Express result prices in implied vol terms to get better view on the 
-#   quality of the result.
-# * Check if market data is realistic at late maturities. Doesn't it have too strong
-#   a smile? Can that explain or not the difficulty to fit at the last maturity?
+# * Create more realistic sample market
 # * Isn't Rannacher's scheme defined the other way around for forward PDE?
 #   Make sure Rannacher throws an error if its time def is not given.
 # * Get definition/control of optimizer's stopping criteria.
@@ -24,9 +21,8 @@ from sdevpy.maths.optimization import *
 # * To check the quality of the calibration, start by comparing against same forward
 #   PDE as used in calibration. Define a simple method that calculates the whole
 #   surface. Then implement and check against backward PDE.
-# * Make notebook that illustrates the whole flow.
-# * Introduce unit testing. Cleanup package, upload to pypi.
 # * Implement input option filters (time and percentiles)
+# * Introduce unit testing. Cleanup package, upload to pypi.
 # * Make Colab, post.
 
 def generate_sample_data(valdate, terms):
@@ -196,37 +192,28 @@ if __name__ == "__main__":
     params_init = svivol.sample_params(expiry_grid[0])
 
     # Loop over expiries
+    rmses = []
+    cf_prices, cf_vols = [], []
+    pde_prices, pde_vols = [], []
     for exp_idx in range(len(expiry_grid)):
-        print(f"Expiry: {exp_idx}")
+        # Set expiry
         obj_builder.set_expiry(exp_idx, old_x, old_dx, old_p)
-
-        # Calculate objective
-        # old_x = obj_builder.old_x
-        # old_p = obj_builder.old_p
-        # rmse = objective(params_init)
-        # new_x = obj_builder.new_x
-        # new_p = obj_builder.new_p
-        # print(rmse)
-
-        # plt.plot(old_x, old_p, color='blue', label='old')
-        # plt.plot(new_x, new_p, color='red', label='new')
-        # plt.legend(loc='upper right')
-        # plt.show()
 
         # Optimize
         optimizer = create_optimizer(method, tol=tol)
         result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
-        sol = result.x
-        fun = result.fun
+        sol = result.x # Optimum parameters
+        # fun = result.fun
         # print(f"Result x: {sol}")
-        print(f"Result f: {fun}")
+        # print(f"Result f: {fun}")
 
         # Set local vol to optimum
         lv.update_params(exp_idx, sol)
 
         # Recalculate on optimum to get optimum density
         rmse = objective(sol)
-        print(rmse)
+        rmses.append(rmse)
+        print(f"RMSE at exp idx {exp_idx}: {rmse:.4f}")
 
         # Prepare next iteration
         params_init = sol # Use the solution as initial point for next iteration
@@ -238,7 +225,37 @@ if __name__ == "__main__":
         # y = objective(x)
         # print(f"Result f check: {y}")
         # print(f"Result f check: {obj_builder.rmse}")
-        cf_p = np.asarray(obj_builder.cf_prices)
-        pde_p = np.asarray(obj_builder.pde_prices)
-        print(cf_p)
-        print(pde_p)
+        cf_prices.append(obj_builder.cf_prices)
+        pde_prices_at_exp = obj_builder.pde_prices
+        pde_prices.append(pde_prices_at_exp)
+        cf_vols.append(vol_surface[exp_idx])
+        # pde_vols.append(vol_surface[exp_idx]) # ToDo: transform prices
+        pde_vols_at_exp = []
+        expiry = expiry_grid[exp_idx]
+        fwd = fwds[exp_idx]
+        strikes = strike_surface[exp_idx]
+        for k, p in zip(strikes, pde_prices_at_exp):
+            pde_vols_at_exp.append(black.implied_vol(expiry, k, is_call, fwd, p))
+
+        pde_vols.append(pde_vols_at_exp)
+
+    # Display results
+    n_rows, n_cols = 3, 2
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            ax = axes[i, j]
+            exp_idx = n_cols * i + j
+            strikes = strike_surface[exp_idx]
+            ax.plot(strikes, pde_vols[exp_idx], label="PDE", color='red')
+            ax.plot(strikes, cf_vols[exp_idx], label="CF", color='blue')
+            ax.set_title(expiry_grid[exp_idx])
+            ax.set_xlabel('strike')
+            ax.set_ylabel('price')
+            ax.legend()
+
+    fig.suptitle('Option prices, PDE vs CF', fontsize=16, fontweight='bold')
+    plt.tight_layout()
+    plt.show()
+
+
