@@ -25,28 +25,28 @@ from sdevpy.maths.optimization import *
 # * Introduce unit testing. Cleanup package, upload to pypi.
 # * Make Colab, post.
 
-def generate_sample_data(valdate, terms):
-    spot, r, q = 100.0, 0.04, 0.02
-    percents = [0.10, 0.25, 0.5, 0.75, 0.90]
-    base_vol = 0.25
-    expiries, fwds, strike_surface, vol_surface = [], [], [], []
-    for term in terms:
-        expiry = valdate + dt.timedelta(days=int(term * 365.25))
-        fwd = spot * np.exp((r - q) * term)
-        base_std = base_vol * np.sqrt(term)
-        a, b, rho, m, sigma = base_vol, 0.1, 0.0, 0.5, 0.25
-        strikes, vols = [], []
-        for p in percents:
-            logm = -0.5 * base_std**2 + base_std * norm.ppf(p)
-            strikes.append(fwd * np.exp(logm))
-            vols.append(svivol.svivol(term, logm, a, b, rho, m, sigma))
+# def generate_sample_data(valdate, terms):
+#     spot, r, q = 100.0, 0.04, 0.02
+#     percents = [0.10, 0.25, 0.5, 0.75, 0.90]
+#     base_vol = 0.25
+#     expiries, fwds, strike_surface, vol_surface = [], [], [], []
+#     for term in terms:
+#         expiry = valdate + dt.timedelta(days=int(term * 365.25))
+#         fwd = spot * np.exp((r - q) * term)
+#         base_std = base_vol * np.sqrt(term)
+#         a, b, rho, m, sigma = base_vol, 0.1, 0.0, 0.5, 0.25
+#         strikes, vols = [], []
+#         for p in percents:
+#             logm = -0.5 * base_std**2 + base_std * norm.ppf(p)
+#             strikes.append(fwd * np.exp(logm))
+#             vols.append(svivol.svivol(term, logm, a, b, rho, m, sigma))
 
-        expiries.append(expiry)
-        fwds.append(fwd)
-        strike_surface.append(strikes)
-        vol_surface.append(vols)
+#         expiries.append(expiry)
+#         fwds.append(fwd)
+#         strike_surface.append(strikes)
+#         vol_surface.append(vols)
 
-    return np.array(expiries), np.array(fwds), np.array(strike_surface), np.array(vol_surface)
+#     return np.array(expiries), np.array(fwds), np.array(strike_surface), np.array(vol_surface)
 
 
 class LvObjectiveBuilder:
@@ -133,7 +133,8 @@ if __name__ == "__main__":
     ##### Create IV and forward target data #############################################
     valdate = dt.datetime(2025, 12, 15)
     terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
-    expiries, fwds, strike_surface, vol_surface = generate_sample_data(valdate, terms)
+    expiries, fwds, strike_surface, vol_surface = svivol.generate_sample_data(valdate, terms)
+    # expiries, fwds, strike_surface, vol_surface = generate_sample_data(valdate, terms)
 
     print(f"Val date: {valdate.strftime("%Y-%b-%d")}")
     print(f"Expiries: {expiries.shape}")
@@ -163,6 +164,7 @@ if __name__ == "__main__":
     ## Set up forward PDE ##
     mesh_vol = vol_surface.mean()
     print(f"Mesh vol: {mesh_vol*100:.2f}%")
+    # Original trial: n_times = 50, n_meshes = 250
     pde_config = fpde.PdeConfig(n_time_steps=50, n_meshes=250, mesh_vol=mesh_vol, scheme='rannacher',
                                 rescale_x=True, rescale_p=True)
     print(f"Time steps: {pde_config.n_time_steps}")
@@ -189,7 +191,7 @@ if __name__ == "__main__":
     old_x, old_dx, old_p = obj_builder.initialize()
 
     # Initial parameters for the first expiry
-    params_init = svivol.sample_params(expiry_grid[0])
+    params_init = svivol.sample_params(expiry_grid[0], mesh_vol)
 
     # Loop over expiries
     rmses = []
@@ -257,5 +259,3 @@ if __name__ == "__main__":
     fig.suptitle('Option prices, PDE vs CF', fontsize=16, fontweight='bold')
     plt.tight_layout()
     plt.show()
-
-

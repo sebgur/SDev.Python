@@ -1,5 +1,7 @@
+import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import norm
 from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
 
@@ -68,28 +70,59 @@ def svivol_formula(t, x, params):
     return svivol(t, x, *params)
 
 
-def sample_params(t):
+def sample_params(t, vol):
     """ Guess parameters for display or optimization initial point """
-    a = 0.25
-    b = 0.0
-    rho, m = 0.0, 0.0
-    sigma = 0.0
+    a = vol
+    b = 0.1 / t
+    rho = -0.25
+    m = 0.0
+    sigma = 0.25 * t
     return np.array([a, b, rho, m, sigma])
 
 
+def generate_sample_data(valdate, terms, base_vol=0.25,
+                         percents=[0.10, 0.25, 0.50, 0.75, 0.90]):
+    spot, r, q = 100.0, 0.04, 0.02
+
+    expiries, fwds, strike_surface, vol_surface = [], [], [], []
+    for term in terms:
+        expiry = valdate + dt.timedelta(days=int(term * 365.25))
+        fwd = spot * np.exp((r - q) * term)
+        base_std = base_vol * np.sqrt(term)
+        a, b, rho, m, sigma = base_vol, 0.1 / term, -0.25, 0.0, 0.25 * term # a, b, rho, m, sigma
+        strikes, vols = [], []
+        for p in percents:
+            logm = -0.5 * base_std**2 + base_std * norm.ppf(p)
+            strikes.append(fwd * np.exp(logm))
+            vols.append(svivol(term, logm, a, b, rho, m, sigma))
+
+        expiries.append(expiry)
+        fwds.append(fwd)
+        strike_surface.append(strikes)
+        vol_surface.append(vols)
+
+    return np.array(expiries), np.array(fwds), np.array(strike_surface), np.array(vol_surface)
+
+
 if __name__ == "__main__":
-    t = 1/365
-    a = 0.25 # a > 0
-    b = 0.01 #a / np.log(2) # b > 0
-    rho = 0.0 # -1 < rho < 1
-    m = 0.0 # No constraints
-    sigma = 0.5 #0.5 / np.sqrt(t) # > 0
-    params = [a, b, rho, m, sigma]
+    valdate = dt.datetime(2025, 12, 15)
+    terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
+    base_vol = 0.25
+    percents = [0.10, 0.25, 0.50, 0.75, 0.90]
 
-    k = np.linspace(0.2, 3.0, 100)
-    x = np.log(k)
+    expiries, fwds, strikes, vols = generate_sample_data(valdate, terms, base_vol, percents)
+    n_rows, n_cols = 3, 2
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            ax = axes[i, j]
+            exp_idx = n_cols * i + j
+            ax.plot(strikes[exp_idx], vols[exp_idx], color='red')
+            ax.set_title(expiries[exp_idx])
+            ax.set_xlabel('strike')
+            ax.set_ylabel('vol')
+            # ax.legend()
 
-    vol = svivol_formula(t, x, params)
-    print(svivol_formula(t, m, params))
-    plt.plot(x, vol)
+    fig.suptitle('Option prices, PDE vs CF', fontsize=16, fontweight='bold')
+    plt.tight_layout()
     plt.show()
