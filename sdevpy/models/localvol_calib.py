@@ -165,7 +165,7 @@ if __name__ == "__main__":
     mesh_vol = vol_surface.mean()
     print(f"Mesh vol: {mesh_vol*100:.2f}%")
     # Original trial: n_times = 50, n_meshes = 250
-    pde_config = fpde.PdeConfig(n_time_steps=50, n_meshes=250, mesh_vol=mesh_vol, scheme='rannacher',
+    pde_config = fpde.PdeConfig(n_time_steps=50, n_meshes=100, mesh_vol=mesh_vol, scheme='rannacher',
                                 rescale_x=True, rescale_p=True)
     print(f"Time steps: {pde_config.n_time_steps}")
     print(f"Spot steps: {pde_config.n_meshes}")
@@ -179,12 +179,15 @@ if __name__ == "__main__":
 
     # Optimizer config
     lw_bounds = [0.0, 0.0, -0.99, -1.0, 0.0] # a, b, rho, m, sigma
-    up_bounds = [0.8, 1.0, 0.99, 1.0, 1.0] # a, b, rho, m, sigma
+    up_bounds = [0.8, 5.0, 0.99, 2.0, 1.0] # a, b, rho, m, sigma
     # method = 'Nelder-Mead'
     # method = 'Powell'
-    method = 'L-BFGS-B'
-    tol = 1e-4
-    optimizer = create_optimizer(method, tol=tol)
+    # method = 'DE'
+    method = 'SLSQP'
+    # method = 'L-BFGS-B'
+    tol = 1e-8
+    atol = 1e-2
+    optimizer = create_optimizer(method, tol=tol, atol=atol)
     bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
 
     # Initialize PDE
@@ -192,21 +195,36 @@ if __name__ == "__main__":
 
     # Initial parameters for the first expiry
     params_init = svivol.sample_params(expiry_grid[0], mesh_vol)
+    # print(params_init)
+
+    params_init = [[0.237, 3.3, -0.22, -0.007, 0.0],
+                   [0.001, 3.27, 0.05, 0.0125, 0.11],
+                   [0.089, 0.755,  0.19, 0.07,  0.23],
+                   [0.18605, 0.26973, 0.45985, 0.22791, 0.3253],
+                   [0.24804566, 0.06740734, 0.60760707, 0.4204044,  0.37236663],
+                   [0.27136465, 0.0025457,  0.87826455, 1., 0.58212948]]
+    # params_init = [0.179, 3.3, -0.40, -0.019, 0.025]
+    # print(params_init)
+    # obj_builder.set_expiry(0, old_x, old_dx, old_p)
+    # rmse = objective(params_init)
+    # print(rmse)
+
 
     # Loop over expiries
     rmses = []
     cf_prices, cf_vols = [], []
     pde_prices, pde_vols = [], []
     for exp_idx in range(len(expiry_grid)):
+        print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
         # Set expiry
         obj_builder.set_expiry(exp_idx, old_x, old_dx, old_p)
 
         # Optimize
         optimizer = create_optimizer(method, tol=tol)
-        result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+        result = optimizer.minimize(objective, x0=params_init[exp_idx], bounds=bounds)
         sol = result.x # Optimum parameters
         # fun = result.fun
-        # print(f"Result x: {sol}")
+        print(f"Result x: {sol}")
         # print(f"Result f: {fun}")
 
         # Set local vol to optimum
@@ -214,11 +232,11 @@ if __name__ == "__main__":
 
         # Recalculate on optimum to get optimum density
         rmse = objective(sol)
-        rmses.append(rmse)
+        # rmses.append(rmse)
         print(f"RMSE at exp idx {exp_idx}: {rmse:.4f}")
 
         # Prepare next iteration
-        params_init = sol # Use the solution as initial point for next iteration
+        # params_init = sol # Use the solution as initial point for next iteration
         old_x = obj_builder.new_x
         old_dx = obj_builder.new_dx
         old_p = obj_builder.new_p
@@ -240,6 +258,7 @@ if __name__ == "__main__":
             pde_vols_at_exp.append(black.implied_vol(expiry, k, is_call, fwd, p))
 
         pde_vols.append(pde_vols_at_exp)
+        rmses.append(10000.0 * metrics.rmse(cf_vols, pde_vols))
 
     # Display results
     n_rows, n_cols = 3, 2
@@ -251,7 +270,7 @@ if __name__ == "__main__":
             strikes = strike_surface[exp_idx]
             ax.plot(strikes, pde_vols[exp_idx], label="PDE", color='red')
             ax.plot(strikes, cf_vols[exp_idx], label="CF", color='blue')
-            ax.set_title(expiry_grid[exp_idx])
+            ax.set_title(f"T:{expiry_grid[exp_idx]:.2f}, RMSE: {rmses[exp_idx]:.4f}")
             ax.set_xlabel('strike')
             ax.set_ylabel('price')
             ax.legend()

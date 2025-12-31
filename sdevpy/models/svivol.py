@@ -94,6 +94,7 @@ def generate_sample_data(valdate, terms, base_vol=0.25,
         for p in percents:
             logm = -0.5 * base_std**2 + base_std * norm.ppf(p)
             strikes.append(fwd * np.exp(logm))
+            # a, b, rho, m, sigma = 0.179, 5.3, -0.40, -0.019, 0.025
             vols.append(svivol(term, logm, a, b, rho, m, sigma))
 
         expiries.append(expiry)
