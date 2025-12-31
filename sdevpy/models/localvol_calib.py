@@ -2,7 +2,7 @@ import datetime as dt
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
-from sdevpy.models import svivol
+from sdevpy.models import svivol, biexp
 from sdevpy.tools import timegrids
 from sdevpy.models import localvol
 from sdevpy.pde import forwardpde as fpde
@@ -12,7 +12,6 @@ from sdevpy.maths.optimization import *
 
 
 ########## ToDo (calibration) #################################################
-# * Create more realistic sample market
 # * Isn't Rannacher's scheme defined the other way around for forward PDE?
 #   Make sure Rannacher throws an error if its time def is not given.
 # * Get definition/control of optimizer's stopping criteria.
@@ -24,29 +23,6 @@ from sdevpy.maths.optimization import *
 # * Implement input option filters (time and percentiles)
 # * Introduce unit testing. Cleanup package, upload to pypi.
 # * Make Colab, post.
-
-# def generate_sample_data(valdate, terms):
-#     spot, r, q = 100.0, 0.04, 0.02
-#     percents = [0.10, 0.25, 0.5, 0.75, 0.90]
-#     base_vol = 0.25
-#     expiries, fwds, strike_surface, vol_surface = [], [], [], []
-#     for term in terms:
-#         expiry = valdate + dt.timedelta(days=int(term * 365.25))
-#         fwd = spot * np.exp((r - q) * term)
-#         base_std = base_vol * np.sqrt(term)
-#         a, b, rho, m, sigma = base_vol, 0.1, 0.0, 0.5, 0.25
-#         strikes, vols = [], []
-#         for p in percents:
-#             logm = -0.5 * base_std**2 + base_std * norm.ppf(p)
-#             strikes.append(fwd * np.exp(logm))
-#             vols.append(svivol.svivol(term, logm, a, b, rho, m, sigma))
-
-#         expiries.append(expiry)
-#         fwds.append(fwd)
-#         strike_surface.append(strikes)
-#         vol_surface.append(vols)
-
-#     return np.array(expiries), np.array(fwds), np.array(strike_surface), np.array(vol_surface)
 
 
 class LvObjectiveBuilder:
@@ -76,27 +52,31 @@ class LvObjectiveBuilder:
 
     def objective(self, params):
         self.lv.update_params(self.exp_idx, params)
+        is_ok, penalty = self.lv.check_params(self.exp_idx)
 
-        x, dx, p = fpde.density_step(self.old_p, self.old_x, self.old_dx,
-                                     self.step_grid, self.lv.value, self.pde_config)
-        self.new_x = x
-        self.new_p = p
-        self.new_dx = dx
-        # new_lv = lv.value(te, x)
+        if is_ok:
+            x, dx, p = fpde.density_step(self.old_p, self.old_x, self.old_dx,
+                                        self.step_grid, self.lv.value, self.pde_config)
+            self.new_x = x
+            self.new_p = p
+            self.new_dx = dx
+            # new_lv = lv.value(te, x)
 
-        # Calculate the PDE options at the next expiry
-        s = self.fwd * np.exp(x)
-        pde_prices = []
-        for k in self.strikes: # ToDo: can we do this vectorially over the strikes?
-            payoff = np.maximum(s - k, 0.0)
-            weighted_payoff = payoff * p
-            pde_prices.append(np.trapezoid(weighted_payoff, x))
+            # Calculate the PDE options at the next expiry
+            s = self.fwd * np.exp(x)
+            pde_prices = []
+            for k in self.strikes: # ToDo: can we do this vectorially over the strikes?
+                payoff = np.maximum(s - k, 0.0)
+                weighted_payoff = payoff * p
+                pde_prices.append(np.trapezoid(weighted_payoff, x))
 
-        # Calculate the objective function at the next expiry
-        rmse = metrics.rmse(pde_prices, self.cf_prices)
-        self.pde_prices = pde_prices
-        self.rmse = rmse
-        return rmse
+            # Calculate the objective function at the next expiry
+            rmse = metrics.rmse(pde_prices, self.cf_prices)
+            self.pde_prices = pde_prices
+            self.rmse = rmse
+            return rmse
+        else:
+            return penalty
 
     def set_expiry(self, exp_idx, old_x, old_dx, old_p):
         self.exp_idx = exp_idx
@@ -134,7 +114,6 @@ if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
     terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
     expiries, fwds, strike_surface, vol_surface = svivol.generate_sample_data(valdate, terms)
-    # expiries, fwds, strike_surface, vol_surface = generate_sample_data(valdate, terms)
 
     print(f"Val date: {valdate.strftime("%Y-%b-%d")}")
     print(f"Expiries: {expiries.shape}")
@@ -158,7 +137,8 @@ if __name__ == "__main__":
         cf_price_surface.append(cf_price)
 
     # Create an LV with suitable slices
-    section_grid = [svivol.SviVolSection() for i in range(len(expiry_grid))]
+    section_grid = [biexp.BiExpSection() for i in range(len(expiry_grid))]
+    # section_grid = [svivol.SviVolSection() for i in range(len(expiry_grid))]
     lv = localvol.InterpolatedParamLocalVol(expiry_grid, section_grid)
 
     ## Set up forward PDE ##
@@ -177,9 +157,13 @@ if __name__ == "__main__":
     # Get objective
     objective = obj_builder.objective
 
-    # Optimizer config
-    lw_bounds = [0.0, 0.0, -0.99, -1.0, 0.0] # a, b, rho, m, sigma
-    up_bounds = [0.8, 5.0, 0.99, 2.0, 1.0] # a, b, rho, m, sigma
+    # Constraints
+    # lw_bounds = [0.0, 0.0, -0.99, -1.0, 0.0] # a, b, rho, m, sigma
+    # up_bounds = [0.8, 5.0, 0.99, 2.0, 1.0] # a, b, rho, m, sigma
+    lw_bounds = [0.01, 0.01, 0.01, 0.01, 0.01, -2.0] # a, b, rho, m, sigma
+    up_bounds = [1.0, 1.0, 1.0, 2.0, 2.0, 2.0] # a, b, rho, m, sigma
+
+    # Optimizer
     # method = 'Nelder-Mead'
     # method = 'Powell'
     # method = 'DE'
@@ -194,26 +178,28 @@ if __name__ == "__main__":
     old_x, old_dx, old_p = obj_builder.initialize()
 
     # Initial parameters for the first expiry
-    params_init = svivol.sample_params(expiry_grid[0], mesh_vol)
+    # params_init = svivol.sample_params(expiry_grid[0], mesh_vol)
+    params_init = biexp.sample_params(expiry_grid[0], mesh_vol)
+    params_init = [params_init] * len(expiry_grid)
     # print(params_init)
 
-    params_init = [[0.237, 3.3, -0.22, -0.007, 0.0],
-                   [0.001, 3.27, 0.05, 0.0125, 0.11],
-                   [0.089, 0.755,  0.19, 0.07,  0.23],
-                   [0.18605, 0.26973, 0.45985, 0.22791, 0.3253],
-                   [0.24804566, 0.06740734, 0.60760707, 0.4204044,  0.37236663],
-                   [0.27136465, 0.0025457,  0.87826455, 1., 0.58212948]]
-    # params_init = [0.179, 3.3, -0.40, -0.019, 0.025]
-    # print(params_init)
-    # obj_builder.set_expiry(0, old_x, old_dx, old_p)
-    # rmse = objective(params_init)
-    # print(rmse)
-
+    # params_init = [[0.237, 3.3, -0.22, -0.007, 0.0],
+    #                [0.001, 3.27, 0.05, 0.0125, 0.11],
+    #                [0.089, 0.755,  0.19, 0.07,  0.23],
+    #                [0.18605, 0.26973, 0.45985, 0.22791, 0.3253],
+    #                [0.24804566, 0.06740734, 0.60760707, 0.4204044,  0.37236663],
+    #                [0.27136465, 0.0025457,  0.87826455, 1., 0.58212948]]
+    # # params_init = [0.179, 3.3, -0.40, -0.019, 0.025]
+    # # print(params_init)
+    # # obj_builder.set_expiry(0, old_x, old_dx, old_p)
+    # # rmse = objective(params_init)
+    # # print(rmse)
 
     # Loop over expiries
     rmses = []
     cf_prices, cf_vols = [], []
     pde_prices, pde_vols = [], []
+    params_init = params_init[0]
     for exp_idx in range(len(expiry_grid)):
         print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
         # Set expiry
@@ -221,7 +207,7 @@ if __name__ == "__main__":
 
         # Optimize
         optimizer = create_optimizer(method, tol=tol)
-        result = optimizer.minimize(objective, x0=params_init[exp_idx], bounds=bounds)
+        result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
         sol = result.x # Optimum parameters
         # fun = result.fun
         print(f"Result x: {sol}")
@@ -236,7 +222,7 @@ if __name__ == "__main__":
         print(f"RMSE at exp idx {exp_idx}: {rmse:.4f}")
 
         # Prepare next iteration
-        # params_init = sol # Use the solution as initial point for next iteration
+        params_init = sol # Use the solution as initial point for next iteration
         old_x = obj_builder.new_x
         old_dx = obj_builder.new_dx
         old_p = obj_builder.new_p
@@ -260,7 +246,7 @@ if __name__ == "__main__":
         pde_vols.append(pde_vols_at_exp)
         rmses.append(10000.0 * metrics.rmse(cf_vols, pde_vols))
 
-    # Display results
+    # Display price results
     n_rows, n_cols = 3, 2
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
     for i in range(n_rows):
@@ -271,6 +257,32 @@ if __name__ == "__main__":
             ax.plot(strikes, pde_vols[exp_idx], label="PDE", color='red')
             ax.plot(strikes, cf_vols[exp_idx], label="CF", color='blue')
             ax.set_title(f"T:{expiry_grid[exp_idx]:.2f}, RMSE: {rmses[exp_idx]:.4f}")
+            ax.set_xlabel('strike')
+            ax.set_ylabel('price')
+            ax.legend()
+
+    fig.suptitle('Option prices, PDE vs CF', fontsize=16, fontweight='bold')
+    plt.tight_layout()
+    plt.show()
+
+    # Display LV results
+    n_rows, n_cols = 3, 2
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            ax = axes[i, j]
+            exp_idx = n_cols * i + j
+            expiry = expiry_grid[exp_idx]
+            vol = vol_surface[exp_idx].mean()
+            stdev = vol * np.sqrt(expiry)
+            print(f"Params at {expiry:.3f}: {lv.params(exp_idx)}")
+            xs = np.linspace(-3.0 * stdev, 3.0 * stdev, 100)
+            lvs = lv.value(expiry, xs)
+            ax.plot(xs, lvs, label="LV", color='blue')
+            # strikes = strike_surface[exp_idx]
+            # lvs = lv.value(expiry_grid[exp_idx], np.log(strikes / fwds[exp_idx]))
+            # ax.plot(strikes, lvs, label="LV", color='blue')
+            ax.set_title(f"T:{expiry:.2f}, RMSE: {rmses[exp_idx]:.4f}")
             ax.set_xlabel('strike')
             ax.set_ylabel('price')
             ax.legend()

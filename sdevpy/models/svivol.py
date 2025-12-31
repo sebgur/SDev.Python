@@ -14,7 +14,7 @@ class SviVolSection(ParamSection):
         return svivol_check_params(self.params)
 
 
-def svivol(t, x, *params):
+def svivol(x, *params):
     """ SVI-like formula but applied to the vol directly. This no longer has
         the original features of no-arbitrage and the interpretation as a limit
         of Heston. It is purely used for its parametric shape here.
@@ -67,7 +67,7 @@ def svivol_check_params(params):
 
 def svivol_formula(t, x, params):
     """ Wrapper on SVI formula to take parameter vector as input """
-    return svivol(t, x, *params)
+    return svivol(x, *params)
 
 
 def sample_params(t, vol):
@@ -95,7 +95,7 @@ def generate_sample_data(valdate, terms, base_vol=0.25,
             logm = -0.5 * base_std**2 + base_std * norm.ppf(p)
             strikes.append(fwd * np.exp(logm))
             # a, b, rho, m, sigma = 0.179, 5.3, -0.40, -0.019, 0.025
-            vols.append(svivol(term, logm, a, b, rho, m, sigma))
+            vols.append(svivol(logm, a, b, rho, m, sigma))
 
         expiries.append(expiry)
         fwds.append(fwd)
@@ -124,6 +124,6 @@ if __name__ == "__main__":
             ax.set_ylabel('vol')
             # ax.legend()
 
-    fig.suptitle('Option prices, PDE vs CF', fontsize=16, fontweight='bold')
+    fig.suptitle('Vols', fontsize=16, fontweight='bold')
     plt.tight_layout()
     plt.show()
