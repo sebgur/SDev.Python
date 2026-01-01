@@ -89,6 +89,7 @@ def lognormal_density(x, t, vol):
 def roll_forward(p, x, dx, ts, te, local_vol, pde_config):
     """ Roll the density forward from time ts to te (ts < te) """
     scheme = pdeschemes.scheme(pde_config, ts)
+    # print(f"{ts:.4f}-{type(scheme)}")
     scheme.local_vol = local_vol
     p_new = scheme.roll_forward(p, x, ts, te, dx)
     return p_new

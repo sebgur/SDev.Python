@@ -12,16 +12,16 @@ from sdevpy.maths.optimization import *
 
 
 ########## ToDo (calibration) #################################################
-# * Isn't Rannacher's scheme defined the other way around for forward PDE?
-#   Make sure Rannacher throws an error if its time def is not given.
 # * Get definition/control of optimizer's stopping criteria.
-# * Use seaborn to represent diffs between IV and LV prices on quoted pillars
+# * Make input markets and input LVs as json objects/files
+# * Start calibration from a given LV and use its parameters as initial points at
+#   each expiry. Use for PnL/vega/scenarios.
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
-# * To check the quality of the calibration, start by comparing against same forward
-#   PDE as used in calibration. Define a simple method that calculates the whole
-#   surface. Then implement and check against backward PDE.
-# * Implement input option filters (time and percentiles)
-# * Introduce unit testing. Cleanup package, upload to pypi.
+# * Implement backward PDE and check calibration against it.
+# * Implement MC and check calibration against it.
+# * Implement option filters (time and percentiles)
+# * Use seaborn to represent diffs between IV and LV prices on quoted pillars
+# * Introduce unit testing, remove connection to C++/CLI, test package, upload to pypi.
 # * Make Colab, post.
 
 

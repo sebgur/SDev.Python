@@ -14,9 +14,8 @@ def scheme(config, ts):
     elif scheme_type == 'EXPLICIT':
         return ExplicitScheme()
     elif scheme_type == 'RANNACHER':
-        rt = config.rannacher_time
         eps = 1e-8
-        if rt < ts - eps:
+        if ts - eps <= config.rannacher_time:
             return ImplicitScheme()
         else:
             return ThetaScheme(0.5)
