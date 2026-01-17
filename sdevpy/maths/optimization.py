@@ -2,11 +2,12 @@
 # https://machinelearningmastery.com/how-to-use-nelder-mead-optimization-in-python/
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
 # For DE: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html
-
 from abc import abstractmethod
 import numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
+from sdevpy.maths.constants import FLOAT_MAX
+# import time
 
 
 SCIPY_OPTIMIZERS = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA',
@@ -28,6 +29,7 @@ def create_optimizer(method, **kwargs):
 
     return optimizer
 
+
 def create_bounds(lw_bounds, up_bounds):
     return opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
 
@@ -48,6 +50,16 @@ class SciPyOptimizer(Optimizer):
 
         self.other_minimizers = ['DE']
         self.kwargs = kwargs
+        self.options = {}
+        ftol = kwargs.get('ftol', None)
+        xtol = kwargs.get('xtol', None)
+        gtol = kwargs.get('gtol', None)
+        if ftol is not None: # Tolerance on objective
+            self.options['ftol'] = ftol
+        if xtol is not None: # Tolerance on parameters
+            self.options['xtol'] = xtol
+        if gtol is not None: # Tolerance on gradient
+            self.options['gtol'] = gtol
 
         if self.method_ not in self.std_minimizers and self.method_ not in self.other_minimizers:
             raise RuntimeError("Method " + self.method_ + " not found in SciPy")
@@ -57,7 +69,7 @@ class SciPyOptimizer(Optimizer):
         if self.method_ in self.std_minimizers:
             tol = self.kwargs.get('tol', None)
             result = opt.minimize(f, x0, args, method=self.method_, bounds=bounds,
-                                  tol=tol)
+                                  tol=tol, options=self.options)
         elif self.method_== 'DE':
             atol = self.kwargs.get('atol', 0)
             popsize = self.kwargs.get('popsize', 15)
@@ -71,6 +83,7 @@ class SciPyOptimizer(Optimizer):
             raise RuntimeError("Method " + self.method_ + " not recognized")
 
         return result
+
 
 class MultiOptimizer(Optimizer):
     """ Wrapper for SciPy optimizers, including differential_evolution """
@@ -101,8 +114,37 @@ class MultiOptimizer(Optimizer):
         return result, nfev
 
 
+def record_history(enabled=True, verbose=False):
+    """ Decorator that records the history of evaluation of the given function """
+    def decorator(func):
+        # Initialize history
+        recorder = {'enabled': enabled}
+        history = []
+        def wrapped(x, *args, **kwargs):
+            result = func(x, *args, **kwargs)
+
+            if not recorder['enabled']:
+                return result
+
+            # Record
+            record = {'eval': len(history) + 1, 'x': x.copy(), 'f': result}
+            history.append(record)
+
+            if verbose:
+                print(f"Eval {record['eval']}, Point = {x}, Value = {record['f']}")
+
+            return result
+
+        wrapped.recorder = recorder
+        wrapped.history = history
+        return wrapped
+
+    return decorator
+
+
 if __name__ == "__main__":
     # Objective function
+    @record_history(enabled=True, verbose=False)
     def f(x, *args):
         x_ = x[0]
         a = args[0]
@@ -111,18 +153,19 @@ if __name__ == "__main__":
         prod = a * b * c
         bi = a * b + b * c + a * c
         sum = a + b + c
-        return 0.25 * np.power(x_, 4) - sum / 3.0 * np.power(x_, 3) + 0.5 * bi * x_**2 - prod * x_ + 1
+        value = 0.25 * np.power(x_, 4) - sum / 3.0 * np.power(x_, 3) + 0.5 * bi * x_**2 - prod * x_ + 1
+        return value
 
 
     # Choose method
-    method = 'Nelder-Mead'
+    # method = 'Nelder-Mead'
     # method = "Powell" # Success x^4
     # method = "CG"
     # method = "BFGS"
     # method = "L-BFGS-B"
     # method = "TNC"
     # method = "COBYLA" # Success x^4
-    # method = "SLSQP"
+    method = "SLSQP"
     # method = "trust-constr"
     # method = "Newton-CG" # Requires Jacobian
     # method = "dogleg" # Requires Jacobian
@@ -132,28 +175,40 @@ if __name__ == "__main__":
     # method = "DE" # Success x^4
 
     # Create the optimizer
-    optimizer = create_optimizer(method)
+    optimizer = create_optimizer(method, ftol=0.0001)
 
     # Define the bounds
     bounds = opt.Bounds([0], [4], keep_feasible=False)
 
+    # Define initial point
+    init_point = 2.5
+
     # Optimize
-    result = optimizer.minimize(f, x0=[1.5], args=(1, 2, 3.2), bounds=bounds)
-
-    for key in result.keys():
-        if key in result:
-            print(key + "\n", result[key])
-
+    result = optimizer.minimize(f, x0=[init_point], args=(1, 2, 3.2), bounds=bounds)
     x = result.x
     fun = result.fun
-    # print("Keys\n", result.keys())
 
-    # Plot
+    # Pring results
+    print("Sol Point", x)
+    print("Sol Value", fun)
+    for key in result.keys():
+        if key in result:
+            print(f"{key}: {result[key]}")
+
+    # Plot solution
     points = np.linspace(0, 4, 100).reshape(-1, 1)
     y = []
+    f.recorder['enabled'] = False
     for p in points:
         y.append(f(p, 1, 2, 3.2))
 
     plt.plot(points, y, color='blue', alpha=0.8, label='Objective')
     plt.scatter(x[0], fun, color='red', alpha=1.0, label='Solution')
+    plt.show()
+
+    # Plot history
+    history = f.history
+    xx = [h['eval'] for h in history]
+    ff = [h['f'] for h in history]
+    plt.plot(xx, ff)
     plt.show()

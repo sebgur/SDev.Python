@@ -128,6 +128,8 @@ if __name__ == "__main__":
 
     # Calibration targets
     cf_price_surface = []
+    ftols = []
+    itol = 1e-6 # 1bp
     is_call = True
     for exp_idx, expiry in enumerate(expiry_grid):
         fwd = fwds[exp_idx]
@@ -135,6 +137,9 @@ if __name__ == "__main__":
         vols = vol_surface[exp_idx]
         cf_price = black.price(expiry, strikes, is_call, fwd, vols)
         cf_price_surface.append(cf_price)
+        vols = vols + itol
+        cf_price_bump = black.price(expiry, strikes, is_call, fwd, vols)
+        ftols.append(metrics.rmse(cf_price, cf_price_bump))
 
     # Create an LV with suitable slices
     section_grid = [biexp.BiExpSection() for i in range(len(expiry_grid))]
@@ -167,11 +172,9 @@ if __name__ == "__main__":
     # method = 'Nelder-Mead'
     # method = 'Powell'
     # method = 'DE'
-    method = 'SLSQP'
-    # method = 'L-BFGS-B'
-    tol = 1e-8
-    atol = 1e-2
-    optimizer = create_optimizer(method, tol=tol, atol=atol)
+    # method = 'SLSQP'
+    method = 'L-BFGS-B'
+    tol = 1e-3
     bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
 
     # Initialize PDE
@@ -206,12 +209,18 @@ if __name__ == "__main__":
         obj_builder.set_expiry(exp_idx, old_x, old_dx, old_p)
 
         # Optimize
-        optimizer = create_optimizer(method, tol=tol)
+        optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx])
+        # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
+
         result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
         sol = result.x # Optimum parameters
         # fun = result.fun
         print(f"Result x: {sol}")
         # print(f"Result f: {fun}")
+        print(f"Result f: {result['nfev']}")
+        # for key in result.keys():
+        #     if key in result:
+        #         print(key + "\n", result[key])
 
         # Set local vol to optimum
         lv.update_params(exp_idx, sol)
