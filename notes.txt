@@ -1,2 +1,8 @@
+xlwings
+
+> pip install xlwings
+
+> xlwings addin install
+
 Fine-tune existing open source model on transforming term sheets into FpML. Then implement a deterministic model to translate FpML into your own db. This way the TermSheet->FpML model can be open source/usable by anyway and marketed. Would it make sense to implement the reverse, i.e. an FpML-> TermSheet model?
 
