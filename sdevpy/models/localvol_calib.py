@@ -12,7 +12,6 @@ from sdevpy.maths.optimization import *
 
 
 ########## ToDo (calibration) #################################################
-# * Get definition/control of optimizer's stopping criteria.
 # * Make input markets and input LVs as json objects/files
 # * Start calibration from a given LV and use its parameters as initial points at
 #   each expiry. Use for PnL/vega/scenarios.
