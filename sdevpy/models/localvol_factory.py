@@ -6,15 +6,56 @@ import json
 
 DATE_FORMAT = "%d-%b-%y"
 
+
+def create_section(config):
+    model = config.get('model', None)
+    params = config.get('params', None)
+    if model is None or params is None:
+        raise TypeError("Invalid section input in local vol file")
+
+    match model.lower():
+        case 'biexp':
+            section = biexp.create_section(params)
+        case 'svivol':
+            section = svivol.create_section(params)
+        case _:
+            section = None
+            raise TypeError(f"Unknown section type: {model}")
+
+    return section
+
+
 def load_lv(date, name, folder):
     file = os.path.join(folder, name)
     os.makedirs(file, exist_ok=True)
     file = os.path.join(file, "localvol_" + valdate.strftime("%Y%m%d-%H.%M.%S") + ".json")
 
+    # Check file existence
     if not os.path.exists(file):
         raise FileNotFoundError(f"Local vol file not found: {file}")
 
-    return file
+    # Retrieve LV definition
+    with open(file, 'r') as f:
+        data = json.load(f)
+
+    # Create sections
+    sections = data['sections']
+    if sections is None:
+        raise KeyError("Sections node not valid in LV data")
+
+    expiry_grid = []
+    section_grid = []
+    for section_config in sections:
+        time = section_config['time']
+        model = section_config['model']
+        params = section_config['params']
+        section = create_section(section_config)
+        expiry_grid.append(time)
+        section_grid.append(section)
+
+    # Create LV
+    lv = localvol.InterpolatedParamLocalVol(expiry_grid, section_grid)
+    return lv
 
 
 def dump_lv(lv, date, name, folder):
@@ -44,12 +85,9 @@ if __name__ == "__main__":
     name = "SomeIndex"
     valdate = dt.datetime(2025, 12, 15)
 
-    file = load_lv(valdate, name, folder)
-    print(file)
+    # # Write an example to start from
+    # write_example(valdate, name, folder)
 
-    # Write an example to start from
-    write_example(valdate, name, folder)
-
-    # section_grid = [biexp.BiExpSection() for i in range(len(expiry_grid))]
-    # lv = localvol.InterpolatedParamLocalVol(expiry_grid, section_grid)
+    lv = load_lv(valdate, name, folder)
+    print(lv)
 
