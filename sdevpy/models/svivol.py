@@ -6,6 +6,18 @@ from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
 
 
+def create_section(param_config):
+    section = SviVolSection()
+    params = []
+    params.append(param_config['a'])
+    params.append(param_config['b'])
+    params.append(param_config['rho'])
+    params.append(param_config['m'])
+    params.append(param_config['sigma'])
+    section.update_params(params)
+    return section
+
+
 class SviVolSection(ParamSection):
     def __init__(self):
         super().__init__(svivol_formula)

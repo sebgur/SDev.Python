@@ -1,23 +1,29 @@
 import os
 import datetime as dt
 import json
-# from sdevpy.models import impliedvol
+from sdevpy.models import biexp, svivol
 
 
 DATE_FORMAT = "%d-%b-%y"
 
+# * Finish the dump so we can have an easy way of generating a sample
+# * Test the load from it
+# * Then we need to work out the question of the time: should we use
+#   them as is? But they'll slightly change every day. Or we could
+#   put the tenors instead? Or both? What happens if a tenor is not found?
+
 
 def create_section(config):
     model = config.get('model', None)
-    params = config.get('params', None)
-    if model is None or params is None:
+    param_config = config.get('params', None)
+    if model is None or param_config is None:
         raise TypeError("Invalid section input in local vol file")
 
     match model.lower():
         case 'biexp':
-            section = biexp.create_section(params)
+            section = biexp.create_section(param_config)
         case 'svivol':
-            section = svivol.create_section(params)
+            section = svivol.create_section(param_config)
         case _:
             section = None
             raise TypeError(f"Unknown section type: {model}")
@@ -47,18 +53,22 @@ def load_lv(date, name, folder):
     section_grid = []
     for section_config in sections:
         time = section_config['time']
-        model = section_config['model']
-        params = section_config['params']
+        # model = section_config['model']
+        # params = section_config['params']
         section = create_section(section_config)
         expiry_grid.append(time)
         section_grid.append(section)
 
     # Create LV
     lv = localvol.InterpolatedParamLocalVol(expiry_grid, section_grid)
+
     return lv
 
 
 def dump_lv(lv, date, name, folder):
+    data = {'name': name, 'datetime': date.strftime(DATE_FORMAT)}
+    section_configs = lv.section_configs()
+    data['sections'] = section_configs
     raise NotImplementedError("ToDo")
 
 
