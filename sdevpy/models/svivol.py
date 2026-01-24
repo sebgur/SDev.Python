@@ -6,8 +6,8 @@ from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
 
 
-def create_section(param_config):
-    section = SviVolSection()
+def create_section(time, param_config):
+    section = SviVolSection(time)
     params = []
     params.append(param_config['a'])
     params.append(param_config['b'])
@@ -19,11 +19,17 @@ def create_section(param_config):
 
 
 class SviVolSection(ParamSection):
-    def __init__(self):
-        super().__init__(svivol_formula)
+    def __init__(self, time):
+        super().__init__(time, svivol_formula)
+        self.model = 'SviVol'
 
     def check_params(self):
         return svivol_check_params(self.params)
+
+    def dump_params(self):
+        data = {'a': self.params[0], 'b': self.params[1], 'rho': self.params[2],
+                'm': self.params[3], 'sigma': self.params[4]}
+        return data
 
 
 def svivol(x, *params):

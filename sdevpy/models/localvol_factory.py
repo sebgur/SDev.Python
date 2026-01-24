@@ -2,18 +2,18 @@ import os
 import datetime as dt
 import json
 from sdevpy.models import biexp, svivol
+from sdevpy.models import localvol
 
 
 DATE_FORMAT = "%d-%b-%y"
 
-# * Finish the dump so we can have an easy way of generating a sample
-# * Test the load from it
-# * Then we need to work out the question of the time: should we use
+# * Test load
+# * Work out the question of the time: should we use
 #   them as is? But they'll slightly change every day. Or we could
 #   put the tenors instead? Or both? What happens if a tenor is not found?
 
 
-def create_section(config):
+def create_section(time, config):
     model = config.get('model', None)
     param_config = config.get('params', None)
     if model is None or param_config is None:
@@ -21,9 +21,9 @@ def create_section(config):
 
     match model.lower():
         case 'biexp':
-            section = biexp.create_section(param_config)
+            section = biexp.create_section(time, param_config)
         case 'svivol':
-            section = svivol.create_section(param_config)
+            section = svivol.create_section(time, param_config)
         case _:
             section = None
             raise TypeError(f"Unknown section type: {model}")
@@ -31,7 +31,7 @@ def create_section(config):
     return section
 
 
-def load_lv(date, name, folder):
+def load_lv_from_folder(date, name, folder):
     file = os.path.join(folder, name)
     os.makedirs(file, exist_ok=True)
     file = os.path.join(file, "localvol_" + valdate.strftime("%Y%m%d-%H.%M.%S") + ".json")
@@ -44,6 +44,11 @@ def load_lv(date, name, folder):
     with open(file, 'r') as f:
         data = json.load(f)
 
+    # Load LV
+    lv = load_lv_from_data(data)
+    return lv
+
+def load_lv_from_data(data):
     # Create sections
     sections = data['sections']
     if sections is None:
@@ -53,9 +58,7 @@ def load_lv(date, name, folder):
     section_grid = []
     for section_config in sections:
         time = section_config['time']
-        # model = section_config['model']
-        # params = section_config['params']
-        section = create_section(section_config)
+        section = create_section(time, section_config)
         expiry_grid.append(time)
         section_grid.append(section)
 
@@ -63,13 +66,6 @@ def load_lv(date, name, folder):
     lv = localvol.InterpolatedParamLocalVol(expiry_grid, section_grid)
 
     return lv
-
-
-def dump_lv(lv, date, name, folder):
-    data = {'name': name, 'datetime': date.strftime(DATE_FORMAT)}
-    section_configs = lv.section_configs()
-    data['sections'] = section_configs
-    raise NotImplementedError("ToDo")
 
 
 def write_example(date, name, folder):
@@ -80,7 +76,7 @@ def write_example(date, name, folder):
     for i in range(4):
         time = i / 4.0 * 2.5
         model = 'BiExp'
-        params = {'a': 0.5, 'b': 0.2}
+        params = {'f0': 0.5, 'fl': 0.2, 'fr': 0.2, 'taul': 0.2, 'taur': 0.2, 'fp': 0.2}
         section = {'time': time, 'model': model, 'params': params}
         sections.append(section)
 
@@ -98,6 +94,13 @@ if __name__ == "__main__":
     # # Write an example to start from
     # write_example(valdate, name, folder)
 
-    lv = load_lv(valdate, name, folder)
+    lv = load_lv_from_folder(valdate, name, folder)
     print(lv)
+
+    lv_data = lv.dump_data()
+    data = {'name': "SomeIndex2", 'datetime': valdate.strftime(DATE_FORMAT),
+            'sections': lv_data}
+    file = os.path.join(folder, 'test.json')
+    with open(file, 'w') as f:
+        json.dump(data, f, indent=2)
 

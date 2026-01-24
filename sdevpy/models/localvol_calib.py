@@ -11,16 +11,17 @@ from sdevpy.maths import metrics
 from sdevpy.maths.optimization import *
 
 
-########## ToDo (calibration) #################################################
+########## ToDo ########################################################################
 # * Make input markets and input LVs as json objects/files
 # * Start calibration from a given LV and use its parameters as initial points at
 #   each expiry. Use for PnL/vega/scenarios.
+# * Write functions that take objects and return objects, then json wrappers/samples
+# * Calibration weights based on percentiles, with possible removal of options
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
-# * Implement backward PDE and check calibration against it.
 # * Implement MC and check calibration against it.
-# * Implement option filters (time and percentiles)
+# * Use actual data from SPX
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
-# * Introduce unit testing, remove connection to C++/CLI, test package, upload to pypi.
+# * Remove connection to C++/CLI, test package, upload to pypi.
 # * Make Colab, post.
 
 

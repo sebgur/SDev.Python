@@ -18,8 +18,8 @@ from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
 
 
-def create_section(param_config):
-    section = BiExpSection()
+def create_section(time, param_config):
+    section = BiExpSection(time)
     params = []
     params.append(param_config['f0'])
     params.append(param_config['fl'])
@@ -32,11 +32,17 @@ def create_section(param_config):
 
 
 class BiExpSection(ParamSection):
-    def __init__(self):
-        super().__init__(biexp_formula)
+    def __init__(self, time):
+        super().__init__(time, biexp_formula)
+        self.model = 'BiExp'
 
     def check_params(self):
         return biexp_check_params(self.params)
+
+    def dump_params(self):
+        data = {'f0': self.params[0], 'fl': self.params[1], 'fr': self.params[2],
+                'taul': self.params[3], 'taur': self.params[4], 'fp': self.params[5]}
+        return data
 
 
 def biexp(x, *params):

@@ -6,11 +6,17 @@ class Section(ABC):
     def value(self, t, x):
         pass
 
+    @abstractmethod
+    def dump(self):
+        pass
+
 
 class ParamSection(Section):
-    def __init__(self, formula):
+    def __init__(self, time, formula):
         self.params = None
         self.formula = formula
+        self.model = None
+        self.time = time
 
     def value(self, t, x):
         return self.formula(t, x, self.params)
@@ -22,6 +28,14 @@ class ParamSection(Section):
 
     def check_params(self):
         """ In the base, all parameters are allowed so we always answer True
-            and penalty = 0.0. Inherited classes may have constraint and calculate
+            and penalty = 0.0. Inherited classes may have constraints and calculate
             non-trivial penalties. """
         return True, 0.0
+
+    @abstractmethod
+    def dump_params(self):
+        pass
+
+    def dump(self):
+        data = {'time': self.time, 'model': self.model, 'params': self.dump_params()}
+        return data

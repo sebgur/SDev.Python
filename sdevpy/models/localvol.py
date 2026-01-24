@@ -14,13 +14,17 @@ class LocalVol(ABC):
         """ Get a section at time t, i.e. a function of the log-moneyness log_m"""
         pass
 
+    @abstractmethod
+    def dump_data(self):
+        pass
+
 
 class InterpolatedParamLocalVol(LocalVol):
     def __init__(self, t_grid, section_grid):
         self.t_grid = t_grid
         self.section_grid = section_grid
         # Size consistency
-        if len(section_grid) != t_grid.shape[0]:
+        if len(section_grid) != len(t_grid):
             raise RuntimeError("Incorrect sizes between time grid and section grid")
 
     def value(self, t, logm):
@@ -39,6 +43,13 @@ class InterpolatedParamLocalVol(LocalVol):
     def params(self, t_idx):
         return self.section_grid[t_idx].params
 
+    def dump_data(self):
+        data = []
+        for section in self.section_grid:
+            data.append(section.dump())
+
+        return data
+
 
 if __name__ == "__main__":
     t_grid = np.array([0.1, 0.25, 0.5, 1.0, 2.0, 5.0])
@@ -50,7 +61,7 @@ if __name__ == "__main__":
     sigma = 0.25 # > 0
     params = [a, b, rho, m, sigma]
 
-    section_grid = [SviSection() for i in range(t_grid.shape[0])]
+    section_grid = [SviSection(t_grid[i]) for i in range(t_grid.shape[0])]
     lv = InterpolatedParamLocalVol(t_grid, section_grid)
 
     # Initialize parameters

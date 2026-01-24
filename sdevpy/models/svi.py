@@ -5,13 +5,18 @@ from sdevpy.maths import constants
 
 
 class SviSection(ParamSection):
-    def __init__(self, check_butterfly=False):
-        super().__init__(svi_formula)
+    def __init__(self, time, check_butterfly=False):
+        super().__init__(time, svi_formula)
         self.check_butterfly = check_butterfly
+        self.model = 'SVI'
 
     def check_params(self):
         return svi_check_params(self.params, self.check_butterfly)
 
+    def dump_params(self):
+        data = {'a': self.params[0], 'b': self.params[1], 'rho': self.params[2],
+                'm': self.params[3], 'sigma': self.params[4]}
+        return data
 
 def svi(t, x, *params):
     """ SVI formula. Original by J. Gatheral, modified here:
