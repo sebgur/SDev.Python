@@ -88,7 +88,7 @@ def write_example(date, name, folder):
 
 
 if __name__ == "__main__":
-    # Get the full path to the script
+    # Get path to dataset folder
     folder = Path(__file__).parent.parent.parent.resolve()
     folder = os.path.join(os.path.join(folder, "datasets"), "localvol")
     name = "SomeIndex"
