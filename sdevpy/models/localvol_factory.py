@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import datetime as dt
 import json
 from sdevpy.models import biexp, svivol
@@ -7,7 +8,6 @@ from sdevpy.models import localvol
 
 DATE_FORMAT = "%d-%b-%y"
 
-# * Test load
 # * Work out the question of the time: should we use
 #   them as is? But they'll slightly change every day. Or we could
 #   put the tenors instead? Or both? What happens if a tenor is not found?
@@ -73,6 +73,7 @@ def write_example(date, name, folder):
     os.makedirs(file, exist_ok=True)
     file = os.path.join(file, "localvol_" + valdate.strftime("%Y%m%d-%H.%M.%S") + ".json")
     sections = []
+    print(file)
     for i in range(4):
         time = i / 4.0 * 2.5
         model = 'BiExp'
@@ -87,16 +88,19 @@ def write_example(date, name, folder):
 
 
 if __name__ == "__main__":
-    folder = "C:\\temp\\sdevpy\\localvol"
+    # Get the full path to the script
+    folder = Path(__file__).parent.parent.parent.resolve()
+    folder = os.path.join(os.path.join(folder, "datasets"), "localvol")
     name = "SomeIndex"
     valdate = dt.datetime(2025, 12, 15)
 
     # # Write an example to start from
     # write_example(valdate, name, folder)
 
+    # Load
     lv = load_lv_from_folder(valdate, name, folder)
-    print(lv)
 
+    # Dump
     lv_data = lv.dump_data()
     data = {'name': "SomeIndex2", 'datetime': valdate.strftime(DATE_FORMAT),
             'sections': lv_data}

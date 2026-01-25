@@ -1,0 +1,54 @@
+{
+  "name": "SomeIndex",
+  "datetime": "15-Dec-25",
+  "sections": [
+    {
+      "time": 0.0,
+      "model": "BiExp",
+      "params": {
+        "f0": 0.5,
+        "fl": 0.2,
+        "fr": 0.2,
+        "taul": 0.2,
+        "taur": 0.2,
+        "fp": 0.2
+      }
+    },
+    {
+      "time": 0.625,
+      "model": "BiExp",
+      "params": {
+        "f0": 0.5,
+        "fl": 0.2,
+        "fr": 0.2,
+        "taul": 0.2,
+        "taur": 0.2,
+        "fp": 0.2
+      }
+    },
+    {
+      "time": 1.25,
+      "model": "BiExp",
+      "params": {
+        "f0": 0.5,
+        "fl": 0.2,
+        "fr": 0.2,
+        "taul": 0.2,
+        "taur": 0.2,
+        "fp": 0.2
+      }
+    },
+    {
+      "time": 1.875,
+      "model": "BiExp",
+      "params": {
+        "f0": 0.5,
+        "fl": 0.2,
+        "fr": 0.2,
+        "taul": 0.2,
+        "taur": 0.2,
+        "fp": 0.2
+      }
+    }
+  ]
+}
