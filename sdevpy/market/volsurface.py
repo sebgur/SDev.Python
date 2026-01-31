@@ -15,3 +15,7 @@ if __name__ == "__main__":
     name = "SomeIndex"
     valdate = dt.datetime(2025, 12, 15)
     print(folder)
+
+    data = {'name': name, 'datetime': valdate.strftime()}
+    dump_data(data, file)
+    
