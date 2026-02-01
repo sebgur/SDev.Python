@@ -8,9 +8,8 @@ from sdevpy.models import localvol
 
 DATE_FORMAT = "%d-%b-%y"
 
-# * Work out the question of the time: should we use
-#   them as is? But they'll slightly change every day. Or we could
-#   put the tenors instead? Or both? What happens if a tenor is not found?
+# * Work out the question of the time: should we put tenors?
+#   What happens if a tenor is not found?
 
 
 def create_section(time, config):
