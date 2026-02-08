@@ -50,6 +50,11 @@ class InterpolatedParamLocalVol(LocalVol):
 
         return data
 
+    # def interpolate_params(t_grid):
+    #     """ Interpolate parameters to provided time grid. Only possible if all sections are
+    #         of the same type """
+
+
 
 if __name__ == "__main__":
     t_grid = np.array([0.1, 0.25, 0.5, 1.0, 2.0, 5.0])

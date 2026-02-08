@@ -12,7 +12,8 @@ from sdevpy.maths.optimization import *
 
 
 ########## ToDo ########################################################################
-# * Make input markets and input LVs as json objects/files
+# * Make input markets as json objects/files
+# * Finish inclusion of time information in section
 # * Start calibration from a given LV and use its parameters as initial points at
 #   each expiry. Use for PnL/vega/scenarios.
 # * Write functions that take objects and return objects, then json wrappers/samples

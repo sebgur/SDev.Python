@@ -13,7 +13,7 @@ def create_interpolation(**kwargs):
     interpolator = create_interpolator(interp, **kwargs)
     l_extrapolator = create_extrapolator(interpolator, l_extrap)
     r_extrapolator = create_extrapolator(interpolator, r_extrap)
-    interpolation = Interpolation(interpolator, l_extrapolator, r_extrapolator)
+    interpolation = Interpolation(interpolator, l_extrapolator, r_extrapolator, **kwargs)
     return interpolation
 
 
@@ -40,13 +40,12 @@ def create_interpolator(type='linear', **kwargs):
 class Interpolator(ABC):
     def __init__(self, **kwargs):
         self.eps = kwargs.get('eps', 100.0 * constants.FLOAT_EPS)
-        print(self.eps)
         x_grid = kwargs.get('x_grid', None)
         y_grid = kwargs.get('y_grid', None)
         if (x_grid is None and y_grid is not None) or (x_grid is not None and y_grid is None):
             raise ValueError("Ambiguous data: either set both x and y or set neither")
         elif x_grid is not None and y_grid is not None:
-            set_data(x_grid, y_grid)
+            self.set_data(x_grid, y_grid)
 
     def set_data(self, x_grid, y_grid):
         self.x_grid = x_grid
@@ -120,21 +119,28 @@ class StepInterpolator(Interpolator):
     def value(self, x):
         if self.direction == 'left':
             indices = np.searchsorted(self.x_grid, x, side='right')
-            print(indices)
             indices = np.clip(indices, 0, len(self.y_grid) - 1)
-            print(indices)
-            y = [self.y_grid[i] for i in indices]
+            ilen = safe_len(indices)
+            if ilen == 0:
+                y = self.y_grid[indices]
+            else:
+                y = [self.y_grid[i] for i in indices]
         elif self.direction == 'right':
             indices = np.searchsorted(self.x_grid, x, side='left') - 1
             np.clip(indices, 0, len(self.y_grid) - 1)
-            y = [self.y_grid[i] for i in indices]
+            ilen = safe_len(indices)
+            if ilen == 0:
+                y = self.y_grid[i]
+            else:
+                y = [self.y_grid[i] for i in indices]
         else:
             raise RuntimeError(f"Unknown step interpolation direction(2): {self.direction}")
 
-        if len(y) == 1:
-            return y[0]
-        else:
-             return y
+        return y
+        # if safe_len(y) == 0:
+        #     return y
+        # else:
+        #      return y
 
 
 
@@ -183,7 +189,12 @@ class FlatExtrapolator(Interpolator):
         self.yr = self.y_grid[-1]
 
     def value(self, x):
-        v = [None] * len(x)
+        xlen = safe_len(x)
+        if xlen == 0:
+            v = None
+            # v = [None]
+        else:
+            v = [None] * xlen
         below = (x < self.xl + self.eps)
         above = (x > self.xr - self.eps)
 
@@ -193,19 +204,25 @@ class FlatExtrapolator(Interpolator):
         return v
 
 
+def safe_len(x):
+    try:
+        return len(x)
+    except TypeError:
+        return 0
+
 ######## Interpolation ############################################################################
 class Interpolation:
-    def __init__(self, interp, l_extrap, r_extrap, **kwargs):
+    def __init__(self, interpolation, l_extrapolation, r_extrapolation, **kwargs):
         self.eps = kwargs.get('eps', 100.0 * constants.FLOAT_EPS)
-        self.l_extrap = l_extrap
-        self.interp = interp
-        self.r_extrap = r_extrap
+        self.interp = interpolation
+        self.l_extrap = l_extrapolation
+        self.r_extrap = r_extrapolation
         x_grid = kwargs.get('x_grid', None)
         y_grid = kwargs.get('y_grid', None)
         if (x_grid is None and y_grid is not None) or (x_grid is not None and y_grid is None):
             raise ValueError("Ambiguous data: either set both x and y or set neither")
         elif x_grid is not None and y_grid is not None:
-            set_data(x_grid, y_grid)
+            self.set_data(x_grid, y_grid)
 
     def set_data(self, x_grid, y_grid):
         self.x_grid = x_grid
@@ -250,6 +267,10 @@ if __name__ == "__main__":
     interp_data = []
     for interp in interps:
         interp_data.append(interp[1].value(x_calc))
+
+    # Test 0 dimension
+    y_ = interp[1].value(0.5)
+    print(y_)
 
     print(interps[1][1].value([0.0, 0.5, 1.0, 1.5, 4.0, 4.5]))
 
