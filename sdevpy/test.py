@@ -4,28 +4,15 @@ import numpy as np
 # import time
 
 
-x = np.array([1, 2, 3, 4, 5])
-x_new = np.array([0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5])
-y = np.array([10, 20, 30, 40, 50])
+fwd = np.asarray([1, 2, 3, 4])
+strikes = np.asarray([[1, 1, 1], [2, 2, 2], [3, 3, 3], [4, 4, 4]])
+print(strikes.shape)
+print(fwd.shape)
+fwd_reshaped = fwd.reshape(-1, 1)
+print(fwd_reshaped.shape)
+print(fwd_reshaped)
 
-# Left-continuous (takes the value of the next point)
-# Also called "previous" or "left" step
-indices = np.searchsorted(x, x_new, side='right')
-print(indices)
-print(np.clip(indices, 0, len(y) - 1))
-y_left = y[np.clip(indices, 0, len(y) - 1)]
-# print(y_left)
-# [20, 30, 40, 50]
-
-# Right-continuous (takes the value of the previous point)
-# Also called "next" or "right" step
-indices = np.searchsorted(x, x_new, side='left') - 1
-print(indices)
-print(np.clip(indices, 0, len(y) - 1))
-y_right = y[np.clip(indices, 0, len(y) - 1)]
-# print(y_right)
-# [10, 20, 30, 40]
-
+print(strikes / fwd_reshaped)
 
 # # Define your objective function (normal signature, no grad needed)
 # def f(x):

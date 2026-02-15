@@ -20,12 +20,18 @@ class LocalVol(ABC):
 
 
 class InterpolatedParamLocalVol(LocalVol):
-    def __init__(self, t_grid, section_grid):
-        self.t_grid = t_grid
+    def __init__(self, section_grid):
         self.section_grid = section_grid
+        # Collect time grid
+        t_grid = []
+        for section in self.section_grid:
+            t_grid.append(section.time)
+
+        self.t_grid = t_grid
+        # self.t_grid = t_grid
         # Size consistency
-        if len(section_grid) != len(t_grid):
-            raise RuntimeError("Incorrect sizes between time grid and section grid")
+        # if len(section_grid) != len(t_grid):
+        #     raise RuntimeError("Incorrect sizes between time grid and section grid")
 
     def value(self, t, logm):
         t_idx = algos.upper_bound(self.t_grid, t)

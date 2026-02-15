@@ -9,11 +9,10 @@ from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
 from sdevpy.maths.optimization import *
+from sdevpy.market import volsurface as vsurf
 
 
 ########## ToDo ########################################################################
-# * Make input markets as json objects/files
-# * Finish inclusion of time information in section
 # * Start calibration from a given LV and use its parameters as initial points at
 #   each expiry. Use for PnL/vega/scenarios.
 # * Write functions that take objects and return objects, then json wrappers/samples
@@ -109,21 +108,27 @@ class LvObjectiveBuilder:
         # self.set_expiry(0, old_x, old_dx, old_p)
 
 
-
 if __name__ == "__main__":
     ##### Create IV and forward target data #############################################
     valdate = dt.datetime(2025, 12, 15)
-    terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
-    expiries, fwds, strike_surface, vol_surface = svivol.generate_sample_data(valdate, terms)
+    name = "MyIndex"
+
+    # Retrieve target market option data
+    file = vsurf.test_data_file(name, valdate)
+    surface_data = vsurf.vol_surface(file)
+    expiries = surface_data.expiries
+    fwds = surface_data.forwards
+    strike_surface = surface_data.get_strikes('absolute')
+    vol_surface = surface_data.vols
 
     print(f"Val date: {valdate.strftime("%Y-%b-%d")}")
-    print(f"Expiries: {expiries.shape}")
-    # print(f"Expiries: {[d.strftime("%Y-%b-%d") for d in expiries]}")
-    print(f"Forwards: {fwds.shape}")
-    print("Strikes", strike_surface.shape)
-    print(f"Vols: {vol_surface.shape}")
+    print(f"Vol surface information")
+    surface_data.pretty_print()
 
     ##### Calibration to target data ####################################################
+    # TODO Retrieve previous fit if any
+    # Wrap price calculation in function (might be used later to set weights)
+
     # Calibration time grid
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
@@ -143,9 +148,8 @@ if __name__ == "__main__":
         ftols.append(metrics.rmse(cf_price, cf_price_bump))
 
     # Create an LV with suitable slices
-    section_grid = [biexp.BiExpSection() for i in range(len(expiry_grid))]
-    # section_grid = [svivol.SviVolSection() for i in range(len(expiry_grid))]
-    lv = localvol.InterpolatedParamLocalVol(expiry_grid, section_grid)
+    section_grid = [biexp.BiExpSection(expiry_grid[i]) for i in range(len(expiry_grid))]
+    lv = localvol.InterpolatedParamLocalVol(section_grid)
 
     ## Set up forward PDE ##
     mesh_vol = vol_surface.mean()
