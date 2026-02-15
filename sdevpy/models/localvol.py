@@ -1,10 +1,16 @@
+import json
 from abc import ABC, abstractmethod
 from sdevpy.models.svi import *
-from sdevpy.tools import algos
+from sdevpy.tools import algos, dates
 
 
 class LocalVol(ABC):
     """ Base class for local vols """
+    def __init__(self, valdate, **kwargs):
+        self.valdate = valdate
+        self.name = kwargs.get('name', 'MyIndex')
+        self.snapdate = kwargs.get('snapdate', valdate)
+
     @abstractmethod
     def value(self, t, logm):
         pass
@@ -20,40 +26,50 @@ class LocalVol(ABC):
 
 
 class InterpolatedParamLocalVol(LocalVol):
-    def __init__(self, section_grid):
-        self.section_grid = section_grid
-        # Collect time grid
-        t_grid = []
-        for section in self.section_grid:
-            t_grid.append(section.time)
+    def __init__(self, valdate, sections, **kwargs):
+        super().__init__(valdate, **kwargs)
 
-        self.t_grid = t_grid
-        # self.t_grid = t_grid
-        # Size consistency
-        # if len(section_grid) != len(t_grid):
-        #     raise RuntimeError("Incorrect sizes between time grid and section grid")
+        # Sort by increasing date
+        sections.sort(key=lambda x: x.time)
+
+        self.sections = sections
+
+        # Collect time grid
+        # t_grid = [section.time for section in self.sections]
+        # for section in self.sections:
+        #     t_grid.append(section.time)
+
+        self.t_grid = [section.time for section in self.sections]
 
     def value(self, t, logm):
         t_idx = algos.upper_bound(self.t_grid, t)
-        return self.section_grid[t_idx].value(t, logm)
+        return self.sections[t_idx].value(t, logm)
 
     def section(self, t):
         return 0
 
     def check_params(self, t_idx):
-        return self.section_grid[t_idx].check_params()
+        return self.sections[t_idx].check_params()
 
     def update_params(self, t_idx, new_params):
-        self.section_grid[t_idx].update_params(new_params)
+        self.sections[t_idx].update_params(new_params)
 
     def params(self, t_idx):
-        return self.section_grid[t_idx].params
+        return self.sections[t_idx].params
+
+    def dump(self, file, indent=2):
+        data = self.dump_data()
+        with open(file, 'w') as f:
+            json.dump(data, f, indent=indent)
 
     def dump_data(self):
-        data = []
-        for section in self.section_grid:
-            data.append(section.dump())
+        sections = []
+        for section in self.sections:
+            sections.append(section.dump())
 
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
+                'sections': sections}
         return data
 
     # def interpolate_params(t_grid):
@@ -73,7 +89,7 @@ if __name__ == "__main__":
     params = [a, b, rho, m, sigma]
 
     section_grid = [SviSection(t_grid[i]) for i in range(t_grid.shape[0])]
-    lv = InterpolatedParamLocalVol(t_grid, section_grid)
+    lv = InterpolatedParamLocalVol(section_grid)
 
     # Initialize parameters
     for t_idx in range(len(t_grid)):

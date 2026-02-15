@@ -1,10 +1,12 @@
+import os
 import datetime as dt
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 from sdevpy.models import svivol, biexp
-from sdevpy.tools import timegrids
+from sdevpy.tools import timegrids, dates
 from sdevpy.models import localvol
+from sdevpy.models import localvol_factory as lvf
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
@@ -13,15 +15,15 @@ from sdevpy.market import volsurface as vsurf
 
 
 ########## ToDo ########################################################################
-# * Start calibration from a given LV and use its parameters as initial points at
-#   each expiry. Use for PnL/vega/scenarios.
-# * Write functions that take objects and return objects, then json wrappers/samples
+# * Start calibration from dumped LV and use its parameters as initial points at
+#   each expiry. See if restarting from it changes speed/quality.
+# * Wrap calibration functions that take objects and return objects, then json wrappers/samples
 # * Calibration weights based on percentiles, with possible removal of options
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
 # * Implement MC and check calibration against it.
 # * Use actual data from SPX
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
-# * Remove connection to C++/CLI, test package, upload to pypi.
+# * Refresh localvol.py, upload to pypi.
 # * Make Colab, post.
 
 
@@ -109,9 +111,8 @@ class LvObjectiveBuilder:
 
 
 if __name__ == "__main__":
-    ##### Create IV and forward target data #############################################
-    valdate = dt.datetime(2025, 12, 15)
     name = "MyIndex"
+    valdate = dt.datetime(2025, 12, 15)
 
     # Retrieve target market option data
     file = vsurf.test_data_file(name, valdate)
@@ -121,7 +122,7 @@ if __name__ == "__main__":
     strike_surface = surface_data.get_strikes('absolute')
     vol_surface = surface_data.vols
 
-    print(f"Val date: {valdate.strftime("%Y-%b-%d")}")
+    print(f"Val date: {valdate.strftime(dates.DATE_FORMAT)}")
     print(f"Vol surface information")
     surface_data.pretty_print()
 
@@ -149,7 +150,7 @@ if __name__ == "__main__":
 
     # Create an LV with suitable slices
     section_grid = [biexp.BiExpSection(expiry_grid[i]) for i in range(len(expiry_grid))]
-    lv = localvol.InterpolatedParamLocalVol(section_grid)
+    lv = localvol.InterpolatedParamLocalVol(valdate, section_grid, name=name)
 
     ## Set up forward PDE ##
     mesh_vol = vol_surface.mean()
@@ -260,6 +261,13 @@ if __name__ == "__main__":
         pde_vols.append(pde_vols_at_exp)
         rmses.append(10000.0 * metrics.rmse(cf_vols, pde_vols))
 
+
+    # Dump LV result to file
+    out_folder = lvf.test_data_folder()
+    out_file = os.path.join(out_folder, "test_lv_calib.json")
+    lv.dump(out_file)
+
+    # ################ DISPLAY ####################################################################
     # Display price results
     n_rows, n_cols = 3, 2
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))

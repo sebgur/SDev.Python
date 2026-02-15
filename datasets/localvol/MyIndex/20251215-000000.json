@@ -1,6 +1,7 @@
 {
-  "name": "SomeIndex",
-  "datetime": "15-Dec-25",
+  "name": "MyIndex",
+  "valdate": "15-Dec-25",
+  "snapdate": "15-Dec-2025 00:00:00",
   "sections": [
     {
       "time": 0.0,

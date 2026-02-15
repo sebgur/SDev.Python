@@ -21,11 +21,6 @@ class VolSufaceData:
         self.input_strikes = np.asarray([s['strikes'] for s in sections])
         self.vols = np.asarray([s['vols'] for s in sections])
 
-        # self.expiries = np.asarray(expiries)
-        # self.forwards = np.asarray(fwds)
-        # self.vols = np.asarray(vols)
-        # self.input_strikes = np.asarray(strikes)
-
         # Calculate missing strike type
         if self.strike_input_type == 'absolute':
             self.abs_strikes = self.input_strikes
@@ -41,7 +36,12 @@ class VolSufaceData:
         elif req_type == 'relative':
             return self.abs_strikes / self.forwards.reshape(-1, 1)
 
-    def dump(self, file):
+    def dump(self, file, indent=2):
+        data = self.dump_data()
+        with open(file, 'w') as f:
+            json.dump(data, f, indent=indent)
+
+    def dump_data(self):
         sections = []
         for i, expiry in enumerate(self.expiries):
             expiry_str = expiry.strftime(dates.DATE_FORMAT)
@@ -53,8 +53,7 @@ class VolSufaceData:
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
                 'strike_input_type': self.strike_input_type, 'sections': sections}
 
-        with open(file, 'w') as f:
-            json.dump(data, f, indent=2)
+        return data
 
     def pretty_print(self, n_digits=4):
         sep = '-'*70
@@ -97,16 +96,6 @@ def vol_surface(file):
     # # Sort by increasing date
     # sections.sort(key=lambda x: x['expiry'])
 
-    # # Extract
-    # expiries = np.asarray([s['expiry'] for s in sections])
-    # forwards = np.asarray([s['forward'] for s in sections])
-    # strikes = np.asarray([s['strikes'] for s in sections])
-    # vols = np.asarray([s['vols'] for s in sections])
-
-    # voldata = VolSufaceData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), expiries, forwards, strikes, vols,
-    #                         name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT),
-    #                         strike_input_type=strike_input_type)
-
     voldata = VolSufaceData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), sections,
                             name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT),
                             strike_input_type=strike_input_type)
@@ -128,7 +117,8 @@ def test_data_file(name, date, extension='json'):
 
 def test_data_folder():
     folder = Path(__file__).parent.parent.parent.resolve()
-    folder = os.path.join(os.path.join(folder, "datasets"), "impliedvols")
+    dataset_folder = os.path.join(folder, "datasets")
+    folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "options")
     os.makedirs(folder, exist_ok=True)
     return folder
 
@@ -137,11 +127,8 @@ if __name__ == "__main__":
     name = "MyIndex"
     valdate = dt.datetime(2025, 12, 15)
     folder = test_data_folder()
-    # folder = Path(__file__).parent.parent.parent.resolve()
-    # folder = os.path.join(os.path.join(folder, "datasets"), "impliedvols")
-    # os.makedirs(folder, exist_ok=True)
 
-    # Generate for first sample
+    # # Generate a sample to start from
     # from sdevpy.models import svivol
     # terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
     # expiries, fwds, strike_surface, vol_surface = svivol.generate_sample_data(valdate, terms)
@@ -156,5 +143,4 @@ if __name__ == "__main__":
     surface_data = vol_surface(file)
     print(surface_data.get_strikes('absolute'))
     print(surface_data.get_strikes('relative'))
-
     surface_data.pretty_print(4)
