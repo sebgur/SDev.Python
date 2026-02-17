@@ -15,15 +15,119 @@ from sdevpy.market import volsurface as vsurf
 
 
 ########## ToDo ########################################################################
-# * Wrap price calculation in function (might be used later to set weights)
-# * Wrap calibration functions that take objects and return objects, then json wrappers/samples
+# * Wrap calibration functions that take objects and return objects
 # * Calibration weights based on percentiles, with possible removal of options
-# * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
 # * Implement MC and check calibration against it.
+# * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
 # * Use actual data from SPX
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
 # * Refresh localvol.py, upload to pypi.
 # * Make Colab, post.
+
+
+def calibrate_lv(valdate, name, config, **kwargs):
+    # Arguments
+    verbose = kwargs.get('verbose', False)
+    disp_opt = kwargs.get('disp_opt', False)
+    calc_pde_vols = kwargs.get('calc_pde_vols', False)
+
+    # Retrieve target market option data
+    file = vsurf.test_data_file(name, valdate)
+    surface_data = vsurf.vol_surface(file)
+    expiries = surface_data.expiries
+    fwds = surface_data.forwards
+    strike_surface = surface_data.get_strikes('absolute')
+    vol_surface = surface_data.vols
+
+    # Set calibration time grid
+    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
+
+    # Set calibration targets
+    cf_price_surface, ftols, is_call = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
+
+    # Initial LV: either from scratch or from existing
+    if config['start_new']:
+        lv = lvf.load_lv_new(expiry_grid, config['model'])
+    else:
+        lv = lvf.load_lv_from_folder(expiry_grid, valdate, name, config['lv_folder'])
+    lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
+
+    # Set forward PDE
+    mesh_vol = vol_surface.mean()
+    pde_config = fpde.PdeConfig(n_time_steps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],
+                                mesh_vol=mesh_vol, scheme='rannacher', rescale_x=True, rescale_p=True)
+
+    # Set objective
+    obj_builder = LvObjectiveBuilder(lv, fwds, strike_surface, cf_price_surface, pde_config)
+    objective = obj_builder.objective
+
+    # Optimizer settings
+    method = config['optimizer']
+    tol = config['tol']
+
+    # Initialize PDE
+    old_x, old_dx, old_p = obj_builder.initialize()
+
+    if verbose:
+        print(f"Val date: {valdate.strftime(dates.DATE_FORMAT)}")
+        print(f"Vol surface information")
+        surface_data.pretty_print()
+        print(f"Mesh vol: {mesh_vol*100:.2f}%")
+        print(f"PDE time steps: {pde_config.n_time_steps}")
+        print(f"PDE spot steps: {pde_config.n_meshes}")
+        print(f"Optimizer: {method}")
+        print(f"Tolerance: {tol}")
+
+    # Loop over expiries
+    pde_vols = []
+    sol_as_init = config['sol_as_init']
+    for exp_idx in range(len(expiry_grid)):
+        if verbose:
+            print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
+
+        # Set expiry
+        obj_builder.set_expiry(exp_idx, old_x, old_dx, old_p)
+
+        # Initial point for optimization
+        if exp_idx == 0:
+            params_init = lv.params(0)
+        else:
+            params_init = (sol if sol_as_init else lv.params(exp_idx))
+
+        # Constraints
+        bounds = lv.section(exp_idx).constraints()
+
+        # Optimize
+        optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx])
+        # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
+        result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+        sol = result.x # Optimum parameters
+
+        # Set local vol to optimum
+        lv.update_params(exp_idx, sol)
+
+        # Recalculate on optimum to get/set optimum density
+        rmse = objective(sol)
+
+        # Prepare next iteration
+        old_x, old_dx, old_p = obj_builder.new_x, obj_builder.new_dx, obj_builder.new_p
+
+        ## Option for display and diagnostics ## 
+        if verbose:
+            print(f"Result x: {sol}")
+            print(f"RMSE(prices): {rmse:.4f}")
+            if disp_opt:
+                print(f"Result f: {result.fun}")
+                print(f"Func evals: {result['nfev']}")
+                for key in result.keys():
+                    if key in result:
+                        print(key + "\n", result[key])
+
+        # Retrieve RMSE on vols
+        if calc_pde_vols:
+            pde_vols.append(obj_builder.calculate_vols())
+
+    return lv, pde_vols
 
 
 class LvObjectiveBuilder:
@@ -108,11 +212,38 @@ class LvObjectiveBuilder:
         return old_x, old_dx, old_p
         # self.set_expiry(0, old_x, old_dx, old_p)
 
+    def calculate_vols(self):
+        expiry = self.expiry_grid[self.exp_idx]
+        pde_vols = []
+        for k, p in zip(self.strikes, self.pde_prices):
+            pde_vols.append(black.implied_vol(expiry, k, is_call, self.fwd, p))
+
+        return pde_vols
+
+
+def calibration_targets(expiry_grid, fwds, strike_surface, vol_surface):
+    cf_price_surface = []
+    ftols = []
+    itol = 1e-6 # 1bp
+    is_call = True
+    for exp_idx, expiry in enumerate(expiry_grid):
+        fwd = fwds[exp_idx]
+        strikes = strike_surface[exp_idx]
+        vols = vol_surface[exp_idx]
+        cf_price = black.price(expiry, strikes, is_call, fwd, vols)
+        cf_price_surface.append(cf_price)
+        vols = vols + itol
+        cf_price_bump = black.price(expiry, strikes, is_call, fwd, vols)
+        ftols.append(metrics.rmse(cf_price, cf_price_bump))
+
+    return cf_price_surface, ftols, is_call
+
 
 if __name__ == "__main__":
+    verbose, n_digits = False, 6
+    np.set_printoptions(suppress=True, precision=n_digits)
     name = "MyIndex"
     valdate = dt.datetime(2025, 12, 15)
-    verbose = False
     config = {'start_new': True, 'model': 'BiExp', 'store_date': valdate,
               'optimizer': 'L-BFGS-B', 'tol': 1e-3, 'pde_timesteps': 50,
               'pde_spotsteps': 100, 'lv_folder': lvf.test_data_folder(),
@@ -135,19 +266,7 @@ if __name__ == "__main__":
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Calibration targets
-    cf_price_surface = []
-    ftols = []
-    itol = 1e-6 # 1bp
-    is_call = True
-    for exp_idx, expiry in enumerate(expiry_grid):
-        fwd = fwds[exp_idx]
-        strikes = strike_surface[exp_idx]
-        vols = vol_surface[exp_idx]
-        cf_price = black.price(expiry, strikes, is_call, fwd, vols)
-        cf_price_surface.append(cf_price)
-        vols = vols + itol
-        cf_price_bump = black.price(expiry, strikes, is_call, fwd, vols)
-        ftols.append(metrics.rmse(cf_price, cf_price_bump))
+    cf_price_surface, ftols, is_call = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
 
     # Initial LV: either from scratch or from existing
     if config['start_new']:
@@ -156,7 +275,7 @@ if __name__ == "__main__":
         lv = lvf.load_lv_from_folder(expiry_grid, valdate, name, config['lv_folder'])
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
 
-    ## Set up forward PDE ##
+    # Set up forward PDE
     mesh_vol = vol_surface.mean()
     print(f"Mesh vol: {mesh_vol*100:.2f}%")
     pde_config = fpde.PdeConfig(n_time_steps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],
@@ -164,10 +283,8 @@ if __name__ == "__main__":
     print(f"PDE time steps: {pde_config.n_time_steps}")
     print(f"PDE spot steps: {pde_config.n_meshes}")
 
-    # Objective builder
+    # Set up objective
     obj_builder = LvObjectiveBuilder(lv, fwds, strike_surface, cf_price_surface, pde_config)
-
-    # Get objective
     objective = obj_builder.objective
 
     # Optimizer settings
@@ -178,9 +295,7 @@ if __name__ == "__main__":
     old_x, old_dx, old_p = obj_builder.initialize()
 
     # Loop over expiries
-    rmses = []
-    cf_prices, cf_vols = [], []
-    pde_prices, pde_vols = [], []
+    pde_vols = []
     sol_as_init = config['sol_as_init']
     for exp_idx in range(len(expiry_grid)):
         print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
@@ -200,7 +315,20 @@ if __name__ == "__main__":
         # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
         result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
         sol = result.x # Optimum parameters
+
+        # Set local vol to optimum
+        lv.update_params(exp_idx, sol)
+
+        # Recalculate on optimum to get/set optimum density
+        rmse = objective(sol)
+
+        # Prepare next iteration
+        old_x, old_dx, old_p = obj_builder.new_x, obj_builder.new_dx, obj_builder.new_p
+
+        ## Option for display and diagnostics ## 
+        # Display
         print(f"Result x: {sol}")
+        print(f"RMSE(prices): {rmse:.4f}")
         if verbose:
             print(f"Result f: {result.fun}")
             print(f"Func evals: {result['nfev']}")
@@ -208,37 +336,8 @@ if __name__ == "__main__":
                 if key in result:
                     print(key + "\n", result[key])
 
-        # Set local vol to optimum
-        lv.update_params(exp_idx, sol)
-
-        # Recalculate on optimum to get optimum density
-        rmse = objective(sol)
-        print(f"RMSE: {rmse:.4f}")
-
-        # Prepare next iteration
-        params_init = sol # Use the solution as initial point for next iteration
-        old_x = obj_builder.new_x
-        old_dx = obj_builder.new_dx
-        old_p = obj_builder.new_p
-
-        # Check optimization result
-        # y = objective(x)
-        # print(f"Result f check: {y}")
-        # print(f"Result f check: {obj_builder.rmse}")
-        cf_prices.append(obj_builder.cf_prices)
-        pde_prices_at_exp = obj_builder.pde_prices
-        pde_prices.append(pde_prices_at_exp)
-        cf_vols.append(vol_surface[exp_idx])
-        # pde_vols.append(vol_surface[exp_idx]) # ToDo: transform prices
-        pde_vols_at_exp = []
-        expiry = expiry_grid[exp_idx]
-        fwd = fwds[exp_idx]
-        strikes = strike_surface[exp_idx]
-        for k, p in zip(strikes, pde_prices_at_exp):
-            pde_vols_at_exp.append(black.implied_vol(expiry, k, is_call, fwd, p))
-
-        pde_vols.append(pde_vols_at_exp)
-        rmses.append(10000.0 * metrics.rmse(cf_vols, pde_vols))
+        # Retrieve RMSE on vols
+        pde_vols.append(obj_builder.calculate_vols())
 
 
     # Dump LV result to file
@@ -247,6 +346,11 @@ if __name__ == "__main__":
     lv.dump(out_file)
 
     # ################ DISPLAY ####################################################################
+    # Calculate RMSEs on vols
+    vol_rmses = []
+    for exp_idx in range(len(expiry_grid)):
+        vol_rmses.append(10000.0 * metrics.rmse(vol_surface[exp_idx], pde_vols[exp_idx]))
+
     # Display price results
     n_rows, n_cols = 3, 2
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
@@ -256,8 +360,8 @@ if __name__ == "__main__":
             exp_idx = n_cols * i + j
             strikes = strike_surface[exp_idx]
             ax.plot(strikes, pde_vols[exp_idx], label="PDE", color='red')
-            ax.plot(strikes, cf_vols[exp_idx], label="CF", color='blue')
-            ax.set_title(f"T:{expiry_grid[exp_idx]:.2f}, RMSE: {rmses[exp_idx]:.4f}")
+            ax.plot(strikes, vol_surface[exp_idx], label="CF", color='blue')
+            ax.set_title(f"T:{expiry_grid[exp_idx]:.2f}, RMSE: {vol_rmses[exp_idx]:.4f}")
             ax.set_xlabel('strike')
             ax.set_ylabel('price')
             ax.legend()
@@ -276,14 +380,14 @@ if __name__ == "__main__":
             expiry = expiry_grid[exp_idx]
             vol = vol_surface[exp_idx].mean()
             stdev = vol * np.sqrt(expiry)
-            print(f"Params at {expiry:.3f}: {lv.params(exp_idx)}")
+            print(f"Params at {expiry:.3f}, {lv.params(exp_idx)}")
             xs = np.linspace(-3.0 * stdev, 3.0 * stdev, 100)
             lvs = lv.value(expiry, xs)
             ax.plot(xs, lvs, label="LV", color='blue')
             # strikes = strike_surface[exp_idx]
             # lvs = lv.value(expiry_grid[exp_idx], np.log(strikes / fwds[exp_idx]))
             # ax.plot(strikes, lvs, label="LV", color='blue')
-            ax.set_title(f"T:{expiry:.2f}, RMSE: {rmses[exp_idx]:.4f}")
+            ax.set_title(f"T:{expiry:.2f}, RMSE: {vol_rmses[exp_idx]:.4f}")
             ax.set_xlabel('strike')
             ax.set_ylabel('price')
             ax.legend()
