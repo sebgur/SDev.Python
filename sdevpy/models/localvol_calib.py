@@ -3,8 +3,8 @@ import datetime as dt
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
-from sdevpy.models import svivol, biexp
 from sdevpy.tools import timegrids, dates
+from sdevpy.models import svivol, biexp
 from sdevpy.models import localvol
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.pde import forwardpde as fpde
@@ -17,6 +17,7 @@ from sdevpy.market import volsurface as vsurf
 ########## ToDo ########################################################################
 # * Start calibration from dumped LV and use its parameters as initial points at
 #   each expiry. See if restarting from it changes speed/quality.
+# * Wrap price calculation in function (might be used later to set weights)
 # * Wrap calibration functions that take objects and return objects, then json wrappers/samples
 # * Calibration weights based on percentiles, with possible removal of options
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
@@ -113,6 +114,11 @@ class LvObjectiveBuilder:
 if __name__ == "__main__":
     name = "MyIndex"
     valdate = dt.datetime(2025, 12, 15)
+    verbose = False
+    config = {'start_new': True, 'model': 'BiExp', 'store_date': valdate,
+              'optimizer': 'L-BFGS-B', 'tol': 1e-3, 'pde_timesteps': 50,
+              'pde_spotsteps': 100, 'lv_folder': lvf.test_data_folder(),
+              'sol_as_init': False}
 
     # Retrieve target market option data
     file = vsurf.test_data_file(name, valdate)
@@ -127,9 +133,6 @@ if __name__ == "__main__":
     surface_data.pretty_print()
 
     ##### Calibration to target data ####################################################
-    # TODO Retrieve previous fit if any
-    # Wrap price calculation in function (might be used later to set weights)
-
     # Calibration time grid
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
@@ -148,20 +151,23 @@ if __name__ == "__main__":
         cf_price_bump = black.price(expiry, strikes, is_call, fwd, vols)
         ftols.append(metrics.rmse(cf_price, cf_price_bump))
 
-    # Create an LV with suitable slices
-    section_grid = [biexp.BiExpSection(expiry_grid[i]) for i in range(len(expiry_grid))]
-    lv = localvol.InterpolatedParamLocalVol(valdate, section_grid, name=name)
+    # Initial LV: either from scratch or from existing
+    if config['start_new']:
+        lv = lvf.load_lv_new(expiry_grid, config['model'])
+    else:
+        lv = lvf.load_lv_from_folder(expiry_grid, valdate, name, config['lv_folder'])
+    lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
 
     ## Set up forward PDE ##
     mesh_vol = vol_surface.mean()
     print(f"Mesh vol: {mesh_vol*100:.2f}%")
-    # Original trial: n_times = 50, n_meshes = 250
-    pde_config = fpde.PdeConfig(n_time_steps=50, n_meshes=100, mesh_vol=mesh_vol, scheme='rannacher',
-                                rescale_x=True, rescale_p=True)
-    print(f"Time steps: {pde_config.n_time_steps}")
-    print(f"Spot steps: {pde_config.n_meshes}")
+    pde_config = fpde.PdeConfig(n_time_steps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],
+                                mesh_vol=mesh_vol, scheme='rannacher', rescale_x=True, rescale_p=True)
+    print(f"PDE time steps: {pde_config.n_time_steps}")
+    print(f"PDE spot steps: {pde_config.n_meshes}")
 
     # Objective builder
+    # TODO don't pass expiry_grid, retrieve it from lv instead
     obj_builder = LvObjectiveBuilder(lv, expiry_grid, fwds, strike_surface,
                                      cf_price_surface, pde_config)
 
@@ -169,72 +175,52 @@ if __name__ == "__main__":
     objective = obj_builder.objective
 
     # Constraints
-    # lw_bounds = [0.0, 0.0, -0.99, -1.0, 0.0] # a, b, rho, m, sigma
-    # up_bounds = [0.8, 5.0, 0.99, 2.0, 1.0] # a, b, rho, m, sigma
+    # TODO: these should be called by model-specific function
     lw_bounds = [0.01, 0.01, 0.01, 0.01, 0.01, -2.0] # a, b, rho, m, sigma
     up_bounds = [1.0, 1.0, 1.0, 2.0, 2.0, 2.0] # a, b, rho, m, sigma
 
     # Optimizer
-    # method = 'Nelder-Mead'
-    # method = 'Powell'
-    # method = 'DE'
-    # method = 'SLSQP'
-    method = 'L-BFGS-B'
-    tol = 1e-3
+    method = config['optimizer']
+    tol = config['tol']
     bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
 
     # Initialize PDE
     old_x, old_dx, old_p = obj_builder.initialize()
 
-    # Initial parameters for the first expiry
-    # params_init = svivol.sample_params(expiry_grid[0], mesh_vol)
-    params_init = biexp.sample_params(expiry_grid[0], mesh_vol)
-    params_init = [params_init] * len(expiry_grid)
-    # print(params_init)
-
-    # params_init = [[0.237, 3.3, -0.22, -0.007, 0.0],
-    #                [0.001, 3.27, 0.05, 0.0125, 0.11],
-    #                [0.089, 0.755,  0.19, 0.07,  0.23],
-    #                [0.18605, 0.26973, 0.45985, 0.22791, 0.3253],
-    #                [0.24804566, 0.06740734, 0.60760707, 0.4204044,  0.37236663],
-    #                [0.27136465, 0.0025457,  0.87826455, 1., 0.58212948]]
-    # # params_init = [0.179, 3.3, -0.40, -0.019, 0.025]
-    # # print(params_init)
-    # # obj_builder.set_expiry(0, old_x, old_dx, old_p)
-    # # rmse = objective(params_init)
-    # # print(rmse)
-
     # Loop over expiries
     rmses = []
     cf_prices, cf_vols = [], []
     pde_prices, pde_vols = [], []
-    params_init = params_init[0]
+    sol_as_init = config['sol_as_init']
     for exp_idx in range(len(expiry_grid)):
         print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
-        # Set expiry
         obj_builder.set_expiry(exp_idx, old_x, old_dx, old_p)
+
+        # Initial point for optimization
+        if exp_idx == 0:
+            params_init = lv.params(0)
+        else:
+            params_init = (sol if sol_as_init else lv.params(exp_idx))
 
         # Optimize
         optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx])
         # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
-
         result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
         sol = result.x # Optimum parameters
-        # fun = result.fun
         print(f"Result x: {sol}")
-        # print(f"Result f: {fun}")
-        print(f"Result f: {result['nfev']}")
-        # for key in result.keys():
-        #     if key in result:
-        #         print(key + "\n", result[key])
+        if verbose:
+            print(f"Result f: {result.fun}")
+            print(f"Func evals: {result['nfev']}")
+            for key in result.keys():
+                if key in result:
+                    print(key + "\n", result[key])
 
         # Set local vol to optimum
         lv.update_params(exp_idx, sol)
 
         # Recalculate on optimum to get optimum density
         rmse = objective(sol)
-        # rmses.append(rmse)
-        print(f"RMSE at exp idx {exp_idx}: {rmse:.4f}")
+        print(f"RMSE: {rmse:.4f}")
 
         # Prepare next iteration
         params_init = sol # Use the solution as initial point for next iteration

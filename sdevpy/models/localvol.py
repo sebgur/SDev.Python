@@ -1,4 +1,5 @@
 import json
+import datetime as dt
 from abc import ABC, abstractmethod
 from sdevpy.models.svi import *
 from sdevpy.tools import algos, dates
@@ -6,10 +7,10 @@ from sdevpy.tools import algos, dates
 
 class LocalVol(ABC):
     """ Base class for local vols """
-    def __init__(self, valdate, **kwargs):
-        self.valdate = valdate
+    def __init__(self, **kwargs):
+        self.valdate = kwargs.get('valdate', dt.datetime.now())
         self.name = kwargs.get('name', 'MyIndex')
-        self.snapdate = kwargs.get('snapdate', valdate)
+        self.snapdate = kwargs.get('snapdate', self.valdate)
 
     @abstractmethod
     def value(self, t, logm):
@@ -26,19 +27,13 @@ class LocalVol(ABC):
 
 
 class InterpolatedParamLocalVol(LocalVol):
-    def __init__(self, valdate, sections, **kwargs):
-        super().__init__(valdate, **kwargs)
+    def __init__(self, sections, **kwargs):
+        super().__init__(**kwargs)
 
         # Sort by increasing date
         sections.sort(key=lambda x: x.time)
 
         self.sections = sections
-
-        # Collect time grid
-        # t_grid = [section.time for section in self.sections]
-        # for section in self.sections:
-        #     t_grid.append(section.time)
-
         self.t_grid = [section.time for section in self.sections]
 
     def value(self, t, logm):
@@ -71,11 +66,6 @@ class InterpolatedParamLocalVol(LocalVol):
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
                 'sections': sections}
         return data
-
-    # def interpolate_params(t_grid):
-    #     """ Interpolate parameters to provided time grid. Only possible if all sections are
-    #         of the same type """
-
 
 
 if __name__ == "__main__":

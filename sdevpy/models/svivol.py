@@ -6,15 +6,17 @@ from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
 
 
-def create_section(time, param_config):
+def create_section(time, param_config=None):
     section = SviVolSection(time)
-    params = []
-    params.append(param_config['a'])
-    params.append(param_config['b'])
-    params.append(param_config['rho'])
-    params.append(param_config['m'])
-    params.append(param_config['sigma'])
-    section.update_params(params)
+    if param_config is not None:
+        params = []
+        params.append(param_config['a'])
+        params.append(param_config['b'])
+        params.append(param_config['rho'])
+        params.append(param_config['m'])
+        params.append(param_config['sigma'])
+        section.update_params(params)
+
     return section
 
 

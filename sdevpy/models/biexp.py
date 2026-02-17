@@ -18,15 +18,20 @@ from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
 
 
-def create_section(time, param_config):
+def create_section(time, param_config=None, fill_sample=True):
     section = BiExpSection(time)
-    params = []
-    params.append(param_config['f0'])
-    params.append(param_config['fl'])
-    params.append(param_config['fr'])
-    params.append(param_config['taul'])
-    params.append(param_config['taur'])
-    params.append(param_config['fp'])
+    if param_config is None and fill_sample:
+        params = sample_params(time) # Fill with sample
+    else:
+    # if param_config is not None:
+        params = []
+        params.append(param_config['f0'])
+        params.append(param_config['fl'])
+        params.append(param_config['fr'])
+        params.append(param_config['taul'])
+        params.append(param_config['taur'])
+        params.append(param_config['fp'])
+
     section.update_params(params)
     return section
 
@@ -110,7 +115,7 @@ def biexp_formula(t, x, params):
     return biexp(x, *params)
 
 
-def sample_params(t, vol):
+def sample_params(t, vol=0.25):
     """ Guess parameters for display or optimization initial point """
     f0 = vol
     fl = vol + 0.05

@@ -7,11 +7,21 @@ from sdevpy.tools import timegrids, dates
 from sdevpy.maths import interpolation as itp
 
 
+def create_sections(t_grid, model):
+    sections = []
+    for t in t_grid:
+        config = {'time': t, 'model': model, 'params': None}
+        section = create_section(config)
+        sections.append(section)
+
+    return sections
+
+
 def create_section(config):
     time = config.get('time', None)
     model = config.get('model', None)
     param_config = config.get('params', None)
-    if time is None or model is None or param_config is None:
+    if time is None or model is None:# or param_config is None:
         raise TypeError("Invalid section input in local vol file")
 
     match model.lower():
@@ -26,7 +36,13 @@ def create_section(config):
     return section
 
 
-def load_lv_from_folder(new_date, new_expiries, store_date, name, folder):
+def load_lv_new(t_grid, model):
+    sections = create_sections(t_grid, model)
+    lv = localvol.InterpolatedParamLocalVol(sections)
+    return lv
+
+
+def load_lv_from_folder(t_grid, store_date, name, folder):
     file = os.path.join(folder, name)
     os.makedirs(file, exist_ok=True)
     file = os.path.join(file, store_date.strftime(dates.DATE_FILE_FORMAT) + ".json")
@@ -40,11 +56,11 @@ def load_lv_from_folder(new_date, new_expiries, store_date, name, folder):
         data = json.load(f)
 
     # Load LV
-    lv = load_lv_from_data(new_date, new_expiries, data)
+    lv = load_lv_from_data(t_grid, data)
     return lv
 
 
-def load_lv_from_data(new_date, new_expiries, data):
+def load_lv_from_data(new_t_grid, data):
     # Create sections
     sections = data['sections']
     if sections is None:
@@ -84,8 +100,8 @@ def load_lv_from_data(new_date, new_expiries, data):
 
     # Interpolate
     new_section_grid = []
-    for new_expiry in new_expiries:
-        time = timegrids.model_time(new_date, new_expiry)
+    for time in new_t_grid:
+        # time = timegrids.model_time(new_date, new_expiry)
         params = {}
         for name in param_names:
             params[name] = float(interps[name].value(time))
@@ -95,7 +111,7 @@ def load_lv_from_data(new_date, new_expiries, data):
         new_section_grid.append(section)
 
     # Create LV
-    lv = localvol.InterpolatedParamLocalVol(new_date, new_section_grid, name=data['name'])
+    lv = localvol.InterpolatedParamLocalVol(new_section_grid)
     return lv
 
 
@@ -135,15 +151,17 @@ if __name__ == "__main__":
 
     # Load
     store_date = valdate
-    new_date = valdate
-    new_expiries = [dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)]
-    lv = load_lv_from_folder(new_date, new_expiries, store_date, name, folder)
+    # new_date = valdate
+    new_expiries = [1.0, 2.0]# [dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)]
+    lv = load_lv_from_folder(new_expiries, store_date, name, folder)
+    lv.name = name
+    lv.valdate = valdate
 
     # Dump
     lv_data = lv.dump_data()
     print(lv_data)
-    data = {'valdate': new_date.strftime(dates.DATE_FORMAT),
-            'snapdate': new_date.strftime(dates.DATETIME_FORMAT),
+    data = {'valdate': valdate.strftime(dates.DATE_FORMAT),
+            'snapdate': valdate.strftime(dates.DATETIME_FORMAT),
             'sections': lv_data}
     file = os.path.join(folder, 'test.json')
     print(file)
