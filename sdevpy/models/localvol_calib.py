@@ -15,15 +15,15 @@ from sdevpy.market import volsurface as vsurf
 
 
 ########## ToDo ########################################################################
-# * Wrap calibration functions that take objects and return objects
-# * Calibration weights based on percentiles, with possible removal of options
 # * Implement MC and check calibration against it.
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
 # * Use actual data from SPX
+# * Calibration weights based on percentiles, with possible removal of options
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
 # * Refresh localvol.py, upload to pypi.
 # * Make Colab, post.
 
+IS_CALL = True
 
 def calibrate_lv(valdate, name, config, **kwargs):
     # Arguments
@@ -43,7 +43,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Set calibration targets
-    cf_price_surface, ftols, is_call = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
+    cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
 
     # Initial LV: either from scratch or from existing
     if config['start_new']:
@@ -112,7 +112,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
         # Prepare next iteration
         old_x, old_dx, old_p = obj_builder.new_x, obj_builder.new_dx, obj_builder.new_p
 
-        ## Option for display and diagnostics ## 
+        ## Optional for display and diagnostics ##
         if verbose:
             print(f"Result x: {sol}")
             print(f"RMSE(prices): {rmse:.4f}")
@@ -127,7 +127,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
         if calc_pde_vols:
             pde_vols.append(obj_builder.calculate_vols())
 
-    return lv, pde_vols
+    return {'lv': lv, 'iv_data': surface_data, 'pde_vols': pde_vols}
 
 
 class LvObjectiveBuilder:
@@ -171,7 +171,7 @@ class LvObjectiveBuilder:
             s = self.fwd * np.exp(x)
             pde_prices = []
             for k in self.strikes: # ToDo: can we do this vectorially over the strikes?
-                payoff = np.maximum(s - k, 0.0)
+                payoff = np.maximum(s - k, 0.0) # ToDo: accept calls and puts
                 weighted_payoff = payoff * p
                 pde_prices.append(np.trapezoid(weighted_payoff, x))
 
@@ -181,11 +181,10 @@ class LvObjectiveBuilder:
             self.rmse = rmse
             return rmse
         else:
-            return penalty
+            return self.cf_prices.sum()#penalty
 
     def set_expiry(self, exp_idx, old_x, old_dx, old_p):
         self.exp_idx = exp_idx
-        # expiry = expiry_grid[exp_idx]
         ts = self.start_time if exp_idx == 0 else self.expiry_grid[exp_idx - 1]
         te = self.expiry_grid[exp_idx]
         self.step_grid = fpde.build_timegrid(ts, te, self.pde_config)
@@ -216,7 +215,7 @@ class LvObjectiveBuilder:
         expiry = self.expiry_grid[self.exp_idx]
         pde_vols = []
         for k, p in zip(self.strikes, self.pde_prices):
-            pde_vols.append(black.implied_vol(expiry, k, is_call, self.fwd, p))
+            pde_vols.append(black.implied_vol(expiry, k, IS_CALL, self.fwd, p))
 
         return pde_vols
 
@@ -225,18 +224,17 @@ def calibration_targets(expiry_grid, fwds, strike_surface, vol_surface):
     cf_price_surface = []
     ftols = []
     itol = 1e-6 # 1bp
-    is_call = True
     for exp_idx, expiry in enumerate(expiry_grid):
         fwd = fwds[exp_idx]
         strikes = strike_surface[exp_idx]
         vols = vol_surface[exp_idx]
-        cf_price = black.price(expiry, strikes, is_call, fwd, vols)
+        cf_price = black.price(expiry, strikes, IS_CALL, fwd, vols)
         cf_price_surface.append(cf_price)
         vols = vols + itol
-        cf_price_bump = black.price(expiry, strikes, is_call, fwd, vols)
+        cf_price_bump = black.price(expiry, strikes, IS_CALL, fwd, vols)
         ftols.append(metrics.rmse(cf_price, cf_price_bump))
 
-    return cf_price_surface, ftols, is_call
+    return cf_price_surface, ftols
 
 
 if __name__ == "__main__":
@@ -249,103 +247,25 @@ if __name__ == "__main__":
               'pde_spotsteps': 100, 'lv_folder': lvf.test_data_folder(),
               'sol_as_init': False}
 
-    # Retrieve target market option data
-    file = vsurf.test_data_file(name, valdate)
-    surface_data = vsurf.vol_surface(file)
-    expiries = surface_data.expiries
-    fwds = surface_data.forwards
-    strike_surface = surface_data.get_strikes('absolute')
-    vol_surface = surface_data.vols
-
-    print(f"Val date: {valdate.strftime(dates.DATE_FORMAT)}")
-    print(f"Vol surface information")
-    surface_data.pretty_print()
-
-    ##### Calibration to target data ####################################################
-    # Calibration time grid
-    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
-
-    # Calibration targets
-    cf_price_surface, ftols, is_call = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
-
-    # Initial LV: either from scratch or from existing
-    if config['start_new']:
-        lv = lvf.load_lv_new(expiry_grid, config['model'])
-    else:
-        lv = lvf.load_lv_from_folder(expiry_grid, valdate, name, config['lv_folder'])
-    lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
-
-    # Set up forward PDE
-    mesh_vol = vol_surface.mean()
-    print(f"Mesh vol: {mesh_vol*100:.2f}%")
-    pde_config = fpde.PdeConfig(n_time_steps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],
-                                mesh_vol=mesh_vol, scheme='rannacher', rescale_x=True, rescale_p=True)
-    print(f"PDE time steps: {pde_config.n_time_steps}")
-    print(f"PDE spot steps: {pde_config.n_meshes}")
-
-    # Set up objective
-    obj_builder = LvObjectiveBuilder(lv, fwds, strike_surface, cf_price_surface, pde_config)
-    objective = obj_builder.objective
-
-    # Optimizer settings
-    method = config['optimizer']
-    tol = config['tol']
-
-    # Initialize PDE
-    old_x, old_dx, old_p = obj_builder.initialize()
-
-    # Loop over expiries
-    pde_vols = []
-    sol_as_init = config['sol_as_init']
-    for exp_idx in range(len(expiry_grid)):
-        print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
-        obj_builder.set_expiry(exp_idx, old_x, old_dx, old_p)
-
-        # Initial point for optimization
-        if exp_idx == 0:
-            params_init = lv.params(0)
-        else:
-            params_init = (sol if sol_as_init else lv.params(exp_idx))
-
-        # Constraints
-        bounds = lv.section(exp_idx).constraints()
-
-        # Optimize
-        optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx])
-        # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
-        result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
-        sol = result.x # Optimum parameters
-
-        # Set local vol to optimum
-        lv.update_params(exp_idx, sol)
-
-        # Recalculate on optimum to get/set optimum density
-        rmse = objective(sol)
-
-        # Prepare next iteration
-        old_x, old_dx, old_p = obj_builder.new_x, obj_builder.new_dx, obj_builder.new_p
-
-        ## Option for display and diagnostics ## 
-        # Display
-        print(f"Result x: {sol}")
-        print(f"RMSE(prices): {rmse:.4f}")
-        if verbose:
-            print(f"Result f: {result.fun}")
-            print(f"Func evals: {result['nfev']}")
-            for key in result.keys():
-                if key in result:
-                    print(key + "\n", result[key])
-
-        # Retrieve RMSE on vols
-        pde_vols.append(obj_builder.calculate_vols())
-
+    # Calibrate LV
+    calib_result = calibrate_lv(valdate, name, config, verbose=True, calc_pde_vols=True)
+    lv = calib_result['lv']
 
     # Dump LV result to file
     out_folder = lvf.test_data_folder()
     out_file = os.path.join(out_folder, "test_lv_calib.json")
     lv.dump(out_file)
 
-    # ################ DISPLAY ####################################################################
+    # ################ DIAGNOSTICS ################################################################
+    # Retrieve results for diagnostics
+    pde_vols = calib_result['pde_vols']
+    surface_data = calib_result['iv_data']
+    expiries = surface_data.expiries
+    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
+    # fwds = surface_data.forwards
+    strike_surface = surface_data.get_strikes('absolute')
+    vol_surface = surface_data.vols
+
     # Calculate RMSEs on vols
     vol_rmses = []
     for exp_idx in range(len(expiry_grid)):

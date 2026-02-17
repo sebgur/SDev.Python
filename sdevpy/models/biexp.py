@@ -12,11 +12,13 @@
      """
 import datetime as dt
 import numpy as np
-import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from scipy.stats import norm
 from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
+
+
+DEATH_PENALTY = 1e6
 
 
 def create_section(time, param_config=None, fill_sample=True):
@@ -58,8 +60,7 @@ class BiExpSection(ParamSection):
 
 
 def biexp(x, *params):
-    """ BiExp formula. Currently centered at 0 but could be centered somewhere else.
-    """
+    """ BiExp formula. Currently centered at 0 but could be centered somewhere else. """
     # Center
     m = 0.0
 
@@ -106,15 +107,15 @@ def biexp_check_params(params):
     if fl < 0.0 or f0 < 0.0 or fr < 0.0 or taul < 0.0 or taur < 0.0:
         is_ok = False
 
-    # if fl < f0: # Not sure this is really a constraint we should impose
-    #     is_ok = False
+    if fl < f0: # Not sure this is really a constraint we should impose
+        is_ok = False
 
     # Might want to impose positivity contraints here
 
     # Sudden death for now
     penalty = 0.0 if is_ok else constants.FLOAT_INFTY
 
-    return is_ok, penalty
+    return is_ok, DEATH_PENALTY
 
 
 def biexp_formula(t, x, params):
@@ -158,6 +159,7 @@ def generate_sample_data(valdate, terms, base_vol=0.25,
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     valdate = dt.datetime(2025, 12, 15)
     terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
     base_vol = 0.25

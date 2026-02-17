@@ -1,7 +1,6 @@
-import os
+import os, json
 from pathlib import Path
 import datetime as dt
-import json
 from sdevpy.models import biexp, svivol, localvol
 from sdevpy.tools import timegrids, dates
 from sdevpy.maths import interpolation as itp
@@ -66,49 +65,54 @@ def load_lv_from_data(new_t_grid, data):
     if sections is None:
         raise KeyError("Sections node not valid in LV data")
 
-    # Collect stored grids
-    old_t_grid, model_names, parameters = [], [], []
-    for section in sections:
-        old_t_grid.append(section['time'])
-        model_names.append(section['model'])
-        parameters.append(section['params'])
+    if new_t_grid is None: # Just use the data
+        new_section_grid = []
+        for section_config in sections:
+            section = create_section(section_config)
+            new_section_grid.append(section)
+    else:
+        # Collect stored grids
+        old_t_grid, model_names, parameters = [], [], []
+        for section in sections:
+            old_t_grid.append(section['time'])
+            model_names.append(section['model'])
+            parameters.append(section['params'])
 
-    # Check section consistency
-    model_name = model_names[0]
-    param_names = parameters[0].keys()
-    param_size = len(param_names)
-    same_models = all(x == model_name for x in model_names)
-    same_sizes = all(len(x.keys()) == param_size for x in parameters)
+        # Check section consistency
+        model_name = model_names[0]
+        param_names = parameters[0].keys()
+        param_size = len(param_names)
+        same_models = all(x == model_name for x in model_names)
+        same_sizes = all(len(x.keys()) == param_size for x in parameters)
 
-    if not same_models or not same_sizes:
-        raise RuntimeError("Impossible to set LV from previous data due to inconsistent sections")
+        if not same_models or not same_sizes:
+            raise RuntimeError("Impossible to set LV from previous data due to inconsistent sections")
 
-    # Collect parameter vectors per parameter name
-    param_vectors = {}
-    for name in param_names:
-        param_vectors[name] = []
-
-    for p in parameters:
+        # Collect parameter vectors per parameter name
+        param_vectors = {}
         for name in param_names:
-            param_vectors[name].append(p[name])
+            param_vectors[name] = []
 
-    # Define interpolations
-    interps = {}
-    for name in param_names:
-        interps[name] = itp.create_interpolation(interp='linear', l_extrap='flat', r_extrap='flat',
-                                                 x_grid=old_t_grid, y_grid=param_vectors[name])
+        for p in parameters:
+            for name in param_names:
+                param_vectors[name].append(p[name])
 
-    # Interpolate
-    new_section_grid = []
-    for time in new_t_grid:
-        # time = timegrids.model_time(new_date, new_expiry)
-        params = {}
+        # Define interpolations
+        interps = {}
         for name in param_names:
-            params[name] = float(interps[name].value(time))
+            interps[name] = itp.create_interpolation(interp='linear', l_extrap='flat', r_extrap='flat',
+                                                    x_grid=old_t_grid, y_grid=param_vectors[name])
 
-        section_config = {'time': time, 'model': model_name, 'params': params}
-        section = create_section(section_config)
-        new_section_grid.append(section)
+        # Interpolate
+        new_section_grid = []
+        for time in new_t_grid:
+            params = {}
+            for name in param_names:
+                params[name] = float(interps[name].value(time))
+
+            section_config = {'time': time, 'model': model_name, 'params': params}
+            section = create_section(section_config)
+            new_section_grid.append(section)
 
     # Create LV
     lv = localvol.InterpolatedParamLocalVol(new_section_grid)
@@ -142,7 +146,10 @@ def test_data_folder():
 
 
 if __name__ == "__main__":
-    name = "MyIndex"
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    name = "CalibIndex" # "MyIndex"
     valdate = dt.datetime(2025, 12, 15)
     folder = test_data_folder()
 
@@ -152,7 +159,7 @@ if __name__ == "__main__":
     # Load
     store_date = valdate
     # new_date = valdate
-    new_expiries = [1.0, 2.0]# [dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)]
+    new_expiries = None # [1.0, 2.0]# [dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)]
     lv = load_lv_from_folder(new_expiries, store_date, name, folder)
     lv.name = name
     lv.valdate = valdate
@@ -163,9 +170,20 @@ if __name__ == "__main__":
     data = {'valdate': valdate.strftime(dates.DATE_FORMAT),
             'snapdate': valdate.strftime(dates.DATETIME_FORMAT),
             'sections': lv_data}
-    file = os.path.join(folder, 'test.json')
+    file = os.path.join(folder, 'test_dump.json')
     print(file)
     print(data)
     with open(file, 'w') as f:
         json.dump(data, f, indent=2)
 
+    # View
+    expiries = lv.t_grid
+    n_expiries = len(expiries)
+    x = np.linspace(-0.5, 0.5, 100)
+    exp_idx = n_expiries - 1
+    lparams = lv.params(exp_idx)
+    print(lparams)
+    lvols = lv.value(expiries[exp_idx], x)
+
+    plt.plot(x, lvols)
+    plt.show()
