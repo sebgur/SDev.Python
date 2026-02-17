@@ -13,6 +13,7 @@
 import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.optimize as opt
 from scipy.stats import norm
 from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
@@ -23,7 +24,6 @@ def create_section(time, param_config=None, fill_sample=True):
     if param_config is None and fill_sample:
         params = sample_params(time) # Fill with sample
     else:
-    # if param_config is not None:
         params = []
         params.append(param_config['f0'])
         params.append(param_config['fl'])
@@ -48,6 +48,13 @@ class BiExpSection(ParamSection):
         data = {'f0': self.params[0], 'fl': self.params[1], 'fr': self.params[2],
                 'taul': self.params[3], 'taur': self.params[4], 'fp': self.params[5]}
         return data
+
+    def constraints(self):
+        # f0, fl, fr, taul, taur, fp
+        lw_bounds = [0.01, 0.01, 0.01, 0.01, 0.01, -2.0]
+        up_bounds = [1.0, 1.0, 1.0, 2.0, 2.0, 2.0]
+        bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
+        return bounds
 
 
 def biexp(x, *params):

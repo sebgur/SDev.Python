@@ -40,8 +40,8 @@ class InterpolatedParamLocalVol(LocalVol):
         t_idx = algos.upper_bound(self.t_grid, t)
         return self.sections[t_idx].value(t, logm)
 
-    def section(self, t):
-        return 0
+    def section(self, t_idx):
+        return self.sections[t_idx]
 
     def check_params(self, t_idx):
         return self.sections[t_idx].check_params()

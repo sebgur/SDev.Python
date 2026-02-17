@@ -1,22 +1,25 @@
 import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.optimize as opt
 from scipy.stats import norm
 from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
 
 
-def create_section(time, param_config=None):
+def create_section(time, param_config=None, fill_sample=True):
     section = SviVolSection(time)
-    if param_config is not None:
+    if param_config is None and fill_sample:
+        params = sample_params(time) # Fill with sample
+    else:
         params = []
         params.append(param_config['a'])
         params.append(param_config['b'])
         params.append(param_config['rho'])
         params.append(param_config['m'])
         params.append(param_config['sigma'])
-        section.update_params(params)
 
+    section.update_params(params)
     return section
 
 
@@ -33,6 +36,12 @@ class SviVolSection(ParamSection):
                 'm': self.params[3], 'sigma': self.params[4]}
         return data
 
+    def constraints(self):
+        # a, b, rho, m, sigma
+        lw_bounds = [0.01, -0.1, -0.99, -0.1, 0.01]
+        up_bounds = [1.0, 0.1, 0.99, 0.1, 1.0]
+        bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
+        return bounds
 
 def svivol(x, *params):
     """ SVI-like formula but applied to the vol directly. This no longer has
@@ -90,7 +99,7 @@ def svivol_formula(t, x, params):
     return svivol(x, *params)
 
 
-def sample_params(t, vol):
+def sample_params(t, vol=0.25):
     """ Guess parameters for display or optimization initial point """
     a = vol
     b = 0.1 / t

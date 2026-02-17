@@ -33,6 +33,10 @@ class ParamSection(Section):
         return True, 0.0
 
     @abstractmethod
+    def constraints(self):
+        pass
+
+    @abstractmethod
     def dump_params(self):
         pass
 

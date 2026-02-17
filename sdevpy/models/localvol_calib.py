@@ -15,8 +15,6 @@ from sdevpy.market import volsurface as vsurf
 
 
 ########## ToDo ########################################################################
-# * Start calibration from dumped LV and use its parameters as initial points at
-#   each expiry. See if restarting from it changes speed/quality.
 # * Wrap price calculation in function (might be used later to set weights)
 # * Wrap calibration functions that take objects and return objects, then json wrappers/samples
 # * Calibration weights based on percentiles, with possible removal of options
@@ -29,8 +27,8 @@ from sdevpy.market import volsurface as vsurf
 
 
 class LvObjectiveBuilder:
-    def __init__(self, lv, expiry_grid, fwds, strike_surface, cf_price_surface, pde_config):
-        self.expiry_grid = expiry_grid
+    def __init__(self, lv, fwds, strike_surface, cf_price_surface, pde_config):
+        self.expiry_grid = lv.t_grid
         self.cf_price_surface = cf_price_surface
         self.strike_surface = strike_surface
         self.fwds = fwds
@@ -167,22 +165,14 @@ if __name__ == "__main__":
     print(f"PDE spot steps: {pde_config.n_meshes}")
 
     # Objective builder
-    # TODO don't pass expiry_grid, retrieve it from lv instead
-    obj_builder = LvObjectiveBuilder(lv, expiry_grid, fwds, strike_surface,
-                                     cf_price_surface, pde_config)
+    obj_builder = LvObjectiveBuilder(lv, fwds, strike_surface, cf_price_surface, pde_config)
 
     # Get objective
     objective = obj_builder.objective
 
-    # Constraints
-    # TODO: these should be called by model-specific function
-    lw_bounds = [0.01, 0.01, 0.01, 0.01, 0.01, -2.0] # a, b, rho, m, sigma
-    up_bounds = [1.0, 1.0, 1.0, 2.0, 2.0, 2.0] # a, b, rho, m, sigma
-
-    # Optimizer
+    # Optimizer settings
     method = config['optimizer']
     tol = config['tol']
-    bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
 
     # Initialize PDE
     old_x, old_dx, old_p = obj_builder.initialize()
@@ -201,6 +191,9 @@ if __name__ == "__main__":
             params_init = lv.params(0)
         else:
             params_init = (sol if sol_as_init else lv.params(exp_idx))
+
+        # Constraints
+        bounds = lv.section(exp_idx).constraints()
 
         # Optimize
         optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx])

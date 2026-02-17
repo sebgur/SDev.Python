@@ -7,7 +7,6 @@ import numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
 from sdevpy.maths.constants import FLOAT_MAX
-# import time
 
 
 SCIPY_OPTIMIZERS = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA',
