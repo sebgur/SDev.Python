@@ -13,16 +13,16 @@ from statsmodels.tsa.vector_ar.vecm import coint_johansen
 
 def johansen_test_estimation(data, asset_name_list, det_order = 0, k_ar_diff = 1):
     """ Estimate the weights and Test statistics """
-    # get the data according to the asset name list 
+    # get the data according to the asset name list
     df_name_list = data[asset_name_list]
 
-    # run johansen test 
+    # run johansen test
     res_jo = coint_johansen(df_name_list, det_order, k_ar_diff)
 
-    # check the trace and eigenvalue test of Johansen 
+    # check the trace and eigenvalue test of Johansen
     bool_trace_5pct, bool_trace_10pct, bool_eigen_5pct, bool_eigen_10pct = check_johansen_test_stats_fast(res_jo)
 
-    # get the normalized lst eigenvector which is the weights 
+    # get the normalized lst eigenvector which is the weights
     weights_XXXUSD = norm_1st_eigvec(res_jo)
 
     res_dict = {'weights': weights_XXXUSD, 
@@ -33,7 +33,7 @@ def johansen_test_estimation(data, asset_name_list, det_order = 0, k_ar_diff = 1
                 }
 
     return res_dict
-    
+
 
 def johansen_test_diag(res_dict, data, asset_name_list, print_diagnostics = True, det_order = 0, k_ar_diff = 1):
     """ Compute the diagnostics of a basket. res_dict - from johansen_test_estimation """

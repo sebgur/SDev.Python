@@ -1,14 +1,34 @@
 import numpy as np
+from abc import ABC, abstractmethod
+from enum import Enum
 
 
-def callput_payoff(paths, strikes, callputs, weights):
-    return 0
+class Payoff(ABC):
+    def __init__(self, names):
+        self.names = names
+
+    @abstractmethod
+    def build(self, paths):
+        pass
+        # return self.payoff_function(paths)
+
+    @abstractmethod
+    def set_pathnames(self, pathnames):
+        pass
+
+
+def callput_payoff(paths, name, strike, optiontype, names):
+    ST = paths[:, -1, :]  # Pick last time point
+    print(ST.shape)
+    print(weights)
+    payoff = np.maximum(ST - strike, 0)
+    return payoff
 
 
 def worst_of_barrier(paths, strike, barrier):
     min_path = paths.min(axis=2)  # worst asset at each time
     knocked = (min_path < barrier).any(axis=1)
-    ST = paths[:, -1, :]
+    ST = paths[:, -1, :] # Pick last time point
     worst_final = ST.min(axis=1)
 
     payoff = np.maximum(worst_final - strike, 0)
@@ -21,15 +41,45 @@ def asian_call_payoff(paths, strike):
     return np.maximum(avg - strike, 0)
 
 
-def basket_call_payoff(paths, weights, strike):
+def basket_call_payoff(paths, strike, weights):
     ST = paths[:, -1, :]
     basket = ST @ weights
     return np.maximum(basket - strike, 0)
 
 
-class Payoff:
-    def __init__(self, payoff_function):
-        self.payoff_function = payoff_function
+class VanillaOptionType(Enum):
+    CALL = 0
+    PUT = 1
+    STRADDLE = 2
 
-    def evaluate(self, paths):
-        return self.payoff_function(paths)
+
+class VanillaOption(Payoff):
+    def __init__(self, name, strike, optiontype):
+        super().__init__([name])
+        self.strike = strike
+        self.path_idx = None
+        self.name = name
+        match optiontype.lower():
+            case 'call': self.optiontype = VanillaOptionType.CALL
+            case 'put': self.optiontype = VanillaOption.PUT
+            case 'straddle': self.optiontype = VanillaOption.STRADDLE
+            case _: raise RuntimeError(f"Invalid option type: {optiontype}")
+
+    def build(self, paths):
+        ST = paths[:, -1, self.path_idx]  # Pick last time point
+        print(f"Index path shape: {ST.shape}")
+        payoff = np.maximum(ST - self.strike, 0)
+        print(f"Payoff shape: {payoff.shape}")
+        return payoff
+
+    def set_pathnames(self, names):
+        try:
+            self.path_idx = names.index(self.name)
+        except Exception as e:
+            self.path_idx = None
+            raise ValueError(f"Could not find name {self.name} in path names: {str(e)}")
+
+
+if __name__ == "__main__":
+    payoff = VanillaOption('SPX', 100, 'call')
+    print(payoff)

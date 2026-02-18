@@ -2,8 +2,9 @@ import numpy as np
 from sdevpy.montecarlo.FactorModel import MultiAssetGBM
 from sdevpy.montecarlo.CorrelationEngine import CorrelationEngine
 from sdevpy.montecarlo.PathGenerator import PathGenerator
-from sdevpy.montecarlo.Payoff import Payoff, basket_call_payoff
+from sdevpy.montecarlo.Payoff import Payoff, basket_call_payoff, callput_payoff, VanillaOption
 from sdevpy.montecarlo.MonteCarloPricer import MonteCarloPricer
+from sdevpy.analytics import black
 
 
 #################### TODO #########################################################################
@@ -11,37 +12,53 @@ from sdevpy.montecarlo.MonteCarloPricer import MonteCarloPricer
 # * Extend to LV, use to check LV calib
 # * Calculate vega through LV calib
 # * Implement var swap spread payoff
+# * Write a strict separation with the path generator, as the paths might come from
+#   another engine (C++, C#, third-party, etc.)
 
 
 if __name__ == "__main__":
-    print("Hello")
+    names = ['DAX', 'SPX', 'NKY']
+    S0 = np.asarray([100, 100, 100])
+    mu = np.asarray([0.05, 0.05, 0.05])
+    sigma = np.asarray([0.2, 0.3, 0.1])
+    n_assets = len(S0)
+    df = 0.90
 
-    S0 = [100, 100]
-    mu = [0.05, 0.05]
-    sigma = [0.2, 0.3]
-
-    corr = np.array([[1.0, 0.5],
-                    [0.5, 1.0]])
+    corr = np.array([[1.0, 0.5, 0.1],
+                    [0.5, 1.0, 0.1],
+                    [0.1, 0.5, 1.0]])
 
     model = MultiAssetGBM(S0, mu, sigma)
     corr_engine = CorrelationEngine(corr)
 
     T = 1.0
-    n_steps = 252
-    n_paths = 10000
+    n_steps = 25
+    n_paths = 100 * 1000
 
     generator = PathGenerator(model, corr_engine, T, n_steps)
 
-    # Generate underlying paths?
+    # Generate underlying paths: n_mc x (n_steps + 1) x n_assets
     paths = generator.generate_paths(n_paths)
+    print(f"Number of assets: {n_assets}")
+    print(f"Number of simulations: {n_paths}")
+    print(f"Number of times points: {n_steps + 1}")
+    print(f"Path shape: {paths.shape}")
 
-    weights = np.array([0.5, 0.5])
+    name = 'SPX'
     strike = 100
+    optiontype = 'Call'
 
-    payoff = Payoff(lambda p: basket_call_payoff(p, weights, strike))
+    # payoff = Payoff(lambda p: basket_call_payoff(p, strikes, weights))
+    # payoff = Payoff(lambda p: callput_payoff(p, name, strike, optiontype, names))
+    payoff = VanillaOption(name, strike, optiontype)
+    payoff.set_pathnames(names)
 
-    pricer = MonteCarloPricer(df=0.98)
+    mc = MonteCarloPricer(df=df)
+    mc_price = mc.build(paths, payoff)
 
-    price = pricer.price(paths, payoff)
+    name_idx = 1
+    fwd = S0 * np.exp(mu * T)
+    cf_price = df * black.price(T, strike, optiontype == 'Call', fwd[name_idx], sigma[name_idx])
 
-    print("Price:", price)
+    print("MC:", mc_price)
+    print("CF:", cf_price)
