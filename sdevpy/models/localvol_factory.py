@@ -1,7 +1,7 @@
 import os, json
 from pathlib import Path
 import datetime as dt
-from sdevpy.models import biexp, svivol, localvol
+from sdevpy.models import biexp, svivol, cubicvol, localvol
 from sdevpy.tools import timegrids, dates
 from sdevpy.maths import interpolation as itp
 
@@ -26,6 +26,8 @@ def create_section(config):
     match model.lower():
         case 'biexp':
             section = biexp.create_section(time, param_config)
+        case 'cubicvol':
+            section = cubicvol.create_section(time, param_config)
         case 'svivol':
             section = svivol.create_section(time, param_config)
         case _:

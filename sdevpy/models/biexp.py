@@ -95,27 +95,28 @@ def biexp(x, *params):
 
 
 def biexp_check_params(params):
-    f0 = params[0]
-    fl = params[1]
-    fr = params[2]
-    taul = params[3]
-    taur = params[4]
-    fp = params[5]
+    is_ok = False
+    if len(params) == 6:
+        f0 = params[0]
+        fl = params[1]
+        fr = params[2]
+        taul = params[3]
+        taur = params[4]
+        fp = params[5]
 
-    is_ok = True
-    # Check constraints
-    if fl < 0.0 or f0 < 0.0 or fr < 0.0 or taul < 0.0 or taur < 0.0:
-        is_ok = False
+        is_ok = True
+        # Check constraints
+        if fl < 0.0 or f0 < 0.0 or fr < 0.0 or taul < 0.0 or taur < 0.0:
+            is_ok = False
 
-    if fl < f0: # Not sure this is really a constraint we should impose
-        is_ok = False
+        if fl < f0: # Not sure this is really a constraint we should impose
+            is_ok = False
 
-    # Might want to impose positivity contraints here
+        # Might want to impose positivity contraints here
 
     # Sudden death for now
-    penalty = 0.0 if is_ok else constants.FLOAT_INFTY
-
-    return is_ok, DEATH_PENALTY
+    penalty = 0.0 if is_ok else DEATH_PENALTY
+    return is_ok, penalty
 
 
 def biexp_formula(t, x, params):

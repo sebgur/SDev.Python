@@ -20,8 +20,7 @@ from sdevpy.market import volsurface as vsurf
 # * Use actual data from SPX
 # * Calibration weights based on percentiles, with possible removal of options
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
-# * Refresh localvol.py, upload to pypi.
-# * Make Colab, post.
+# * Upload to pypi, make Colab, post.
 
 IS_CALL = True
 
@@ -156,6 +155,8 @@ class LvObjectiveBuilder:
         self.rmse = 0.0
 
     def objective(self, params):
+        # Update params first so they're available to check. Alternatively we could pass them
+        # to check_params() and only set them if they're ok.
         self.lv.update_params(self.exp_idx, params)
         is_ok, penalty = self.lv.check_params(self.exp_idx)
 
@@ -165,7 +166,6 @@ class LvObjectiveBuilder:
             self.new_x = x
             self.new_p = p
             self.new_dx = dx
-            # new_lv = lv.value(te, x)
 
             # Calculate the PDE options at the next expiry
             s = self.fwd * np.exp(x)
@@ -181,7 +181,12 @@ class LvObjectiveBuilder:
             self.rmse = rmse
             return rmse
         else:
-            return self.cf_prices.sum()#penalty
+            # In principle we should return a penalty number. However, it is not clear at the moment if
+            # that penalty should come from the model (where we know the parameters) or the
+            # objective function (where we know the problem). It might need to come from both.
+            # For now we are using a problem-specific penalty, i.e. the value if all the model prices
+            # were 0, assuming that should be much bigger than at any reasonable solution.
+            return self.cf_prices.sum()
 
     def set_expiry(self, exp_idx, old_x, old_dx, old_p):
         self.exp_idx = exp_idx
@@ -242,8 +247,9 @@ if __name__ == "__main__":
     np.set_printoptions(suppress=True, precision=n_digits)
     name = "MyIndex"
     valdate = dt.datetime(2025, 12, 15)
-    config = {'start_new': True, 'model': 'BiExp', 'store_date': valdate,
-              'optimizer': 'L-BFGS-B', 'tol': 1e-3, 'pde_timesteps': 50,
+    # 'L-BFGS-B'
+    config = {'start_new': True, 'model': 'CubicVol', 'store_date': valdate,
+              'optimizer': 'DE', 'tol': 1e-4, 'pde_timesteps': 50,
               'pde_spotsteps': 100, 'lv_folder': lvf.test_data_folder(),
               'sol_as_init': False}
 
