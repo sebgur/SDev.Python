@@ -5,6 +5,13 @@ import numpy as np
 from sdevpy.tools import algos
 
 
+
+def build_timegrid(t_start, t_end, config):
+    """ Very simple time grid for now, to be replaced by TimeGridBuilder """
+    n_steps = config.n_time_steps
+    return np.linspace(t_start, t_end, n_steps)
+
+
 class TimeGridBuilder(ABC):
     """ Base class for time grid builders """
     def __init__(self):

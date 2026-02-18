@@ -163,7 +163,7 @@ class LvObjectiveBuilder:
 
         if is_ok:
             x, dx, p = fpde.density_step(self.old_p, self.old_x, self.old_dx,
-                                        self.step_grid, self.lv.value, self.pde_config)
+                                         self.step_grid, self.lv.value, self.pde_config)
             self.new_x = x
             self.new_p = p
             self.new_dx = dx
@@ -193,7 +193,7 @@ class LvObjectiveBuilder:
         self.exp_idx = exp_idx
         ts = self.start_time if exp_idx == 0 else self.expiry_grid[exp_idx - 1]
         te = self.expiry_grid[exp_idx]
-        self.step_grid = fpde.build_timegrid(ts, te, self.pde_config)
+        self.step_grid = timegrids.build_timegrid(ts, te, self.pde_config)
 
         self.fwd = self.fwds[exp_idx]
         self.strikes = self.strike_surface[exp_idx]
@@ -215,7 +215,6 @@ class LvObjectiveBuilder:
         old_p = fpde.lognormal_density(old_x, self.start_time, self.pde_config.mesh_vol)
 
         return old_x, old_dx, old_p
-        # self.set_expiry(0, old_x, old_dx, old_p)
 
     def calculate_vols(self):
         expiry = self.expiry_grid[self.exp_idx]

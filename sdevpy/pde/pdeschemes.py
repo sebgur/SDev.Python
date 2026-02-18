@@ -31,9 +31,6 @@ class PdeScheme(ABC):
     def roll_forward(self, p, x, ts, te, dx):
         pass
 
-    # def set_local_vol(self, local_vol):
-    #     self.local_vol = local_vol
-
 
 class ThetaScheme(PdeScheme):
     """ Mixing scheme with particular sub-cases:

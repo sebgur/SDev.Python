@@ -7,54 +7,96 @@ class Payoff(ABC):
     def __init__(self, names):
         self.names = names
         self.name_idxs = None
+        self.name_dic = None
 
     @abstractmethod
     def build(self, paths):
         pass
-        # return self.payoff_function(paths)
+
+    def paths_for_index(self, paths, name_idx):
+        return paths[:, :, self.name_idxs[name_idx]]
+
+    def paths_for_name(self, paths, name):
+        return paths[:, :, self.name_dic[name]]
+
+    def paths_for_all(self, paths):
+        return paths[:, :, self.name_idxs]
 
     def set_pathindexes(self, pathnames):
         # Find path index for each name
         self.name_idxs = []
+        self.name_dic = {}
         for name in self.names:
             try:
-                self.name_idxs.append(pathnames.index(name))
+                idx = pathnames.index(name)
+                self.name_idxs.append(idx)
+                self.name_dic[name] = idx
             except Exception as e:
                 raise ValueError(f"Could not find name {name} in path names: {str(e)}")
 
         # Check sizes
-        if len(self.names) != len(self.name_idxs):
+        if len(self.name_idxs) != len(self.names):
             raise ValueError(f"Incompatible sizes between names and path indexes")
 
-
-def callput_payoff(paths, name, strike, optiontype, names):
-    ST = paths[:, -1, :]  # Pick last time point
-    print(ST.shape)
-    print(weights)
-    payoff = np.maximum(ST - strike, 0)
-    return payoff
+        if len(self.name_dic.keys()) != len(self.names):
+            raise ValueError(f"Incompatible sizes between names and name dictionary")
 
 
-def worst_of_barrier(paths, strike, barrier):
-    min_path = paths.min(axis=2)  # worst asset at each time
-    knocked = (min_path < barrier).any(axis=1)
-    ST = paths[:, -1, :] # Pick last time point
-    worst_final = ST.min(axis=1)
+class WorstOfBarrier(Payoff):
+    def __init__(self, names, strike, optiontype, barrier):
+        super().__init__(names)
+        self.strike = strike
+        self.optiontype = string_to_optiontype(optiontype)
+        self.barrier = barrier
 
-    payoff = np.maximum(worst_final - strike, 0)
-    payoff[knocked] = 0
-    return payoff
+    def build(self, paths):
+        spot_all = self.paths_for_all(paths)
+
+        # Monitor barrier
+        min_path = spot_all.min(axis=2)  # Worst asset at each time
+        knocked = (min_path < self.barrier).any(axis=1)  # Knocked indicator
+
+        # Payoff at expiry
+        spot_all_at_exp = spot_all[:, -1, :]
+        worst_at_exp = spot_all_at_exp.min(axis=1)
+        payoff = vanilla_option(worst_at_exp, self.strike, self.optiontype)
+
+        # Apply barrier
+        payoff[knocked] = 0
+
+        return payoff
 
 
-def asian_call_payoff(paths, strike):
-    avg = paths.mean(axis=1)[:, 0]  # asset 0
-    return np.maximum(avg - strike, 0)
+class AsianOption(Payoff):
+    def __init__(self, name, strike, optiontype):
+        super().__init__([name])
+        self.name = name
+        self.strike = strike
+        self.optiontype = string_to_optiontype(optiontype)
+
+    def build(self, paths):
+        spot_path = self.paths_for_index(paths, 0)  # Could use name too
+        spot_average = spot_path.mean(axis=1)
+        payoff = vanilla_option(spot_average, self.strike, self.optiontype)
+        return payoff
 
 
-def basket_call_payoff(paths, strike, weights):
-    ST = paths[:, -1, :]
-    basket = ST @ weights
-    return np.maximum(basket - strike, 0)
+class BasketOption(Payoff):
+    def __init__(self, names, weights, strike, optiontype):
+        super().__init__(names)
+        if len(weights) != len(names):
+            raise RuntimeError(f"Incompatible sizes between names and weights")
+
+        self.weights = weights
+        self.strike = strike
+        self.optiontype = string_to_optiontype(optiontype)
+
+    def build(self, paths):
+        spot_all = self.paths_for_all(paths)
+        spot_all_at_exp = spot_all[:, -1, :]
+        basket = spot_all_at_exp @ self.weights
+        payoff = vanilla_option(basket, self.strike, self.optiontype)
+        return payoff
 
 
 class VanillaOptionType(Enum):
@@ -66,28 +108,33 @@ class VanillaOptionType(Enum):
 class VanillaOption(Payoff):
     def __init__(self, name, strike, optiontype):
         super().__init__([name])
+        self.name = name
         self.strike = strike
-        self.path_idx = None
-        # self.name = name
-        match optiontype.lower():
-            case 'call': self.optiontype = VanillaOptionType.CALL
-            case 'put': self.optiontype = VanillaOption.PUT
-            case 'straddle': self.optiontype = VanillaOption.STRADDLE
-            case _: raise RuntimeError(f"Invalid option type: {optiontype}")
+        self.optiontype = string_to_optiontype(optiontype)
 
     def build(self, paths):
-        spot = paths[:, -1, self.name_idxs[0]]  # Pick last time point
-        print(f"Index path shape: {spot.shape}")
-        payoff = np.maximum(spot - self.strike, 0.0)
-        print(f"Payoff shape: {payoff.shape}")
+        spot_path = self.paths_for_name(paths, self.name)  # self.paths_by_index(paths, 0)
+        spot_at_exp = spot_path[:, -1] # Pick last time point for expiry
+        payoff = vanilla_option(spot_at_exp, self.strike, self.optiontype)
         return payoff
 
-    # def set_pathnames(self, names):
-    #     try:
-    #         self.path_idx = names.index(self.name)
-    #     except Exception as e:
-    #         self.path_idx = None
-    #         raise ValueError(f"Could not find name {self.name} in path names: {str(e)}")
+
+def vanilla_option(spot, strike, optiontype):
+    match optiontype:
+        case VanillaOptionType.CALL: payoff = np.maximum(spot - strike, 0.0)
+        case VanillaOptionType.PUT: payoff = np.maximum(strike - spot, 0.0)
+        case VanillaOptionType.STRADDLE: payoff = np.abs(spot - strike)
+        case _: raise RuntimeError(f"Invalid option type")
+
+    return payoff
+
+
+def string_to_optiontype(s):
+    match s.lower():
+        case 'call': return VanillaOptionType.CALL
+        case 'put': return VanillaOption.PUT
+        case 'straddle': return VanillaOption.STRADDLE
+        case _: raise RuntimeError(f"Invalid option type: {s}")
 
 
 if __name__ == "__main__":

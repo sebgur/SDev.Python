@@ -3,16 +3,41 @@ import numpy as np
 # from skopt.space import Real
 # import time
 
+# a = np.asarray([[1, 2, 3], [4, 5, 6]])
 
-fwd = np.asarray([1, 2, 3, 4])
-strikes = np.asarray([[1, 1, 1], [2, 2, 2], [3, 3, 3], [4, 4, 4]])
-print(strikes.shape)
-print(fwd.shape)
-fwd_reshaped = fwd.reshape(-1, 1)
-print(fwd_reshaped.shape)
-print(fwd_reshaped)
+# b = a[:, [1,2]]
+# print(b)
 
-print(strikes / fwd_reshaped)
+a = np.asarray([1, 2, 3, 4])
+print(a)
+k = np.asarray([True, False, True, False])
+a[k] = 0
+print(a)
+
+# a = [1, 2]
+# b = [[1, 2], [3, 4], [5, 6]]
+
+# weights = np.asarray([0.5, 0.5])
+# state = np.asarray([b, b, b, b])
+# print(state.shape)
+# print(weights.shape)
+
+# x = state * weights
+# y = state @ weights
+# print(x.shape)
+# print(y.shape)
+
+# print(f"State: {state}")
+# print(f"Weights: {weights}")
+# print(f"x: {x}")
+# print(f"y: {y}")
+
+
+# fwd_reshaped = fwd.reshape(-1, 1)
+# print(fwd_reshaped.shape)
+# print(fwd_reshaped)
+
+# print(strikes / fwd_reshaped)
 
 # # Define your objective function (normal signature, no grad needed)
 # def f(x):

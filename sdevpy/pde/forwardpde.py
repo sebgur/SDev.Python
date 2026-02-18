@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
 from sdevpy.pde import pdeschemes
+from sdevpy.tools import timegrids
 
 
 def density_step(old_p, old_x, old_dx, t_grid, local_vol, config):
@@ -33,7 +34,7 @@ def density_step(old_p, old_x, old_dx, t_grid, local_vol, config):
 def density(maturity, local_vol, config):
     """ Simple forward PDE for density, without step rescaling of meshes until maturity """
     # Build time grid
-    t_grid = build_timegrid(0.0, maturity, config)
+    t_grid = timegrids.build_timegrid(0.0, maturity, config)
     n_timegrid = t_grid.shape[0]
 
     # Build spot grid
@@ -53,11 +54,6 @@ def density(maturity, local_vol, config):
         # print(f"Mass: {mass:.6f}")
 
     return x, dx, p
-
-
-def build_timegrid(t_start, t_end, config):
-    n_steps = config.n_time_steps
-    return np.linspace(t_start, t_end, n_steps)
 
 
 def build_spotgrid(maturity, config):
@@ -89,10 +85,10 @@ def lognormal_density(x, t, vol):
 def roll_forward(p, x, dx, ts, te, local_vol, pde_config):
     """ Roll the density forward from time ts to te (ts < te) """
     scheme = pdeschemes.scheme(pde_config, ts)
-    # print(f"{ts:.4f}-{type(scheme)}")
     scheme.local_vol = local_vol
     p_new = scheme.roll_forward(p, x, ts, te, dx)
     return p_new
+
 
 def shift_to_match_forward(x, p, target_forward):
     """ Shift the density to match the forward. We are not using this for now.
@@ -177,7 +173,7 @@ if __name__ == "__main__":
         if use_batches:
             ts = start_time if mty_idx == 0 else maturities[mty_idx - 1]
             te = maturities[mty_idx]
-            step_grid = build_timegrid(ts, te, pde_config)
+            step_grid = timegrids.build_timegrid(ts, te, pde_config)
             x, dx, p = density_step(p, x, dx, step_grid, my_lv, pde_config)
         else:
             x, dx, p = density(maturity, my_lv, pde_config)
