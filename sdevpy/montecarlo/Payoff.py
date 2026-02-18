@@ -6,15 +6,25 @@ from enum import Enum
 class Payoff(ABC):
     def __init__(self, names):
         self.names = names
+        self.name_idxs = None
 
     @abstractmethod
     def build(self, paths):
         pass
         # return self.payoff_function(paths)
 
-    @abstractmethod
-    def set_pathnames(self, pathnames):
-        pass
+    def set_pathindexes(self, pathnames):
+        # Find path index for each name
+        self.name_idxs = []
+        for name in self.names:
+            try:
+                self.name_idxs.append(pathnames.index(name))
+            except Exception as e:
+                raise ValueError(f"Could not find name {name} in path names: {str(e)}")
+
+        # Check sizes
+        if len(self.names) != len(self.name_idxs):
+            raise ValueError(f"Incompatible sizes between names and path indexes")
 
 
 def callput_payoff(paths, name, strike, optiontype, names):
@@ -58,7 +68,7 @@ class VanillaOption(Payoff):
         super().__init__([name])
         self.strike = strike
         self.path_idx = None
-        self.name = name
+        # self.name = name
         match optiontype.lower():
             case 'call': self.optiontype = VanillaOptionType.CALL
             case 'put': self.optiontype = VanillaOption.PUT
@@ -66,18 +76,18 @@ class VanillaOption(Payoff):
             case _: raise RuntimeError(f"Invalid option type: {optiontype}")
 
     def build(self, paths):
-        ST = paths[:, -1, self.path_idx]  # Pick last time point
-        print(f"Index path shape: {ST.shape}")
-        payoff = np.maximum(ST - self.strike, 0)
+        spot = paths[:, -1, self.name_idxs[0]]  # Pick last time point
+        print(f"Index path shape: {spot.shape}")
+        payoff = np.maximum(spot - self.strike, 0.0)
         print(f"Payoff shape: {payoff.shape}")
         return payoff
 
-    def set_pathnames(self, names):
-        try:
-            self.path_idx = names.index(self.name)
-        except Exception as e:
-            self.path_idx = None
-            raise ValueError(f"Could not find name {self.name} in path names: {str(e)}")
+    # def set_pathnames(self, names):
+    #     try:
+    #         self.path_idx = names.index(self.name)
+    #     except Exception as e:
+    #         self.path_idx = None
+    #         raise ValueError(f"Could not find name {self.name} in path names: {str(e)}")
 
 
 if __name__ == "__main__":

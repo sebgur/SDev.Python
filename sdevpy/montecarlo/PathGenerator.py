@@ -2,7 +2,9 @@ import numpy as np
 
 
 class PathGenerator:
-    def __init__(self, model, corr_engine, T, n_steps):
+    def __init__(self, model, corr_engine, T, n_steps, **kwargs):
+        seed = kwargs.get("seed", 42)
+        np.random.seed(seed)
         self.model = model
         self.corr_engine = corr_engine
         self.T = T

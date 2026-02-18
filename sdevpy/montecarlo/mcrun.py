@@ -18,8 +18,8 @@ from sdevpy.analytics import black
 
 if __name__ == "__main__":
     names = ['DAX', 'SPX', 'NKY']
-    S0 = np.asarray([100, 100, 100])
-    mu = np.asarray([0.05, 0.05, 0.05])
+    S0 = np.asarray([10, 100, 50])
+    mu = np.asarray([0.02, 0.05, 0.04])
     sigma = np.asarray([0.2, 0.3, 0.1])
     n_assets = len(S0)
     df = 0.90
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # payoff = Payoff(lambda p: basket_call_payoff(p, strikes, weights))
     # payoff = Payoff(lambda p: callput_payoff(p, name, strike, optiontype, names))
     payoff = VanillaOption(name, strike, optiontype)
-    payoff.set_pathnames(names)
+    payoff.set_pathindexes(names)
 
     mc = MonteCarloPricer(df=df)
     mc_price = mc.build(paths, payoff)
