@@ -14,6 +14,9 @@ from sdevpy.tools import timegrids
 # * Extend to LV, use to check LV calib
 # * Calculate vega through LV calib
 # * Implement var swap spread payoff
+# * Mistral: use numba JIT, parallelization (joblib, Ray)
+# * Mistral: in case we lose the page, here was the prompt to create an algebraic structure
+#   "How can I create a Domain Specific Language and make composable trees from payoff primitives?"
 
 # * Date/Time grid design: we need a way to retrieve the underlyings at specific dates
 #   corresponding to cash-flow or life cycle events.
