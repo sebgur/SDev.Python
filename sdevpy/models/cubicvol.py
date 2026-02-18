@@ -55,7 +55,7 @@ class CubicVolSection(ParamSection):
     def constraints(self):
         # atm, skew, kurt, vl, vr
         lw_bounds = [0.01, 0.0, -0.5, 0.01, 0.01]
-        up_bounds = [1.5, 0.5, 2.0, 2.0, 2.0]
+        up_bounds = [1.5, 1.0, 3.0, 2.0, 2.0]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
         return bounds
 

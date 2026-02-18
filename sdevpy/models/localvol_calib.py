@@ -16,6 +16,7 @@ from sdevpy.market import volsurface as vsurf
 
 ########## ToDo ########################################################################
 # * Implement MC and check calibration against it.
+# * Test with calibrated CalibIndex in CubicVol if we can do better manually
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
 # * Use actual data from SPX
 # * Calibration weights based on percentiles, with possible removal of options
@@ -245,12 +246,13 @@ def calibration_targets(expiry_grid, fwds, strike_surface, vol_surface):
 if __name__ == "__main__":
     verbose, n_digits = False, 6
     np.set_printoptions(suppress=True, precision=n_digits)
-    name = "MyIndex"
+    name = "CalibIndex"
     valdate = dt.datetime(2025, 12, 15)
+    lv_data_folder = lvf.test_data_folder()
     # 'L-BFGS-B'
-    config = {'start_new': True, 'model': 'CubicVol', 'store_date': valdate,
-              'optimizer': 'DE', 'tol': 1e-4, 'pde_timesteps': 50,
-              'pde_spotsteps': 100, 'lv_folder': lvf.test_data_folder(),
+    config = {'start_new': False, 'model': 'CubicVol', 'store_date': valdate,
+              'optimizer': 'SLSQP', 'tol': 1e-4, 'pde_timesteps': 50,
+              'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
               'sol_as_init': False}
 
     # Calibrate LV
@@ -259,7 +261,8 @@ if __name__ == "__main__":
 
     # Dump LV result to file
     out_folder = lvf.test_data_folder()
-    out_file = os.path.join(out_folder, "test_lv_calib.json")
+    fname = valdate.strftime(dates.DATE_FILE_FORMAT) + "." + name + "." + config['model']
+    out_file = os.path.join(out_folder, fname + ".json")
     lv.dump(out_file)
 
     # ################ DIAGNOSTICS ################################################################
