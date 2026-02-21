@@ -32,50 +32,6 @@ def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
     return np.asarray(gaussians_)
 
 
-class Sobol:
-    """ Wrapper for Sobol class using SciPy """
-    def __init__(self, dim, scramble=True, optimization=None):
-        self.dim = dim
-        self.scramble = scramble
-        self.optimization = optimization
-        self.sampler = sp.qmc.Sobol(d=dim, scramble=scramble, optimization=optimization)
-        self.sampler.random(1) # Skip the first item as it is exact 0
-
-    def uniform(self, num_draws):
-        """ Draw num_draws uniforms """
-        return self.sampler.random(num_draws)
-
-    # def uniform(self, num_draws, draw_method='Exact'):
-    #     """ Draw num_draws uniforms. Different drawing methods:
-    #         * Exact: draw exactly the requested number
-    #         * Power: draw 2**power - 1 numbers for chosen power=num_draws
-    #         * Floor: draw the largest number 2**power - 1 below the requested number
-    #         * Ceil: draw the smallest number 2**power - 1 above the requested number """
-    #     if draw_method == 'Power':
-    #         raw = self.sampler.random_base2(m=num_draws)
-    #     else:
-    #         log = np.log(num_draws + 1) / np.log(2)
-    #         if draw_method == 'Floor':
-    #             power = math.floor(log)
-    #             raw = self.sampler.random_base2(m=power)
-    #         elif draw_method in ('Ceil', 'Exact'):
-    #             power = math.ceil(log)
-    #             raw = self.sampler.random_base2(m=power)
-    #             if draw_method == 'Exact':
-    #                 raw = raw[:num_draws + 1]
-    #         else:
-    #             raise ValueError("Invalid draw method: " + draw_method)
-
-    #     # Remove first point as it's 0 (if not scrambled) and can't be transformed into normal
-    #     clipped = raw[1:]
-    #     return clipped
-
-    def normal(self, num_sim):
-        """ Draw normal numbers, converted from uniforms using the normal inverse CDF """
-        uniforms = self.uniform(num_sim)
-        return Ninv(uniforms)
-
-
 if __name__ == "__main__":
     DIM = 2
     SCRAMBLE = False
