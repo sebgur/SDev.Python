@@ -7,7 +7,7 @@ class PathGenerator:
         self.model = model
         self.time_grid = time_grid
         self.n_steps = len(self.time_grid) - 1
-        self.n_factors = self.model.n_assets
+        self.n_factors = self.model.n_factors
         self.path_builder = get_path_builder(time_grid, self.n_factors, **kwargs)
 
     # def generate_paths(self, n_paths):

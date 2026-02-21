@@ -17,12 +17,13 @@ class FactorModel(ABC):
 
 
 class MultiAssetGBM(FactorModel):
-    def __init__(self, spot, lv, fwd_curve, time_grid):
+    def __init__(self, spot, sigma, lv, fwd_curve, time_grid):
         self.spot = spot
         self.fwd_curve = fwd_curve
+        self.sigma = sigma
         self.lv = lv
         self.time_grid = time_grid
-        self.n_assets = len(self.spot) # Used by PathGenerator
+        self.n_factors = len(self.spot) # Used by PathGenerator
 
         # Cache forwards
         fwd_grid = []
@@ -31,12 +32,15 @@ class MultiAssetGBM(FactorModel):
         self.fwd_grid = np.asarray(fwd_grid)
 
         # TODO: Here would be a good place to retrieve the LV functions at each time step.
+        # But do we really need it? This might be handled automatically by the broadcasting
+        # and the structure of the calls.
         # Also we need to check how the lv.value() works on the state variable with its shape.
 
 
     def initial_state(self):
         return self.spot.copy()
 
+    # TODO: old, remove
     def simulate_step(self, state, t_idx, Z):
         fs = self.fwd_grid[t_idx - 1]
         fe = self.fwd_grid[t_idx]
@@ -60,9 +64,45 @@ class MultiAssetGBM(FactorModel):
 
         # Calculate the log-moneyness to evaluate the local vol
         logms = np.log(state / fs)
-        vol = self.lv
+        # Constant vol
+        vol = self.sigma
+        # Local vol
+        lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
+        lvols = lvols.T
+        vol = lvols
 
         # Now evolve
         dt = te - ts
-        # dW = Z * np.sqrt(dt)
         return fe * np.exp(logms - 0.5 * vol**2 * dt + vol * dW)
+
+
+if __name__ == "__main__":
+    import datetime as dt
+    from sdevpy.models import localvol_factory as lvf
+    path = np.asarray([[-0.5, 0.1, 0.5], [-0.1, 0.15, 0.4], [-0.0001, 0.05, 0.25], [0.12, 0.07, 0.18]])
+    print(f"Path: {path.shape}")
+
+    # Get LV
+    name = "CalibIndex" # "MyIndex"
+    valdate = dt.datetime(2025, 12, 15)
+    folder = lvf.test_data_folder()
+
+    # Load
+    store_date = valdate
+    new_expiries = None
+    lv = lvf.load_lv_from_folder(new_expiries, store_date, name, folder)
+    lv.name = name
+    lv.valdate = valdate
+
+    # View
+    expiries = lv.t_grid
+    n_expiries = len(expiries)
+    exp_idx = n_expiries - 1
+    lvs = [lv, lv, lv]
+    lvols = np.asarray([(i+1) * lvs[i].value(expiries[exp_idx], path[:, i]) for i in range(3)])
+    # lvols = lv.value(expiries[exp_idx], path[:, 0])
+    print(lvols)
+    print(f"LVs: {lvols.shape}")
+    lvols = lvols.T
+    print(lvols)
+    print(f"LVs: {lvols.shape}")
