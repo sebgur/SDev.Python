@@ -2,8 +2,8 @@ import os
 import torch
 import re
 import tiktoken
-from sdevpy.llms import gpt
-from sdevpy.llms import textgen as tg
+from sdevpy.machinelearning.llms import gpt
+from sdevpy.machinelearning.llms import textgen as tg
 
 
 if __name__ == "__main__":

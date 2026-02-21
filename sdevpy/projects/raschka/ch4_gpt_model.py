@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import tiktoken
 import matplotlib.pyplot as plt
-from sdevpy.llms.gpt import DummyGPTModel, LayerNorm, FeedForward, TransformerBlock, GPTModel
+from sdevpy.machinelearning.llms.gpt import DummyGPTModel, LayerNorm, FeedForward, TransformerBlock, GPTModel
 from sdevpy.projects.raschka import raschka_dnn
-import sdevpy.llms.textgen as tg
+import sdevpy.machinelearning.llms.textgen as tg
 
 print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)

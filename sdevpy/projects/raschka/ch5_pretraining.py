@@ -2,10 +2,10 @@ from importlib.metadata import version
 import torch
 import tiktoken
 import matplotlib.pyplot as plt
-from sdevpy.llms.gpt import GPTModel
-import sdevpy.llms.textgen as tg
+from sdevpy.machinelearning.llms.gpt import GPTModel
+import sdevpy.machinelearning.llms.textgen as tg
 from sdevpy.projects.raschka import raschka_datasetloader as ds
-from sdevpy.llms.training import calc_loss_loader, train_model_simple, plot_losses
+from sdevpy.machinelearning.llms.training import calc_loss_loader, train_model_simple, plot_losses
 
 print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)

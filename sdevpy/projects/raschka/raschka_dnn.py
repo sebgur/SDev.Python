@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from sdevpy.llms.gpt import GELU
+from sdevpy.machinelearning.llms.gpt import GELU
 
 
 def print_gradients(model, x):

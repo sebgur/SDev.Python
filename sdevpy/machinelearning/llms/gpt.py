@@ -8,7 +8,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress all messages except errors
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # Disable oneDNN messagesimport tensorflow as tf
 import tensorflow as tf
 import numpy as np
-from sdevpy.llms.attention import MultiHeadAttention
+from sdevpy.machinelearning.llms.attention import MultiHeadAttention
 
 
 class GPTModel(nn.Module):

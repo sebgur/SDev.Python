@@ -3,7 +3,7 @@ from importlib.metadata import version
 import tiktoken
 import torch
 from torch.utils.data import Dataset, DataLoader
-from sdevpy.llms.tokenizers import SimpleTokenizerV1, SimpleTokenizerV2
+from sdevpy.machinelearning.llms.tokenizers import SimpleTokenizerV1, SimpleTokenizerV2
 from sdevpy.projects.raschka import raschka_datasetloader as tdsl
 
 print("tiktoken version:", version("tiktoken"))

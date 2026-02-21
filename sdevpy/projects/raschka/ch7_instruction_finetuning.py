@@ -1,5 +1,5 @@
 import json
-from sdevpy.llms.datasets import *
+from sdevpy.machinelearning.llms.datasets import *
 
 
 ######## Inspect dataset #################################################

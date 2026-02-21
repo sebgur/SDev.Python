@@ -1,7 +1,7 @@
 import torch
 import tiktoken
-from sdevpy.llms.gpt import GPTModel
-import sdevpy.llms.textgen as tg
+from sdevpy.machinelearning.gpt import GPTModel
+import sdevpy.machinelearning.llms.textgen as tg
 
 
 GPT_CONFIG_124M = {

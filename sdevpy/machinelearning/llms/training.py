@@ -1,7 +1,7 @@
 import torch.nn
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
-import sdevpy.llms.textgen as tg
+import sdevpy.machinelearning.llms.textgen as tg
 
 
 def plot_losses(epochs_seen, tokens_seen, train_losses, val_losses):

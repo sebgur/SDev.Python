@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import tiktoken
 from sdevpy.projects.raschka.raschka_gpt_download import download_and_load_gpt2
-from sdevpy.llms.gpt import GPTModel
-import sdevpy.llms.textgen as tg
+from sdevpy.machinelearning.llms.gpt import GPTModel
+import sdevpy.machinelearning.llms.textgen as tg
 
 
 settings, params = download_and_load_gpt2(model_size='124M', models_dir="gpt2")
