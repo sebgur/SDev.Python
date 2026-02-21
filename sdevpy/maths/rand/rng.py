@@ -31,15 +31,16 @@ def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
     return np.asarray(gaussians_)
 
 
-def get_rng(rng_type="MT", dim=1, **kwargs):
+def get_rng(dim=1, **kwargs):
+    rng_type = kwargs.get('rng_type', 'MT')
     match rng_type.lower():
         case 'mt':
-            seed = kwargs.get(seed, 42)
+            seed = kwargs.get('seed', 42)
             return MersenneTwiser(dim=dim, seed=seed)
         case 'sobol':
             return Sobol(dim=dim, **kwargs)
         case _:
-            raise TypeError(f"Uknown RNG type: {rng_type}")
+            raise TypeError(f"Unknown RNG type: {rng_type}")
 
 
 class RandomNumberGenerator(ABC):
@@ -71,7 +72,6 @@ class Sobol(RandomNumberGenerator):
     """ Wrapper for the Sobol class in scipy's qmc """
     def __init__(self, dim=1, **kwargs):
         super().__init__(dim)
-        # self.dim = dim
         scramble = kwargs.get('scramble', True)
         # Not sure what this parameter is
         optimization = kwargs.get('optimization', None) # None, 'random-cd', 'lloyd'

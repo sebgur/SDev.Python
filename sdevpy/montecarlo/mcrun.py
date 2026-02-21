@@ -10,21 +10,23 @@ from sdevpy.tools import timegrids, timer
 
 
 #################### TODO #########################################################################
-# * Plug new path constructor into new MC
-# * Extend to LV, use to check LV calib
-# * Calculate vega through LV calib
-# * Handle specific dates and the interpolation to discretization grid
+# * Plus new path constructor and check basic BS CF
+# * Remove old order in path construction
+# * Implement Payoff algebra
+# * Extend to LV, quick check against LV calib
+# * Handle event dates and the interpolation to discretization grid
 # * Introduce concept of past fixings
 # * Implement var swap spread payoff
+# * Calculate vega through LV calib
+# * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
+# * Try implementing exact Dupire LV calibration using AAD on BS prices? Or IVs for SVI?
 # * Mistral: use numba JIT, parallelization (joblib, Ray)
 # * Introduce AAD
 
 # * Mistral: in case we lose the page, here was the prompt to create an algebraic structure
 #   "How can I create a Domain Specific Language and make composable trees from payoff primitives?"
 
-# * Date/Time grid design: we need a way to retrieve the underlyings at specific dates
-#   corresponding to cash-flow or life cycle events.
-#   It seems that the most flexible would be to interpolate the paths out of the path build.
+# * Event date design: the most flexible may be to interpolate the paths out of the path build.
 #   Those paths will come together with a certain discretization time grid, which we can assume
 #   to be known/extracted from the path builder. Ideally we would want to interpolate knowing
 #   the forward curves, but we could also (as a first step at least) just do a linear interpolation.

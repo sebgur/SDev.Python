@@ -26,10 +26,8 @@ class MultiAssetGBM(FactorModel):
             fwd_grid.append(np.asarray([f(t) for f in fwd_curve]))
         self.fwd_grid = np.asarray(fwd_grid)
 
-        # TODO: Here would be a good place to retrieve the local vol
-        # functions at each time step.
-        # Also we need to check how the lv.value() works on
-        # the state variable with its shape.
+        # TODO: Here would be a good place to retrieve the LV functions at each time step.
+        # Also we need to check how the lv.value() works on the state variable with its shape.
 
 
     def initial_state(self):
