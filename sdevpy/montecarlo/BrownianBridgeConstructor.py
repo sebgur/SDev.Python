@@ -6,9 +6,8 @@ def brownian_bridge(n_paths, n_steps, dim, T, sobol_engine):
     # total Sobol dimension required
     total_dim = dim * n_steps
 
+    # Draw uniforms and convert to normals
     U = sobol_engine.random(n_paths)
-
-    # convert to normals
     Z = norm.ppf(U)
 
     # reshape

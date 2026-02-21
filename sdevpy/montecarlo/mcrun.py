@@ -6,15 +6,19 @@ from sdevpy.montecarlo.Payoff import Payoff, VanillaOption, BasketOption, AsianO
 from sdevpy.montecarlo.Payoff import WorstOfBarrier
 from sdevpy.montecarlo.MonteCarloPricer import MonteCarloPricer
 from sdevpy.analytics import black
-from sdevpy.tools import timegrids
+from sdevpy.tools import timegrids, timer
 
 
 #################### TODO #########################################################################
-# * Put a timer to see how much worse runtime gets when introducing the local vol
+# * Introduce Sobol and Brownian Bridge
 # * Extend to LV, use to check LV calib
 # * Calculate vega through LV calib
+# * Handle specific dates and the interpolation to discretization grid
+# * Introduce concept of past fixings
 # * Implement var swap spread payoff
 # * Mistral: use numba JIT, parallelization (joblib, Ray)
+# * Introduce AAD
+
 # * Mistral: in case we lose the page, here was the prompt to create an algebraic structure
 #   "How can I create a Domain Specific Language and make composable trees from payoff primitives?"
 
@@ -47,6 +51,7 @@ if __name__ == "__main__":
                      [0.5, 1.0, 0.1],
                      [0.1, 0.5, 1.0]])
 
+    mc_timer = timer.Stopwatch('MC')
     # Time grid
     T = 1.0
     n_steps = 25
@@ -111,6 +116,7 @@ if __name__ == "__main__":
     # of the underlying assets as a big multi-d vector. This way we could potentially
     # get those paths from an independent engine.
     mc_price = mc.build(paths, payoff)
+    mc_timer.stop()
 
     # Closed-form
     name_idx = 1
@@ -119,3 +125,4 @@ if __name__ == "__main__":
 
     print("MC:", mc_price)
     print("CF:", cf_price)
+    mc_timer.print()

@@ -1,3 +1,5 @@
 *__pycache__
 /python/.idea
 /sdevpy/.idea
+/sdevpy.egg-info
+/dist
