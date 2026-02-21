@@ -12,20 +12,19 @@ from sdevpy.tools import timegrids, timer
 
 
 #################### TODO #########################################################################
-# * Quick check against LV calib
-# * Remove old order in path construction
 # * Implement Payoff algebra
+# * Mistral: in case we lose the page, here was the prompt to create an algebraic structure
+#   "How can I create a Domain Specific Language and make composable trees from payoff primitives?"
+
 # * Handle event dates and the interpolation to discretization grid
 # * Introduce concept of past fixings
 # * Implement var swap spread payoff
 # * Calculate vega through LV calib
+# * Check accuracy against LV calib
 
 # * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
 # * Try implementing exact Dupire LV calibration using AAD on BS prices? Or IVs for SVI?
 # * Mistral: use numba JIT, parallelization (joblib, Ray)
-
-# * Mistral: in case we lose the page, here was the prompt to create an algebraic structure
-#   "How can I create a Domain Specific Language and make composable trees from payoff primitives?"
 
 # * Event date design: the most flexible may be to interpolate the paths out of the path build.
 #   Those paths will come together with a certain discretization time grid, which we can assume
@@ -44,7 +43,7 @@ class McConfig:
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
     names = ['CalibIndex', 'SPX', 'NKY']
-    spot = np.asarray([10, 100, 50])
+    spot = np.asarray([100, 100, 50])
     drift = np.asarray([0.02, 0.05, 0.04])
     sigma = np.asarray([0.2, 0.3, 0.1])
     n_assets = len(spot)
@@ -66,7 +65,7 @@ if __name__ == "__main__":
     time_grid = timegrids.build_timegrid(0.0, T, config)
 
     # MC paths
-    n_paths = 100 * 1000
+    n_paths = 10 * 1000
     constr_type = 'incremental'
     constr_type = 'brownianbridge'
     rng_type = 'sobol'
@@ -94,7 +93,7 @@ if __name__ == "__main__":
     print(f"Path shape: {paths.shape}")
 
     # Vanilla
-    name = 'SPX'
+    name = 'CalibIndex'
     strike = 100
     optiontype = 'Call'
     payoff = VanillaOption(name, strike, optiontype)

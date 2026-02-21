@@ -10,20 +10,6 @@ class PathGenerator:
         self.n_factors = self.model.n_factors
         self.path_builder = get_path_builder(time_grid, self.n_factors, **kwargs)
 
-    # def generate_paths(self, n_paths):
-    #     n_assets = self.model.n_assets
-    #     paths = np.zeros((n_paths, self.n_steps + 1, n_assets))
-    #     state = np.tile(self.model.initial_state(), (n_paths, 1))
-    #     paths[:, 0, :] = state
-
-    #     # Path construction along the time direction
-    #     for t_idx in range(1, self.n_steps + 1):
-    #         Z = self.corr_engine.correlate_normals(n_paths, n_assets)
-    #         state = self.model.simulate_step(state, t_idx, Z)
-    #         paths[:, t_idx, :] = state
-
-    #     return paths
-
     def generate_paths(self, n_paths):
         paths = np.zeros((n_paths, self.n_steps + 1, self.n_factors))
         state = np.tile(self.model.initial_state(), (n_paths, 1))
