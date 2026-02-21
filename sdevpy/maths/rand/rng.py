@@ -1,8 +1,7 @@
 """ Sobol RNG wrapping SciPy """
 import numpy as np
-import scipy.stats as sp
-
-Ninv = sp.norm.ppf
+from abc import ABC, abstractmethod
+from scipy.stats import norm, qmc
 
 
 def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
@@ -23,7 +22,7 @@ def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
             gaussians_.append(rng.multivariate_normal(mean, corr, size=num_mc))
     elif method == 'Sobol':
         dim = num_steps * num_factors
-        rng = Sobol(dim, scramble=True)
+        rng = Sobol(dim=dim, scramble=True)
         sob = rng.normal(num_mc)
         gaussians_ = [sob[:,num_factors * idx:num_factors*(idx + 1)] for idx in range(num_steps)]
     else:
@@ -32,24 +31,72 @@ def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
     return np.asarray(gaussians_)
 
 
+def get_rng(rng_type="MT", dim=1, **kwargs):
+    match rng_type.lower():
+        case 'mt':
+            seed = kwargs.get(seed, 42)
+            return MersenneTwiser(dim=dim, seed=seed)
+        case 'sobol':
+            return Sobol(dim=dim, **kwargs)
+        case _:
+            raise TypeError(f"Uknown RNG type: {rng_type}")
+
+
+class RandomNumberGenerator(ABC):
+    def __init__(self, dim=1):
+        self.dim = dim
+
+    @abstractmethod
+    def uniform(self, n_draws):
+        pass
+
+    def normal(self, n_draws):
+        """ Draw n_draws gaussians, converted from uniforms with scipy's normal inverse CDF """
+        uniforms = self.uniform(n_draws)
+        return norm.ppf(uniforms)
+
+
+class MersenneTwiser(RandomNumberGenerator):
+    def __init__(self, dim=1, seed=42):
+        super().__init__(dim)
+        self.seed = seed
+        self.mt = np.random.RandomState(self.seed)
+
+    def uniform(self, n_draws):
+        u = self.mt.uniform(size=(n_draws, self.dim))
+        return u
+
+
+class Sobol(RandomNumberGenerator):
+    """ Wrapper for the Sobol class in scipy's qmc """
+    def __init__(self, dim=1, **kwargs):
+        super().__init__(dim)
+        # self.dim = dim
+        scramble = kwargs.get('scramble', True)
+        # Not sure what this parameter is
+        optimization = kwargs.get('optimization', None) # None, 'random-cd', 'lloyd'
+        self.sampler = qmc.Sobol(d=dim, scramble=scramble, optimization=optimization)
+        self.sampler.random(1) # Skip the first item as it is exact 0
+
+    def uniform(self, n_draws):
+        """ Draw n_draws uniforms """
+        return self.sampler.random(n_draws)
+
+    def n_generated(self):
+        """ Number of sequences generated (not counting the first pure 0) """
+        return self.sampler.num_generated - 1 # Removing the 0
+
+
 if __name__ == "__main__":
     DIM = 2
     SCRAMBLE = False
-    OPTIMIZATION = None # None, 'random-cd', 'lloyd'
-    RNG = Sobol(dim=DIM, scramble=SCRAMBLE, optimization=OPTIMIZATION)
-    NUM_SIM = 10
-    DRAW_METHOD = "Exact"
-    uni = RNG.uniform(NUM_SIM) #, DRAW_METHOD)
-    print(uni)
+    OPTIMIZATION = None
 
-    qmcSob = sp.qmc.Sobol(d=DIM, scramble=SCRAMBLE, optimization=OPTIMIZATION)
-    print("num gen: ", qmcSob.num_generated)
-    uni = qmcSob.random(1)
-    print(uni)
-    print("num gen: ", qmcSob.num_generated)
-    uni = qmcSob.random(3)
-    print(uni)
-    print("num gen: ", qmcSob.num_generated)
-    uni = qmcSob.random(4)
-    print(uni)
-    print("num gen: ", qmcSob.num_generated)
+    rng1 = MersenneTwiser(dim=DIM, seed=42)
+    gaussians = rng1.normal(10)
+    print(gaussians)
+
+    rng2 = Sobol(dim=DIM, scramble=SCRAMBLE, optimization=OPTIMIZATION)
+    gaussians = rng2.normal(10)
+    print(gaussians)
+    print(rng2.n_generated())

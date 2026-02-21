@@ -10,7 +10,7 @@ from sdevpy.tools import timegrids, timer
 
 
 #################### TODO #########################################################################
-# * Introduce Sobol and Brownian Bridge
+# * Plug new path constructor into new MC
 # * Extend to LV, use to check LV calib
 # * Calculate vega through LV calib
 # * Handle specific dates and the interpolation to discretization grid
