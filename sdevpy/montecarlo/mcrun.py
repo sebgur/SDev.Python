@@ -1,10 +1,9 @@
 import numpy as np
 import datetime as dt
 from sdevpy.montecarlo.FactorModel import MultiAssetGBM
-# from sdevpy.maths.rand.correlations import CorrelationEngine
 from sdevpy.montecarlo.PathGenerator import PathGenerator
-from sdevpy.montecarlo.Payoff import Payoff, VanillaOption, BasketOption, AsianOption
-from sdevpy.montecarlo.Payoff import WorstOfBarrier
+from sdevpy.montecarlo.payoffs.payoffs import Payoff, VanillaOption
+from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
 from sdevpy.montecarlo.MonteCarloPricer import MonteCarloPricer
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.analytics import black
@@ -17,15 +16,6 @@ from sdevpy.tools import timegrids, timer
 #   "How can I create a Domain Specific Language and make composable trees from payoff primitives?"
 
 # * Handle event dates and the interpolation to discretization grid
-# * Introduce concept of past fixings
-# * Implement var swap spread payoff
-# * Calculate vega through LV calib
-# * Check accuracy against LV calib
-
-# * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
-# * Try implementing exact Dupire LV calibration using AAD on BS prices? Or IVs for SVI?
-# * Mistral: use numba JIT, parallelization (joblib, Ray)
-
 # * Event date design: the most flexible may be to interpolate the paths out of the path build.
 #   Those paths will come together with a certain discretization time grid, which we can assume
 #   to be known/extracted from the path builder. Ideally we would want to interpolate knowing
@@ -33,6 +23,20 @@ from sdevpy.tools import timegrids, timer
 #   For that, we should do a caching of the interpolation indexes and coefficients.
 #   That is, we could define some kind of "path date" object that would be a datetime augmented with
 #   the indexes and coefficients for its interpolation along the discretization time grid.
+
+# * Introduce concept of past fixings
+# * Implement var swap spread payoff
+# * Introduce portfolios, multi-cash-flow payoffs
+# * Check accuracy against LV calib
+# * Calculate vega through LV calib
+
+# * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
+# * Try implementing exact Dupire LV calibration using AAD on BS prices? Or IVs for SVI?
+# * Mistral: use numba JIT, parallelization (joblib, Ray)
+
+
+import numpy as np
+from abc import ABC, abstractmethod
 
 
 class McConfig:
@@ -65,7 +69,7 @@ if __name__ == "__main__":
     time_grid = timegrids.build_timegrid(0.0, T, config)
 
     # MC paths
-    n_paths = 10 * 1000
+    n_paths = 100 * 1000
     constr_type = 'incremental'
     constr_type = 'brownianbridge'
     rng_type = 'sobol'
@@ -118,6 +122,13 @@ if __name__ == "__main__":
     # optiontype = 'Call'
     # payoff = WorstOfBarrier(b_names, strike, optiontype, barrier)
 
+    # New payoff design
+    # S1 = Terminal(0)
+    # S2 = Terminal(1)
+
+    # basket = 0.5 * S1 + 0.5 * S2
+    # payoff = Maximum(basket - 100, 0)
+
     payoff.set_pathindexes(names)
 
     # MC pricer
@@ -130,7 +141,7 @@ if __name__ == "__main__":
     mc_timer.stop()
 
     # Closed-form
-    name_idx = 1
+    name_idx = 0
     fwd = spot * np.exp(drift * T)
     cf_price = df * black.price(T, strike, optiontype == 'Call', fwd[name_idx], sigma[name_idx])
 

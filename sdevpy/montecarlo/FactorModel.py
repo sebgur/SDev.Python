@@ -17,13 +17,14 @@ class FactorModel(ABC):
 
 
 class MultiAssetGBM(FactorModel):
-    def __init__(self, spot, sigma, lv, fwd_curve, time_grid):
+    def __init__(self, spot, sigma, lv, fwd_curve, time_grid, **kwargs):
         self.spot = spot
         self.fwd_curve = fwd_curve
         self.sigma = sigma
         self.lv = lv
         self.time_grid = time_grid
         self.n_factors = len(self.spot) # Used by PathGenerator
+        self.use_lv = kwargs.get('use_lv', False)
 
         # Cache forwards
         fwd_grid = []
@@ -57,12 +58,13 @@ class MultiAssetGBM(FactorModel):
 
         # Calculate the log-moneyness to evaluate the local vol
         logms = np.log(state / fs)
-        # Constant vol
-        vol = self.sigma
-        # Local vol
-        lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
-        lvols = lvols.T
-        vol = lvols
+        # Vols
+        if self.use_lv == False: # Constant vol
+            vol = self.sigma
+        else: # Local vol
+            lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
+            lvols = lvols.T
+            vol = lvols
 
         # Now evolve
         dt = te - ts

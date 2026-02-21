@@ -6,5 +6,5 @@ class MonteCarloPricer:
         self.df = df
 
     def build(self, paths, payoff):
-        payoffs = payoff.build(paths)
+        payoffs = payoff.evaluate(paths)
         return self.df * np.mean(payoffs)
