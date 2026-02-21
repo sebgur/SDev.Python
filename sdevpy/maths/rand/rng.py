@@ -69,13 +69,16 @@ class MersenneTwiser(RandomNumberGenerator):
 
 
 class Sobol(RandomNumberGenerator):
-    """ Wrapper for the Sobol class in scipy's qmc """
+    """ Wrapper for the Sobol class in scipy's qmc. The scramble uses Owen's scrambling,
+        which is fixed using the seed input """
     def __init__(self, dim=1, **kwargs):
         super().__init__(dim)
         scramble = kwargs.get('scramble', True)
+        seed = kwargs.get('seed', 42)
         # Not sure what this parameter is
         optimization = kwargs.get('optimization', None) # None, 'random-cd', 'lloyd'
-        self.sampler = qmc.Sobol(d=dim, scramble=scramble, optimization=optimization)
+        self.sampler = qmc.Sobol(d=dim, scramble=scramble, optimization=optimization,
+                                 seed=seed)
         self.sampler.random(1) # Skip the first item as it is exact 0
 
     def uniform(self, n_draws):

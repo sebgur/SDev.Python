@@ -1,6 +1,6 @@
 import numpy as np
 from sdevpy.montecarlo.FactorModel import MultiAssetGBM
-from sdevpy.montecarlo.CorrelationEngine import CorrelationEngine
+from sdevpy.maths.rand.correlations import CorrelationEngine
 from sdevpy.montecarlo.PathGenerator import PathGenerator
 from sdevpy.montecarlo.Payoff import Payoff, VanillaOption, BasketOption, AsianOption
 from sdevpy.montecarlo.Payoff import WorstOfBarrier
@@ -10,10 +10,9 @@ from sdevpy.tools import timegrids, timer
 
 
 #################### TODO #########################################################################
-# * Plus new path constructor and check basic BS CF
+# * Extend to LV, quick check against LV calib
 # * Remove old order in path construction
 # * Implement Payoff algebra
-# * Extend to LV, quick check against LV calib
 # * Handle event dates and the interpolation to discretization grid
 # * Introduce concept of past fixings
 # * Implement var swap spread payoff
@@ -21,7 +20,6 @@ from sdevpy.tools import timegrids, timer
 # * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
 # * Try implementing exact Dupire LV calibration using AAD on BS prices? Or IVs for SVI?
 # * Mistral: use numba JIT, parallelization (joblib, Ray)
-# * Introduce AAD
 
 # * Mistral: in case we lose the page, here was the prompt to create an algebraic structure
 #   "How can I create a Domain Specific Language and make composable trees from payoff primitives?"
@@ -62,6 +60,9 @@ if __name__ == "__main__":
 
     # MC paths
     n_paths = 100 * 1000
+    constr_type = 'incremental'
+    constr_type = 'brownianbridge'
+    rng_type = 'sobol'
 
     # Forward curves
     fwd_curves = []
@@ -74,7 +75,8 @@ if __name__ == "__main__":
     model = MultiAssetGBM(spot, sigma, fwd_curves, time_grid)
     corr_engine = CorrelationEngine(corr)
 
-    generator = PathGenerator(model, corr_engine, time_grid)
+    generator = PathGenerator(model, time_grid, constr_type=constr_type,
+                              rng_type=rng_type, scramble=False, corr_matrix=corr)
 
     # Generate underlying paths: n_mc x (n_steps + 1) x n_assets
     paths = generator.generate_paths(n_paths)
@@ -108,7 +110,6 @@ if __name__ == "__main__":
     # barrier = 49
     # optiontype = 'Call'
     # payoff = WorstOfBarrier(b_names, strike, optiontype, barrier)
-
 
     payoff.set_pathindexes(names)
 

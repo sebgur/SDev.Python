@@ -4,6 +4,10 @@ import numpy as np
 
 class FactorModel(ABC):
     @abstractmethod
+    def evolve_state(self, state, t_idx, dW):
+        pass
+
+    @abstractmethod
     def simulate_step(self, state, t_idx, Z):
         pass
 
@@ -46,4 +50,19 @@ class MultiAssetGBM(FactorModel):
         # Now evolve
         dt = te - ts
         dW = Z * np.sqrt(dt)
+        return fe * np.exp(logms - 0.5 * vol**2 * dt + vol * dW)
+
+    def evolve_state(self, state, t_idx, dW):
+        fs = self.fwd_grid[t_idx - 1]
+        fe = self.fwd_grid[t_idx]
+        ts = self.time_grid[t_idx - 1]
+        te = self.time_grid[t_idx]
+
+        # Calculate the log-moneyness to evaluate the local vol
+        logms = np.log(state / fs)
+        vol = self.lv
+
+        # Now evolve
+        dt = te - ts
+        # dW = Z * np.sqrt(dt)
         return fe * np.exp(logms - 0.5 * vol**2 * dt + vol * dW)

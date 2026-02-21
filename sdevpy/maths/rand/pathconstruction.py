@@ -4,7 +4,7 @@ from sdevpy.maths.rand.rng import get_rng
 from sdevpy.maths.rand.correlations import CorrelationEngine
 
 
-def get_path_constructor(time_grid, n_factors=1, **kwargs):
+def get_path_builder(time_grid, n_factors=1, **kwargs):
     """ Create a Brownian path constructor """
     # Get random number generator
     n_steps = len(time_grid) - 1
@@ -14,8 +14,8 @@ def get_path_constructor(time_grid, n_factors=1, **kwargs):
     constr_type = kwargs.get('constr_type', 'incremental')
     path_builder = None
     match constr_type.lower():
-        case 'incremental': path_builder = IncrementalPathConstructor(time_grid, n_factors, rng)
-        case 'brownianbridge': path_builder = BrownianBridgePathConstructor(time_grid, n_factors, rng)
+        case 'incremental': path_builder = IncrementalPathBuilder(time_grid, n_factors, rng)
+        case 'brownianbridge': path_builder = BrownianBridgePathBuilder(time_grid, n_factors, rng)
         case _: raise TypeError(f"Invalid path construction type: {constr_type}")
 
     # Correlations
@@ -115,7 +115,7 @@ def brownianbridge2(n_paths, time_grid, n_factors, rng):
     return dW
 
 
-class PathConstructor(ABC):
+class PathBuilder(ABC):
     def __init__(self, time_grid, n_factors, rng):
         self.time_grid = time_grid
         self.n_factors = n_factors
@@ -138,38 +138,38 @@ class PathConstructor(ABC):
             self.corr_engine = CorrelationEngine(corr_matrix)
 
 
-class IncrementalPathConstructor(PathConstructor):
+class IncrementalPathBuilder(PathBuilder):
     def build_independent(self, n_paths):
-        n_steps = len(time_grid) - 1
+        n_steps = len(self.time_grid) - 1
 
         # Draw gaussians
         Z = self.rng.normal(n_paths)
 
         # Allocate dimensions: split (factor1, factor2, ...) into (factor1 x factor x ...)
-        Z = Z.reshape(n_paths, n_factors, n_steps)
+        Z = Z.reshape(n_paths, self.n_factors, n_steps)
 
         # Build paths
-        dt = np.diff(time_grid)
+        dt = np.diff(self.time_grid)
         dW = Z * np.sqrt(dt)
         return dW
 
     def build_independent2(self, n_paths):
-        n_steps = len(time_grid) - 1
+        n_steps = len(self.time_grid) - 1
 
         # Draw gaussians
         Z = self.rng.normal(n_paths)
 
         # Allocate dimensions: split (factor1, factor2, ...) into (factor1 x factor x ...)
-        Z = Z.reshape(n_paths, n_steps, n_factors)
+        Z = Z.reshape(n_paths, n_steps, self.n_factors)
 
         # Build paths
-        dt = np.diff(time_grid)
+        dt = np.diff(self.time_grid)
         dt = dt.reshape(1, n_steps, 1)
         dW = Z * np.sqrt(dt)
         return dW
 
 
-class BrownianBridgePathConstructor(PathConstructor):
+class BrownianBridgePathBuilder(PathBuilder):
     def build_independent(self, n_paths):
         return brownianbridge(n_paths, self.time_grid, self.n_factors, self.rng)
 
@@ -208,16 +208,12 @@ if __name__ == "__main__":
     print(f"Number of factors: {n_factors}")
     print(f"Constructor type: {constr_type}")
 
-    # n_steps = len(time_grid) - 1
-    # rng1 = rng.Sobol(n_steps * n_factors, scramble=True)
-    path1 = get_path_constructor(time_grid, n_factors, constr_type=constr_type, rng_type='Sobol')
+    path1 = get_path_builder(time_grid, n_factors, constr_type=constr_type, rng_type='Sobol')
     dw1 = path1.build_independent(n_paths)
     print(f"Brownian increment path shape: {dw1.shape}")
     # print(dw)
 
-    # n_steps = len(time_grid) - 1
-    # rng2 = rng.Sobol(n_steps * n_factors, scramble=True)
-    path2 = get_path_constructor(time_grid, n_factors, constr_type=constr_type, rng_type='Sobol')
+    path2 = get_path_builder(time_grid, n_factors, constr_type=constr_type, rng_type='Sobol')
 
     # Correlation matrix
     corr = np.asarray([[1, 0.5, 0.2], [0.5, 1, 0.3], [0.2, 0.3, 1]])
