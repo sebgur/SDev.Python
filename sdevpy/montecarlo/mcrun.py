@@ -3,7 +3,7 @@ import datetime as dt
 from sdevpy.montecarlo.FactorModel import MultiAssetGBM
 from sdevpy.montecarlo.PathGenerator import PathGenerator
 from sdevpy.montecarlo.payoffs.basic import *
-from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
+from sdevpy.montecarlo.payoffs.vanillas import VanillaOption, VanillaOptionPayoff
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
 from sdevpy.montecarlo.MonteCarloPricer import MonteCarloPricer
 from sdevpy.models import localvol_factory as lvf
@@ -103,18 +103,17 @@ if __name__ == "__main__":
     name = 'CalibIndex'
     strike = 100.0
     optiontype = 'Call'
-    payoff = VanillaOption(name, strike, optiontype)
-    # payoff = Max([Terminal(name) - strike, 0.0])
+    # payoff = VanillaOption(name, strike, optiontype)
 
     # Basket
-    # b_names = ['SPX', 'NKY']
-    # weights = [0.5, 0.1]
-    # strike = 100
-    # optiontype = 'Call'
-    # payoff = BasketOption(b_names, weights, strike, optiontype)
+    b_names = ['SPX', 'NKY']
+    weights = [0.5, 0.1]
+    strike = 100
+    optiontype = 'Call'
+    payoff = BasketOption(b_names, weights, strike, optiontype)
 
-    # Asian
-    # name = 'SPX'
+    # # Asian
+    # name = 'CalibIndex'
     # strike = 100
     # optiontype = 'Call'
     # payoff = AsianOption(name, strike, optiontype)

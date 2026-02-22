@@ -62,6 +62,9 @@ class Payoff(ABC):
     def __neg__(self):
         return Neg(self)
 
+    def __radd__(self, other): # Otherwise doesn't work when starting with constant
+        return Add(ensure_payoff(other), self)
+
     def __rsub__(self, other): # Otherwise doesn't work when starting with constant
         return Sub(ensure_payoff(other), self)
 
@@ -93,7 +96,6 @@ def ensure_payoff(x):
 
 class Constant(Payoff):
     def __init__(self, value):
-        super().__init__()
         self.value = value
 
     def evaluate(self, paths):
@@ -104,8 +106,7 @@ class Constant(Payoff):
 
 class Terminal(Payoff):
     """ Value of the asset on the last date of the time grid """
-    def __init__(self, name): #asset_index):
-        super().__init__([name])
+    def __init__(self, name):
         self.name = name
         self.name_idx = None
 
@@ -118,10 +119,6 @@ class Terminal(Payoff):
 
     def evaluate(self, paths):
         spot_at_exp = paths[:, -1, self.name_idx]
-        # print(spot_at_exp.shape)
-        # spot_path = self.paths_for_name(paths, self.name)  # self.paths_by_index(paths, 0)
-        # spot_at_exp = spot_path[:, -1] # Pick last time point for expiry
-        # payoff = vanilla_option(spot_at_exp, self.strike, self.optiontype)
         payoff = spot_at_exp
         print(f"Terminal: {payoff.shape}")
         return payoff
@@ -129,25 +126,33 @@ class Terminal(Payoff):
 
 class Average(Payoff):
     """ Average value of the asset over time """
-    def __init__(self, asset_index):
-        self.asset_index = asset_index
+    def __init__(self, name):
+        self.name = name
+        self.name_idx = None
+
+    def set_nameindexes(self, names):
+        try:
+            self.name_idx = names.index(self.name)
+        except Exception as e:
+            self.name_idx = None
+            raise ValueError(f"Could not find name {name} in path names: {str(e)}")
 
     def evaluate(self, paths):
-        return paths[:, :, self.asset_index].mean(axis=1)
+        return paths[:, :, self.name_idx].mean(axis=1)
 
 
 class Max(Payoff):
     """ Max of the payoffs specified in the input list """
-    def __init__(self, nodes):
-        nodes = [ensure_payoff(node) for node in nodes]
-        self.nodes = nodes
+    def __init__(self, subpayoffs):
+        subpayoffs = [ensure_payoff(node) for node in subpayoffs]
+        self.subpayoffs = subpayoffs
 
     def set_nameindexes(self, names):
-        for node in self.nodes:
-            node.set_nameindexes(names)
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_nameindexes(names)
 
     def evaluate(self, paths):
-        values = [node.evaluate(paths) for node in self.nodes]
+        values = [subpayoff.evaluate(paths) for subpayoff in self.subpayoffs]
         # Create an array whose shape[0] is the number of paths and shape[1]
         # is the number of payoffs being maxed on each path. Then take the max
         # of the payoffs along the payoff direction (axis=1)
@@ -158,15 +163,16 @@ class Max(Payoff):
 
 class Min(Payoff):
     """ Min of the payoffs specified in the input list """
-    def __init__(self, nodes):
-        self.nodes = nodes
+    def __init__(self, subpayoffs):
+        subpayoffs = [ensure_payoff(node) for node in subpayoffs]
+        self.subpayoffs = subpayoffs
 
     def set_nameindexes(self, names):
-        for node in self.nodes:
-            node.set_nameindexes(names)
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_nameindexes(names)
 
     def evaluate(self, paths):
-        values = [node.evaluate(paths) for node in self.nodes]
+        values = [subpayoff.evaluate(paths) for subpayoff in self.subpayoffs]
         # Create an array whose shape[0] is the number of paths and shape[1]
         # is the number of payoffs being maxed on each path. Then take the min
         # of the payoffs along the payoff direction (axis=1)
@@ -177,16 +183,38 @@ class Min(Payoff):
 
 class Abs(Payoff):
     """ Absolute value of the payoff """
-    def __init__(self, old):
-        self.old = old
+    def __init__(self, subpayoff):
+        self.subpayoff = subpayoff
 
     def set_nameindexes(self, names):
-        self.old.set_nameindexes(names)
+        self.subpayoff.set_nameindexes(names)
 
     def evaluate(self, paths):
-        old_path = self.old.evaluate(paths)
+        old_path = self.subpayoff.evaluate(paths)
         payoff = np.abs(old_path)
         print(f"Abs: {payoff.shape}")
+        return payoff
+
+
+class Basket(Payoff):
+    """ Linear combination of specified payoffs. We could have implemented it using
+        the algebra, but the code below may help make the tree simpler """
+    def __init__(self, subpayoffs, weights):
+        self.subpayoffs = subpayoffs
+        self.weights = np.asarray(weights)
+        if len(self.subpayoffs) != len(self.weights):
+            raise RuntimeError("Incompatible sizes between sub-payoffs and weights")
+
+    def set_nameindexes(self, names):
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_nameindexes(names)
+
+    def evaluate(self, paths):
+        sub_paths = np.asarray([p.evaluate(paths) for p in self.subpayoffs])
+        print(sub_paths.shape)
+        print(self.weights.shape)
+        payoff = self.weights @ sub_paths
+        print(f"Basket: {payoff.shape}")
         return payoff
 
 
@@ -197,13 +225,18 @@ class Add(Payoff):
         self.left = left
         self.right = right
 
+    def set_nameindexes(self, names):
+        self.left.set_nameindexes(names)
+        self.right.set_nameindexes(names)
+
     def evaluate(self, paths):
-        return self.left.evaluate(paths) + self.right.evaluate(paths)
+        payoff = self.left.evaluate(paths) + self.right.evaluate(paths)
+        print(f"Add: {payoff.shape}")
+        return payoff
 
 
 class Sub(Payoff):
     def __init__(self, left, right):
-        # super().__init__()
         self.left = left
         self.right = right
 
@@ -222,8 +255,14 @@ class Mul(Payoff):
         self.left = left
         self.right = right
 
+    def set_nameindexes(self, names):
+        self.left.set_nameindexes(names)
+        self.right.set_nameindexes(names)
+
     def evaluate(self, paths):
-        return self.left.evaluate(paths) * self.right.evaluate(paths)
+        payoff = self.left.evaluate(paths) * self.right.evaluate(paths)
+        print(f"Mul: {payoff.shape}")
+        return payoff
 
 
 class Div(Payoff):
@@ -231,8 +270,14 @@ class Div(Payoff):
         self.left = left
         self.right = right
 
+    def set_nameindexes(self, names):
+        self.left.set_nameindexes(names)
+        self.right.set_nameindexes(names)
+
     def evaluate(self, paths):
         return self.left.evaluate(paths) / self.right.evaluate(paths)
+        print(f"Div: {payoff.shape}")
+        return payoff
 
 
 class Neg(Payoff):
@@ -246,4 +291,3 @@ class Neg(Payoff):
         payoff = -self.old.evaluate(paths)
         print(f"Neg: {payoff.shape}")
         return payoff
-
