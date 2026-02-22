@@ -3,6 +3,11 @@ import numpy as np
 from abc import ABC, abstractmethod
 from scipy.stats import norm, qmc
 
+## TODO
+# * We could add other sequences, for instance
+# qmc.Halton(d=3, scramble=True, seed=42)
+# qmc.LatinHypercube(d=4, seed=42)
+
 
 def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
     """ Easy-input method to draw gaussians in dimensions num_steps x num_mc x num_factors """
@@ -37,8 +42,9 @@ def get_rng(dim=1, **kwargs):
         case 'mt':
             seed = kwargs.get('seed', 42)
             return MersenneTwiser(dim=dim, seed=seed)
-        case 'sobol':
-            return Sobol(dim=dim, **kwargs)
+        case 'sobol': return Sobol(dim=dim, **kwargs)
+        case 'halton': return Halton(dim=dim, **kwargs)
+        case 'latinhypercube': return LatinHypercube(dim=dim, **kwargs)
         case _:
             raise TypeError(f"Unknown RNG type: {rng_type}")
 
@@ -90,6 +96,43 @@ class Sobol(RandomNumberGenerator):
         return self.sampler.num_generated - 1 # Removing the 0
 
 
+class Halton(RandomNumberGenerator):
+    """ Wrapper for the Halton class in scipy's qmc """
+    def __init__(self, dim=1, **kwargs):
+        super().__init__(dim)
+        scramble = kwargs.get('scramble', True)
+        seed = kwargs.get('seed', 42)
+        self.sampler = qmc.Halton(d=dim, scramble=scramble, seed=seed)
+        self.sampler.random(1) # Skip the first item as it is exact 0
+
+    def uniform(self, n_draws):
+        """ Draw n_draws uniforms """
+        return self.sampler.random(n_draws)
+
+    def n_generated(self):
+        """ Number of sequences generated (not counting the first pure 0) """
+        return self.sampler.num_generated - 1 # Removing the 0
+
+
+class LatinHypercube(RandomNumberGenerator):
+    """ Wrapper for the LatinHypercube class in scipy's qmc """
+    def __init__(self, dim=1, **kwargs):
+        super().__init__(dim)
+        seed = kwargs.get('seed', 42)
+        self.sampler = qmc.LatinHypercube(d=dim, seed=seed)
+        # We had to remove the 0 for Sobol and Halton but apparently
+        # this one doesn't have 0 as first point
+        # self.sampler.random(1) # Skip the first item as it is exact 0
+
+    def uniform(self, n_draws):
+        """ Draw n_draws uniforms """
+        return self.sampler.random(n_draws)
+
+    def n_generated(self):
+        """ Number of sequences generated (not counting the first pure 0) """
+        return self.sampler.num_generated # Not removing the 0
+
+
 if __name__ == "__main__":
     DIM = 2
     SCRAMBLE = False
@@ -99,7 +142,9 @@ if __name__ == "__main__":
     gaussians = rng1.normal(10)
     print(gaussians)
 
-    rng2 = Sobol(dim=DIM, scramble=SCRAMBLE, optimization=OPTIMIZATION)
-    gaussians = rng2.normal(10)
+    rng2 = LatinHypercube(dim=DIM)
+    # rng2 = Halton(dim=DIM, scramble=SCRAMBLE)
+    # rng2 = Sobol(dim=DIM, scramble=SCRAMBLE, optimization=OPTIMIZATION)
+    gaussians = rng2.uniform(10)
     print(gaussians)
     print(rng2.n_generated())

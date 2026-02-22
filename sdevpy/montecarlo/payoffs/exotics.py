@@ -4,11 +4,15 @@ from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_opt
 
 
 class WorstOfBarrier(Payoff):
+    """ Not doing by algebra yet. Will need implementation of barrier monitoring first. """
     def __init__(self, names, strike, optiontype, barrier):
         super().__init__(names)
         self.strike = strike
         self.optiontype = string_to_optiontype(optiontype)
         self.barrier = barrier
+
+    def set_nameindexes(self, names):
+        self.set_multiindexes(names)
 
     def evaluate(self, paths):
         spot_all = self.paths_for_all(paths)
@@ -60,20 +64,3 @@ class BarrierDown(Payoff):
     def evaluate(self, paths):
         breached = (paths[:, :, self.asset_index] < self.level).any(axis=1)
         return (~breached).astype(float)
-
-# class BasketOption(Payoff):
-#     def __init__(self, names, weights, strike, optiontype):
-#         super().__init__(names)
-#         if len(weights) != len(names):
-#             raise RuntimeError(f"Incompatible sizes between names and weights")
-
-#         self.weights = weights
-#         self.strike = strike
-#         self.optiontype = string_to_optiontype(optiontype)
-
-#     def evaluate(self, paths):
-#         spot_all = self.paths_for_all(paths)
-#         spot_all_at_exp = spot_all[:, -1, :]
-#         basket = spot_all_at_exp @ self.weights
-#         payoff = vanilla_option(basket, self.strike, self.optiontype)
-#         return payoff

@@ -24,26 +24,25 @@ class Payoff(ABC):
     def set_nameindexes(self, names):
         pass # Do nothing in base
 
-    # ToDo: review if still needed
-    def set_pathindexes(self, pathnames):
+    def set_multiindexes(self, names):
         # Find path index for each name
         self.name_idxs = []
         self.name_dic = {}
         if self.names is not None:
             for name in self.names:
                 try:
-                    idx = pathnames.index(name)
+                    idx = names.index(name)
                     self.name_idxs.append(idx)
                     self.name_dic[name] = idx
                 except Exception as e:
                     raise ValueError(f"Could not find name {name} in path names: {str(e)}")
 
-            # Check sizes
-            if len(self.name_idxs) != len(self.names):
-                raise ValueError(f"Incompatible sizes between names and path indexes")
+            # # Check sizes
+            # if len(self.name_idxs) != len(self.names):
+            #     raise ValueError(f"Incompatible sizes between names and path indexes")
 
-            if len(self.name_dic.keys()) != len(self.names):
-                raise ValueError(f"Incompatible sizes between names and name dictionary")
+            # if len(self.name_dic.keys()) != len(self.names):
+            #     raise ValueError(f"Incompatible sizes between names and name dictionary")
 
     #### Algebra ##################################################################################
 
@@ -215,6 +214,22 @@ class Basket(Payoff):
         print(self.weights.shape)
         payoff = self.weights @ sub_paths
         print(f"Basket: {payoff.shape}")
+        return payoff
+
+
+class WorstOf(Payoff):
+    def __init__(self, names):
+        super().__init__(names)
+
+    def set_nameindexes(self, names):
+        self.set_multiindexes(names)
+
+    def evaluate(self, paths):
+        spot_all = self.paths_for_all(paths)
+        spot_all_at_exp = spot_all[:, -1, :]
+        worst_at_exp = spot_all_at_exp.min(axis=1)
+        payoff = worst_at_exp
+        print(f"WorstOf: {payoff.shape}")
         return payoff
 
 

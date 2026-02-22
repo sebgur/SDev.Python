@@ -12,11 +12,6 @@ from sdevpy.tools import timegrids, timer
 
 
 #################### TODO #########################################################################
-# * Check all primitives and other components
-# * Replace older components by algebra-based ones
-# * Remove old set_pathindexes
-# * Bring set_nameindexes() into mc pricer (minor detail for cosmetics, we'll see later if it's ok)
-
 # * Handle event dates
 # * The most flexible may be to interpolate the paths out of the path build.
 #   Those paths will come together with a certain discretization time grid, which we can assume
@@ -26,6 +21,7 @@ from sdevpy.tools import timegrids, timer
 #   That is, we could define some kind of "path date" object that would be a datetime augmented with
 #   the indexes and coefficients for its interpolation along the discretization time grid.
 
+# * Introduce discount curve and discount at cash-flow payment times
 # * Introduce concept of past fixings
 # * Implement var swap spread payoff
 # * Introduce portfolios, multi-cash-flow payoffs
@@ -105,12 +101,12 @@ if __name__ == "__main__":
     optiontype = 'Call'
     # payoff = VanillaOption(name, strike, optiontype)
 
-    # Basket
-    b_names = ['SPX', 'NKY']
-    weights = [0.5, 0.1]
-    strike = 100
-    optiontype = 'Call'
-    payoff = BasketOption(b_names, weights, strike, optiontype)
+    # # Basket
+    # b_names = ['SPX', 'NKY']
+    # weights = [0.5, 0.1]
+    # strike = 100
+    # optiontype = 'Call'
+    # payoff = BasketOption(b_names, weights, strike, optiontype)
 
     # # Asian
     # name = 'CalibIndex'
@@ -119,17 +115,16 @@ if __name__ == "__main__":
     # payoff = AsianOption(name, strike, optiontype)
 
     # Worst-Of Barrier
-    # b_names = ['SPX', 'NKY']
-    # strike = 100
-    # barrier = 49
-    # optiontype = 'Call'
-    # payoff = WorstOfBarrier(b_names, strike, optiontype, barrier)
-
-    payoff.set_nameindexes(names)
-    # payoff.set_pathindexes(names)
+    b_names = ['CalibIndex', 'SPX']
+    strike = 100
+    barrier = 35
+    optiontype = 'Call'
+    # payoff = WorstOf(b_names)
+    payoff = WorstOfBarrier(b_names, strike, optiontype, barrier)
 
     # MC pricer
     mc_timer = timer.Stopwatch('MC')
+    payoff.set_nameindexes(names)
     mc = MonteCarloPricer(df=df)
     # This is the separation we need. The MC path builder only requires the paths
     # of the underlying assets as a big multi-d vector. This way we could potentially
