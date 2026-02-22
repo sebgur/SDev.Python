@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 
 
 class Payoff(ABC):
-    def __init__(self, names=None):
-        self.names = names
+    def __init__(self):
+        self.names = None
         self.name_idxs = None
         self.name_dic = None
 
@@ -21,28 +21,22 @@ class Payoff(ABC):
     def paths_for_all(self, paths):
         return paths[:, :, self.name_idxs]
 
-    def set_nameindexes(self, names):
+    def set_nameindexes(self, enginenames):
         pass # Do nothing in base
 
-    def set_multiindexes(self, names):
+    def set_multiindexes(self, enginenames):
         # Find path index for each name
         self.name_idxs = []
         self.name_dic = {}
         if self.names is not None:
             for name in self.names:
                 try:
-                    idx = names.index(name)
+                    idx = enginenames.index(name)
                     self.name_idxs.append(idx)
                     self.name_dic[name] = idx
                 except Exception as e:
                     raise ValueError(f"Could not find name {name} in path names: {str(e)}")
 
-            # # Check sizes
-            # if len(self.name_idxs) != len(self.names):
-            #     raise ValueError(f"Incompatible sizes between names and path indexes")
-
-            # if len(self.name_dic.keys()) != len(self.names):
-            #     raise ValueError(f"Incompatible sizes between names and name dictionary")
 
     #### Algebra ##################################################################################
 
@@ -74,13 +68,18 @@ class Payoff(ABC):
         return Div(ensure_payoff(other), self)
 
 
-def add_names(payoffs):
+def list_names(payoffs):
+    """ List all the names behind the payoffs. Duplicates are removed and we also
+        order the result. The reason is to avoid random noise due to re-ordering
+        of the random number sequences depending on the order in which the trades
+        are listed in the book. """
     names = []
     for payoff in payoffs:
         new_names = payoff.names
         if new_names is not None:
             names.extend(new_names)
 
+    names = sorted(set(names))
     names = names if len(names) != 0 else None
     return names
 
@@ -95,6 +94,7 @@ def ensure_payoff(x):
 
 class Constant(Payoff):
     def __init__(self, value):
+        super().__init__()
         self.value = value
 
     def evaluate(self, paths):
@@ -106,6 +106,8 @@ class Constant(Payoff):
 class Terminal(Payoff):
     """ Value of the asset on the last date of the time grid """
     def __init__(self, name):
+        super().__init__()
+        self.names = [name]
         self.name = name
         self.name_idx = None
 
@@ -126,6 +128,8 @@ class Terminal(Payoff):
 class Average(Payoff):
     """ Average value of the asset over time """
     def __init__(self, name):
+        super().__init__()
+        self.names = [name]
         self.name = name
         self.name_idx = None
 
@@ -143,8 +147,10 @@ class Average(Payoff):
 class Max(Payoff):
     """ Max of the payoffs specified in the input list """
     def __init__(self, subpayoffs):
+        super().__init__()
         subpayoffs = [ensure_payoff(node) for node in subpayoffs]
         self.subpayoffs = subpayoffs
+        self.names = list_names(self.subpayoffs)
 
     def set_nameindexes(self, names):
         for subpayoff in self.subpayoffs:
@@ -163,8 +169,10 @@ class Max(Payoff):
 class Min(Payoff):
     """ Min of the payoffs specified in the input list """
     def __init__(self, subpayoffs):
+        super().__init__()
         subpayoffs = [ensure_payoff(node) for node in subpayoffs]
         self.subpayoffs = subpayoffs
+        self.names = list_names(self.subpayoffs)
 
     def set_nameindexes(self, names):
         for subpayoff in self.subpayoffs:
@@ -183,7 +191,9 @@ class Min(Payoff):
 class Abs(Payoff):
     """ Absolute value of the payoff """
     def __init__(self, subpayoff):
+        super().__init__()
         self.subpayoff = subpayoff
+        self.names = self.subpayoff.names
 
     def set_nameindexes(self, names):
         self.subpayoff.set_nameindexes(names)
@@ -199,7 +209,9 @@ class Basket(Payoff):
     """ Linear combination of specified payoffs. We could have implemented it using
         the algebra, but the code below may help make the tree simpler """
     def __init__(self, subpayoffs, weights):
+        super().__init__()
         self.subpayoffs = subpayoffs
+        self.names = list_names(self.subpayoffs)
         self.weights = np.asarray(weights)
         if len(self.subpayoffs) != len(self.weights):
             raise RuntimeError("Incompatible sizes between sub-payoffs and weights")
@@ -219,7 +231,8 @@ class Basket(Payoff):
 
 class WorstOf(Payoff):
     def __init__(self, names):
-        super().__init__(names)
+        super().__init__()
+        self.names = names
 
     def set_nameindexes(self, names):
         self.set_multiindexes(names)
@@ -237,8 +250,10 @@ class WorstOf(Payoff):
 
 class Add(Payoff):
     def __init__(self, left, right):
+        super().__init__()
         self.left = left
         self.right = right
+        self.names = list_names([self.left, self.right])
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
@@ -252,8 +267,10 @@ class Add(Payoff):
 
 class Sub(Payoff):
     def __init__(self, left, right):
+        super().__init__()
         self.left = left
         self.right = right
+        self.names = list_names([self.left, self.right])
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
@@ -267,8 +284,10 @@ class Sub(Payoff):
 
 class Mul(Payoff):
     def __init__(self, left, right):
+        super().__init__()
         self.left = left
         self.right = right
+        self.names = list_names([self.left, self.right])
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
@@ -282,8 +301,10 @@ class Mul(Payoff):
 
 class Div(Payoff):
     def __init__(self, left, right):
+        super().__init__()
         self.left = left
         self.right = right
+        self.names = list_names([self.left, self.right])
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
@@ -297,7 +318,9 @@ class Div(Payoff):
 
 class Neg(Payoff):
     def __init__(self, old):
+        super().__init__()
         self.old = old
+        self.names = self.old.names
 
     def set_nameindexes(self, names):
         self.old.set_nameindexes(names)
@@ -306,3 +329,55 @@ class Neg(Payoff):
         payoff = -self.old.evaluate(paths)
         print(f"Neg: {payoff.shape}")
         return payoff
+
+
+#### Event Dates ##################################################################################
+
+def build_eventdate_interpolator(t_grid, eventdates):
+    t_grid = np.asarray(t_grid)
+    eventdates = np.asarray(eventdates)
+
+    # indices of left grid point
+    idx = np.searchsorted(t_grid, eventdates) - 1
+    idx = np.clip(idx, 0, len(t_grid) - 2)
+
+    t_left = t_grid[idx]
+    t_right = t_grid[idx + 1]
+
+    w1 = (eventdates - t_left) / (t_right - t_left)
+    w0 = 1.0 - w1
+    return idx, w0, w1
+
+
+def interpolate_paths(paths, idx, w0, w1):
+    """ Input path shape (n_paths, n_disctimes, n_factors).
+        Output path shape (n_paths, n_disctimes, n_factors) """
+    # Path shape: (n_paths, n_times, n_assets)
+    S_left = paths[:, idx, :] # broadcasting
+    S_right = paths[:, idx + 1, :]
+
+    # Reshape weights for broadcasting
+    w0 = w0.reshape(1, -1, 1)
+    w1 = w1.reshape(1, -1, 1)
+
+    return w0 * S_left + w1 * S_right
+
+
+if __name__ == "__main__":
+    print("ToDo: test event date interpolation")
+    disc_grid = np.asarray([0, 1, 2, 3])
+    eventdates = np.asarray([0.2, 2.4, 2.8])
+    idx, w0, w1 = build_eventdate_interpolator(disc_grid, eventdates)
+    paths = np.asarray([
+        [[90, 100],[91, 101],[92, 102],[93, 103]],
+        [[900, 1000],[910, 1010],[920, 1020],[930, 1030]],
+        [[9, 10],[9, 10],[9, 10],[9, 10]],
+        [[0.90, 0.100],[0.91, 0.101],[0.92, 0.102],[0.93, 0.103]],
+        [[9000, 10000],[9100, 10100],[9200, 10200],[9300, 10300]]])
+    int_paths = interpolate_paths(paths, idx, w0, w1)
+    np.set_printoptions(suppress=True, precision=2)
+    # with np.printoptions(precision=n_digits):
+    print(paths.shape)
+    # print(paths)
+    print(int_paths.shape)
+    print(int_paths)

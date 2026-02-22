@@ -6,7 +6,8 @@ from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_opt
 class WorstOfBarrier(Payoff):
     """ Not doing by algebra yet. Will need implementation of barrier monitoring first. """
     def __init__(self, names, strike, optiontype, barrier):
-        super().__init__(names)
+        super().__init__()
+        self.names = names
         self.strike = strike
         self.optiontype = string_to_optiontype(optiontype)
         self.barrier = barrier
@@ -48,8 +49,10 @@ def BasketOption(names, weights, strike, optiontype):
 class Maximum(Payoff):
     """ Warning: work in progress. ToDo: document """
     def __init__(self, left, right):
+        super().__init__()
         self.left = left
         self.right = right
+        self.names = list_names([self.left, self.right])
 
     def evaluate(self, paths):
         return np.maximum(self.left.evaluate(paths), self.right.evaluate(paths))
@@ -58,6 +61,7 @@ class Maximum(Payoff):
 class BarrierDown(Payoff):
     """ Warning: work in progress. ToDo: document """
     def __init__(self, asset_index, level):
+        super().__init__()
         self.asset_index = asset_index
         self.level = level
 
