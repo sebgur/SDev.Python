@@ -1,4 +1,4 @@
-from sdevpy.montecarlo.payoffs.payoffs import Payoff
+from sdevpy.montecarlo.payoffs.basic import Payoff
 
 
 

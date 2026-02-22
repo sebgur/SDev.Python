@@ -2,7 +2,8 @@ import numpy as np
 import datetime as dt
 from sdevpy.montecarlo.FactorModel import MultiAssetGBM
 from sdevpy.montecarlo.PathGenerator import PathGenerator
-from sdevpy.montecarlo.payoffs.payoffs import Payoff, VanillaOption
+from sdevpy.montecarlo.payoffs.basic import *
+from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
 from sdevpy.montecarlo.MonteCarloPricer import MonteCarloPricer
 from sdevpy.models import localvol_factory as lvf
@@ -11,12 +12,14 @@ from sdevpy.tools import timegrids, timer
 
 
 #################### TODO #########################################################################
-# * Implement Payoff algebra
-# * Mistral: in case we lose the page, here was the prompt to create an algebraic structure
-#   "How can I create a Domain Specific Language and make composable trees from payoff primitives?"
+# * Redefine VanillaOption in terms of payoff algebra
+# * Check all primitives and other components
+# * Replace older components by algebra-based ones
+# * Remove old set_pathindexes
+# * Bring set_nameindexes() into mc pricer (minor detail for cosmetics, we'll see later if it's ok)
 
-# * Handle event dates and the interpolation to discretization grid
-# * Event date design: the most flexible may be to interpolate the paths out of the path build.
+# * Handle event dates
+# * The most flexible may be to interpolate the paths out of the path build.
 #   Those paths will come together with a certain discretization time grid, which we can assume
 #   to be known/extracted from the path builder. Ideally we would want to interpolate knowing
 #   the forward curves, but we could also (as a first step at least) just do a linear interpolation.
@@ -100,7 +103,8 @@ if __name__ == "__main__":
     name = 'CalibIndex'
     strike = 100
     optiontype = 'Call'
-    payoff = VanillaOption(name, strike, optiontype)
+    # payoff = VanillaOption(name, strike, optiontype)
+    payoff = Max([Terminal(name) - strike, 0.0])
 
     # Basket
     # b_names = ['SPX', 'NKY']
@@ -129,7 +133,8 @@ if __name__ == "__main__":
     # basket = 0.5 * S1 + 0.5 * S2
     # payoff = Maximum(basket - 100, 0)
 
-    payoff.set_pathindexes(names)
+    payoff.set_nameindexes(names)
+    # payoff.set_pathindexes(names)
 
     # MC pricer
     mc_timer = timer.Stopwatch('MC')

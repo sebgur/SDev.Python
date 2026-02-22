@@ -7,10 +7,6 @@ class FactorModel(ABC):
     def evolve_state(self, state, t_idx, dW):
         pass
 
-    # @abstractmethod
-    # def simulate_step(self, state, t_idx, Z):
-    #     pass
-
     @abstractmethod
     def initial_state(self):
         pass
