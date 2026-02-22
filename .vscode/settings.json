@@ -1,5 +1,13 @@
 {
     // Modify pythonpath
     "terminal.integrated.env.windows": {"PYTHONPATH": "${workspaceFolder}"},
-    "terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "Bypass"]
+    "terminal.integrated.shellArgs.windows": [
+        "-ExecutionPolicy",
+        "Bypass"
+    ],
+    "python.testing.pytestArgs": [
+        "sdevpy"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
 }

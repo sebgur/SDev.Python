@@ -13,7 +13,7 @@ from sdevpy.tools import timegrids, timer
 
 #################### TODO #########################################################################
 # * Handle event dates: check what happens if maturity date (as event) is last on disc. grid
-# * Start Unit-Testing with example in MC for all payoffs
+# * UT for MC with all payoffs
 # * Introduce discount curve and discount at cash-flow payment times
 # * Implement simple forward curve as linear interpolation of surface's forwards
 # * Introduce concept of past fixings
