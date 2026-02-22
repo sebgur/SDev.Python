@@ -62,6 +62,15 @@ class Payoff(ABC):
     def __neg__(self):
         return Neg(self)
 
+    def __rsub__(self, other): # Otherwise doesn't work when starting with constant
+        return Sub(ensure_payoff(other), self)
+
+    def __rmul__(self, other): # Otherwise doesn't work when starting with constant
+        return Mul(ensure_payoff(other), self)
+
+    def __rtruediv__(self, other): # Otherwise doesn't work when starting with constant
+        return Div(ensure_payoff(other), self)
+
 
 def add_names(payoffs):
     names = []
@@ -163,6 +172,21 @@ class Min(Payoff):
         # of the payoffs along the payoff direction (axis=1)
         payoff = np.min(np.column_stack(values), axis=1)
         print(f"Min: {payoff.shape}")
+        return payoff
+
+
+class Abs(Payoff):
+    """ Absolute value of the payoff """
+    def __init__(self, old):
+        self.old = old
+
+    def set_nameindexes(self, names):
+        self.old.set_nameindexes(names)
+
+    def evaluate(self, paths):
+        old_path = self.old.evaluate(paths)
+        payoff = np.abs(old_path)
+        print(f"Abs: {payoff.shape}")
         return payoff
 
 

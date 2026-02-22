@@ -12,7 +12,6 @@ from sdevpy.tools import timegrids, timer
 
 
 #################### TODO #########################################################################
-# * Redefine VanillaOption in terms of payoff algebra
 # * Check all primitives and other components
 # * Replace older components by algebra-based ones
 # * Remove old set_pathindexes
@@ -34,7 +33,8 @@ from sdevpy.tools import timegrids, timer
 # * Calculate vega through LV calib
 
 # * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
-# * Try implementing exact Dupire LV calibration using AAD on BS prices? Or IVs for SVI?
+# * Implementing exact Dupire through python vectorization and try parallelization
+# * Implement DE with parallelization on the population
 # * Mistral: use numba JIT, parallelization (joblib, Ray)
 
 
@@ -101,10 +101,10 @@ if __name__ == "__main__":
 
     # Vanilla
     name = 'CalibIndex'
-    strike = 100
+    strike = 100.0
     optiontype = 'Call'
-    # payoff = VanillaOption(name, strike, optiontype)
-    payoff = Max([Terminal(name) - strike, 0.0])
+    payoff = VanillaOption(name, strike, optiontype)
+    # payoff = Max([Terminal(name) - strike, 0.0])
 
     # Basket
     # b_names = ['SPX', 'NKY']
@@ -125,13 +125,6 @@ if __name__ == "__main__":
     # barrier = 49
     # optiontype = 'Call'
     # payoff = WorstOfBarrier(b_names, strike, optiontype, barrier)
-
-    # New payoff design
-    # S1 = Terminal(0)
-    # S2 = Terminal(1)
-
-    # basket = 0.5 * S1 + 0.5 * S2
-    # payoff = Maximum(basket - 100, 0)
 
     payoff.set_nameindexes(names)
     # payoff.set_pathindexes(names)
