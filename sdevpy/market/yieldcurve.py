@@ -5,8 +5,7 @@ from sdevpy.tools import timegrids
 
 
 ########### TODO ########################################################################
-# * Vectorize timegrids.model_time() and cleanup past usages
-# * Vectorize
+# * Test and Vectorize
 # * Create data reading for both curve interp definitions
 #   and dates/df reading per curve ID per date
 # * Add unit testing

@@ -3,7 +3,8 @@ import struct
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 from dataclasses import dataclass
-# from typing import NamedTuple
+from collections.abc import Iterable
+
 
 @dataclass
 class DateTimeSpan:
@@ -11,10 +12,10 @@ class DateTimeSpan:
     months: int = 0
     years: int = 1
 
-# class DateSpan2(NamedTuple):
-#     days: int
-#     months: int
-#     years: int
+
+def isiterable(x):
+    """ Beware that this answers True for strings """
+    return isinstance(x, Iterable)
 
 
 def date_advance(base_date, span=DateTimeSpan()):

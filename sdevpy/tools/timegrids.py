@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from datetime import date
 import numpy as np
-from sdevpy.tools import algos
+from sdevpy.tools import algos, utils
 
 
 
@@ -28,7 +28,7 @@ class TimeGridBuilder(ABC):
         self.valdate = valdate
         times = []
         for d in dates:
-            times.append(model_time(val_date, d))
+            times.append(model_time(self.valdate, d))
 
         self.time_grid_.extend(times)
 
@@ -87,8 +87,14 @@ class SimpleTimeGridBuilder(TimeGridBuilder):
 
 def model_time(date1, date2):
     """ Yearfraction (time) between two dates for models, using simply (date2 - date1) / 365."""
-    span = date2 - date1
-    return span.days / 365.0
+    spans = np.asarray(date2) - np.asarray(date1)
+    if utils.isiterable(spans):
+        span = [s.days / 365.0 for s in spans]
+        return np.asarray(span)
+    else:
+        return spans.days / 365.0
+    # span = date2 - date1
+    # return span.days / 365.0
 
 
 if __name__ == "__main__":
@@ -116,5 +122,21 @@ if __name__ == "__main__":
     tg = time_grid_builder.time_grid_
     print(tg)
 
-    # Test query of outside point relatively to the grid
+    # Test vectorization
+    print("\n Vectorization")
+    v = model_time(base, fixing)
+    print(v)
+    a = [fixing, monitor]
+    b = base
+    v = model_time(base, [fixing, monitor])
+    print(v)
 
+    spans = np.asarray(a) - np.asarray(b)
+    print(spans)
+    span = [s.days / 365.0 for s in spans]
+    if len(span) == 1:
+        x = span[0]
+    else:
+        x = span
+
+    print(x)
