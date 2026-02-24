@@ -22,6 +22,9 @@ from sdevpy.tools import timegrids, timer
 # * Introduce multi-cash-flow payoffs
 # * Check accuracy against LV calib
 # * Calculate vega through LV calib
+# * Greeks by saving BM and maybe time interpolation too?
+# * Add more runtime measurement granularity, make timer able to add/store elapsed
+# * Make entry point of code from portfolio specification
 
 # * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
 # * Implementing exact Dupire through python vectorization and try parallelization

@@ -2,20 +2,19 @@
 import datetime as dt
 import pandas as pd
 from dateutil.relativedelta import relativedelta
-from sdevpy.tools import utils
+from sdevpy.tools import dates
 from openbb import obb
 obb.user.preferences.output_type = "dataframe"
 
 names = ['SPY', 'VTV', 'VUG', 'VBR', 'VBK', 'VGK', 'VPL']
 colors = ['blue', 'red', 'green', 'brown', 'orange', 'yellow']
 today = dt.date.today()
-hist_window = utils.DateTimeSpan(0, 0, 1)  # days, months, years
 db_root = r'C:\\temp\\database'
 
 print(today.strftime('%d-%b-%Y'))
 
 # Retrieving all data
-hist_start = utils.date_advance(today, hist_window)
+hist_start = dates.date_advance(today, years=-1)
 print(hist_start.strftime('%d-%b-%Y'))
 
 start = "2025-03-01"

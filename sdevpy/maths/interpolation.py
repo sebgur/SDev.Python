@@ -124,7 +124,7 @@ class StepInterpolator(Interpolator):
             if ilen == 0:
                 y = self.y_grid[indices]
             else:
-                y = [self.y_grid[i] for i in indices]
+                y = np.asarray([self.y_grid[i] for i in indices])
         elif self.direction == 'right':
             indices = np.searchsorted(self.x_grid, x, side='left') - 1
             np.clip(indices, 0, len(self.y_grid) - 1)
@@ -132,16 +132,11 @@ class StepInterpolator(Interpolator):
             if ilen == 0:
                 y = self.y_grid[i]
             else:
-                y = [self.y_grid[i] for i in indices]
+                y = np.asarray([self.y_grid[i] for i in indices])
         else:
             raise RuntimeError(f"Unknown step interpolation direction(2): {self.direction}")
 
         return y
-        # if safe_len(y) == 0:
-        #     return y
-        # else:
-        #      return y
-
 
 
 class LinearInterpolator(Interpolator):
@@ -191,10 +186,9 @@ class FlatExtrapolator(Interpolator):
     def value(self, x):
         xlen = safe_len(x)
         if xlen == 0:
-            v = None
-            # v = [None]
+            v = np.nan
         else:
-            v = [None] * xlen
+            v = np.asarray([np.nan] * xlen)
         below = (x < self.xl + self.eps)
         above = (x > self.xr - self.eps)
 

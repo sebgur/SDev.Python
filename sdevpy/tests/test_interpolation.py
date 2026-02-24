@@ -21,7 +21,7 @@ def test_cubicspline_interpolation():
     type = 'cubicspline'
     interp = itp.create_interpolation(interp=type, l_extrap='builtin', r_extrap='flat')
     interp.set_data(X_GRID, Y_GRID)
-    test = np.asarray(interp.value(TEST_X))
+    test = interp.value(TEST_X)
     ref = np.asarray([6.15, 10, 11.5232, 18, 21.52, 25, 23.6098, 22, 22])
     assert np.allclose(test, ref, 1e-10)
 
@@ -30,7 +30,7 @@ def test_step_interpolation():
     type = 'step'
     interp = itp.create_interpolation(interp=type, l_extrap='flat', r_extrap='builtin')
     interp.set_data(X_GRID, Y_GRID)
-    test = np.asarray(interp.value(TEST_X))
+    test = interp.value(TEST_X)
     ref = np.asarray([10, 10, 18, 25, 25, 22, 22, 22, 22])
     assert np.allclose(test, ref, 1e-10)
 
@@ -39,7 +39,8 @@ def test_bspline_interpolation():
     type = 'bspline'
     interp = itp.create_interpolation(interp=type, l_extrap='builtin', r_extrap='linear')
     interp.set_data(X_GRID, Y_GRID)
-    test = np.asarray(interp.value(TEST_X))
+    test = interp.value(TEST_X)
+    # test = np.asarray(interp.value(TEST_X))
     ref = np.asarray([8.4375, 10, 11.248, 18, 21.424, 25, 24.4855, 22, 20.5])
     assert np.allclose(test, ref, 1e-10)
 

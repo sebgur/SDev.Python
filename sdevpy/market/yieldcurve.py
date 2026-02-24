@@ -1,11 +1,12 @@
 import datetime as dt
+import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum
 from sdevpy.tools import timegrids
+from sdevpy.maths import interpolation as itp
 
 
 ########### TODO ########################################################################
-# * Test and Vectorize
 # * Create data reading for both curve interp definitions
 #   and dates/df reading per curve ID per date
 # * Add unit testing
@@ -25,13 +26,13 @@ def create_yieldcurve(valdate, interp_var='zerorate', interp_scheme='spline'):
     scheme = interp_scheme.lower()
     if variable == YieldCurveVariable.ZERORATE:
         match scheme:
-            case 'linear': interp = create_interpolation('linear', 'flat', 'flat')
-            case 'spline': interp = create_interpolation('cubicspline', 'flat', 'flat', bc_type='clamped')
+            case 'linear': interp = itp.create_interpolation(interp='linear', l_extrap='flat', r_extrap='flat')
+            case 'spline': interp = itp.create_interpolation(interp='cubicspline', l_extrap='flat', r_extrap='flat', bc_type='clamped')
             case _: raise RuntimeError(f"Unsupported scheme: {scheme}")
     elif variable in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOG_DISCOUNT]:
         match scheme:
-            case 'linear': interp = create_interpolation('linear', 'none', 'none')
-            case 'spline': interp = create_interpolation('cubicspline')
+            case 'linear': interp = itp.create_interpolation(interp='linear', l_extrap='none', r_extrap='none')
+            case 'spline': interp = itp.create_interpolation(interp='cubicspline', l_extrap='none', r_extrap='none')
             case _: raise RuntimeError(f"Unsupported scheme: {scheme}")
     else:
         raise RuntimeError("Unknown interpolation variable(2)")
@@ -39,7 +40,7 @@ def create_yieldcurve(valdate, interp_var='zerorate', interp_scheme='spline'):
     if interp is None:
         raise RuntimeError("Failure to set curve interpolation")
 
-    curve.set_interpolation(variable, interpolation)
+    curve.set_interpolation(variable, interp)
     return curve
 
 
@@ -62,12 +63,12 @@ class InterpolatedYieldCurve(YieldCurve):
         self.dates, self.dfs = None, None
         self.variable, self.interpolation = None, None
 
-    def discount(date):
+    def discount(self, date):
         t = timegrids.model_time(self.valdate, date)
-        df = discount_float(t)
+        df = self.discount_float(timegrids.model_time(self.valdate, date))
         return df
 
-    def discount_float(t):
+    def discount_float(self, t):
         y = self.interpolation.value(t)
         match self.interp_var:
             case YieldCurveVariable.ZERORATE: return np.exp(-y * t)
@@ -75,7 +76,7 @@ class InterpolatedYieldCurve(YieldCurve):
             case YieldCurveVariable.LOG_DISCOUNT: return np.exp(y)
             case _: raise RuntimeError(f"Unsupported interpolation variable: {str(self.interp_var)}")
 
-    def set_data(dates, dfs):
+    def set_data(self, dates, dfs):
         if self.interpolation is None:
             raise RuntimeError("Interpolation not set")
 
@@ -87,8 +88,8 @@ class InterpolatedYieldCurve(YieldCurve):
         self.dfs = dfs
 
         if self.interp_var == YieldCurveVariable.ZERORATE:
-            times = np.asarray([timegrids.model_time(self.valdate, d) for d in self.dates])
-            data_y = np.log(dfs) / times
+            times = timegrids.model_time(self.valdate, dates)
+            data_y = -np.log(dfs) / times
         elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOG_DISCOUNT]:
             times = [0.0]
             times = times.extend([timegrids.model_time(self.valdate, d) for d in self.dates])
@@ -102,9 +103,10 @@ class InterpolatedYieldCurve(YieldCurve):
 
         self.interpolation.set_data(times, data_y)
 
-    def set_interpolation(interp_var, interpolation):
+    def set_interpolation(self, interp_var, interpolation):
         self.interp_var = interp_var
         self.interpolation = interpolation
+
 
 class YieldCurveVariable(Enum):
     ZERORATE = 0
@@ -113,6 +115,8 @@ class YieldCurveVariable(Enum):
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    from sdevpy.tools import dates
     valdate = dt.datetime(2026, 2, 15)
 
     # Create curve
@@ -121,15 +125,21 @@ if __name__ == "__main__":
     curve = create_yieldcurve(valdate, interp_var, scheme)
 
     # Create data
-    dates = []
-    zrs = np.asarray([0.01, 0.015, 0.20, 0.22, 0.25, 0.30])
-    ztimes = np.asarray([timegrids.model_time(valdate, d) for d in dates])
+    zdates = [dt.datetime(2026, 3, 15), dt.datetime(2026, 8, 15), dt.datetime(2027, 2, 15),
+              dt.datetime(2031, 2, 15), dt.datetime(2036, 2, 15), dt.datetime(2056, 2, 15)]
+    zrs = np.asarray([0.01, 0.015, 0.020, 0.022, 0.025, 0.030])
+    ztimes = timegrids.model_time(valdate, zdates)
     dfs = np.exp(-zrs * ztimes)
 
     # Set data
-    curve.set_data(dates, dfs)
+    curve.set_data(zdates, dfs)
 
     # Interpolate and display
-    test_dates = None # create date grid (how to add days?)
+    test_dates = [dates.date_advance(valdate, months=1*n) for n in range(600)]
     test_dfs = curve.discount(test_dates)
-    test_times = [timegrids.model_time(valdate, d) for d in dates]
+    test_times = timegrids.model_time(valdate, test_dates)
+    test_zrs = -np.log(test_dfs) / test_times
+
+    plt.plot(test_dates, test_zrs)
+    plt.scatter(zdates, zrs, color='black')
+    plt.show()
