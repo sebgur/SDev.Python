@@ -7,8 +7,7 @@ from sdevpy.maths import interpolation as itp
 
 
 ########### TODO ########################################################################
-# * Create data reading for both curve interp definitions
-#   and dates/df reading per curve ID per date
+# * Create data reading
 # * Add unit testing
 
 def create_yieldcurve(valdate, interp_var='zerorate', interp_scheme='spline'):
@@ -55,6 +54,15 @@ class YieldCurve(ABC):
     @abstractmethod
     def discount_float(t):
         pass
+
+    @abstractmethod
+    def dump_data(self):
+        pass
+
+    def dump(self, file, indent=2):
+        data = self.dump_data()
+        with open(file, 'w') as f:
+            json.dump(data, f, indent=indent)
 
 
 class InterpolatedYieldCurve(YieldCurve):
@@ -107,11 +115,67 @@ class InterpolatedYieldCurve(YieldCurve):
         self.interp_var = interp_var
         self.interpolation = interpolation
 
+    def dump_data(self):
+        sections = []
+        for i, expiry in enumerate(self.expiries):
+            expiry_str = expiry.strftime(dates.DATE_FORMAT)
+            section = {'expiry': expiry_str, 'forward': self.forwards[i], 'strikes': self.input_strikes[i].tolist(),
+                       'vols': self.vols[i].tolist()}
+            sections.append(section)
+
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
+                'strike_input_type': self.strike_input_type, 'sections': sections}
+
+        return data
+
 
 class YieldCurveVariable(Enum):
     ZERORATE = 0
     DISCOUNT = 1
     LOG_DISCOUNT = 2
+
+
+def yieldcurve_from_file(file):
+    with open(file, 'r') as f:
+        data = json.load(f)
+
+    name = data.get('name')
+    valdate = data.get('valdate')
+    snapdate = data.get('snapdate')
+    interp_var = data.get('interp_variable')
+    interp_scheme = data.get('interp_scheme')
+    pillars = data.get('pillars')
+
+    valdate = dt.datetime.strptime(valdate, dates.DATE_FORMAT)
+    curve = create_yieldcurve(valdate=valdate, interp_var=interp_var, interp_scheme=interp_scheme)
+
+    # Read pillar data
+    dates, dfs = [], []
+    for pillar in pillars:
+        date_str = pillar.get('expiry')
+        date = dt.datetime.strptime(date_str, dates.DATE_FORMAT)
+        df = pillar.get['df']
+        dates.append(date)
+        dfs.append(df)
+
+    curve.set_data(dates, dfs)
+    return curve
+
+
+def data_file(folder, name, date):
+    name_folder = os.path.join(folder, name)
+    os.makedirs(name_folder, exist_ok=True)
+    file = os.path.join(name_folder, date.strftime(dates.DATE_FILE_FORMAT) + ".json")
+    return file
+
+
+def test_data_folder():
+    folder = Path(__file__).parent.parent.parent.resolve()
+    dataset_folder = os.path.join(folder, "datasets")
+    folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "yieldcurves")
+    os.makedirs(folder, exist_ok=True)
+    return folder
 
 
 if __name__ == "__main__":
@@ -140,6 +204,8 @@ if __name__ == "__main__":
     test_times = timegrids.model_time(valdate, test_dates)
     test_zrs = -np.log(test_dfs) / test_times
 
-    plt.plot(test_dates, test_zrs)
-    plt.scatter(zdates, zrs, color='black')
-    plt.show()
+    # plt.plot(test_dates, test_zrs)
+    # plt.scatter(zdates, zrs, color='black')
+    # plt.show()
+
+    # Read from files
