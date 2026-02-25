@@ -32,7 +32,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
     calc_pde_vols = kwargs.get('calc_pde_vols', False)
 
     # Retrieve target market option data
-    file = vsurf.test_data_file(name, valdate)
+    file = vsurf.data_file(vsurf.test_data_folder(), name, valdate)
     surface_data = vsurf.vol_surface(file)
     expiries = surface_data.expiries
     fwds = surface_data.forwards

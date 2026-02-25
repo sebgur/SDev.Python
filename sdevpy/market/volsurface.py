@@ -93,9 +93,6 @@ def vol_surface(file):
         date = dt.datetime.strptime(date_str, dates.DATE_FORMAT)
         section['expiry'] = date
 
-    # # Sort by increasing date
-    # sections.sort(key=lambda x: x['expiry'])
-
     voldata = VolSufaceData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), sections,
                             name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT),
                             strike_input_type=strike_input_type)
@@ -103,16 +100,11 @@ def vol_surface(file):
     return voldata
 
 
-def data_file(folder, name, date, extension='json'):
+def data_file(folder, name, date):
     name_folder = os.path.join(folder, name)
     os.makedirs(name_folder, exist_ok=True)
-    file = os.path.join(name_folder, date.strftime(dates.DATE_FILE_FORMAT) + "." + extension)
+    file = os.path.join(name_folder, date.strftime(dates.DATE_FILE_FORMAT) + ".json")
     return file
-
-
-def test_data_file(name, date, extension='json'):
-    folder = test_data_folder()
-    return data_file(folder, name, date, extension=extension)
 
 
 def test_data_folder():
