@@ -8,7 +8,7 @@ from sdevpy.tools import dates
 class VolSufaceData:
     def __init__(self, valdate, sections, **kwargs):
         self.valdate = valdate
-        self.name = kwargs.get('name', 'MyIndex')
+        self.name = kwargs.get('name', 'ABC')
         self.snapdate = kwargs.get('snapdate', valdate)
         self.strike_input_type = kwargs.get('strike_input_type', 'absolute').lower()
 
@@ -110,13 +110,13 @@ def data_file(folder, name, date):
 def test_data_folder():
     folder = Path(__file__).parent.parent.parent.resolve()
     dataset_folder = os.path.join(folder, "datasets")
-    folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "options")
+    folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "eqoptions")
     os.makedirs(folder, exist_ok=True)
     return folder
 
 
 if __name__ == "__main__":
-    name = "MyIndex"
+    name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
     folder = test_data_folder()
 

@@ -151,7 +151,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import numpy as np
 
-    name = "CalibIndex" # "MyIndex"
+    name = "XYZ" # "ABC"
     valdate = dt.datetime(2025, 12, 15)
     folder = test_data_folder()
 
