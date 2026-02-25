@@ -168,6 +168,9 @@ class LinearInterpolator(Interpolator):
 ######## Extrapolators ############################################################################
 class NoneExtrapolator(Interpolator):
     """ No extrapolation. Error returned if used. """
+    def initialize(self):
+        pass
+
     def value(x):
         raise ValueError("Extrapolation not allowed")
 

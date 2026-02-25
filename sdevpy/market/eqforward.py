@@ -4,16 +4,12 @@ import numpy as np
 from pathlib import Path
 from sdevpy.tools import dates, timegrids
 from sdevpy.maths import interpolation as itp
+from sdevpy.market import yieldcurve as ycrv
 
-
-########### TODO ##################
-# * Sounds like we had better split raw market data from the object.
-# * Have an EqForwardData object that purely retrieves the forward data curve
-# * Then have a modelling object which can evaluate
 
 class EqForwardData:
     def __init__(self, valdate, pillars, **kwargs):
-        self.valdate = kwargs.get('valdate', None)
+        self.valdate = valdate
         self.snapdate = kwargs.get('snapdate', self.valdate)
         self.name = kwargs.get('name', '')
 
@@ -33,7 +29,7 @@ class EqForwardData:
         pillars = []
         for expiry, forward in zip(self.expiries, self.forwards):
             expiry_str = expiry.strftime(dates.DATE_FORMAT)
-            pillar = {'expiry': expiry_str, 'forward': self.forwards[i]}
+            pillar = {'expiry': expiry_str, 'forward': forward}
             pillars.append(pillar)
 
         data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
@@ -51,54 +47,51 @@ class EqForwardCurve:
         self.interp_type = kwargs.get('interp_type', 'cubispline').lower()
         self.interp = None
 
-    def calibrate(self, dates, fwds, spot, yieldcurve=None):
+    def calibrate(self, data, spot, yieldcurve=None):
+        """ The data input is of type EqForwardData which contains pre-sorted data """
         self.spot = spot
         self.yieldcurve = yieldcurve
+        self.dates = data.expiries
+        self.fwds = data.forwards
 
         # Check consistency
-        for d in dates:
+        for d in self.dates:
             if d <= self.valdate:
                 raise RuntimeError(f"Expiry before or at valuation date: {d.strftime(dates.DATE_FORMAT)}")
 
-        # Sort
-        sorted_pillars = [{'expiry': d, 'forward': f} for d, f in zip(dates, fwds)]
-        sorted_pillars.sort(lambda x: x['expiry'])
-        self.dates = [p['expiry'] for p in sorted_pillars]
-        self.fwds = [p['forward'] for p in sorted_pillars]
-
         # Calibrate
-        if interp_var == 'yield':
+        if self.interp_var == 'yield':
             if yieldcurve is None:
                 raise RuntimeError("Yield curve must be provided for dividend yield-based EQ forward curve construction")
 
             int_dates, calc_fwds = np.asarray(self.dates), np.asarray(self.fwds)
             int_times = timegrids.model_time(self.valdate, int_dates)
             # Calculate yields
-            yields = np.log(spot * yieldcurve.discount(calc_dates) / calc_fwds) / int_times
-            self.interp = itp.create_interpolation(interp=self.interp_type, l_extrap=flat, r_extrap='flat')
+            yields = np.log(spot * yieldcurve.discount(int_dates) / calc_fwds) / int_times
+            self.interp = itp.create_interpolation(interp=self.interp_type, l_extrap='flat', r_extrap='flat')
             self.interp.set_data(int_times, yields)
-        elif interp_var == 'forward':
+        elif self.interp_var == 'forward':
             int_dates, int_fwds = [self.valdate], [spot]
             int_dates.extend(self.dates)
             int_fwds.extend(self.fwds)
             int_times = timegrids.model_time(self.valdate, int_dates)
-            self.interp = itp.create_interpolation(interp=self.interp_type, l_extrap=None, r_extrap='flat')
+            self.interp = itp.create_interpolation(interp=self.interp_type, l_extrap='flat', r_extrap='flat')
             self.interp.set_data(int_times, int_fwds)
         else:
-            raise RuntimeError(f"Unknown forward interpolation variable: {interp_var}")
+            raise RuntimeError(f"Unknown forward interpolation variable: {self.interp_var}")
 
     def value(self, date):
         t = timegrids.model_time(self.valdate, date)
-        if interp_var == 'yield':
+        if self.interp_var == 'yield':
             if self.yieldcurve is None:
                 raise RuntimeError("Missing yield curve when calculating EQ forward using dividend yields")
 
             y = self.interp.value(t)
             return spot * self.yieldcurve.discount(date) * np.exp(-y * t)
-        elif interp_var == 'forward':
+        elif self.interp_var == 'forward':
             return self.interp.value(t)
         else:
-            raise RuntimeError(f"Unknown forward interpolation variable: {interp_var}")
+            raise RuntimeError(f"Unknown forward interpolation variable: {self.interp_var}")
 
 
 def eqforwarddata_from_file(file):
@@ -112,16 +105,17 @@ def eqforwarddata_from_file(file):
 
     # Convert date strings into dates
     for pillar in pillars:
-        date_str = section.get('expiry')
+        date_str = pillar.get('expiry')
         date = dt.datetime.strptime(date_str, dates.DATE_FORMAT)
-        pillars['expiry'] = date
+        pillar['expiry'] = date
 
     data = EqForwardData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), pillars,
                          name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT))
     return data
 
 
-def data_file(folder, name, date):
+def data_file(name, date, **kwargs):
+    folder = kwargs.get('folder', test_data_folder())
     name_folder = os.path.join(folder, name)
     os.makedirs(name_folder, exist_ok=True)
     file = os.path.join(name_folder, date.strftime(dates.DATE_FILE_FORMAT) + ".json")
@@ -137,23 +131,40 @@ def test_data_folder():
 
 
 if __name__ == "__main__":
-    name = "ABC"
-    valdate = dt.datetime(2025, 12, 15)
-    folder = test_data_folder()
+    import matplotlib.pyplot as plt
 
-    # # Generate a sample to start from
-    # from sdevpy.models import svivol
-    # terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
-    # expiries, fwds, strike_surface, vol_surface = svivol.generate_sample_data(valdate, terms)
-    # strike_types = ['absolute' for expiry in expiries]
-    # surface_data = VolSufaceData(valdate, expiries, fwds, strike_surface, vol_surface, strike_types,
-    #                              name=name)
-    # file = data_file(folder, name, valdate)
-    # surface_data.dump(file)
+    name = "ABC"
+    valdate = dt.datetime(2026, 2, 15)
+
+    # Generate a sample to start from
+    spot = 100.0
+    expiries = [dt.datetime(2026, 3, 15), dt.datetime(2026, 8, 15), dt.datetime(2027, 2, 15),
+                dt.datetime(2031, 2, 15), dt.datetime(2036, 2, 15)]
+    zrs = np.asarray([-0.01, -0.015, -0.020, -0.022, -0.025])
+    ztimes = timegrids.model_time(valdate, expiries)
+    zfwds = spot * np.exp(-zrs * ztimes)
+
+    pillars = [{'expiry': d, 'forward': f} for d, f in zip(expiries, zfwds)]
+    data = EqForwardData(valdate, pillars, name=name)
+    file = data_file(name, valdate)
+    data.dump(file)
 
     # Get data from existing file
-    file = data_file(folder, name, valdate)
-    surface_data = vol_surface(file)
-    print(surface_data.get_strikes('absolute'))
-    print(surface_data.get_strikes('relative'))
-    surface_data.pretty_print(4)
+    test_data = eqforwarddata_from_file(file)
+
+    # Create forward curve
+    curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
+    yieldcurve = ycrv.get_yieldcurve('USD.SOFR.1D', valdate)
+    curve.calibrate(test_data, spot, yieldcurve)
+
+    # Interpolate and display
+    test_dates = [dates.date_advance(valdate, months=1*n) for n in range(1, 150)]
+    test_fwds = curve.value(test_dates)
+
+    # Original data
+    base_dates = test_data.expiries
+    base_fwds = test_data.forwards
+
+    plt.plot(test_dates, test_fwds)
+    plt.scatter(base_dates, base_fwds, color='black')
+    plt.show()

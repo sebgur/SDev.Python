@@ -132,6 +132,13 @@ class YieldCurveVariable(Enum):
     LOG_DISCOUNT = 2
 
 
+def get_yieldcurve(name, date, **kwargs):
+    folder = kwargs.get('folder', test_data_folder())
+    file = data_file(name, date, folder=folder)
+    curve = yieldcurve_from_file(file)
+    return curve
+
+
 def yieldcurve_from_file(file):
     with open(file, 'r') as f:
         data = json.load(f)
