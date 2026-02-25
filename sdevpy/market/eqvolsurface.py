@@ -5,11 +5,11 @@ from pathlib import Path
 from sdevpy.tools import dates
 
 
-class VolSufaceData:
+class EqVolSufaceData:
     def __init__(self, valdate, sections, **kwargs):
         self.valdate = valdate
-        self.name = kwargs.get('name', 'ABC')
-        self.snapdate = kwargs.get('snapdate', valdate)
+        self.name = kwargs.get('name', '')
+        self.snapdate = kwargs.get('snapdate', self.valdate)
         self.strike_input_type = kwargs.get('strike_input_type', 'absolute').lower()
 
         # Sort by increasing date
@@ -77,7 +77,7 @@ class VolSufaceData:
         print(sep)
 
 
-def vol_surface(file):
+def eqvolsurfacedata_from_file(file):
     with open(file, 'r') as f:
         data = json.load(f)
 
@@ -93,11 +93,10 @@ def vol_surface(file):
         date = dt.datetime.strptime(date_str, dates.DATE_FORMAT)
         section['expiry'] = date
 
-    voldata = VolSufaceData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), sections,
-                            name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT),
-                            strike_input_type=strike_input_type)
-
-    return voldata
+    data = EqVolSufaceData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), sections,
+                           name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT),
+                           strike_input_type=strike_input_type)
+    return data
 
 
 def data_file(folder, name, date):
@@ -132,7 +131,7 @@ if __name__ == "__main__":
 
     # Get data from existing file
     file = data_file(folder, name, valdate)
-    surface_data = vol_surface(file)
+    surface_data = eqvolsurfacedata_from_file(file)
     print(surface_data.get_strikes('absolute'))
     print(surface_data.get_strikes('relative'))
     surface_data.pretty_print(4)

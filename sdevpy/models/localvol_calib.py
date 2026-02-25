@@ -11,7 +11,7 @@ from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
 from sdevpy.maths.optimization import *
-from sdevpy.market import volsurface as vsurf
+from sdevpy.market import eqvolsurface as vsurf
 
 
 ########## ToDo ########################################################################
@@ -33,7 +33,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
 
     # Retrieve target market option data
     file = vsurf.data_file(vsurf.test_data_folder(), name, valdate)
-    surface_data = vsurf.vol_surface(file)
+    surface_data = vsurf.eqvolsurfacedata_from_file(file)
     expiries = surface_data.expiries
     fwds = surface_data.forwards
     strike_surface = surface_data.get_strikes('absolute')

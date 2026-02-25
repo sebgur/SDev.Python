@@ -4,16 +4,14 @@ import datetime as dt
 import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum
-from sdevpy.tools import timegrids
-from sdevpy.tools import dates
+from sdevpy.tools import timegrids, dates
 from sdevpy.maths import interpolation as itp
-
 
 
 class YieldCurve(ABC):
     def __init__(self, **kwargs):
         self.valdate = kwargs.get('valdate', None)
-        self.snapdate = self.valdate  # For now, until we calibrate
+        self.snapdate = kwargs.get('snapdate', self.valdate)
         self.name = kwargs.get('name', '')
 
     @abstractmethod
