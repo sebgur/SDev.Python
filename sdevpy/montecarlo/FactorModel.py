@@ -16,7 +16,7 @@ class MultiAssetGBM(FactorModel):
     def __init__(self, spot, sigma, lv, fwd_curve, time_grid, **kwargs):
         self.spot = spot
         self.fwd_curve = fwd_curve
-        self.sigma = sigma
+        self.sigma = np.asarray(sigma)
         self.lv = lv
         self.time_grid = time_grid
         self.n_factors = len(self.spot) # Used by PathGenerator
@@ -30,21 +30,6 @@ class MultiAssetGBM(FactorModel):
 
     def initial_state(self):
         return self.spot.copy()
-
-    # def simulate_step(self, state, t_idx, Z):
-    #     fs = self.fwd_grid[t_idx - 1]
-    #     fe = self.fwd_grid[t_idx]
-    #     ts = self.time_grid[t_idx - 1]
-    #     te = self.time_grid[t_idx]
-
-    #     # Calculate the log-moneyness to evaluate the local vol
-    #     logms = np.log(state / fs)
-    #     vol = self.lv
-
-    #     # Now evolve
-    #     dt = te - ts
-    #     dW = Z * np.sqrt(dt)
-    #     return fe * np.exp(logms - 0.5 * vol**2 * dt + vol * dW)
 
     def evolve_state(self, state, t_idx, dW):
         fs = self.fwd_grid[t_idx - 1]
@@ -61,6 +46,8 @@ class MultiAssetGBM(FactorModel):
             lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
             lvols = lvols.T
             vol = lvols
+
+        # print(vol)
 
         # Now evolve
         dt = te - ts

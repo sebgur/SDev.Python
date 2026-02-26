@@ -12,13 +12,13 @@ from sdevpy.tools import timegrids, timer
 
 
 #################### TODO #########################################################################
-# * Handle event dates: check what happens if maturity date (as event) is last on disc. grid
+# * Introduce portfolios
 # * UT for MC with all payoffs
+# * Handle event dates: check what happens if maturity date (as event) is last on disc. grid
 # * Introduce discount curve and discount at cash-flow payment times
 # * Implement simple forward curve as linear interpolation of surface's forwards
 # * Introduce concept of past fixings
 # * Implement var swap spread payoff
-# * Introduce portfolios
 # * Introduce multi-cash-flow payoffs
 # * Check accuracy against LV calib
 # * Calculate vega through LV calib
@@ -34,7 +34,7 @@ from sdevpy.tools import timegrids, timer
 
 def get_spots(names, valdate):
     """ Temp function to get the spots. ToDo: replace by proper function """
-    mkt_spot_data = {'AAPL': 100.0, 'CalibIndex': 100.0, 'SPX': 50.0}
+    mkt_spot_data = {'ABC': 100.0, 'KLM': 100.0, 'XYZ': 50.0}
     spots = np.asarray([mkt_spot_data.get(name, None) for name in names])
     return spots
 
@@ -51,11 +51,14 @@ def get_forward_curves(names, valdate):
     return fwd_curves
 
 
-def get_local_vols(names, valdate):
-    sigma = np.asarray([0.2, 0.3, 0.1])
-    lv = lvf.load_lv_from_folder(None, valdate, 'CalibIndex', lvf.test_data_folder())
-    lvs = [lv, lv, lv]
-    return lvs, sigma
+def get_local_vols(names, valdate, **kwargs):
+    folder = kwargs.get('folder', lvf.test_data_folder())
+    lvs, sigmas = [], []
+    for name in names:
+        sigmas.append(0.2)
+        lvs.append(lvf.load_lv_from_folder(None, valdate, name, folder))
+
+    return lvs, sigmas
 
 
 def get_correlations(names, valdate):
@@ -87,11 +90,11 @@ if __name__ == "__main__":
 
     # Create portfolio
     book = []
-    v_name, v_strike, v_type = 'CalibIndex', 100.0, 'Call' # For check against CF
+    v_name, v_strike, v_type = 'ABC', 100.0, 'Call' # For check against CF
     book.append(VanillaOption(v_name, v_strike, v_type))
-    book.append(BasketOption(['SPX', 'AAPL'], [0.5, 0.1], 100.0, 'Call'))
-    book.append(AsianOption('CalibIndex', 100.0, 'Call'))
-    book.append(WorstOfBarrier(['CalibIndex', 'SPX'], 100.0, 'Call', 35.0))
+    book.append(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call'))
+    book.append(AsianOption('ABC', 100.0, 'Call'))
+    book.append(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0))
 
     # Gather model information relevant to required assets
     names = list_names(book)

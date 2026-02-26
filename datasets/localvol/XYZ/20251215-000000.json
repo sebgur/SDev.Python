@@ -1,0 +1,55 @@
+{
+  "name": "XYZ",
+  "valdate": "15-Dec-25",
+  "snapdate": "15-Dec-2025 00:00:00",
+  "sections": [
+    {
+      "time": 0.0986301,
+      "model": "BiExp",
+      "params": {
+        "f0": 0.25,
+        "fl": 0.3,
+        "fr": 0.28,
+        "taul": 0.04,
+        "taur": 0.02,
+        "fp": 0.0
+      }
+    },
+    {
+      "time": 0.5,
+      "model": "BiExp",
+      "params": {
+        "f0": 0.5,
+        "fl": 0.2,
+        "fr": 0.2,
+        "taul": 0.2,
+        "taur": 0.2,
+        "fp": 0.2
+      }
+    },
+    {
+      "time": 1.5,
+      "model": "BiExp",
+      "params": {
+        "f0": 1.0,
+        "fl": 0.4,
+        "fr": 0.4,
+        "taul": 0.4,
+        "taur": 0.4,
+        "fp": 0.4
+      }
+    },
+    {
+      "time": 1.875,
+      "model": "BiExp",
+      "params": {
+        "f0": 0.5,
+        "fl": 0.2,
+        "fr": 0.2,
+        "taul": 0.2,
+        "taur": 0.2,
+        "fp": 0.2
+      }
+    }
+  ]
+}
