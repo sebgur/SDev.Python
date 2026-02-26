@@ -1,3 +1,5 @@
+""" The MC path builder only requires the paths of the underlying assets as a big
+    multi-d vector. This way we can get those paths from an independent engine. """
 import numpy as np
 import datetime as dt
 from sdevpy.models import localvol_factory as lvf
@@ -6,32 +8,17 @@ from sdevpy.montecarlo.FactorModel import MultiAssetGBM
 from sdevpy.montecarlo.PathGenerator import PathGenerator
 from sdevpy.market.spot import get_spots
 from sdevpy.market.yieldcurve import get_yieldcurve
+from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.montecarlo.payoffs.basic import get_eventdates
-
-
-# The MC path builder only requires the paths of the underlying assets as a big
-# multi-d vector. This way we can get those paths from an independent engine.
-
-def get_forward_curves(names, valdate):
-    spot = get_spots(names, valdate)
-    drift = np.asarray([0.02, 0.05, 0.04])
-    fwd_curves = []
-    for s, mu in zip(spot, drift):
-        # Use the default variable trick to circumvent late binding in python loops
-        # Otherwise, all the lambda functions will effectively be the same
-        fwd_curves.append(lambda t, s=s, mu=mu: s * np.exp(mu * t))
-
-    return fwd_curves
 
 
 def get_local_vols(names, valdate, **kwargs):
     folder = kwargs.get('folder', lvf.test_data_folder())
-    lvs, sigmas = [], []
+    lvs = []
     for name in names:
-        sigmas.append(0.2)
         lvs.append(lvf.load_lv_from_folder(None, valdate, name, folder))
 
-    return lvs, sigmas
+    return lvs
 
 
 def get_correlations(names, valdate):
@@ -57,14 +44,14 @@ def price_book(valdate, book, **kwargs):
     disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     spot = get_spots(names, valdate)
     fwd_curves = get_forward_curves(names, valdate)
-    lvs, sigma = get_local_vols(names, valdate)
+    lvs = get_local_vols(names, valdate)
     corr = get_correlations(names, valdate)
 
     # Build time grid
     disc_tgrid = build_timegrid(valdate, eventdates, McConfig(**kwargs))
 
     # Set model
-    model = MultiAssetGBM(spot, sigma, lvs, fwd_curves, disc_tgrid)
+    model = MultiAssetGBM(spot, fwd_curves, lvs, disc_tgrid)
 
     # Set spot path generator
     generator = PathGenerator(model, disc_tgrid, **kwargs, corr_matrix=corr)

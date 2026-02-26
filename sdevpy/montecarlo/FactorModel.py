@@ -13,13 +13,13 @@ class FactorModel(ABC):
 
 
 class MultiAssetGBM(FactorModel):
-    def __init__(self, spot, sigma, lv, fwd_curve, time_grid, **kwargs):
+    def __init__(self, spot, fwd_curve, lv, time_grid, **kwargs):
         self.spot = spot
         self.fwd_curve = fwd_curve
-        self.sigma = np.asarray(sigma)
         self.lv = lv
         self.time_grid = time_grid
         self.n_factors = len(self.spot) # Used by PathGenerator
+        self.sigma = np.asarray([0.2 for _ in range(self.n_factors)])#np.asarray(sigma)
         self.use_lv = kwargs.get('use_lv', False)
 
         # Cache forwards

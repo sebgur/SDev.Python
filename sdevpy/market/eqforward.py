@@ -5,6 +5,25 @@ from pathlib import Path
 from sdevpy.tools import dates, timegrids
 from sdevpy.maths import interpolation as itp
 from sdevpy.market import yieldcurve as ycrv
+from sdevpy.market.spot import get_spots
+
+
+def get_forward_curves(names, valdate, **kwargs):
+    # eqforwarddata = []
+    # for name in names:
+    #     file = data_file(name, valdate, **kwargs)
+    #     data = eqforwarddata_from_file(file)
+    #     eqforwarddata.append(data)
+
+    spot = get_spots(names, valdate)
+    drift = np.asarray([0.02, 0.05, 0.04])
+    fwd_curves_old = []
+    for s, mu in zip(spot, drift):
+        # Use the default variable trick to circumvent late binding in python loops
+        # Otherwise, all the lambda functions will effectively be the same
+        fwd_curves_old.append(lambda t, s=s, mu=mu: s * np.exp(mu * t))
+
+    return fwd_curves_old
 
 
 class EqForwardData:
@@ -82,12 +101,27 @@ class EqForwardCurve:
 
     def value(self, date):
         t = timegrids.model_time(self.valdate, date)
+        fwd = self.value_float(t)
+        return fwd
+        # t = timegrids.model_time(self.valdate, date)
+        # if self.interp_var == 'yield':
+        #     if self.yieldcurve is None:
+        #         raise RuntimeError("Missing yield curve when calculating EQ forward using dividend yields")
+
+        #     y = self.interp.value(t)
+        #     return spot * self.yieldcurve.discount(date) * np.exp(-y * t)
+        # elif self.interp_var == 'forward':
+        #     return self.interp.value(t)
+        # else:
+        #     raise RuntimeError(f"Unknown forward interpolation variable: {self.interp_var}")
+
+    def value_float(self, t):
         if self.interp_var == 'yield':
             if self.yieldcurve is None:
                 raise RuntimeError("Missing yield curve when calculating EQ forward using dividend yields")
 
             y = self.interp.value(t)
-            return spot * self.yieldcurve.discount(date) * np.exp(-y * t)
+            return spot * self.yieldcurve.discount_float(t) * np.exp(-y * t)
         elif self.interp_var == 'forward':
             return self.interp.value(t)
         else:
