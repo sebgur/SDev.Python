@@ -24,7 +24,7 @@ def test_mc():
     mc_price = price_book(valdate, book, scramble=False, constr_type='brownianbridge',
                           rng_type='sobol', n_paths=2000)
     test = mc_price['pv']
-    ref = np.asarray([8.919713310, 0.0, 5.001780666, 0.008079992])
-    # ref = np.asarray([8.937606441, 0, 5.041470461, 0.001085125])
+    ref = np.asarray([8.811443508, 0.0, 4.890335672, 0.006843482])
+    # ref = np.asarray([8.919713310, 0.0, 5.001780666, 0.008079992])
 
     assert np.allclose(test, ref, 1e-8)

@@ -14,10 +14,8 @@ from sdevpy.market.yieldcurve import get_yieldcurve
 
 
 #################### TODO #########################################################################
-# * Expose forward curve
 # * Calculate payoff indexes on event date grid?
 # * Multi-cashflow design
-# * Handle event dates: check what happens if maturity date (as event) is last on disc. grid
 # * Introduce concept of past fixings
 # * Implement var swap spread payoff
 # * Check accuracy against LV calib
@@ -57,15 +55,16 @@ if __name__ == "__main__":
     # Closed-form for vanilla
     disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     fwd_curves = get_forward_curves(names, valdate)
-    lvs, sigma = get_local_vols(names, valdate)
+    lvs = get_local_vols(names, valdate)
     eventdates = get_eventdates(book)
     event_tgrid = np.array([timegrids.model_time(valdate, date) for date in eventdates])
     dmax = eventdates.max()
     T = event_tgrid[-1]
     name_idx = names.index(v_name)
-    fwd = fwd_curves[name_idx](T)
+    fwd = fwd_curves[name_idx].value_float(T)
     df = disc_curve.discount(dmax)
     print(df)
+    sigma = np.asarray([0.2] * len(names))
     cf_price = df * black.price(T, v_strike, v_type, fwd, sigma[name_idx])
 
     print("MC:", mc_price['pv'][0])

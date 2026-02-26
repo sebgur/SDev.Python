@@ -9,21 +9,25 @@ from sdevpy.market.spot import get_spots
 
 
 def get_forward_curves(names, valdate, **kwargs):
-    # eqforwarddata = []
-    # for name in names:
-    #     file = data_file(name, valdate, **kwargs)
-    #     data = eqforwarddata_from_file(file)
-    #     eqforwarddata.append(data)
+    spots = get_spots(names, valdate)
 
-    spot = get_spots(names, valdate)
-    drift = np.asarray([0.02, 0.05, 0.04])
-    fwd_curves_old = []
-    for s, mu in zip(spot, drift):
-        # Use the default variable trick to circumvent late binding in python loops
-        # Otherwise, all the lambda functions will effectively be the same
-        fwd_curves_old.append(lambda t, s=s, mu=mu: s * np.exp(mu * t))
+    fwd_curves = []
+    for name, spot in zip(names, spots):
+        file = data_file(name, valdate, **kwargs)
+        data = eqforwarddata_from_file(file)
+        curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
+        # yieldcurve = ycrv.get_yieldcurve('USD.SOFR.1D', valdate)
+        curve.calibrate(data, spot)#, yieldcurve)
+        fwd_curves.append(curve)
 
-    return fwd_curves_old
+    # drifts = np.asarray([0.02, 0.05, 0.04])
+    # fwd_curves_old = []
+    # for s, mu in zip(spots, drifts):
+    #     # Use the default variable trick to circumvent late binding in python loops
+    #     # Otherwise, all the lambda functions will effectively be the same
+    #     fwd_curves_old.append(lambda t, s=s, mu=mu: s * np.exp(mu * t))
+
+    return fwd_curves
 
 
 class EqForwardData:
@@ -90,7 +94,7 @@ class EqForwardCurve:
             self.interp = itp.create_interpolation(interp=self.interp_type, l_extrap='flat', r_extrap='flat')
             self.interp.set_data(int_times, yields)
         elif self.interp_var == 'forward':
-            int_dates, int_fwds = [self.valdate], [spot]
+            int_dates, int_fwds = [self.valdate], [self.spot]
             int_dates.extend(self.dates)
             int_fwds.extend(self.fwds)
             int_times = timegrids.model_time(self.valdate, int_dates)
@@ -103,17 +107,6 @@ class EqForwardCurve:
         t = timegrids.model_time(self.valdate, date)
         fwd = self.value_float(t)
         return fwd
-        # t = timegrids.model_time(self.valdate, date)
-        # if self.interp_var == 'yield':
-        #     if self.yieldcurve is None:
-        #         raise RuntimeError("Missing yield curve when calculating EQ forward using dividend yields")
-
-        #     y = self.interp.value(t)
-        #     return spot * self.yieldcurve.discount(date) * np.exp(-y * t)
-        # elif self.interp_var == 'forward':
-        #     return self.interp.value(t)
-        # else:
-        #     raise RuntimeError(f"Unknown forward interpolation variable: {self.interp_var}")
 
     def value_float(self, t):
         if self.interp_var == 'yield':
@@ -121,7 +114,7 @@ class EqForwardCurve:
                 raise RuntimeError("Missing yield curve when calculating EQ forward using dividend yields")
 
             y = self.interp.value(t)
-            return spot * self.yieldcurve.discount_float(t) * np.exp(-y * t)
+            return self.spot * self.yieldcurve.discount_float(t) * np.exp(-y * t)
         elif self.interp_var == 'forward':
             return self.interp.value(t)
         else:

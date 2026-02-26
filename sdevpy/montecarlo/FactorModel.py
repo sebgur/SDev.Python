@@ -25,7 +25,8 @@ class MultiAssetGBM(FactorModel):
         # Cache forwards
         fwd_grid = []
         for t in time_grid:
-            fwd_grid.append(np.asarray([f(t) for f in fwd_curve]))
+            fwd_grid.append(np.asarray([f.value_float(t) for f in fwd_curve]))
+            # fwd_grid.append(np.asarray([f(t) for f in fwd_curve]))
         self.fwd_grid = np.asarray(fwd_grid)
 
     def initial_state(self):

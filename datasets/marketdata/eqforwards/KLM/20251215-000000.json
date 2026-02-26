@@ -1,0 +1,27 @@
+{
+  "name": "KLM",
+  "valdate": "15-Dec-2025",
+  "snapdate": "15-Dec-2025 00:00:00",
+  "pillars": [
+    {
+      "expiry": "15-Jan-2026",
+      "forward": 100.0767
+    },
+    {
+      "expiry": "15-Jun-2026",
+      "forward": 100.7466
+    },
+    {
+      "expiry": "15-Jan-2027",
+      "forward": 102.0201
+    },
+    {
+      "expiry": "15-Jan-2031",
+      "forward": 111.6345
+    },
+    {
+      "expiry": "15-Jan-2036",
+      "forward": 128.4201
+    }
+  ]
+}
