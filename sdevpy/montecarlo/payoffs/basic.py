@@ -2,6 +2,21 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 
+def list_names(payoffs):
+    """ List all the names behind the payoffs. Duplicates are removed and we order
+        the result to avoid noise due to re-ordering of the random numbers depending
+        on the order in which the trades are listed in the book. """
+    names = []
+    for payoff in payoffs:
+        new_names = payoff.names
+        if new_names is not None:
+            names.extend(new_names)
+
+    names = sorted(set(names))
+    names = names if len(names) != 0 else None
+    return names
+
+
 class Trade:
     def __init__(self, instrument, **kwargs):
         self.instrument = instrument
@@ -73,22 +88,6 @@ class Payoff(ABC):
 
     def __rtruediv__(self, other): # Otherwise doesn't work when starting with constant
         return Div(ensure_payoff(other), self)
-
-
-def list_names(payoffs):
-    """ List all the names behind the payoffs. Duplicates are removed and we also
-        order the result. The reason is to avoid random noise due to re-ordering
-        of the random number sequences depending on the order in which the trades
-        are listed in the book. """
-    names = []
-    for payoff in payoffs:
-        new_names = payoff.names
-        if new_names is not None:
-            names.extend(new_names)
-
-    names = sorted(set(names))
-    names = names if len(names) != 0 else None
-    return names
 
 
 def ensure_payoff(x):

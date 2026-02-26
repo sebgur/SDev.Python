@@ -9,6 +9,7 @@ from sdevpy.montecarlo.MonteCarloPricer import *
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.analytics import black
 from sdevpy.tools import timegrids, timer
+from sdevpy.tools import book as bk
 
 
 #################### TODO #########################################################################
@@ -33,22 +34,21 @@ if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
 
     # Create portfolio
-    book = []
+    book = bk.Book()
+    trades = []
     v_name, v_strike, v_type = 'ABC', 100.0, 'Call' # For check against CF
-    book.append(Trade(VanillaOption(v_name, v_strike, v_type), name="vanilla"))
-    book.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call'), name="basket"))
-    book.append(Trade(AsianOption('ABC', 100.0, 'Call'), name="asian"))
-    book.append(Trade(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0), name="worstof"))
+    trades.append(Trade(VanillaOption(v_name, v_strike, v_type), name="vanilla"))
+    trades.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call'), name="basket"))
+    trades.append(Trade(AsianOption('ABC', 100.0, 'Call'), name="asian"))
+    trades.append(Trade(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0), name="worstof"))
+    book.add_trades(trades)
 
-    # Gather all names in the book and set their indexes in the instruments
-    names = list_names([t.instrument for t in book])
-    n_names = len(names)
-    for trade in book:
-        trade.instrument.set_nameindexes(names)
-
+    # Gather all names in the book
+    names = book.names
     print(f"Book names: {names}")
-    print(f"Number of assets: {n_names}")
+    print(f"Number of assets: {len(names)}")
 
+    # Price book
     mc_price = price_book(valdate, book)
     print(mc_price)
 

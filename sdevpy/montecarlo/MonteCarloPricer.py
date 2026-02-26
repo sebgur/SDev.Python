@@ -1,6 +1,6 @@
 import numpy as np
 import datetime as dt
-from sdevpy.montecarlo.payoffs.basic import list_names
+# from sdevpy.montecarlo.payoffs.basic import list_names
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.tools import timegrids, timer
 from sdevpy.montecarlo.FactorModel import MultiAssetGBM
@@ -65,13 +65,15 @@ def build_timegrid(valdate, eventdates, config):
 
 def price_book(valdate, book, **kwargs):
     # Gather all names in the book and set their indexes in the instruments
-    names = list_names([t.instrument for t in book])
-    n_names = len(names)
-    for trade in book:
-        trade.instrument.set_nameindexes(names)
+    names = book.names
+    # names = list_names([t.instrument for t in book])
+    # n_names = len(names)
+    # for trade in book:
+    #     trade.instrument.set_nameindexes(names)
 
     # Retrieve discount curve, assuming all payoffs in same currency/same CSA
-    csa_ccy = book_currency(book)
+    csa_curve_id = book.csa_curve_id
+    # csa_ccy = book_currency(book)
     df = 0.90
 
     # Retrieve modelling data
@@ -126,7 +128,7 @@ class MonteCarloPricer:
     def build(self, paths, book):
         ids = []
         pvs = []
-        for trade in book:
+        for trade in book.trades:
             instr = trade.instrument
             instr_paths = instr.evaluate(paths)
             disc_pvs = self.df * np.mean(instr_paths)
