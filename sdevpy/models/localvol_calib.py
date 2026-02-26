@@ -54,7 +54,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
 
     # Set forward PDE
     mesh_vol = vol_surface.mean()
-    pde_config = fpde.PdeConfig(n_time_steps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],
+    pde_config = fpde.PdeConfig(n_timesteps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],
                                 mesh_vol=mesh_vol, scheme='rannacher', rescale_x=True, rescale_p=True)
 
     # Set objective
@@ -73,7 +73,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
         print(f"Vol surface information")
         surface_data.pretty_print()
         print(f"Mesh vol: {mesh_vol*100:.2f}%")
-        print(f"PDE time steps: {pde_config.n_time_steps}")
+        print(f"PDE time steps: {pde_config.n_timesteps}")
         print(f"PDE spot steps: {pde_config.n_meshes}")
         print(f"Optimizer: {method}")
         print(f"Tolerance: {tol}")

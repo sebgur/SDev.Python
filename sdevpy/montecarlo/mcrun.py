@@ -14,9 +14,7 @@ from sdevpy.market.yieldcurve import get_yieldcurve
 
 
 #################### TODO #########################################################################
-# * Introduce discount curve
-# * Expose McConfig choices
-# * Introduce forward curve
+# * Expose forward curve
 # * Calculate payoff indexes on event date grid?
 # * Multi-cashflow design
 # * Handle event dates: check what happens if maturity date (as event) is last on disc. grid
@@ -47,7 +45,8 @@ if __name__ == "__main__":
     book.add_trades(trades)
 
     # Price book
-    mc_price = price_book(valdate, book)
+    mc_price = price_book(valdate, book, constr_type='brownianbridge', rng_type='sobol',
+                          n_paths=100*1000)
     print(mc_price)
 
     # Gather all names in the book
@@ -56,15 +55,17 @@ if __name__ == "__main__":
     print(f"Number of assets: {len(names)}")
 
     # Closed-form for vanilla
-    df = 0.9826658045709714  #0.90
     disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     fwd_curves = get_forward_curves(names, valdate)
     lvs, sigma = get_local_vols(names, valdate)
-    eventdates = get_eventdates(book)#, valdate)
+    eventdates = get_eventdates(book)
     event_tgrid = np.array([timegrids.model_time(valdate, date) for date in eventdates])
+    dmax = eventdates.max()
     T = event_tgrid[-1]
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx](T)
+    df = disc_curve.discount(dmax)
+    print(df)
     cf_price = df * black.price(T, v_strike, v_type, fwd, sigma[name_idx])
 
     print("MC:", mc_price['pv'][0])

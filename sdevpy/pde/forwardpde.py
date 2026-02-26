@@ -113,7 +113,7 @@ def shift_to_match_forward(x, p, target_forward):
 
 class PdeConfig:
     def __init__(self, **kwargs):
-        self.n_time_steps = kwargs.get('n_time_steps', 25)
+        self.n_timesteps = kwargs.get('n_timesteps', 25)
         self.n_meshes = kwargs.get('n_meshes', 100)
         self.mesh_vol = kwargs.get('mesh_vol', 0.20)
         self.percentile = kwargs.get('percentile', 1e-6)
@@ -142,9 +142,9 @@ if __name__ == "__main__":
         # return np.asarray([np.maximum(0.01, atm_vol + skew * x) for x in x_grid])
 
     #### Diagnostics #################################################################
-    pde_config = PdeConfig(n_time_steps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher',
+    pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher',
                            rescale_x=True, rescale_p=True)
-    print(f"Time steps: {pde_config.n_time_steps}")
+    print(f"Time steps: {pde_config.n_timesteps}")
     print(f"Spot steps: {pde_config.n_meshes}")
 
     n_dev = 4 # Distribution display range in number of stdevs

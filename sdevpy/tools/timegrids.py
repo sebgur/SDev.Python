@@ -8,8 +8,8 @@ from sdevpy.tools import algos, utils
 
 def build_timegrid(t_start, t_end, config):
     """ Very simple time grid for now, to be replaced by TimeGridBuilder """
-    n_steps = config.n_time_steps
-    return np.linspace(t_start, t_end, n_steps)
+    n_steps = config.n_timesteps
+    return np.linspace(t_start, t_end, n_steps + 1)
 
 
 class TimeGridBuilder(ABC):

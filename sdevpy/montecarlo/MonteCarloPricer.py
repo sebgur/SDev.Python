@@ -60,27 +60,18 @@ def price_book(valdate, book, **kwargs):
     lvs, sigma = get_local_vols(names, valdate)
     corr = get_correlations(names, valdate)
 
-    # MC configuration
-    n_paths = 100 * 1000
-    # constr_type = 'incremental'
-    constr_type = 'brownianbridge'
-    rng_type = 'sobol'
-    n_steps = 50
-    config = McConfig(n_time_steps=n_steps + 1)
-
     # Build time grid
-    disc_tgrid = build_timegrid(valdate, eventdates, config)
+    disc_tgrid = build_timegrid(valdate, eventdates, McConfig(**kwargs))
 
     # Set model
     model = MultiAssetGBM(spot, sigma, lvs, fwd_curves, disc_tgrid)
 
     # Set spot path generator
-    generator = PathGenerator(model, disc_tgrid, constr_type=constr_type,
-                              rng_type=rng_type, scramble=False, corr_matrix=corr)
+    generator = PathGenerator(model, disc_tgrid, **kwargs, corr_matrix=corr)
 
     # MC pricer
+    n_paths = kwargs.get('n_paths', 10 * 1000)
     df = disc_curve.discount(eventdates.max())
-    # df = 0.90
     mc = MonteCarloPricer(path_generator=generator, df=df, n_paths=n_paths)
 
     # First we project the discretization grid paths on the event date paths before
@@ -124,7 +115,6 @@ class MonteCarloPricer:
             fwd_flows = instr.evaluate(paths)
             mean_fwd_flows = np.mean(fwd_flows)
             disc_pvs = self.df * mean_fwd_flows
-            # disc_pvs = self.df * np.mean(fwd_flows)
             ids.append(trade.name)
             pvs.append(disc_pvs)
 
@@ -137,5 +127,13 @@ class MonteCarloPricer:
 
 
 class McConfig:
+    """ Monte-Carlo engine config 
+        - constr_type: Brownian motion construction (incremental, brownianbridge)
+        - rng_type: random number generator (mt, sobol, halton, latinhypercube)
+    """
     def __init__(self, **kwargs):
-        self.n_time_steps = kwargs.get('n_time_steps', 25)
+        self.n_timesteps = kwargs.get('n_timesteps', 50)
+        # self.n_paths = kwargs.get('n_paths', 10 * 1000)
+        # self.constr_type = kwargs.get('constr_type', 'brownianbridge')
+        # self.rng_type = kwargs.get('rng_type', 'sobol')
+        # self.scramble = kwargs.get('scramble', False)

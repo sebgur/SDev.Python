@@ -21,53 +21,7 @@ def get_path_builder(time_grid, n_factors=1, **kwargs):
     # Correlations
     corr_matrix = kwargs.get('corr_matrix', None)
     path_builder.set_correlations(corr_matrix)
-
     return path_builder
-
-
-# def brownianbridge(n_paths, time_grid, n_factors, rng):
-#     n_steps = len(time_grid) - 1
-#     T = time_grid[-1]
-
-#     # Draw gaussians
-#     Z = rng.normal(n_paths)
-
-#     # Allocate dimensions: split (factor1, factor2, ...) into (factor1 x factor x ...)
-#     Z = Z.reshape(n_paths, n_factors, n_steps)
-
-#     # Build paths
-#     W = np.zeros((n_paths, n_factors, n_steps + 1)) # Because we use the first point at 0
-#     for d in range(n_factors):
-#         # First assign W(T)
-#         W[:, d, -1] = np.sqrt(T) * Z[:, d, 0]
-
-#         # Recursive midpoint fill
-#         intervals = [(0, n_steps)]
-
-#         z_index = 1
-#         while intervals:
-#             start, end = intervals.pop(0)
-#             mid = (start + end) // 2
-#             if mid == start or mid == end:
-#                 continue
-
-#             t_start = time_grid[start]
-#             t_mid = time_grid[mid]
-#             t_end = time_grid[end]
-
-#             mean = ((t_mid - t_start) * W[:, d, end] + (t_end - t_mid) * W[:, d, start]) / (t_end - t_start)
-#             var = (t_mid - t_start) * (t_end - t_mid) / (t_end - t_start)
-
-#             W[:, d, mid] = mean + np.sqrt(var) * Z[:, d, z_index]
-
-#             z_index += 1
-
-#             intervals.append((start, mid))
-#             intervals.append((mid, end))
-
-#     # Convert to increments
-#     dW = np.diff(W, axis=2)
-#     return dW
 
 
 def brownianbridge(n_paths, time_grid, n_factors, rng):
