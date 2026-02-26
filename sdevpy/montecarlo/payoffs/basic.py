@@ -2,6 +2,13 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 
+class Trade:
+    def __init__(self, instrument, **kwargs):
+        self.instrument = instrument
+        self.notional = kwargs.get('notional', 1.0)
+        self.name = kwargs.get('name', '')
+
+
 class Payoff(ABC):
     def __init__(self):
         self.names = None
