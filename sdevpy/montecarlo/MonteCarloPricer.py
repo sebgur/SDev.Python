@@ -51,7 +51,6 @@ def build_timegrid(valdate, eventdates, config):
 def price_book(valdate, book, **kwargs):
     book.set_nameindexes()
     eventdates = book.get_eventdates(valdate)
-    # print(f"1: {eventdates}")
 
     # Retrieve modelling data
     names = book.names
@@ -70,8 +69,6 @@ def price_book(valdate, book, **kwargs):
     config = McConfig(n_time_steps=n_steps + 1)
 
     # Build time grid
-    # eventdates = get_eventdates(book)
-    # print(f"2: {eventdates}")
     disc_tgrid = build_timegrid(valdate, eventdates, config)
 
     # Set model
@@ -82,11 +79,12 @@ def price_book(valdate, book, **kwargs):
                               rng_type=rng_type, scramble=False, corr_matrix=corr)
 
     # MC pricer
-    mc = MonteCarloPricer(path_generator=generator, disc_curve=disc_curve, n_paths=n_paths)
+    df = disc_curve.discount(eventdates.max())
+    # df = 0.90
+    mc = MonteCarloPricer(path_generator=generator, df=df, n_paths=n_paths)
 
     # First we project the discretization grid paths on the event date paths before
     # calculating the payoffs, which only require the event date paths.
-    # event_paths = mc.interpolate_eventdates(paths, eventdates)
 
     mc_price = mc.pv(book)
     mc.print_timers()
@@ -94,10 +92,9 @@ def price_book(valdate, book, **kwargs):
 
 
 class MonteCarloPricer:
-    def __init__(self, path_generator, disc_curve, n_paths):
+    def __init__(self, path_generator, df, n_paths):
         self.path_generator = path_generator
-        self.disc_curve = disc_curve
-        self.df = 0.90
+        self.df = df
         self.n_paths = n_paths
         self.timers = None
 
@@ -120,8 +117,14 @@ class MonteCarloPricer:
         pvs = []
         for trade in book.trades:
             instr = trade.instrument
-            instr_paths = instr.evaluate(paths)
-            disc_pvs = self.df * np.mean(instr_paths)
+            # In principle we should discount before taking the mean. However,
+            # here we can discount after the mean as we only consider deterministic
+            # discount rates for now. If rates were to be stochastic, the discounting,
+            # i.e. the division by the numeraire, should be done before taking the mean.
+            fwd_flows = instr.evaluate(paths)
+            mean_fwd_flows = np.mean(fwd_flows)
+            disc_pvs = self.df * mean_fwd_flows
+            # disc_pvs = self.df * np.mean(fwd_flows)
             ids.append(trade.name)
             pvs.append(disc_pvs)
 

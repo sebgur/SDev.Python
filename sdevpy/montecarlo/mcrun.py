@@ -14,13 +14,14 @@ from sdevpy.market.yieldcurve import get_yieldcurve
 
 
 #################### TODO #########################################################################
-# * Introduce discount curve and discount at cash-flow payment times
+# * Introduce discount curve
 # * Expose McConfig choices
-# * Implement simple forward curve as linear interpolation of surface's forwards
+# * Introduce forward curve
+# * Calculate payoff indexes on event date grid?
+# * Multi-cashflow design
 # * Handle event dates: check what happens if maturity date (as event) is last on disc. grid
 # * Introduce concept of past fixings
 # * Implement var swap spread payoff
-# * Introduce multi-cash-flow payoffs
 # * Check accuracy against LV calib
 # * Calculate vega through LV calib
 # * Greeks by saving BM and maybe time interpolation too?
@@ -62,10 +63,6 @@ if __name__ == "__main__":
     eventdates = get_eventdates(book)#, valdate)
     event_tgrid = np.array([timegrids.model_time(valdate, date) for date in eventdates])
     T = event_tgrid[-1]
-    df2 = disc_curve.discount(eventdates[-1])
-    df3 = disc_curve.discount_float(T)
-    print(df2)
-    print(df3)
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx](T)
     cf_price = df * black.price(T, v_strike, v_type, fwd, sigma[name_idx])

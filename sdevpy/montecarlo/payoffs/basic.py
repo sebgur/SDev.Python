@@ -49,6 +49,7 @@ class Payoff(ABC):
         self.name_idxs = None
         self.name_dic = None
         self.eventdates = []
+        # self.cashflowdates = []
 
     @abstractmethod
     def evaluate(self, paths):

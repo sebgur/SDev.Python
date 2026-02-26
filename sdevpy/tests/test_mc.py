@@ -23,6 +23,7 @@ def test_mc():
     # Price
     mc_price = price_book(valdate, book)
     test = mc_price['pv']
-    ref = np.asarray([8.185738996, 0, 4.617361664, 0.000993840])
+    # ref = np.asarray([8.185738996, 0, 4.617361664, 0.000993840])
+    ref = np.asarray([8.937606441, 0, 5.041470461, 0.001085125])
 
     assert np.allclose(test, ref, 1e-8)
