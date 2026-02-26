@@ -1,15 +1,12 @@
 import datetime as dt
-from sdevpy.market import spot as spt
-
+from sdevpy.market.spot import get_spots
 
 
 def test_spotdata():
     name = "ABC"
-    valdate = dt.datetime(2026, 2, 15)
+    valdate = dt.datetime(2025, 12, 15)
 
-    # Get data from existing file
-    file = spt.data_file(name, valdate)
-    test_data = spt.spotdata_from_file(file)
-    test = test_data.value
+    # Fetch data
+    test = get_spots([name], valdate)[0]
     ref = 100.0
     assert test == ref

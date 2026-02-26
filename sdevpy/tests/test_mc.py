@@ -19,9 +19,9 @@ def test_mc():
     trades.append(Trade(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0), name="worstof"))
     book.add_trades(trades)
 
+    # Price
     mc_price = price_book(valdate, book)
     test = mc_price['pv']
-    print(mc_price)
     ref = np.asarray([8.185738996, 0, 4.617361664, 0.000993840])
 
     assert np.allclose(test, ref, 1e-8)

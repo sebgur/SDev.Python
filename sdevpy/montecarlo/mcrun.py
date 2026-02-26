@@ -13,7 +13,6 @@ from sdevpy.tools import book as bk
 
 
 #################### TODO #########################################################################
-# * Add more runtime measurement granularity, make timer able to add/store elapsed
 # * Handle event dates: check what happens if maturity date (as event) is last on disc. grid
 # * Introduce discount curve and discount at cash-flow payment times
 # * Implement simple forward curve as linear interpolation of surface's forwards
@@ -65,5 +64,6 @@ if __name__ == "__main__":
 
     print("MC:", mc_price['pv'][0])
     print("CF:", cf_price)
+
     # timer_path.print()
     # timer_mc.print()

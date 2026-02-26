@@ -1,21 +1,14 @@
 import numpy as np
 import datetime as dt
-# from sdevpy.montecarlo.payoffs.basic import list_names
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.tools import timegrids, timer
 from sdevpy.montecarlo.FactorModel import MultiAssetGBM
 from sdevpy.montecarlo.PathGenerator import PathGenerator
+from sdevpy.market.spot import get_spots
 
 
 # The MC path builder only requires the paths of the underlying assets as a big
 # multi-d vector. This way we can get those paths from an independent engine.
-
-def get_spots(names, valdate):
-    """ Temp function to get the spots. ToDo: replace by proper function """
-    mkt_spot_data = {'ABC': 100.0, 'KLM': 100.0, 'XYZ': 50.0}
-    spots = np.asarray([mkt_spot_data.get(name, None) for name in names])
-    return spots
-
 
 def get_forward_curves(names, valdate):
     spot = get_spots(names, valdate)
@@ -64,16 +57,8 @@ def build_timegrid(valdate, eventdates, config):
 
 
 def price_book(valdate, book, **kwargs):
-    # Gather all names in the book and set their indexes in the instruments
     names = book.names
-    # names = list_names([t.instrument for t in book])
-    # n_names = len(names)
-    # for trade in book:
-    #     trade.instrument.set_nameindexes(names)
-
-    # Retrieve discount curve, assuming all payoffs in same currency/same CSA
     csa_curve_id = book.csa_curve_id
-    # csa_ccy = book_currency(book)
     df = 0.90
 
     # Retrieve modelling data
@@ -84,7 +69,7 @@ def price_book(valdate, book, **kwargs):
 
     # MC configuration
     n_paths = 100 * 1000
-    constr_type = 'incremental'
+    # constr_type = 'incremental'
     constr_type = 'brownianbridge'
     rng_type = 'sobol'
     n_steps = 50
@@ -101,29 +86,38 @@ def price_book(valdate, book, **kwargs):
     generator = PathGenerator(model, disc_tgrid, constr_type=constr_type,
                               rng_type=rng_type, scramble=False, corr_matrix=corr)
 
-    # Generate spots paths on the discretization grid: n_mc x (n_steps + 1) x n_assets
-    timer_path = timer.Stopwatch("Generate spot paths")
-    paths = generator.generate_paths(n_paths)
-    timer_path.stop()
-    # print(f"Path shape: {paths.shape}")
-
     # MC pricer
-    timer_mc = timer.Stopwatch('Payoff calculation')
-    mc = MonteCarloPricer(df=df)
+    mc = MonteCarloPricer(path_generator=generator, df=df, n_paths=n_paths)
 
     # First we project the discretization grid paths on the event date paths before
     # calculating the payoffs, which only require the event date paths.
     # event_paths = mc.interpolate_eventdates(paths, eventdates)
 
-    mc_price = mc.build(paths, book)
-    timer_mc.stop()
-
+    mc_price = mc.pv(book)
+    mc.print_timers()
     return mc_price
 
 
 class MonteCarloPricer:
-    def __init__(self, df):
+    def __init__(self, path_generator, df, n_paths):
+        self.path_generator = path_generator
         self.df = df
+        self.n_paths = n_paths
+        self.timers = None
+
+    def pv(self, book):
+        # Generate spots paths on the discretization grid: n_mc x (n_steps + 1) x n_assets
+        timer_path = timer.Stopwatch("Generate spot paths")
+        paths = self.path_generator.generate_paths(self.n_paths)
+        timer_path.stop()
+
+        # Calculate payoffs
+        timer_payoff = timer.Stopwatch('Payoff calculation')
+        pvs = self.build(paths, book)
+        timer_payoff.stop()
+
+        self.timers = [timer_path, timer_payoff]
+        return pvs
 
     def build(self, paths, book):
         ids = []
@@ -137,6 +131,10 @@ class MonteCarloPricer:
 
         result = {'id': ids, 'pv': pvs}
         return result
+
+    def print_timers(self):
+        for timer in self.timers:
+            timer.print()
 
 
 class McConfig:

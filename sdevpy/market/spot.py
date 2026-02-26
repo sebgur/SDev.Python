@@ -1,7 +1,18 @@
 import os, json
 import datetime as dt
+import numpy as np
 from pathlib import Path
 from sdevpy.tools import dates
+
+
+def get_spots(names, valdate, **kwargs):
+    spots = []
+    for name in names:
+        file = data_file(name, valdate, **kwargs)
+        data = spotdata_from_file(file)
+        spots.append(data.value)
+
+    return np.asarray(spots)
 
 
 class SpotData:
