@@ -10,12 +10,14 @@ from sdevpy.models import localvol_factory as lvf
 from sdevpy.analytics import black
 from sdevpy.tools import timegrids, timer
 from sdevpy.tools import book as bk
+from sdevpy.market.yieldcurve import get_yieldcurve
 
 
 #################### TODO #########################################################################
-# * Handle event dates: check what happens if maturity date (as event) is last on disc. grid
 # * Introduce discount curve and discount at cash-flow payment times
+# * Expose McConfig choices
 # * Implement simple forward curve as linear interpolation of surface's forwards
+# * Handle event dates: check what happens if maturity date (as event) is last on disc. grid
 # * Introduce concept of past fixings
 # * Implement var swap spread payoff
 # * Introduce multi-cash-flow payoffs
@@ -35,35 +37,38 @@ if __name__ == "__main__":
     # Create portfolio
     book = bk.Book()
     trades = []
+    expiry = dt.datetime(2026, 12, 15)
     v_name, v_strike, v_type = 'ABC', 100.0, 'Call' # For check against CF
-    trades.append(Trade(VanillaOption(v_name, v_strike, v_type), name="vanilla"))
-    trades.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call'), name="basket"))
+    trades.append(Trade(VanillaOption(v_name, v_strike, v_type, expiry), name="vanilla"))
+    trades.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry), name="basket"))
     trades.append(Trade(AsianOption('ABC', 100.0, 'Call'), name="asian"))
     trades.append(Trade(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0), name="worstof"))
     book.add_trades(trades)
+
+    # Price book
+    mc_price = price_book(valdate, book)
+    print(mc_price)
 
     # Gather all names in the book
     names = book.names
     print(f"Book names: {names}")
     print(f"Number of assets: {len(names)}")
 
-    # Price book
-    mc_price = price_book(valdate, book)
-    print(mc_price)
-
     # Closed-form for vanilla
-    df = 0.90
+    df = 0.9826658045709714  #0.90
+    disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     fwd_curves = get_forward_curves(names, valdate)
     lvs, sigma = get_local_vols(names, valdate)
-    eventdates = get_eventdates(book, valdate)
+    eventdates = get_eventdates(book)#, valdate)
     event_tgrid = np.array([timegrids.model_time(valdate, date) for date in eventdates])
     T = event_tgrid[-1]
+    df2 = disc_curve.discount(eventdates[-1])
+    df3 = disc_curve.discount_float(T)
+    print(df2)
+    print(df3)
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx](T)
     cf_price = df * black.price(T, v_strike, v_type, fwd, sigma[name_idx])
 
     print("MC:", mc_price['pv'][0])
     print("CF:", cf_price)
-
-    # timer_path.print()
-    # timer_mc.print()

@@ -1,4 +1,5 @@
-from sdevpy.montecarlo.payoffs.basic import list_names
+import numpy as np
+from sdevpy.montecarlo.payoffs.basic import list_names, list_eventdates
 from sdevpy.tools.utils import isiterable
 
 
@@ -18,11 +19,17 @@ class Book:
             self.trades.append(trades)
             self.instruments.append(trades.instrument)
 
-        self.names = list_names(self.instruments)
+    def clear_trades(self):
+        self.trades, self.instruments, self.names = [], [], None
 
-        # Set indexes
+    def set_nameindexes(self):
+        self.names = list_names(self.instruments)
         for instr in self.instruments:
             instr.set_nameindexes(self.names)
 
-    def clear_trades(self):
-        self.trades, self.instruments, self.names = [], [], []
+    def get_eventdates(self, valdate):
+        """ Gather the event dates of each instrument that are equal to or later than the
+            valuation date. Return the list of unique and ordered entries. """
+        all_dates = list_eventdates(self.instruments)
+        current_dates = [d for d in all_dates if d >= valdate]
+        return np.asarray(current_dates)

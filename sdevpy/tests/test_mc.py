@@ -13,8 +13,9 @@ def test_mc():
     # Create portfolio
     book = bk.Book()
     trades = []
-    trades.append(Trade(VanillaOption('ABC', 100.0, 'Call'), name="vanilla"))
-    trades.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call'), name="basket"))
+    expiry = dt.datetime(2026, 12, 15)
+    trades.append(Trade(VanillaOption('ABC', 100.0, 'Call', expiry), name="vanilla"))
+    trades.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry), name="basket"))
     trades.append(Trade(AsianOption('ABC', 100.0, 'Call'), name="asian"))
     trades.append(Trade(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0), name="worstof"))
     book.add_trades(trades)

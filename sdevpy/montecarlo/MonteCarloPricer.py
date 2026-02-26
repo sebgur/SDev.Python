@@ -5,6 +5,8 @@ from sdevpy.tools import timegrids, timer
 from sdevpy.montecarlo.FactorModel import MultiAssetGBM
 from sdevpy.montecarlo.PathGenerator import PathGenerator
 from sdevpy.market.spot import get_spots
+from sdevpy.market.yieldcurve import get_yieldcurve
+from sdevpy.montecarlo.payoffs.basic import get_eventdates
 
 
 # The MC path builder only requires the paths of the underlying assets as a big
@@ -39,16 +41,6 @@ def get_correlations(names, valdate):
     return corr
 
 
-def book_currency(book):
-    """ Temp to get the book pricing currency, to get the discount curve """
-    return "USD"
-
-
-def get_eventdates(book, valdate):
-    d1y = dt.datetime(valdate.year + 1, valdate.month, valdate.day)
-    return np.asarray([d1y])
-
-
 def build_timegrid(valdate, eventdates, config):
     max_date = eventdates.max()
     max_T = timegrids.model_time(valdate, max_date)
@@ -57,11 +49,13 @@ def build_timegrid(valdate, eventdates, config):
 
 
 def price_book(valdate, book, **kwargs):
-    names = book.names
-    csa_curve_id = book.csa_curve_id
-    df = 0.90
+    book.set_nameindexes()
+    eventdates = book.get_eventdates(valdate)
+    # print(f"1: {eventdates}")
 
     # Retrieve modelling data
+    names = book.names
+    disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     spot = get_spots(names, valdate)
     fwd_curves = get_forward_curves(names, valdate)
     lvs, sigma = get_local_vols(names, valdate)
@@ -76,7 +70,8 @@ def price_book(valdate, book, **kwargs):
     config = McConfig(n_time_steps=n_steps + 1)
 
     # Build time grid
-    eventdates = get_eventdates(book, valdate)
+    # eventdates = get_eventdates(book)
+    # print(f"2: {eventdates}")
     disc_tgrid = build_timegrid(valdate, eventdates, config)
 
     # Set model
@@ -87,7 +82,7 @@ def price_book(valdate, book, **kwargs):
                               rng_type=rng_type, scramble=False, corr_matrix=corr)
 
     # MC pricer
-    mc = MonteCarloPricer(path_generator=generator, df=df, n_paths=n_paths)
+    mc = MonteCarloPricer(path_generator=generator, disc_curve=disc_curve, n_paths=n_paths)
 
     # First we project the discretization grid paths on the event date paths before
     # calculating the payoffs, which only require the event date paths.
@@ -99,9 +94,10 @@ def price_book(valdate, book, **kwargs):
 
 
 class MonteCarloPricer:
-    def __init__(self, path_generator, df, n_paths):
+    def __init__(self, path_generator, disc_curve, n_paths):
         self.path_generator = path_generator
-        self.df = df
+        self.disc_curve = disc_curve
+        self.df = 0.90
         self.n_paths = n_paths
         self.timers = None
 

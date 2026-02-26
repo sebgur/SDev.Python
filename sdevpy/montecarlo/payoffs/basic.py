@@ -1,10 +1,29 @@
 import numpy as np
+import datetime as dt
 from abc import ABC, abstractmethod
 
 
+def list_eventdates(payoffs):
+    """ List the event dates behind the payoffs. Duplicates are removed and the
+        result is ordered. """
+    eventdates = []
+    for payoff in payoffs:
+        eventdates.extend(payoff.eventdates)
+
+    eventdates = sorted(set(eventdates))
+    return np.asarray(eventdates)
+
+
+def get_eventdates(payoffs):
+    """ List the event dates behind the payoffs. Duplicates are removed and the
+        result is ordered. """
+    d1y = dt.datetime(2026, 12, 15)
+    return np.asarray([d1y])
+
+
 def list_names(payoffs):
-    """ List all the names behind the payoffs. Duplicates are removed and we order
-        the result to avoid noise due to re-ordering of the random numbers depending
+    """ List the names behind the payoffs. Duplicates are removed and the result
+        is ordered to avoid noise due to re-ordering of the random numbers depending
         on the order in which the trades are listed in the book. """
     names = []
     for payoff in payoffs:
@@ -13,7 +32,7 @@ def list_names(payoffs):
             names.extend(new_names)
 
     names = sorted(set(names))
-    names = names if len(names) != 0 else None
+    # names = names if len(names) != 0 else []
     return names
 
 
@@ -29,6 +48,7 @@ class Payoff(ABC):
         self.names = None
         self.name_idxs = None
         self.name_dic = None
+        self.eventdates = []
 
     @abstractmethod
     def evaluate(self, paths):
@@ -58,7 +78,6 @@ class Payoff(ABC):
                     self.name_dic[name] = idx
                 except Exception as e:
                     raise ValueError(f"Could not find name {name} in path names: {str(e)}")
-
 
     #### Algebra ##################################################################################
 
@@ -111,11 +130,12 @@ class Constant(Payoff):
 
 class Terminal(Payoff):
     """ Value of the asset on the last date of the time grid """
-    def __init__(self, name):
+    def __init__(self, name, date):
         super().__init__()
         self.names = [name]
         self.name = name
         self.name_idx = None
+        self.eventdates = [date]
 
     def set_nameindexes(self, names):
         try:
@@ -157,6 +177,7 @@ class Max(Payoff):
         subpayoffs = [ensure_payoff(node) for node in subpayoffs]
         self.subpayoffs = subpayoffs
         self.names = list_names(self.subpayoffs)
+        self.eventdates = list_eventdates(self.subpayoffs)
 
     def set_nameindexes(self, names):
         for subpayoff in self.subpayoffs:
@@ -179,6 +200,7 @@ class Min(Payoff):
         subpayoffs = [ensure_payoff(node) for node in subpayoffs]
         self.subpayoffs = subpayoffs
         self.names = list_names(self.subpayoffs)
+        self.eventdates = list_eventdates(self.subpayoffs)
 
     def set_nameindexes(self, names):
         for subpayoff in self.subpayoffs:
@@ -200,6 +222,7 @@ class Abs(Payoff):
         super().__init__()
         self.subpayoff = subpayoff
         self.names = self.subpayoff.names
+        self.eventdates = self.subpayoffs.eventdates
 
     def set_nameindexes(self, names):
         self.subpayoff.set_nameindexes(names)
@@ -218,6 +241,7 @@ class Basket(Payoff):
         super().__init__()
         self.subpayoffs = subpayoffs
         self.names = list_names(self.subpayoffs)
+        self.eventdates = list_eventdates(self.subpayoffs)
         self.weights = np.asarray(weights)
         if len(self.subpayoffs) != len(self.weights):
             raise RuntimeError("Incompatible sizes between sub-payoffs and weights")
@@ -260,6 +284,7 @@ class Add(Payoff):
         self.left = left
         self.right = right
         self.names = list_names([self.left, self.right])
+        self.eventdates = list_eventdates([self.left, self.right])
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
@@ -277,6 +302,7 @@ class Sub(Payoff):
         self.left = left
         self.right = right
         self.names = list_names([self.left, self.right])
+        self.eventdates = list_eventdates([self.left, self.right])
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
@@ -294,6 +320,7 @@ class Mul(Payoff):
         self.left = left
         self.right = right
         self.names = list_names([self.left, self.right])
+        self.eventdates = list_eventdates([self.left, self.right])
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
@@ -311,6 +338,7 @@ class Div(Payoff):
         self.left = left
         self.right = right
         self.names = list_names([self.left, self.right])
+        self.eventdates = list_eventdates([self.left, self.right])
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
@@ -327,6 +355,7 @@ class Neg(Payoff):
         super().__init__()
         self.old = old
         self.names = self.old.names
+        self.eventdates = self.old.eventdates
 
     def set_nameindexes(self, names):
         self.old.set_nameindexes(names)

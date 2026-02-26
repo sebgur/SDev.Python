@@ -133,8 +133,8 @@ class YieldCurveVariable(Enum):
 
 
 def get_yieldcurve(name, date, **kwargs):
-    folder = kwargs.get('folder', test_data_folder())
-    file = data_file(name, date, folder=folder)
+    # folder = kwargs.get('folder', test_data_folder())
+    file = data_file(name, date, **kwargs)
     curve = yieldcurve_from_file(file)
     return curve
 

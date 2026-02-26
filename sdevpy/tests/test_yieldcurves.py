@@ -31,7 +31,7 @@ def test_yieldcurve_creation():
 
 
 def test_yieldcurve_reading():
-    valdate = dt.datetime(2026, 2, 15)
+    valdate = dt.datetime(2025, 12, 15)
     name = 'USD.SOFR.1D'
 
     # Test dates
@@ -44,8 +44,6 @@ def test_yieldcurve_reading():
     curve = ycrv.yieldcurve_from_file(file)
     dfs = curve.discount(zdates)
     test = -np.log(dfs) / ztimes
-    ref = np.asarray([0.01, 0.015, 0.02, 0.02199589, 0.03])
-
+    ref = np.asarray([0.00589787, 0.01375476, 0.01850221, 0.02168115, 0.02991536])
     print(test)
-    # print(curve2_zrs[10:15])
     assert np.allclose(test, ref, 1e-10)

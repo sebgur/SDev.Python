@@ -20,13 +20,12 @@ def VanillaOptionPayoff(payoff, strike, optiontype):
     return option_payoff
 
 
-
-def VanillaOption(name, strike, optiontype):
+def VanillaOption(name, strike, optiontype, expiry):
     optiontype_ = string_to_optiontype(optiontype)
     match optiontype_:
-        case VanillaOptionType.CALL: payoff = Max([Terminal(name) - strike, 0.0])
-        case VanillaOptionType.PUT: payoff = Max([strike - Terminal(name), 0.0])
-        case VanillaOptionType.STRADDLE: payoff = Abs(Terminal(name) - strike)
+        case VanillaOptionType.CALL: payoff = Max([Terminal(name, expiry) - strike, 0.0])
+        case VanillaOptionType.PUT: payoff = Max([strike - Terminal(name, expiry), 0.0])
+        case VanillaOptionType.STRADDLE: payoff = Abs(Terminal(name, expiry) - strike)
         case _: raise RuntimeError(f"Invalid option type: {optiontype}")
 
     return payoff
@@ -51,5 +50,6 @@ def string_to_optiontype(s):
 
 
 if __name__ == "__main__":
-    payoff = VanillaOption('SPX', 100, 'call')
+    expiry = dt.datime(2026, 12, 15)
+    payoff = VanillaOption('SPX', 100, 'call', expiry)
     print(payoff)
