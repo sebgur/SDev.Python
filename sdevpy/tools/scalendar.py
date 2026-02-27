@@ -5,6 +5,8 @@ from enum import Enum
 from functools import lru_cache
 import pandas_market_calendars as mcal
 import holidays
+from sdevpy.tools.utils import isiterable
+from sdevpy.tools import dates, speriods
 
 
 class BDC(Enum):
@@ -99,13 +101,6 @@ def make_calendar(name, start_year=2000, end_year=2100):
 
         return Calendar(name, hols)
 
-CCY_CALENDARS = {
-        "USD": lambda y: holidays.US(years=y),
-        "GBP": lambda y: holidays.UK(years=y),
-        "EUR": lambda y: holidays.ECB(years=y),  # TARGET calendar
-        "JPY": lambda y: holidays.JP(years=y),
-    }
-
 
 def make_calendar_from_mcal(exchange, years: range):
     cal = mcal.get_calendar(exchange)
@@ -127,15 +122,43 @@ def list_mcal_calendars():
     print(mcal.get_calendar_names())
 
 
-# Generate a schedule of quarterly coupon dates
 # ToDo: this looks like a very simplified function. Make more precise one.
-def make_schedule(start, end, freq_months, cal, convention=BDC.F):
-    dates, d = [], start
+def make_schedule(cal, start, end, term, convention=BDC.F, convert_to_datetime=False):
+    schedule_dates, d = [], start
     while d <= end:
-        dates.append(cal.adjust(d, convention))
-        d += relativedelta(months=freq_months)
+        schedule_dates.append(cal.adjust(d, convention))
+        d += speriods.period(term)
+        # d = dates.date_advance(d, days=freq_days, months=freq_months, years=freq_years)#relativedelta(months=freq_months)
+        # # d += relativedelta(months=freq_months)
+
+    return to_datetime(schedule_dates) if convert_to_datetime else schedule_dates
+
+
+def list_dates(start_date, end_date, cdr=None):
+    """ List dates between start and end, including both if they are business days. """
+    dates = []
+    date = start_date if is_business_day(start_date, cdr) else next_business_day(start_date, cdr)
+    while date <= end_date:
+        dates.append(date)
+        date = next_business_day(date, cdr)
 
     return dates
+
+def to_datetime(date):
+    if isiterable(date):
+        datetimes = [dt.datetime.combine(d, dt.time.min) for d in date]
+        return datetimes
+    else:
+        return dt.datetime.combine(d, time.min)
+
+
+CCY_CALENDARS = {
+        "WE": lambda y: {},
+        "USD": lambda y: holidays.US(years=y),
+        "GBP": lambda y: holidays.UK(years=y),
+        "EUR": lambda y: holidays.ECB(years=y),  # TARGET calendar
+        "JPY": lambda y: holidays.JP(years=y),
+    }
 
 
 if __name__ == "__main__":
@@ -146,10 +169,10 @@ if __name__ == "__main__":
     # print(hols)
 
     # Usage
-    years = range(2020, 2030)
-    usd_cal = make_calendar("USD", years)
-    gbp_cal = make_calendar("GBP", years)
+    usd_cal = make_calendar("USD")
+    gbp_cal = make_calendar("GBP")
     cal = usd_cal + gbp_cal
+    cal = make_calendar("WE")
 
     # Adjust a date
     raw_date = dt.date(2024, 12, 25)
@@ -160,7 +183,7 @@ if __name__ == "__main__":
 
     start = dt.date(2024, 1, 15)
     end = dt.date(2025, 1, 15)
-    schedule = make_schedule(start, end, freq_months=3, cal=cal, convention=BDC.MF)
+    schedule = make_schedule(cal, start, end, freq_months=3, convention=BDC.MF)
     print(schedule)
 
     # Usage
@@ -169,4 +192,4 @@ if __name__ == "__main__":
 
     joint_cal = nyse_cal + lse_cal  # composability still works
 
-    list_mcal_calendars()
+    # list_mcal_calendars()

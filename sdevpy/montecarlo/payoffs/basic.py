@@ -1,7 +1,7 @@
 import numpy as np
 import datetime as dt
 from abc import ABC, abstractmethod
-from sdevpy.tools.dates import list_dates
+from sdevpy.tools.scalendar import list_dates
 
 
 def list_eventdates(payoffs):
