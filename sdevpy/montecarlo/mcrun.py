@@ -14,6 +14,7 @@ from sdevpy.market.yieldcurve import get_yieldcurve
 
 
 #################### TODO #########################################################################
+# * Asian: add averaging window to even dates
 # * Calculate payoff indexes on event date grid?
 # * Multi-cashflow design
 # * Introduce concept of past fixings
@@ -44,8 +45,9 @@ if __name__ == "__main__":
 
     # Price book
     mc_price = price_book(valdate, book, constr_type='brownianbridge', rng_type='sobol',
-                          n_paths=100*1000)
-    print(mc_price)
+                          n_paths=4, n_timesteps=5)
+                        #   n_paths=100*1000, n_timesteps=50)
+    # print(mc_price)
 
     # Gather all names in the book
     names = book.names
@@ -63,9 +65,12 @@ if __name__ == "__main__":
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx].value_float(T)
     df = disc_curve.discount(dmax)
-    print(df)
+    # print(df)
     sigma = np.asarray([0.2] * len(names))
     cf_price = df * black.price(T, v_strike, v_type, fwd, sigma[name_idx])
 
     print("MC:", mc_price['pv'][0])
+    print("MC:", mc_price['pv'][1])
+    print("MC:", mc_price['pv'][2])
+    print("MC:", mc_price['pv'][3])
     print("CF:", cf_price)

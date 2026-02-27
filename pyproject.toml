@@ -14,7 +14,9 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-dependencies = ["pandas", "numpy", "scipy", "matplotlib"]
+dependencies = ["pandas", "numpy", "scipy", "matplotlib", "holidays",
+                "pandas_market_calendars"
+]
 #dependencies = ["pyperclip", "tensorflow", "scikit-learn",
 # "tensorflow_probability", "silence_tensorflow"]
 

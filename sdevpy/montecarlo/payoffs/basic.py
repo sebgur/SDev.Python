@@ -1,6 +1,7 @@
 import numpy as np
 import datetime as dt
 from abc import ABC, abstractmethod
+from sdevpy.tools.dates import list_dates
 
 
 def list_eventdates(payoffs):
@@ -65,7 +66,10 @@ class Payoff(ABC):
         return paths[:, :, self.name_idxs]
 
     def set_nameindexes(self, enginenames):
-        pass # Do nothing in base
+        pass  # Do nothing in base
+
+    def set_eventindexes(self, eventdates):
+        pass  # Do nothing in base
 
     def set_multiindexes(self, enginenames):
         # Find path index for each name
@@ -154,11 +158,17 @@ class Terminal(Payoff):
 
 class Average(Payoff):
     """ Average value of the asset over time """
-    def __init__(self, name):
+    def __init__(self, name):#, start_date, end_date):
         super().__init__()
         self.names = [name]
         self.name = name
         self.name_idx = None
+        # self.start_date, self.start_idx = start_date, None
+        # self.end_date, self.end_idx = end_date, None
+        # self.eventdates = list_dates(self.start_date, self.end_date)
+
+    def evaluate(self, paths):
+        return paths[:, :, self.name_idx].mean(axis=1)
 
     def set_nameindexes(self, names):
         try:
@@ -167,8 +177,9 @@ class Average(Payoff):
             self.name_idx = None
             raise ValueError(f"Could not find name {name} in path names: {str(e)}")
 
-    def evaluate(self, paths):
-        return paths[:, :, self.name_idx].mean(axis=1)
+    # def set_eventindexes(self, eventdates):
+    #     self.start_idx = eventdates.index(self.start_date)
+    #     self.end_idx = eventdates.index(self.end_date)
 
 
 class Max(Payoff):
@@ -369,51 +380,31 @@ class Neg(Payoff):
 
 #### Event Dates ##################################################################################
 
-def build_eventdate_interpolator(t_grid, eventdates):
-    t_grid = np.asarray(t_grid)
-    eventdates = np.asarray(eventdates)
-
-    # indices of left grid point
-    idx = np.searchsorted(t_grid, eventdates) - 1
-    idx = np.clip(idx, 0, len(t_grid) - 2)
-
-    t_left = t_grid[idx]
-    t_right = t_grid[idx + 1]
-
-    w1 = (eventdates - t_left) / (t_right - t_left)
-    w0 = 1.0 - w1
-    return idx, w0, w1
-
-
-def interpolate_paths(paths, idx, w0, w1):
-    """ Input path shape (n_paths, n_disctimes, n_factors).
-        Output path shape (n_paths, n_disctimes, n_factors) """
-    # Path shape: (n_paths, n_times, n_assets)
-    S_left = paths[:, idx, :] # broadcasting
-    S_right = paths[:, idx + 1, :]
-
-    # Reshape weights for broadcasting
-    w0 = w0.reshape(1, -1, 1)
-    w1 = w1.reshape(1, -1, 1)
-
-    return w0 * S_left + w1 * S_right
-
 
 if __name__ == "__main__":
-    print("ToDo: test event date interpolation")
-    disc_grid = np.asarray([0, 1, 2, 3])
-    eventdates = np.asarray([0.2, 2.4, 2.8])
-    idx, w0, w1 = build_eventdate_interpolator(disc_grid, eventdates)
-    paths = np.asarray([
-        [[90, 100],[91, 101],[92, 102],[93, 103]],
-        [[900, 1000],[910, 1010],[920, 1020],[930, 1030]],
-        [[9, 10],[9, 10],[9, 10],[9, 10]],
-        [[0.90, 0.100],[0.91, 0.101],[0.92, 0.102],[0.93, 0.103]],
-        [[9000, 10000],[9100, 10100],[9200, 10200],[9300, 10300]]])
-    int_paths = interpolate_paths(paths, idx, w0, w1)
+    from sdevpy.montecarlo.MonteCarloPricer import build_eventdate_interpolator, interpolate_paths
+    # Discretization
+    disc_times = np.asarray([0, 1, 2])
+    disc_paths = np.asarray([
+        [[100, 10],[110, 11],[120, 12]],
+        [[100, 10],[90, 9],[80, 8]],
+        [[100, 10],[150, 15],[200, 20]],
+        [[100, 10],[70, 7],[60, 6]]])
+
+    # Event dates
+    event_times = np.asarray([0.0, 0.2, 1.0, 1.4, 2.0, 2.5])
+
+    # Interpolation
+    idx, w0, w1 = build_eventdate_interpolator(disc_times, event_times)
+    int_paths = interpolate_paths(disc_paths, idx, w0, w1)
+
+    # Display
     np.set_printoptions(suppress=True, precision=2)
-    # with np.printoptions(precision=n_digits):
-    print(paths.shape)
-    # print(paths)
-    print(int_paths.shape)
+    print(f"Number paths: {disc_paths.shape[0]}")
+    print(f"Number disc. times: {len(disc_times)}")
+    print(f"Number factors: {disc_paths.shape[2]}")
+    print(f"Number event dates: {len(event_times)}")
+    print(f"Disc. path shape: {disc_paths.shape}")
+    print(disc_paths)
+    print(f"Interp. path shape: {int_paths.shape}")
     print(int_paths)

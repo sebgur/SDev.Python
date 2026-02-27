@@ -93,20 +93,6 @@ class PathBuilder(ABC):
 
 
 class IncrementalPathBuilder(PathBuilder):
-    # def build_independent(self, n_paths):
-    #     n_steps = len(self.time_grid) - 1
-
-    #     # Draw gaussians
-    #     Z = self.rng.normal(n_paths)
-
-    #     # Allocate dimensions: split (factor1, factor2, ...) into (factor1 x factor x ...)
-    #     Z = Z.reshape(n_paths, self.n_factors, n_steps)
-
-    #     # Build paths
-    #     dt = np.diff(self.time_grid)
-    #     dW = Z * np.sqrt(dt)
-    #     return dW
-
     def build_independent(self, n_paths):
         n_steps = len(self.time_grid) - 1
 
@@ -124,9 +110,6 @@ class IncrementalPathBuilder(PathBuilder):
 
 
 class BrownianBridgePathBuilder(PathBuilder):
-    # def build_independent(self, n_paths):
-    #     return brownianbridge(n_paths, self.time_grid, self.n_factors, self.rng)
-
     def build_independent(self, n_paths):
         return brownianbridge(n_paths, self.time_grid, self.n_factors, self.rng)
 

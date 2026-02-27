@@ -33,3 +33,7 @@ class Book:
         all_dates = list_eventdates(self.instruments)
         current_dates = [d for d in all_dates if d >= valdate]
         return np.asarray(current_dates)
+
+    def set_eventindexes(self, eventdates):
+        for instr in self.instruments:
+            instr.set_eventindexes(eventdates)

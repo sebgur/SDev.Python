@@ -38,6 +38,7 @@ def build_timegrid(valdate, eventdates, config):
 def price_book(valdate, book, **kwargs):
     book.set_nameindexes()
     eventdates = book.get_eventdates(valdate)
+    book.set_eventindexes(eventdates)
 
     # Retrieve modelling data
     names = book.names
@@ -59,7 +60,9 @@ def price_book(valdate, book, **kwargs):
     # MC pricer
     n_paths = kwargs.get('n_paths', 10 * 1000)
     df = disc_curve.discount(eventdates.max())
-    mc = MonteCarloPricer(path_generator=generator, df=df, n_paths=n_paths)
+    event_times = timegrids.model_time(valdate, eventdates)
+    print(f"Event times: {event_times}")
+    mc = MonteCarloPricer(generator, n_paths, event_times, df=df)
 
     # First we project the discretization grid paths on the event date paths before
     # calculating the payoffs, which only require the event date paths.
@@ -69,37 +72,81 @@ def price_book(valdate, book, **kwargs):
     return mc_price
 
 
+def path_interp_coeffs(disc_times, event_times):
+    disc_times = np.asarray(disc_times)
+    event_times = np.asarray(event_times)
+
+    # indices of left grid point
+    idx = np.searchsorted(disc_times, event_times) - 1
+    idx = np.clip(idx, 0, len(disc_times) - 2)
+
+    t_left = disc_times[idx]
+    t_right = disc_times[idx + 1]
+
+    w1 = (event_times - t_left) / (t_right - t_left)
+    w0 = 1.0 - w1
+    return idx, w0, w1
+
+
+def interp_paths(paths, idx, w0, w1):
+    """ Input path shape (n_paths, n_disctimes, n_factors).
+        Output path shape (n_paths, n_eventtimes, n_factors) """
+    # Path shape: (n_paths, n_times, n_assets)
+    S_left = paths[:, idx, :] # broadcasting
+    S_right = paths[:, idx + 1, :]
+
+    # Reshape weights for broadcasting
+    w0 = w0.reshape(1, -1, 1)
+    w1 = w1.reshape(1, -1, 1)
+
+    return w0 * S_left + w1 * S_right
+
 class MonteCarloPricer:
-    def __init__(self, path_generator, df, n_paths):
+    def __init__(self, path_generator, n_paths, event_times, df):
         self.path_generator = path_generator
+        self.disc_times = path_generator.time_grid
+        self.event_times = event_times
         self.df = df
         self.n_paths = n_paths
-        self.timers = None
+        self.timers = []
 
     def pv(self, book):
-        # Generate spots paths on the discretization grid: n_mc x (n_steps + 1) x n_assets
+        # Generate spots paths on disc. grid: n_mc x (n_steps + 1) x n_assets
         timer_path = timer.Stopwatch("Generate spot paths")
         paths = self.path_generator.generate_paths(self.n_paths)
         timer_path.stop()
 
+        # Interpolate paths from disc. to event date grid
+        timer_interp = timer.Stopwatch("Interpolate to event grid")
+        print(f"Disc. path shape: {paths.shape}")
+        idx, w0, w1 = path_interp_coeffs(self.disc_times, self.event_times)
+        event_paths = interp_paths(paths, idx, w0, w1)
+        print(f"Event path shape: {event_paths.shape}")
+        timer_interp.stop()
+
         # Calculate payoffs
         timer_payoff = timer.Stopwatch('Payoff calculation')
         pvs = self.build(paths, book)
+        # pvs = self.build(event_paths, book)
+        # print(f"Disc. paths: {paths}")
+        # print(f"Event paths: {event_paths}")
         timer_payoff.stop()
 
-        self.timers = [timer_path, timer_payoff]
+        self.timers = [timer_path, timer_interp, timer_payoff]
         return pvs
 
     def build(self, paths, book):
         ids = []
         pvs = []
         for trade in book.trades:
+            print(trade.name)
             instr = trade.instrument
             # In principle we should discount before taking the mean. However,
             # here we can discount after the mean as we only consider deterministic
             # discount rates for now. If rates were to be stochastic, the discounting,
             # i.e. the division by the numeraire, should be done before taking the mean.
             fwd_flows = instr.evaluate(paths)
+            print(fwd_flows)
             mean_fwd_flows = np.mean(fwd_flows)
             disc_pvs = self.df * mean_fwd_flows
             ids.append(trade.name)
