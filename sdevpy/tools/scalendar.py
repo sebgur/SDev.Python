@@ -69,8 +69,16 @@ class Calendar:
                 count += step
         return count
 
+    def make_schedule(self, start, end, term, convention=BDC.F, convert_to_datetime=False):
+        schedule_dates, d = [], start
+        while d <= end:
+            schedule_dates.append(self.adjust(d, convention))
+            d += speriods.period(term)
+
+        return to_datetime(schedule_dates) if convert_to_datetime else schedule_dates
+
     def __add__(self, other: "Calendar") -> "Calendar":
-        """Combine two calendars — both holidays are observed."""
+        """Combine two calendars — both holidays are observed. """
         return Calendar(name=f"{self.name}+{other.name}", holiday_set=self._holidays | other._holidays,)
 
     def _shift(self, d: dt.date, step: int):
@@ -90,6 +98,15 @@ class Calendar:
 
 
 def make_calendar(name, start_year=2000, end_year=2100):
+    if ',' in name:
+        cdr_names = name.split(',')
+        cdrs = [make_calendar(cdrn, start_year=start_year, end_year=end_year) for cdrn in cdr_names]
+        cdr = cdrs[0]
+        for i in range(1, len(cdrs)):
+            cdr = cdr + cdrs[i]
+        return cdr
+
+    # Single calendar name
     y = range(start_year, end_year + 1)
 
     if name not in CCY_CALENDARS:
@@ -123,26 +140,20 @@ def list_mcal_calendars():
 
 
 # ToDo: this looks like a very simplified function. Make more precise one.
-def make_schedule(cal, start, end, term, convention=BDC.F, convert_to_datetime=False):
-    schedule_dates, d = [], start
-    while d <= end:
-        schedule_dates.append(cal.adjust(d, convention))
-        d += speriods.period(term)
-        # d = dates.date_advance(d, days=freq_days, months=freq_months, years=freq_years)#relativedelta(months=freq_months)
-        # # d += relativedelta(months=freq_months)
+def make_schedule(calstr, start, end, term, convention=BDC.F, convert_to_datetime=False):
+    cdr = make_calendar(calstr)
+    schedule = cdr.make_schedule(start, end, term, convention=convention,
+                                 convert_to_datetime=convert_to_datetime)
+    return schedule
+    # schedule_dates, d = [], start
+    # while d <= end:
+    #     schedule_dates.append(cal.adjust(d, convention))
+    #     d += speriods.period(term)
+    #     # d = dates.date_advance(d, days=freq_days, months=freq_months, years=freq_years)#relativedelta(months=freq_months)
+    #     # # d += relativedelta(months=freq_months)
 
-    return to_datetime(schedule_dates) if convert_to_datetime else schedule_dates
+    # return to_datetime(schedule_dates) if convert_to_datetime else schedule_dates
 
-
-def list_dates(start_date, end_date, cdr=None):
-    """ List dates between start and end, including both if they are business days. """
-    dates = []
-    date = start_date if is_business_day(start_date, cdr) else next_business_day(start_date, cdr)
-    while date <= end_date:
-        dates.append(date)
-        date = next_business_day(date, cdr)
-
-    return dates
 
 def to_datetime(date):
     if isiterable(date):
@@ -169,7 +180,7 @@ if __name__ == "__main__":
     # print(hols)
 
     # Usage
-    usd_cal = make_calendar("USD")
+    usd_cal = make_calendar("USD,EUR")
     gbp_cal = make_calendar("GBP")
     cal = usd_cal + gbp_cal
     cal = make_calendar("WE")
@@ -183,7 +194,7 @@ if __name__ == "__main__":
 
     start = dt.date(2024, 1, 15)
     end = dt.date(2025, 1, 15)
-    schedule = make_schedule(cal, start, end, freq_months=3, convention=BDC.MF)
+    schedule = cal.make_schedule(start, end, '3M', convention=BDC.MF)
     print(schedule)
 
     # Usage

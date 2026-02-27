@@ -21,7 +21,7 @@ def test_make_schedule():
 
     start = dt.date(2024, 1, 15)
     end = dt.date(2025, 1, 15)
-    test = cdr.make_schedule(cal, start, end, '3M')
+    test = cal.make_schedule(start, end, '3M')
     # test = cdr.make_schedule(cal, start, end, freq_months=3)
     ref = [dt.date(2024, 1, 16), dt.date(2024, 4, 15), dt.date(2024, 7, 15),
            dt.date(2024, 10, 15), dt.date(2025, 1, 15)]

@@ -1,7 +1,7 @@
 import numpy as np
 import datetime as dt
 from abc import ABC, abstractmethod
-from sdevpy.tools.scalendar import list_dates
+from sdevpy.tools.scalendar import make_calendar, make_schedule
 
 
 def list_eventdates(payoffs):
@@ -15,6 +15,7 @@ def list_eventdates(payoffs):
     return np.asarray(eventdates)
 
 
+# ToDo: check if we can remove this
 def get_eventdates(payoffs):
     """ List the event dates behind the payoffs. Duplicates are removed and the
         result is ordered. """
@@ -165,7 +166,8 @@ class Average(Payoff):
         self.name_idx = None
         # self.start_date, self.start_idx = start_date, None
         # self.end_date, self.end_idx = end_date, None
-        # self.eventdates = list_dates(self.start_date, self.end_date)
+        # term = "1D"
+        # self.eventdates = make_schedule(self.start_date, self.end_date)
 
     def evaluate(self, paths):
         return paths[:, :, self.name_idx].mean(axis=1)
