@@ -36,9 +36,10 @@ def build_timegrid(valdate, eventdates, config):
 
 
 def price_book(valdate, book, **kwargs):
-    book.set_nameindexes()
-    eventdates = book.get_eventdates(valdate)
-    book.set_eventindexes(eventdates)
+    names = book.set_nameindexes()
+    book.set_valuation_date(valdate)
+    eventdates = book.eventdates
+    # book.set_eventindexes(eventdates)
 
     # Retrieve modelling data
     names = book.names
@@ -61,7 +62,7 @@ def price_book(valdate, book, **kwargs):
     n_paths = kwargs.get('n_paths', 10 * 1000)
     df = disc_curve.discount(eventdates.max())
     event_times = timegrids.model_time(valdate, eventdates)
-    print(f"Event times: {event_times}")
+    # print(f"Event times: {event_times}")
     mc = MonteCarloPricer(generator, n_paths, event_times, df=df)
 
     # First we project the discretization grid paths on the event date paths before
@@ -146,7 +147,7 @@ class MonteCarloPricer:
             # discount rates for now. If rates were to be stochastic, the discounting,
             # i.e. the division by the numeraire, should be done before taking the mean.
             fwd_flows = instr.evaluate(paths)
-            print(fwd_flows)
+            # print(fwd_flows)
             mean_fwd_flows = np.mean(fwd_flows)
             disc_pvs = self.df * mean_fwd_flows
             ids.append(trade.name)

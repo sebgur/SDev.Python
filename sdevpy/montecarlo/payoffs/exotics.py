@@ -11,9 +11,6 @@ class WorstOfBarrier(Payoff):
         self.optiontype = string_to_optiontype(optiontype)
         self.barrier = barrier
 
-    def set_nameindexes(self, names):
-        self.set_multiindexes(names)
-
     def evaluate(self, paths):
         spot_all = self.paths_for_all(paths)
 
@@ -31,10 +28,24 @@ class WorstOfBarrier(Payoff):
 
         return payoff
 
+    def set_nameindexes(self, names):
+        self.set_multiindexes(names)
 
-def AsianOption(name, strike, optiontype):
-    average = Average(name)
-    payoff = VanillaOptionPayoff(average, strike, optiontype)
+    # def set_valuation_date(self, valdate):
+    #     for subpayoff in self.subpayoffs:
+    #         subpayoff.set_valuation_date(valdate)
+
+    #     # Gather event dates from subpayoofs
+    #     self.eventdates = list_eventdates(self.subpayoffs)
+
+    # def set_eventindexes(self, evendates):
+    #     for subpayoff in self.subpayoffs:
+    #         subpayoff.set_eventindexes(evendates)
+
+
+def AsianOption(name, strike, optiontype, start, end, freq="1D", cdr="USD"):
+    index = Average(name, start, end, freq, cdr)
+    payoff = VanillaOptionPayoff(index, strike, optiontype)
     return payoff
 
 

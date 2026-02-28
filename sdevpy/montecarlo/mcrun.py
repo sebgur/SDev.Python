@@ -39,13 +39,13 @@ if __name__ == "__main__":
     v_name, v_strike, v_type = 'ABC', 100.0, 'Call' # For check against CF
     trades.append(Trade(VanillaOption(v_name, v_strike, v_type, expiry), name="vanilla"))
     trades.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry), name="basket"))
-    trades.append(Trade(AsianOption('ABC', 100.0, 'Call'), name="asian"))
+    trades.append(Trade(AsianOption('ABC', 100.0, 'Call', valdate, expiry), name="asian"))
     trades.append(Trade(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0), name="worstof"))
     book.add_trades(trades)
 
     # Price book
     mc_price = price_book(valdate, book, constr_type='brownianbridge', rng_type='sobol',
-                          n_paths=4, n_timesteps=5)
+                          n_paths=100000, n_timesteps=50)
                         #   n_paths=100*1000, n_timesteps=50)
     # print(mc_price)
 

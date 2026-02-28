@@ -1,7 +1,7 @@
 import numpy as np
 import datetime as dt
 from abc import ABC, abstractmethod
-from sdevpy.tools.scalendar import make_calendar, make_schedule
+from sdevpy.tools.scalendar import make_schedule
 
 
 def list_eventdates(payoffs):
@@ -51,7 +51,6 @@ class Payoff(ABC):
         self.name_idxs = None
         self.name_dic = None
         self.eventdates = []
-        # self.cashflowdates = []
 
     @abstractmethod
     def evaluate(self, paths):
@@ -66,10 +65,13 @@ class Payoff(ABC):
     def paths_for_all(self, paths):
         return paths[:, :, self.name_idxs]
 
-    def set_nameindexes(self, enginenames):
+    def set_nameindexes(self, names):
         pass  # Do nothing in base
 
     def set_eventindexes(self, eventdates):
+        pass  # Do nothing in base
+
+    def set_valuation_date(self, valdate):
         pass  # Do nothing in base
 
     def set_multiindexes(self, enginenames):
@@ -130,7 +132,7 @@ class Constant(Payoff):
 
     def evaluate(self, paths):
         payoff = np.full(paths.shape[0], self.value)
-        print(f"Constant: {payoff.shape}")
+        # print(f"Constant: {payoff.shape}")
         return payoff
 
 
@@ -141,7 +143,8 @@ class Terminal(Payoff):
         self.names = [name]
         self.name = name
         self.name_idx = None
-        self.eventdates = [date]
+        self.expiry = date
+        self.expiry_idx = None
 
     def set_nameindexes(self, names):
         try:
@@ -153,21 +156,31 @@ class Terminal(Payoff):
     def evaluate(self, paths):
         spot_at_exp = paths[:, -1, self.name_idx]
         payoff = spot_at_exp
-        print(f"Terminal: {payoff.shape}")
+        # print(f"Terminal: {payoff.shape}")
         return payoff
+
+    def set_valuation_date(self, valdate):
+        if self.expiry < valdate:
+            raise RuntimeError("Past trade found")
+
+        self.eventdates = [self.expiry]
+
+    def set_eventindexes(self, eventdates):
+        self.expiry_idx = np.where(eventdates == self.expiry)[0]
 
 
 class Average(Payoff):
     """ Average value of the asset over time """
-    def __init__(self, name):#, start_date, end_date):
+    def __init__(self, name, start, end, freq="1D", cdr="USD"):
         super().__init__()
         self.names = [name]
         self.name = name
-        self.name_idx = None
-        # self.start_date, self.start_idx = start_date, None
-        # self.end_date, self.end_idx = end_date, None
-        # term = "1D"
-        # self.eventdates = make_schedule(self.start_date, self.end_date)
+        self.name_idx, self.averageidxs = None, None
+        self.start = start
+        self.end = end
+        self.alldates = make_schedule(cdr, self.start, self.end, freq)
+        self.current_sum = None
+        self.n_dates = len(self.alldates)
 
     def evaluate(self, paths):
         return paths[:, :, self.name_idx].mean(axis=1)
@@ -179,9 +192,22 @@ class Average(Payoff):
             self.name_idx = None
             raise ValueError(f"Could not find name {name} in path names: {str(e)}")
 
-    # def set_eventindexes(self, eventdates):
-    #     self.start_idx = eventdates.index(self.start_date)
-    #     self.end_idx = eventdates.index(self.end_date)
+    def set_valuation_date(self, valdate):
+        # Calculate current sum using fixings up to the day before valdate
+        # For days from and including vadate, collect the date as event date
+        self.current_sum = 0.0
+        self.eventdates = []
+        for date in self.alldates:
+            if date < valdate:
+                fixing = 0.0  # ToDo: get from fixing data
+                self.current_sum += fixing
+            else:
+                self.eventdates.append(date)
+
+    def set_eventindexes(self, eventdates):
+        self.averageidxs = []
+        for date in self.eventdates:
+            self.averageidxs.append(np.where(eventdates == date)[0])
 
 
 class Max(Payoff):
@@ -191,11 +217,7 @@ class Max(Payoff):
         subpayoffs = [ensure_payoff(node) for node in subpayoffs]
         self.subpayoffs = subpayoffs
         self.names = list_names(self.subpayoffs)
-        self.eventdates = list_eventdates(self.subpayoffs)
-
-    def set_nameindexes(self, names):
-        for subpayoff in self.subpayoffs:
-            subpayoff.set_nameindexes(names)
+        # self.eventdates = list_eventdates(self.subpayoffs)
 
     def evaluate(self, paths):
         values = [subpayoff.evaluate(paths) for subpayoff in self.subpayoffs]
@@ -203,8 +225,23 @@ class Max(Payoff):
         # is the number of payoffs being maxed on each path. Then take the max
         # of the payoffs along the payoff direction (axis=1)
         payoff = np.max(np.column_stack(values), axis=1)
-        print(f"Max: {payoff.shape}")
+        # print(f"Max: {payoff.shape}")
         return payoff
+
+    def set_nameindexes(self, names):
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_nameindexes(names)
+
+    def set_valuation_date(self, valdate):
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_valuation_date(valdate)
+
+        # Gather event dates from subpayoofs
+        self.eventdates = list_eventdates(self.subpayoffs)
+
+    def set_eventindexes(self, evendates):
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_eventindexes(evendates)
 
 
 class Min(Payoff):
@@ -214,11 +251,7 @@ class Min(Payoff):
         subpayoffs = [ensure_payoff(node) for node in subpayoffs]
         self.subpayoffs = subpayoffs
         self.names = list_names(self.subpayoffs)
-        self.eventdates = list_eventdates(self.subpayoffs)
-
-    def set_nameindexes(self, names):
-        for subpayoff in self.subpayoffs:
-            subpayoff.set_nameindexes(names)
+        # self.eventdates = list_eventdates(self.subpayoffs)
 
     def evaluate(self, paths):
         values = [subpayoff.evaluate(paths) for subpayoff in self.subpayoffs]
@@ -226,8 +259,23 @@ class Min(Payoff):
         # is the number of payoffs being maxed on each path. Then take the min
         # of the payoffs along the payoff direction (axis=1)
         payoff = np.min(np.column_stack(values), axis=1)
-        print(f"Min: {payoff.shape}")
+        # print(f"Min: {payoff.shape}")
         return payoff
+
+    def set_nameindexes(self, names):
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_nameindexes(names)
+
+    def set_valuation_date(self, valdate):
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_valuation_date(valdate)
+
+        # Gather event dates from subpayoofs
+        self.eventdates = list_eventdates(self.subpayoffs)
+
+    def set_eventindexes(self, evendates):
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_eventindexes(evendates)
 
 
 class Abs(Payoff):
@@ -236,16 +284,23 @@ class Abs(Payoff):
         super().__init__()
         self.subpayoff = subpayoff
         self.names = self.subpayoff.names
-        self.eventdates = self.subpayoffs.eventdates
-
-    def set_nameindexes(self, names):
-        self.subpayoff.set_nameindexes(names)
+        # self.eventdates = self.subpayoffs.eventdates
 
     def evaluate(self, paths):
         old_path = self.subpayoff.evaluate(paths)
         payoff = np.abs(old_path)
-        print(f"Abs: {payoff.shape}")
+        # print(f"Abs: {payoff.shape}")
         return payoff
+
+    def set_nameindexes(self, names):
+        self.subpayoff.set_nameindexes(names)
+
+    def set_valuation_date(self, valdate):
+        self.subpayoff.set_valuation_date(valdate)
+        self.eventdates = self.subpayoffs.evendates
+
+    def set_eventindexes(self, evendates):
+        self.subpayoff.set_eventindexes(evendates)
 
 
 class Basket(Payoff):
@@ -255,22 +310,33 @@ class Basket(Payoff):
         super().__init__()
         self.subpayoffs = subpayoffs
         self.names = list_names(self.subpayoffs)
-        self.eventdates = list_eventdates(self.subpayoffs)
+        # self.eventdates = list_eventdates(self.subpayoffs)
         self.weights = np.asarray(weights)
         if len(self.subpayoffs) != len(self.weights):
             raise RuntimeError("Incompatible sizes between sub-payoffs and weights")
+
+    def evaluate(self, paths):
+        sub_paths = np.asarray([p.evaluate(paths) for p in self.subpayoffs])
+        # print(sub_paths.shape)
+        # print(self.weights.shape)
+        payoff = self.weights @ sub_paths
+        # print(f"Basket: {payoff.shape}")
+        return payoff
 
     def set_nameindexes(self, names):
         for subpayoff in self.subpayoffs:
             subpayoff.set_nameindexes(names)
 
-    def evaluate(self, paths):
-        sub_paths = np.asarray([p.evaluate(paths) for p in self.subpayoffs])
-        print(sub_paths.shape)
-        print(self.weights.shape)
-        payoff = self.weights @ sub_paths
-        print(f"Basket: {payoff.shape}")
-        return payoff
+    def set_valuation_date(self, valdate):
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_valuation_date(valdate)
+
+        # Gather event dates from subpayoofs
+        self.eventdates = list_eventdates(self.subpayoffs)
+
+    def set_eventindexes(self, evendates):
+        for subpayoff in self.subpayoffs:
+            subpayoff.set_eventindexes(evendates)
 
 
 class WorstOf(Payoff):
@@ -278,16 +344,16 @@ class WorstOf(Payoff):
         super().__init__()
         self.names = names
 
-    def set_nameindexes(self, names):
-        self.set_multiindexes(names)
-
     def evaluate(self, paths):
         spot_all = self.paths_for_all(paths)
         spot_all_at_exp = spot_all[:, -1, :]
         worst_at_exp = spot_all_at_exp.min(axis=1)
         payoff = worst_at_exp
-        print(f"WorstOf: {payoff.shape}")
+        # print(f"WorstOf: {payoff.shape}")
         return payoff
+
+    def set_nameindexes(self, names):
+        self.set_multiindexes(names)
 
 
 ########### Arithmetic Nodes ############################################################
@@ -298,16 +364,27 @@ class Add(Payoff):
         self.left = left
         self.right = right
         self.names = list_names([self.left, self.right])
-        self.eventdates = list_eventdates([self.left, self.right])
+        # self.eventdates = list_eventdates([self.left, self.right])
+
+    def evaluate(self, paths):
+        payoff = self.left.evaluate(paths) + self.right.evaluate(paths)
+        # print(f"Add: {payoff.shape}")
+        return payoff
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
         self.right.set_nameindexes(names)
 
-    def evaluate(self, paths):
-        payoff = self.left.evaluate(paths) + self.right.evaluate(paths)
-        print(f"Add: {payoff.shape}")
-        return payoff
+    def set_valuation_date(self, valdate):
+        self.left.set_valuation_date(valdate)
+        self.right.set_valuation_date(valdate)
+
+        # Gather event dates from subpayoofs
+        self.eventdates = list_eventdates([self.left, self.right])
+
+    def set_eventindexes(self, evendates):
+        self.left.set_eventindexes(evendates)
+        self.right.set_eventindexes(evendates)
 
 
 class Sub(Payoff):
@@ -316,16 +393,27 @@ class Sub(Payoff):
         self.left = left
         self.right = right
         self.names = list_names([self.left, self.right])
-        self.eventdates = list_eventdates([self.left, self.right])
+        # self.eventdates = list_eventdates([self.left, self.right])
+
+    def evaluate(self, paths):
+        payoff = self.left.evaluate(paths) - self.right.evaluate(paths)
+        # print(f"Sub: {payoff.shape}")
+        return payoff
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
         self.right.set_nameindexes(names)
 
-    def evaluate(self, paths):
-        payoff = self.left.evaluate(paths) - self.right.evaluate(paths)
-        print(f"Sub: {payoff.shape}")
-        return payoff
+    def set_valuation_date(self, valdate):
+        self.left.set_valuation_date(valdate)
+        self.right.set_valuation_date(valdate)
+
+        # Gather event dates from subpayoofs
+        self.eventdates = list_eventdates([self.left, self.right])
+
+    def set_eventindexes(self, evendates):
+        self.left.set_eventindexes(evendates)
+        self.right.set_eventindexes(evendates)
 
 
 class Mul(Payoff):
@@ -334,16 +422,27 @@ class Mul(Payoff):
         self.left = left
         self.right = right
         self.names = list_names([self.left, self.right])
-        self.eventdates = list_eventdates([self.left, self.right])
+        # self.eventdates = list_eventdates([self.left, self.right])
+
+    def evaluate(self, paths):
+        payoff = self.left.evaluate(paths) * self.right.evaluate(paths)
+        # print(f"Mul: {payoff.shape}")
+        return payoff
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
         self.right.set_nameindexes(names)
 
-    def evaluate(self, paths):
-        payoff = self.left.evaluate(paths) * self.right.evaluate(paths)
-        print(f"Mul: {payoff.shape}")
-        return payoff
+    def set_valuation_date(self, valdate):
+        self.left.set_valuation_date(valdate)
+        self.right.set_valuation_date(valdate)
+
+        # Gather event dates from subpayoofs
+        self.eventdates = list_eventdates([self.left, self.right])
+
+    def set_eventindexes(self, evendates):
+        self.left.set_eventindexes(evendates)
+        self.right.set_eventindexes(evendates)
 
 
 class Div(Payoff):
@@ -352,16 +451,27 @@ class Div(Payoff):
         self.left = left
         self.right = right
         self.names = list_names([self.left, self.right])
-        self.eventdates = list_eventdates([self.left, self.right])
+        # self.eventdates = list_eventdates([self.left, self.right])
+
+    def evaluate(self, paths):
+        return self.left.evaluate(paths) / self.right.evaluate(paths)
+        # print(f"Div: {payoff.shape}")
+        return payoff
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
         self.right.set_nameindexes(names)
 
-    def evaluate(self, paths):
-        return self.left.evaluate(paths) / self.right.evaluate(paths)
-        print(f"Div: {payoff.shape}")
-        return payoff
+    def set_valuation_date(self, valdate):
+        self.left.set_valuation_date(valdate)
+        self.right.set_valuation_date(valdate)
+
+        # Gather event dates from subpayoofs
+        self.eventdates = list_eventdates([self.left, self.right])
+
+    def set_eventindexes(self, evendates):
+        self.left.set_eventindexes(evendates)
+        self.right.set_eventindexes(evendates)
 
 
 class Neg(Payoff):
@@ -369,7 +479,7 @@ class Neg(Payoff):
         super().__init__()
         self.old = old
         self.names = self.old.names
-        self.eventdates = self.old.eventdates
+        # self.eventdates = self.old.eventdates
 
     def set_nameindexes(self, names):
         self.old.set_nameindexes(names)
@@ -378,6 +488,13 @@ class Neg(Payoff):
         payoff = -self.old.evaluate(paths)
         print(f"Neg: {payoff.shape}")
         return payoff
+
+    def set_valuation_date(self, valdate):
+        self.old.set_valuation_date(valdate)
+        self.eventdates = self.old.eventdates
+
+    def set_eventindexes(self, evendates):
+        self.old.set_eventindexes(evendates)
 
 
 #### Event Dates ##################################################################################

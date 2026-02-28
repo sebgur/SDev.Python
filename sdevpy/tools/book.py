@@ -21,19 +21,28 @@ class Book:
 
     def clear_trades(self):
         self.trades, self.instruments, self.names = [], [], None
+        self.eventdates = None
 
     def set_nameindexes(self):
         self.names = list_names(self.instruments)
         for instr in self.instruments:
             instr.set_nameindexes(self.names)
 
-    def get_eventdates(self, valdate):
-        """ Gather the event dates of each instrument that are equal to or later than the
-            valuation date. Return the list of unique and ordered entries. """
-        all_dates = list_eventdates(self.instruments)
-        current_dates = [d for d in all_dates if d >= valdate]
-        return np.asarray(current_dates)
+        return self.names
 
-    def set_eventindexes(self, eventdates):
+    def set_valuation_date(self, valdate):
+        # Set valuation date for each instrument. Among other things,
+        # this sets the event dates in the instruments.
         for instr in self.instruments:
-            instr.set_eventindexes(eventdates)
+            instr.set_valuation_date(valdate)
+
+        # Gather and merge event dates from all instruments
+        all_dates = list_eventdates(self.instruments)
+        live_dates = [d for d in all_dates if d >= valdate]
+        self.eventdates = np.asarray(live_dates)
+
+        # Now that we have the live event dates for the whole book, we can
+        # set the indexes of the instrument event dates relative to the
+        # total book's event dates
+        for instr in self.instruments:
+            instr.set_eventindexes(self.eventdates)
