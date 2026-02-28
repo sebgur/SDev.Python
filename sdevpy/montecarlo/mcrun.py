@@ -58,7 +58,7 @@ if __name__ == "__main__":
     disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     fwd_curves = get_forward_curves(names, valdate)
     lvs = get_local_vols(names, valdate)
-    eventdates = get_eventdates(book)
+    eventdates = book.eventdates
     event_tgrid = np.array([timegrids.model_time(valdate, date) for date in eventdates])
     dmax = eventdates.max()
     T = event_tgrid[-1]

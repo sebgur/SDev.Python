@@ -9,7 +9,7 @@ from sdevpy.montecarlo.PathGenerator import PathGenerator
 from sdevpy.market.spot import get_spots
 from sdevpy.market.yieldcurve import get_yieldcurve
 from sdevpy.market.eqforward import get_forward_curves
-from sdevpy.montecarlo.payoffs.basic import get_eventdates
+# from sdevpy.montecarlo.payoffs.basic import get_eventdates
 
 
 def get_local_vols(names, valdate, **kwargs):

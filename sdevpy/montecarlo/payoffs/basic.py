@@ -15,12 +15,11 @@ def list_eventdates(payoffs):
     return np.asarray(eventdates)
 
 
-# ToDo: check if we can remove this
-def get_eventdates(payoffs):
-    """ List the event dates behind the payoffs. Duplicates are removed and the
-        result is ordered. """
-    d1y = dt.datetime(2026, 12, 15)
-    return np.asarray([d1y])
+# def get_eventdates(payoffs):
+#     """ List the event dates behind the payoffs. Duplicates are removed and the
+#         result is ordered. """
+#     d1y = dt.datetime(2026, 12, 15)
+#     return np.asarray([d1y])
 
 
 def list_names(payoffs):
