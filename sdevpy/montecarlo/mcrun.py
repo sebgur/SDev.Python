@@ -14,8 +14,6 @@ from sdevpy.market.yieldcurve import get_yieldcurve
 
 
 #################### TODO #########################################################################
-# * Asian: add averaging window to even dates
-# * Calculate payoff indexes on event date grid?
 # * Multi-cashflow design
 # * Introduce concept of past fixings
 # * Implement var swap spread payoff
@@ -36,16 +34,17 @@ if __name__ == "__main__":
     book = bk.Book()
     trades = []
     expiry = dt.datetime(2026, 12, 15)
+    expiry2 = dt.datetime(2027, 12, 15)
     v_name, v_strike, v_type = 'ABC', 100.0, 'Call' # For check against CF
     trades.append(Trade(VanillaOption(v_name, v_strike, v_type, expiry), name="vanilla"))
     trades.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry), name="basket"))
-    trades.append(Trade(AsianOption('ABC', 100.0, 'Call', valdate, expiry), name="asian"))
+    trades.append(Trade(AsianOption('ABC', 100.0, 'Call', valdate, expiry, freq='5D'), name="asian"))
     trades.append(Trade(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0), name="worstof"))
     book.add_trades(trades)
 
     # Price book
     mc_price = price_book(valdate, book, constr_type='brownianbridge', rng_type='sobol',
-                          n_paths=100000, n_timesteps=50)
+                          n_paths=10000, n_timesteps=50)
                         #   n_paths=100*1000, n_timesteps=50)
     # print(mc_price)
 
@@ -58,16 +57,18 @@ if __name__ == "__main__":
     disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     fwd_curves = get_forward_curves(names, valdate)
     lvs = get_local_vols(names, valdate)
-    eventdates = book.eventdates
-    event_tgrid = np.array([timegrids.model_time(valdate, date) for date in eventdates])
-    dmax = eventdates.max()
-    T = event_tgrid[-1]
+    # eventdates = book.eventdates
+    # print(eventdates[250:])
+    # event_tgrid = np.array([timegrids.model_time(valdate, date) for date in eventdates])
+    # dmax = eventdates.max()
+    # T = event_tgrid[-2]
     name_idx = names.index(v_name)
-    fwd = fwd_curves[name_idx].value_float(T)
-    df = disc_curve.discount(dmax)
+    fwd = fwd_curves[name_idx].value(expiry)
+    df = disc_curve.discount(expiry)
+    ttm = timegrids.model_time(valdate, expiry)
     # print(df)
     sigma = np.asarray([0.2] * len(names))
-    cf_price = df * black.price(T, v_strike, v_type, fwd, sigma[name_idx])
+    cf_price = df * black.price(ttm, v_strike, v_type, fwd, sigma[name_idx])
 
     print("MC:", mc_price['pv'][0])
     print("MC:", mc_price['pv'][1])

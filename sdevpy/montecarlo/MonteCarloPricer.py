@@ -127,8 +127,8 @@ class MonteCarloPricer:
 
         # Calculate payoffs
         timer_payoff = timer.Stopwatch('Payoff calculation')
-        pvs = self.build(paths, book)
-        # pvs = self.build(event_paths, book)
+        # pvs = self.build(paths, book)
+        pvs = self.build(event_paths, book)
         # print(f"Disc. paths: {paths}")
         # print(f"Event paths: {event_paths}")
         timer_payoff.stop()

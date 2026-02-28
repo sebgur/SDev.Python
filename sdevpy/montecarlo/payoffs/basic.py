@@ -153,7 +153,11 @@ class Terminal(Payoff):
             raise ValueError(f"Could not find name {name} in path names: {str(e)}")
 
     def evaluate(self, paths):
-        spot_at_exp = paths[:, -1, self.name_idx]
+        # print(f"TPath shape: {paths.shape}")
+        # print(f"expiry idx: {self.expiry_idx}")
+        spot_at_exp = paths[:, self.expiry_idx, self.name_idx]
+        # spot_at_exp = paths[:, -1, self.name_idx]
+        # print(f"spot at exp: {spot_at_exp.shape}")
         payoff = spot_at_exp
         # print(f"Terminal: {payoff.shape}")
         return payoff
@@ -165,7 +169,7 @@ class Terminal(Payoff):
         self.eventdates = [self.expiry]
 
     def set_eventindexes(self, eventdates):
-        self.expiry_idx = np.where(eventdates == self.expiry)[0]
+        self.expiry_idx = np.where(eventdates == self.expiry)[0][0]
 
 
 class Average(Payoff):
@@ -182,7 +186,10 @@ class Average(Payoff):
         self.n_dates = len(self.alldates)
 
     def evaluate(self, paths):
-        return paths[:, :, self.name_idx].mean(axis=1)
+        # print(f"APath: {paths.shape}")
+        # print(f"Aidx: {self.averageidxs}")
+        return paths[:, self.averageidxs, self.name_idx].mean(axis=1)
+        # return paths[:, :, self.name_idx].mean(axis=1)
 
     def set_nameindexes(self, names):
         try:
@@ -206,7 +213,7 @@ class Average(Payoff):
     def set_eventindexes(self, eventdates):
         self.averageidxs = []
         for date in self.eventdates:
-            self.averageidxs.append(np.where(eventdates == date)[0])
+            self.averageidxs.append(np.where(eventdates == date)[0][0])
 
 
 class Max(Payoff):
