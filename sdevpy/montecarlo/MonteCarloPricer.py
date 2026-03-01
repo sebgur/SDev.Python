@@ -111,6 +111,38 @@ class MonteCarloPricer:
         self.n_paths = n_paths
         self.timers = []
 
+    def build_cashflows(self, paths, book):
+        ids, pvs, flow_schedules = [], [], []
+        for trade in book.trades:
+            print(trade.name)
+            instr = trade.instrument
+            # In principle we should discount before taking the mean. However,
+            # here we can discount after the mean as we only consider deterministic
+            # discount rates for now. If rates were to be stochastic, the discounting,
+            # i.e. the division by the numeraire, should be done before taking the mean.
+            fwd_flow_schedule = instr.evaluate_cashflows(paths)
+            mean_fwd_flow_schedule = np.mean(fwd_flow_schedule)
+            flow_schedule = []
+            for date, fwd_flow in zip(mean_fwd_flow_schedule):
+                flow_pv = self.disc_curve.discount(date) * fwd_flow
+                flow_schedule.append((date, flow_pv))
+
+            # Aggregate
+            ids.append(trade.name)
+            flow_schedules.append(flow_schedule)
+            pvs.append(flow_pv_schedule.sum(axis))
+
+        result = {'id': ids, 'pv': pvs, 'cashflows': flow_schedule}
+        return result
+
+        # times, amounts = schedule.aggregate()
+        # pv = 0.0
+        # for i, t in enumerate(times):
+        #     df = discount_curve.df(t)
+        #     pv += df * amounts[:, i]
+
+        # return pv.mean()
+
     def pv(self, book):
         # Generate spots paths on disc. grid: n_mc x (n_steps + 1) x n_assets
         timer_path = timer.Stopwatch("Generate spot paths")
@@ -137,8 +169,7 @@ class MonteCarloPricer:
         return pvs
 
     def build(self, paths, book):
-        ids = []
-        pvs = []
+        ids, pvs = [], []
         for trade in book.trades:
             print(trade.name)
             instr = trade.instrument
@@ -147,7 +178,6 @@ class MonteCarloPricer:
             # discount rates for now. If rates were to be stochastic, the discounting,
             # i.e. the division by the numeraire, should be done before taking the mean.
             fwd_flows = instr.evaluate(paths)
-            # print(fwd_flows)
             mean_fwd_flows = np.mean(fwd_flows)
             disc_pvs = self.df * mean_fwd_flows
             ids.append(trade.name)

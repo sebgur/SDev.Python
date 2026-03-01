@@ -15,13 +15,6 @@ def list_eventdates(payoffs):
     return np.asarray(eventdates)
 
 
-# def get_eventdates(payoffs):
-#     """ List the event dates behind the payoffs. Duplicates are removed and the
-#         result is ordered. """
-#     d1y = dt.datetime(2026, 12, 15)
-#     return np.asarray([d1y])
-
-
 def list_names(payoffs):
     """ List the names behind the payoffs. Duplicates are removed and the result
         is ordered to avoid noise due to re-ordering of the random numbers depending
@@ -37,6 +30,14 @@ def list_names(payoffs):
     return names
 
 
+# market_state = {
+#     "paths": paths,                        # full grid
+#     "event_spots": event_spots,            # interpolated at event dates
+#     "terminal_spots": paths[:, -1, :],     # shortcut
+#     "discount_factors": df_curve,          # deterministic curve
+#     "n_paths": n_paths
+# }
+
 class Trade:
     def __init__(self, instrument, **kwargs):
         self.instrument = instrument
@@ -50,6 +51,10 @@ class Payoff(ABC):
         self.name_idxs = None
         self.name_dic = None
         self.eventdates = []
+
+    @abstractmethod
+    def generate_cashflows(self, paths):
+        pass
 
     @abstractmethod
     def evaluate(self, paths):
@@ -145,13 +150,6 @@ class Terminal(Payoff):
         self.expiry = date
         self.expiry_idx = None
 
-    def set_nameindexes(self, names):
-        try:
-            self.name_idx = names.index(self.name)
-        except Exception as e:
-            self.name_idx = None
-            raise ValueError(f"Could not find name {name} in path names: {str(e)}")
-
     def evaluate(self, paths):
         # print(f"TPath shape: {paths.shape}")
         # print(f"expiry idx: {self.expiry_idx}")
@@ -161,6 +159,13 @@ class Terminal(Payoff):
         payoff = spot_at_exp
         # print(f"Terminal: {payoff.shape}")
         return payoff
+
+    def set_nameindexes(self, names):
+        try:
+            self.name_idx = names.index(self.name)
+        except Exception as e:
+            self.name_idx = None
+            raise ValueError(f"Could not find name {name} in path names: {str(e)}")
 
     def set_valuation_date(self, valdate):
         if self.expiry < valdate:
