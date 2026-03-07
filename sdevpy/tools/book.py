@@ -1,5 +1,6 @@
 import numpy as np
-from sdevpy.montecarlo.payoffs.basic import list_names, list_eventdates
+from sdevpy.montecarlo.payoffs.basic import list_instrument_names, list_instrument_eventdates
+# from sdevpy.montecarlo.payoffs.basic import list_payoff_names, list_payoff_eventdates
 from sdevpy.tools.utils import isiterable
 
 
@@ -14,17 +15,20 @@ class Book:
             by arrays """
         if isiterable(trades):
             self.trades.extend(trades)
-            self.instruments.extend([t.instrument.payoff for t in trades])
+            self.instruments.extend([t.instrument for t in trades])
+            # self.instruments.extend([t.instrument.payoff for t in trades])
         else:
             self.trades.append(trades)
-            self.instruments.append(trades.instrument.payoff)
+            self.instruments.append(trades.instrument)
+            # self.instruments.append(trades.instrument.payoff)
 
     def clear_trades(self):
         self.trades, self.instruments, self.names = [], [], None
         self.eventdates = None
 
     def set_nameindexes(self):
-        self.names = list_names(self.instruments)
+        self.names = list_instrument_names(self.instruments)
+        # self.names = list_payoff_names(self.instruments)
         for instr in self.instruments:
             instr.set_nameindexes(self.names)
 
@@ -37,7 +41,7 @@ class Book:
             instr.set_valuation_date(valdate)
 
         # Gather and merge event dates from all instruments
-        all_dates = list_eventdates(self.instruments)
+        all_dates = list_instrument_eventdates(self.instruments)
         live_dates = [d for d in all_dates if d >= valdate]
         self.eventdates = np.asarray(live_dates)
 

@@ -37,7 +37,7 @@ class WorstOfBarrier(Payoff):
     #         subpayoff.set_valuation_date(valdate)
 
     #     # Gather event dates from subpayoofs
-    #     self.eventdates = list_eventdates(self.subpayoffs)
+    #     self.eventdates = list_payoff_eventdates(self.subpayoffs)
 
     # def set_eventindexes(self, evendates):
     #     for subpayoff in self.subpayoffs:
@@ -63,8 +63,8 @@ class Maximum(Payoff):
         super().__init__()
         self.left = left
         self.right = right
-        self.names = list_names([self.left, self.right])
-        self.eventdates = list_eventdates([self.left, self.right])
+        self.names = list_payoff_names([self.left, self.right])
+        self.eventdates = list_payoff_eventdates([self.left, self.right])
 
     def evaluate(self, mkt_state):
         return np.maximum(self.left.evaluate(mkt_state), self.right.evaluate(mkt_state))

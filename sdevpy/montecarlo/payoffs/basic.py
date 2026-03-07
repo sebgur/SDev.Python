@@ -5,7 +5,7 @@ from sdevpy.tools.scalendar import make_schedule
 from sdevpy.tools.utils import hash
 
 
-def list_eventdates(payoffs):
+def list_payoff_eventdates(payoffs):
     """ List the event dates behind the payoffs. Duplicates are removed and the
         result is ordered. """
     eventdates = []
@@ -16,7 +16,18 @@ def list_eventdates(payoffs):
     return np.asarray(eventdates)
 
 
-def list_names(payoffs):
+def list_instrument_eventdates(instruments):
+    """ List the event dates behind the instrument. Duplicates are removed and the
+        result is ordered. """
+    eventdates = []
+    for instr in instruments:
+        eventdates.extend(instr.eventdates())
+
+    eventdates = sorted(set(eventdates))
+    return np.asarray(eventdates)
+
+
+def list_payoff_names(payoffs):
     """ List the names behind the payoffs. Duplicates are removed and the result
         is ordered to avoid noise due to re-ordering of the random numbers depending
         on the order in which the trades are listed in the book. """
@@ -27,7 +38,19 @@ def list_names(payoffs):
             names.extend(new_names)
 
     names = sorted(set(names))
-    # names = names if len(names) != 0 else []
+    return names
+
+def list_instrument_names(instruments):
+    """ List the names behind the instruments. Duplicates are removed and the result
+        is ordered to avoid noise due to re-ordering of the random numbers depending
+        on the order in which the trades are listed in the book. """
+    names = []
+    for instr in instruments:
+        new_names = instr.names()
+        if new_names is not None:
+            names.extend(new_names)
+
+    names = sorted(set(names))
     return names
 
 
@@ -36,6 +59,37 @@ class Instrument:
         self.payoff = payoff
         self.cashflow_legs = cashflow_legs
         self.id = kwargs.get('id', hash())
+
+    def names(self):
+        payoffs = []
+        for leg in self.cashflow_legs:
+            for cf in leg:
+                payoffs.append(cf.payoff)
+
+        return list_payoff_names(payoffs)
+
+    def eventdates(self):
+        payoffs = []
+        for leg in self.cashflow_legs:
+            for cf in leg:
+                payoffs.append(cf.payoff)
+
+        return list_payoff_eventdates(payoffs)
+
+    def set_nameindexes(self, names):
+        for leg in self.cashflow_legs:
+            for cf in leg:
+                cf.payoff.set_nameindexes(names)
+
+    def set_valuation_date(self, valdate):
+        for leg in self.cashflow_legs:
+            for cf in leg:
+                cf.payoff.set_valuation_date(valdate)
+
+    def set_eventindexes(self, eventdates):
+        for leg in self.cashflow_legs:
+            for cf in leg:
+                cf.payoff.set_eventindexes(eventdates)
 
 
 class Trade:
@@ -219,8 +273,7 @@ class Max(Payoff):
         super().__init__()
         subpayoffs = [ensure_payoff(node) for node in subpayoffs]
         self.subpayoffs = subpayoffs
-        self.names = list_names(self.subpayoffs)
-        # self.eventdates = list_eventdates(self.subpayoffs)
+        self.names = list_payoff_names(self.subpayoffs)
 
     def evaluate(self, mkt_state):
         values = [subpayoff.evaluate(mkt_state) for subpayoff in self.subpayoffs]
@@ -240,7 +293,7 @@ class Max(Payoff):
             subpayoff.set_valuation_date(valdate)
 
         # Gather event dates from subpayoofs
-        self.eventdates = list_eventdates(self.subpayoffs)
+        self.eventdates = list_payoff_eventdates(self.subpayoffs)
 
     def set_eventindexes(self, evendates):
         for subpayoff in self.subpayoffs:
@@ -253,8 +306,7 @@ class Min(Payoff):
         super().__init__()
         subpayoffs = [ensure_payoff(node) for node in subpayoffs]
         self.subpayoffs = subpayoffs
-        self.names = list_names(self.subpayoffs)
-        # self.eventdates = list_eventdates(self.subpayoffs)
+        self.names = list_payoff_names(self.subpayoffs)
 
     def evaluate(self, mkt_state):
         values = [subpayoff.evaluate(mkt_state) for subpayoff in self.subpayoffs]
@@ -274,7 +326,7 @@ class Min(Payoff):
             subpayoff.set_valuation_date(valdate)
 
         # Gather event dates from subpayoofs
-        self.eventdates = list_eventdates(self.subpayoffs)
+        self.eventdates = list_payoff_eventdates(self.subpayoffs)
 
     def set_eventindexes(self, evendates):
         for subpayoff in self.subpayoffs:
@@ -312,8 +364,7 @@ class Basket(Payoff):
     def __init__(self, subpayoffs, weights):
         super().__init__()
         self.subpayoffs = subpayoffs
-        self.names = list_names(self.subpayoffs)
-        # self.eventdates = list_eventdates(self.subpayoffs)
+        self.names = list_payoff_names(self.subpayoffs)
         self.weights = np.asarray(weights)
         if len(self.subpayoffs) != len(self.weights):
             raise RuntimeError("Incompatible sizes between sub-payoffs and weights")
@@ -335,7 +386,7 @@ class Basket(Payoff):
             subpayoff.set_valuation_date(valdate)
 
         # Gather event dates from subpayoofs
-        self.eventdates = list_eventdates(self.subpayoffs)
+        self.eventdates = list_payoff_eventdates(self.subpayoffs)
 
     def set_eventindexes(self, evendates):
         for subpayoff in self.subpayoffs:
@@ -367,7 +418,7 @@ class Add(Payoff):
         super().__init__()
         self.left = left
         self.right = right
-        self.names = list_names([self.left, self.right])
+        self.names = list_payoff_names([self.left, self.right])
 
     def evaluate(self, mkt_state):
         payoff = self.left.evaluate(mkt_state) + self.right.evaluate(mkt_state)
@@ -383,7 +434,7 @@ class Add(Payoff):
         self.right.set_valuation_date(valdate)
 
         # Gather event dates from subpayoofs
-        self.eventdates = list_eventdates([self.left, self.right])
+        self.eventdates = list_payoff_eventdates([self.left, self.right])
 
     def set_eventindexes(self, evendates):
         self.left.set_eventindexes(evendates)
@@ -395,7 +446,7 @@ class Sub(Payoff):
         super().__init__()
         self.left = left
         self.right = right
-        self.names = list_names([self.left, self.right])
+        self.names = list_payoff_names([self.left, self.right])
 
     def evaluate(self, mkt_state):
         payoff = self.left.evaluate(mkt_state) - self.right.evaluate(mkt_state)
@@ -411,7 +462,7 @@ class Sub(Payoff):
         self.right.set_valuation_date(valdate)
 
         # Gather event dates from subpayoofs
-        self.eventdates = list_eventdates([self.left, self.right])
+        self.eventdates = list_payoff_eventdates([self.left, self.right])
 
     def set_eventindexes(self, evendates):
         self.left.set_eventindexes(evendates)
@@ -423,7 +474,7 @@ class Mul(Payoff):
         super().__init__()
         self.left = left
         self.right = right
-        self.names = list_names([self.left, self.right])
+        self.names = list_payoff_names([self.left, self.right])
 
     def evaluate(self, mkt_state):
         payoff = self.left.evaluate(mkt_state) * self.right.evaluate(mkt_state)
@@ -439,7 +490,7 @@ class Mul(Payoff):
         self.right.set_valuation_date(valdate)
 
         # Gather event dates from subpayoofs
-        self.eventdates = list_eventdates([self.left, self.right])
+        self.eventdates = list_payoff_eventdates([self.left, self.right])
 
     def set_eventindexes(self, evendates):
         self.left.set_eventindexes(evendates)
@@ -451,7 +502,7 @@ class Div(Payoff):
         super().__init__()
         self.left = left
         self.right = right
-        self.names = list_names([self.left, self.right])
+        self.names = list_payoff_names([self.left, self.right])
 
     def evaluate(self, mkt_state):
         return self.left.evaluate(mkt_state) / self.right.evaluate(mkt_state)
@@ -467,7 +518,7 @@ class Div(Payoff):
         self.right.set_valuation_date(valdate)
 
         # Gather event dates from subpayoofs
-        self.eventdates = list_eventdates([self.left, self.right])
+        self.eventdates = list_payoff_eventdates([self.left, self.right])
 
     def set_eventindexes(self, evendates):
         self.left.set_eventindexes(evendates)
