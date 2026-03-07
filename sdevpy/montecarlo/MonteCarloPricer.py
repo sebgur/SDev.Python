@@ -63,7 +63,7 @@ def price_book(valdate, book, **kwargs):
     df = disc_curve.discount(eventdates.max())
     event_times = timegrids.model_time(valdate, eventdates)
     # print(f"Event times: {event_times}")
-    mc = MonteCarloPricer(generator, n_paths, event_times, df=df)
+    mc = MonteCarloPricer(generator, n_paths, event_times, disc_curve, df=df)
 
     # First we project the discretization grid paths on the event date paths before
     # calculating the payoffs, which only require the event date paths.
@@ -102,11 +102,22 @@ def interp_paths(paths, idx, w0, w1):
 
     return w0 * S_left + w1 * S_right
 
+
+class MarketState:
+    def __init__(self, disc_paths, event_paths, discount_curve):
+        self.disc_paths = disc_paths
+        self.event_paths = event_paths
+        # self.terminal_spots = paths[:, -1, :]
+        self.discount_curve = discount_curve
+        self.n_paths = disc_paths.shape[0]
+
+
 class MonteCarloPricer:
-    def __init__(self, path_generator, n_paths, event_times, df):
+    def __init__(self, path_generator, n_paths, event_times, disc_curve, df):
         self.path_generator = path_generator
         self.disc_times = path_generator.time_grid
         self.event_times = event_times
+        self.disc_curve = disc_curve
         self.df = df
         self.n_paths = n_paths
         self.timers = []
@@ -146,29 +157,30 @@ class MonteCarloPricer:
     def pv(self, book):
         # Generate spots paths on disc. grid: n_mc x (n_steps + 1) x n_assets
         timer_path = timer.Stopwatch("Generate spot paths")
-        paths = self.path_generator.generate_paths(self.n_paths)
+        disc_paths = self.path_generator.generate_paths(self.n_paths)
         timer_path.stop()
 
         # Interpolate paths from disc. to event date grid
         timer_interp = timer.Stopwatch("Interpolate to event grid")
-        print(f"Disc. path shape: {paths.shape}")
+        print(f"Disc. path shape: {disc_paths.shape}")
         idx, w0, w1 = path_interp_coeffs(self.disc_times, self.event_times)
-        event_paths = interp_paths(paths, idx, w0, w1)
+        event_paths = interp_paths(disc_paths, idx, w0, w1)
         print(f"Event path shape: {event_paths.shape}")
         timer_interp.stop()
 
+        # Define market state
+        mkt_state = MarketState(disc_paths, event_paths, self.disc_curve)
+
         # Calculate payoffs
         timer_payoff = timer.Stopwatch('Payoff calculation')
-        # pvs = self.build(paths, book)
-        pvs = self.build(event_paths, book)
-        # print(f"Disc. paths: {paths}")
-        # print(f"Event paths: {event_paths}")
+        pvs = self.build(mkt_state, book)
         timer_payoff.stop()
 
         self.timers = [timer_path, timer_interp, timer_payoff]
         return pvs
 
-    def build(self, paths, book):
+    def build(self, mkt_state, book):
+        paths = mkt_state.event_paths
         ids, pvs = [], []
         for trade in book.trades:
             print(trade.name)
@@ -177,7 +189,8 @@ class MonteCarloPricer:
             # here we can discount after the mean as we only consider deterministic
             # discount rates for now. If rates were to be stochastic, the discounting,
             # i.e. the division by the numeraire, should be done before taking the mean.
-            fwd_flows = instr.evaluate(paths)
+            # fwd_flows = instr.evaluate(paths)
+            fwd_flows = instr.evaluate(mkt_state)
             mean_fwd_flows = np.mean(fwd_flows)
             disc_pvs = self.df * mean_fwd_flows
             ids.append(trade.name)

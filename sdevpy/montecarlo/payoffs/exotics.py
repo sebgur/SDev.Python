@@ -11,7 +11,8 @@ class WorstOfBarrier(Payoff):
         self.optiontype = string_to_optiontype(optiontype)
         self.barrier = barrier
 
-    def evaluate(self, paths):
+    def evaluate(self, mkt_state):
+        paths = mkt_state.event_paths
         spot_all = self.paths_for_all(paths)
 
         # Monitor barrier
@@ -65,8 +66,8 @@ class Maximum(Payoff):
         self.names = list_names([self.left, self.right])
         self.eventdates = list_eventdates([self.left, self.right])
 
-    def evaluate(self, paths):
-        return np.maximum(self.left.evaluate(paths), self.right.evaluate(paths))
+    def evaluate(self, mkt_state):
+        return np.maximum(self.left.evaluate(mkt_state), self.right.evaluate(mkt_state))
 
 
 class BarrierDown(Payoff):
@@ -76,6 +77,7 @@ class BarrierDown(Payoff):
         self.asset_index = asset_index
         self.level = level
 
-    def evaluate(self, paths):
+    def evaluate(self, mkt_state):
+        paths = mkt_state.event_paths
         breached = (paths[:, :, self.asset_index] < self.level).any(axis=1)
         return (~breached).astype(float)
