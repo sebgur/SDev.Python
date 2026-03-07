@@ -6,22 +6,41 @@ from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, Asia
 from sdevpy.tools import book as bk
 from sdevpy.montecarlo.MonteCarloPricer import price_book
 from sdevpy.montecarlo.MonteCarloPricer import path_interp_coeffs, interp_paths
+from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 
 def test_mc():
     valdate = dt.datetime(2025, 12, 15)
 
-    # Create portfolio
+    ## Create portfolio ##
     book = bk.Book()
     trades = []
     expiry = dt.datetime(2026, 12, 15)
-    trades.append(Trade(VanillaOption('ABC', 100.0, 'Call', expiry), name="vanilla"))
-    trades.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry), name="basket"))
-    trades.append(Trade(AsianOption('ABC', 100.0, 'Call', valdate, expiry, freq='5D'), name="asian"))
-    trades.append(Trade(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0), name="worstof"))
+
+    # Vanilla
+    index = VanillaOption('ABC', 100.0, 'Call', expiry)
+    cf = cfl.Cashflow(index, expiry)
+    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+
+    # Basket option
+    index = BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry)
+    cf = cfl.Cashflow(index, expiry)
+    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+
+    # Asian option
+    index = AsianOption('ABC', 100.0, 'Call', valdate, expiry, freq='5D')
+    cf = cfl.Cashflow(index, expiry)
+    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+
+    # Worst-of barrier
+    index = WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0)
+    cf = cfl.Cashflow(index, expiry)
+    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+
+    # Create book
     book.add_trades(trades)
 
-    # Price
+    ## Price ##
     mc_price = price_book(valdate, book, scramble=False, constr_type='brownianbridge',
                           rng_type='sobol', n_paths=2000)
     test = mc_price['pv']

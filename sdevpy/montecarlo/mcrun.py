@@ -11,6 +11,7 @@ from sdevpy.analytics import black
 from sdevpy.tools import timegrids, timer
 from sdevpy.tools import book as bk
 from sdevpy.market.yieldcurve import get_yieldcurve
+from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 
 #################### TODO #########################################################################
@@ -36,10 +37,28 @@ if __name__ == "__main__":
     expiry = dt.datetime(2026, 12, 15)
     expiry2 = dt.datetime(2027, 12, 15)
     v_name, v_strike, v_type = 'ABC', 100.0, 'Call' # For check against CF
-    trades.append(Trade(VanillaOption(v_name, v_strike, v_type, expiry), name="vanilla"))
-    trades.append(Trade(BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry), name="basket"))
-    trades.append(Trade(AsianOption('ABC', 100.0, 'Call', valdate, expiry, freq='5D'), name="asian"))
-    trades.append(Trade(WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0), name="worstof"))
+
+    # Vanilla
+    index = VanillaOption(v_name, v_strike, v_type, expiry)
+    cf = cfl.Cashflow(index, expiry)
+    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+
+    # Basket option
+    index = BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry)
+    cf = cfl.Cashflow(index, expiry)
+    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+
+    # Asian option
+    index = AsianOption('ABC', 100.0, 'Call', valdate, expiry, freq='5D')
+    cf = cfl.Cashflow(index, expiry)
+    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+
+    # Worst-of barrier
+    index = WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0)
+    cf = cfl.Cashflow(index, expiry)
+    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+
+    # Create book
     book.add_trades(trades)
 
     # Price book

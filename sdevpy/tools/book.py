@@ -14,10 +14,10 @@ class Book:
             by arrays """
         if isiterable(trades):
             self.trades.extend(trades)
-            self.instruments.extend([t.instrument for t in trades])
+            self.instruments.extend([t.instrument.payoff for t in trades])
         else:
             self.trades.append(trades)
-            self.instruments.append(trades.instrument)
+            self.instruments.append(trades.instrument.payoff)
 
     def clear_trades(self):
         self.trades, self.instruments, self.names = [], [], None

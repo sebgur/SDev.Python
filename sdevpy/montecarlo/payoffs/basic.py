@@ -2,6 +2,7 @@ import numpy as np
 import datetime as dt
 from abc import ABC, abstractmethod
 from sdevpy.tools.scalendar import make_schedule
+from sdevpy.tools.utils import hash
 
 
 def list_eventdates(payoffs):
@@ -30,11 +31,19 @@ def list_names(payoffs):
     return names
 
 
+class Instrument:
+    def __init__(self, payoff, cashflow_legs=None, **kwargs):
+        self.payoff = payoff
+        self.cashflow_legs = cashflow_legs
+        self.id = kwargs.get('id', hash())
+
+
 class Trade:
     def __init__(self, instrument, **kwargs):
+        self.payoff = instrument.payoff
         self.instrument = instrument
         self.notional = kwargs.get('notional', 1.0)
-        self.name = kwargs.get('name', '')
+        self.id = kwargs.get('id', hash())
 
 
 class Payoff(ABC):
@@ -43,10 +52,6 @@ class Payoff(ABC):
         self.name_idxs = None
         self.name_dic = None
         self.eventdates = []
-
-    # @abstractmethod
-    # def generate_cashflows(self, paths):
-    #     pass
 
     @abstractmethod
     def evaluate(self, mkt_state):

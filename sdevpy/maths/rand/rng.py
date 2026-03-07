@@ -3,11 +3,6 @@ import numpy as np
 from abc import ABC, abstractmethod
 from scipy.stats import norm, qmc
 
-## TODO
-# * We could add other sequences, for instance
-# qmc.Halton(d=3, scramble=True, seed=42)
-# qmc.LatinHypercube(d=4, seed=42)
-
 
 def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
     """ Easy-input method to draw gaussians in dimensions num_steps x num_mc x num_factors """

@@ -9,7 +9,6 @@ from sdevpy.montecarlo.PathGenerator import PathGenerator
 from sdevpy.market.spot import get_spots
 from sdevpy.market.yieldcurve import get_yieldcurve
 from sdevpy.market.eqforward import get_forward_curves
-# from sdevpy.montecarlo.payoffs.basic import get_eventdates
 
 
 def get_local_vols(names, valdate, **kwargs):
@@ -122,37 +121,29 @@ class MonteCarloPricer:
         self.n_paths = n_paths
         self.timers = []
 
-    def build_cashflows(self, paths, book):
-        ids, pvs, flow_schedules = [], [], []
-        for trade in book.trades:
-            print(trade.name)
-            instr = trade.instrument
-            # In principle we should discount before taking the mean. However,
-            # here we can discount after the mean as we only consider deterministic
-            # discount rates for now. If rates were to be stochastic, the discounting,
-            # i.e. the division by the numeraire, should be done before taking the mean.
-            fwd_flow_schedule = instr.evaluate_cashflows(paths)
-            mean_fwd_flow_schedule = np.mean(fwd_flow_schedule)
-            flow_schedule = []
-            for date, fwd_flow in zip(mean_fwd_flow_schedule):
-                flow_pv = self.disc_curve.discount(date) * fwd_flow
-                flow_schedule.append((date, flow_pv))
+    # def build_cashflows(self, paths, book):
+    #     ids, pvs, flow_schedules = [], [], []
+    #     for trade in book.trades:
+    #         print(trade.id)
+    #         instr = trade.instrument
+    #         # In principle we should discount before taking the mean. However,
+    #         # here we can discount after the mean as we only consider deterministic
+    #         # discount rates for now. If rates were to be stochastic, the discounting,
+    #         # i.e. the division by the numeraire, should be done before taking the mean.
+    #         fwd_flow_schedule = instr.evaluate_cashflows(paths)
+    #         mean_fwd_flow_schedule = np.mean(fwd_flow_schedule)
+    #         flow_schedule = []
+    #         for date, fwd_flow in zip(mean_fwd_flow_schedule):
+    #             flow_pv = self.disc_curve.discount(date) * fwd_flow
+    #             flow_schedule.append((date, flow_pv))
 
-            # Aggregate
-            ids.append(trade.name)
-            flow_schedules.append(flow_schedule)
-            pvs.append(flow_pv_schedule.sum(axis))
+    #         # Aggregate
+    #         ids.append(trade.id)
+    #         flow_schedules.append(flow_schedule)
+    #         pvs.append(flow_pv_schedule.sum(axis))
 
-        result = {'id': ids, 'pv': pvs, 'cashflows': flow_schedule}
-        return result
-
-        # times, amounts = schedule.aggregate()
-        # pv = 0.0
-        # for i, t in enumerate(times):
-        #     df = discount_curve.df(t)
-        #     pv += df * amounts[:, i]
-
-        # return pv.mean()
+    #     result = {'id': ids, 'pv': pvs, 'cashflows': flow_schedule}
+    #     return result
 
     def pv(self, book):
         # Generate spots paths on disc. grid: n_mc x (n_steps + 1) x n_assets
@@ -179,21 +170,28 @@ class MonteCarloPricer:
         self.timers = [timer_path, timer_interp, timer_payoff]
         return pvs
 
+    def build2(self, mkt_state, book):
+        paths = mkt_state.event_paths
+        ids, pvs = [], []
+        for trade in book.trades:
+            print(trade.id)
+            instr = trade.instrument
+            fwd_flows = instr.evaluate(mkt_state)
+            mean_fwd_flows = np.mean(fwd_flows)
+            disc_pvs = self.df * mean_fwd_flows
+            ids.append(trade.id)
+            pvs.append(disc_pvs)
+
     def build(self, mkt_state, book):
         paths = mkt_state.event_paths
         ids, pvs = [], []
         for trade in book.trades:
-            print(trade.name)
-            instr = trade.instrument
-            # In principle we should discount before taking the mean. However,
-            # here we can discount after the mean as we only consider deterministic
-            # discount rates for now. If rates were to be stochastic, the discounting,
-            # i.e. the division by the numeraire, should be done before taking the mean.
-            # fwd_flows = instr.evaluate(paths)
+            print(trade.id)
+            instr = trade.payoff
             fwd_flows = instr.evaluate(mkt_state)
             mean_fwd_flows = np.mean(fwd_flows)
             disc_pvs = self.df * mean_fwd_flows
-            ids.append(trade.name)
+            ids.append(trade.id)
             pvs.append(disc_pvs)
 
         result = {'id': ids, 'pv': pvs}

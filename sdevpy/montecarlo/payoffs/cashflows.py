@@ -1,22 +1,39 @@
 
 
-# class Cashflow:
-#     def __init__(self, time, amount):
-#         self.time = time  # scalar
-#         self.amount = amount  # vector (n_paths,)
+class Cashflow:
+    def __init__(self, index, paydate, notional=1.0, accrual=1.0):
+        self.index = index
+        self.paydate = paydate
+        self.notional = notional
+        self.accrual = accrual
+
+    def calculate(self, market_state):
+        index_amount = self.index.evaluate(market_state)
+        return index_amount * self.notional * self.accrual
+        # schedule = CashflowSchedule()
+        # schedule.add_cashflow(self.payment_time, amount)
+        # return schedule
 
 
-class CashflowSchedule:
-    def __init__(self):
-        self.dates = []
-        self.amounts = []
+# class CashflowLeg:
+#     def __init__(self):
+#         self.cashflows = {}
 
-    def add(self, date, amount):
-        self.dates.append(date)
-        self.amounts.append(amount)
+#     def add_cashflow(self, time, amount):
+#         if time in self.cashflows:
+#             self.cashflows[time] += amount
+#         else:
+#             self.cashflows[time] = amount.copy()
 
-    def aggregate(self):
-        return np.array(self.times), np.column_stack(self.amounts)
+#     def __add__(self, other):
+#         result = CashflowSchedule()
+#         for t, a in self.cashflows.items():
+#             result.add_cashflow(t, a)
+
+#         for t, a in other.cashflows.items():
+#             result.add_cashflow(t, a)
+
+#         return result
 
 
 class DiscountEngine:
