@@ -162,9 +162,17 @@ class MonteCarloPricer:
         # Define market state
         mkt_state = MarketState(disc_paths, event_paths, self.disc_curve)
 
-        # Calculate payoffs
+        ## Calculate payoffs ##
         timer_payoff = timer.Stopwatch('Payoff calculation')
-        pvs = self.build(mkt_state, book)
+        results = self.build2(mkt_state, book)
+
+        # Strip PVs
+        ids_, pvs_ = [], []
+        for result in results:
+            ids_.append(result['id'])
+            pvs_.append(result['results']['pv'])
+        pvs = {'id': ids_, 'pv': pvs_}
+
         timer_payoff.stop()
 
         self.timers = [timer_path, timer_interp, timer_payoff]
@@ -172,30 +180,59 @@ class MonteCarloPricer:
 
     def build2(self, mkt_state, book):
         paths = mkt_state.event_paths
-        ids, pvs = [], []
+        results = []
         for trade in book.trades:
             print(trade.id)
             instr = trade.instrument
-            fwd_flows = instr.evaluate(mkt_state)
-            mean_fwd_flows = np.mean(fwd_flows)
-            disc_pvs = self.df * mean_fwd_flows
-            ids.append(trade.id)
-            pvs.append(disc_pvs)
+            leg_cf_pvs = []
+            for leg in instr.cashflow_legs:
+                cf_pvs = []
+                for cf in leg:
+                    fwd_flow = cf.calculate(mkt_state)
+                    mean_fwd_flow = np.mean(fwd_flow)
+                    disc_pv = self.df * mean_fwd_flow
+                    cf_pvs.append(disc_pv)
 
-    def build(self, mkt_state, book):
-        paths = mkt_state.event_paths
-        ids, pvs = [], []
-        for trade in book.trades:
-            print(trade.id)
-            instr = trade.payoff
-            fwd_flows = instr.evaluate(mkt_state)
-            mean_fwd_flows = np.mean(fwd_flows)
-            disc_pvs = self.df * mean_fwd_flows
-            ids.append(trade.id)
-            pvs.append(disc_pvs)
+                leg_cf_pvs.append(cf_pvs)
 
-        result = {'id': ids, 'pv': pvs}
-        return result
+            # Quick PV aggregation
+            pv = 0.0
+            for leg_cf_pv in leg_cf_pvs:
+                for cf_pv in leg_cf_pv:
+                    pv += cf_pv
+
+            result = {'id': trade.id, 'results': {'pv': pv}}
+            results.append(result)
+
+        return results
+
+    # def build(self, mkt_state, book):
+    #     paths = mkt_state.event_paths
+    #     results = []
+    #     for trade in book.trades:
+    #         print(trade.id)
+    #         instr = trade.payoff
+    #         fwd_flows = instr.evaluate(mkt_state)
+    #         mean_fwd_flows = np.mean(fwd_flows)
+    #         disc_pvs = self.df * mean_fwd_flows
+    #         results.append({'id': trade.id, 'results': {'pv': disc_pvs}})
+
+    #     return results
+
+    # # def build_old(self, mkt_state, book):
+    # #     paths = mkt_state.event_paths
+    # #     ids, pvs = [], []
+    # #     for trade in book.trades:
+    # #         print(trade.id)
+    # #         instr = trade.payoff
+    # #         fwd_flows = instr.evaluate(mkt_state)
+    # #         mean_fwd_flows = np.mean(fwd_flows)
+    # #         disc_pvs = self.df * mean_fwd_flows
+    # #         ids.append(trade.id)
+    # #         pvs.append(disc_pvs)
+
+    # #     result = {'id': ids, 'pv': pvs}
+    # #     return result
 
     def print_timers(self):
         for timer in self.timers:
