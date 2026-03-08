@@ -15,17 +15,15 @@ from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 
 #################### TODO #########################################################################
-# * Multi-cashflow design
 # * Introduce concept of past fixings
+# * Introduce clean json layer for trade readings/DataTransferObject
 # * Implement var swap spread payoff
 # * Check accuracy against LV calib
-# * Calculate vega through LV calib
-# * Greeks by saving BM and maybe time interpolation too?
+# * Calculate vega through LV calib (save BM/interpolation)
 
 # * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
 # * Implementing exact Dupire through python vectorization and try parallelization
 # * Implement DE with parallelization on the population
-# * Mistral: use numba JIT, parallelization (joblib, Ray)
 
 
 if __name__ == "__main__":
@@ -64,8 +62,6 @@ if __name__ == "__main__":
     # Price book
     mc_price = price_book(valdate, book, constr_type='brownianbridge', rng_type='sobol',
                           n_paths=10000, n_timesteps=50)
-                        #   n_paths=100*1000, n_timesteps=50)
-    # print(mc_price)
 
     # Gather all names in the book
     names = book.names
@@ -76,16 +72,10 @@ if __name__ == "__main__":
     disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     fwd_curves = get_forward_curves(names, valdate)
     lvs = get_local_vols(names, valdate)
-    # eventdates = book.eventdates
-    # print(eventdates[250:])
-    # event_tgrid = np.array([timegrids.model_time(valdate, date) for date in eventdates])
-    # dmax = eventdates.max()
-    # T = event_tgrid[-2]
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx].value(expiry)
     df = disc_curve.discount(expiry)
     ttm = timegrids.model_time(valdate, expiry)
-    # print(df)
     sigma = np.asarray([0.2] * len(names))
     cf_price = df * black.price(ttm, v_strike, v_type, fwd, sigma[name_idx])
 

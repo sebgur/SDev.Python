@@ -59,16 +59,11 @@ def price_book(valdate, book, **kwargs):
 
     # MC pricer
     n_paths = kwargs.get('n_paths', 10 * 1000)
-    df = disc_curve.discount(eventdates.max())
     event_times = timegrids.model_time(valdate, eventdates)
-    # print(f"Event times: {event_times}")
-    mc = MonteCarloPricer(generator, n_paths, event_times, disc_curve, df=df)
-
-    # First we project the discretization grid paths on the event date paths before
-    # calculating the payoffs, which only require the event date paths.
-
+    mc = MonteCarloPricer(generator, n_paths, event_times, disc_curve)
     mc_price = mc.pv(book)
     mc.print_timers()
+
     return mc_price
 
 
@@ -112,38 +107,13 @@ class MarketState:
 
 
 class MonteCarloPricer:
-    def __init__(self, path_generator, n_paths, event_times, disc_curve, df):
+    def __init__(self, path_generator, n_paths, event_times, disc_curve):
         self.path_generator = path_generator
         self.disc_times = path_generator.time_grid
         self.event_times = event_times
         self.disc_curve = disc_curve
-        self.df = df
         self.n_paths = n_paths
         self.timers = []
-
-    # def build_cashflows(self, paths, book):
-    #     ids, pvs, flow_schedules = [], [], []
-    #     for trade in book.trades:
-    #         print(trade.id)
-    #         instr = trade.instrument
-    #         # In principle we should discount before taking the mean. However,
-    #         # here we can discount after the mean as we only consider deterministic
-    #         # discount rates for now. If rates were to be stochastic, the discounting,
-    #         # i.e. the division by the numeraire, should be done before taking the mean.
-    #         fwd_flow_schedule = instr.evaluate_cashflows(paths)
-    #         mean_fwd_flow_schedule = np.mean(fwd_flow_schedule)
-    #         flow_schedule = []
-    #         for date, fwd_flow in zip(mean_fwd_flow_schedule):
-    #             flow_pv = self.disc_curve.discount(date) * fwd_flow
-    #             flow_schedule.append((date, flow_pv))
-
-    #         # Aggregate
-    #         ids.append(trade.id)
-    #         flow_schedules.append(flow_schedule)
-    #         pvs.append(flow_pv_schedule.sum(axis))
-
-    #     result = {'id': ids, 'pv': pvs, 'cashflows': flow_schedule}
-    #     return result
 
     def pv(self, book):
         # Generate spots paths on disc. grid: n_mc x (n_steps + 1) x n_assets
@@ -164,7 +134,7 @@ class MonteCarloPricer:
 
         ## Calculate payoffs ##
         timer_payoff = timer.Stopwatch('Payoff calculation')
-        results = self.build2(mkt_state, book)
+        results = self.build(mkt_state, book)
 
         # Strip PVs
         ids_, pvs_ = [], []
@@ -178,9 +148,9 @@ class MonteCarloPricer:
         self.timers = [timer_path, timer_interp, timer_payoff]
         return pvs
 
-    def build2(self, mkt_state, book):
+    def build(self, mkt_state, book):
         paths = mkt_state.event_paths
-        results = []
+        reports = []
         for trade in book.trades:
             print(trade.id)
             instr = trade.instrument
@@ -190,49 +160,25 @@ class MonteCarloPricer:
                 for cf in leg:
                     fwd_flow = cf.calculate(mkt_state)
                     mean_fwd_flow = np.mean(fwd_flow)
-                    disc_pv = self.df * mean_fwd_flow
+                    # Discount outside the expectation when rates are deterministic
+                    df = self.disc_curve.discount(cf.paydate)
+                    disc_pv = df * mean_fwd_flow
                     cf_pvs.append(disc_pv)
 
                 leg_cf_pvs.append(cf_pvs)
 
-            # Quick PV aggregation
-            pv = 0.0
-            for leg_cf_pv in leg_cf_pvs:
-                for cf_pv in leg_cf_pv:
-                    pv += cf_pv
+            results = {}
+            # Store cash-flow PVs
+            for i, leg_pvs in enumerate(leg_cf_pvs):
+                leg_name = "Leg" + str(i + 1) + ".PV"
+                results[leg_name] = leg_pvs
 
-            result = {'id': trade.id, 'results': {'pv': pv}}
-            results.append(result)
+            # Aggregate
+            results['pv'] = np.asarray(leg_cf_pvs).sum(axis=1).sum()
 
-        return results
+            reports.append({'id': trade.id, 'results': results})
 
-    # def build(self, mkt_state, book):
-    #     paths = mkt_state.event_paths
-    #     results = []
-    #     for trade in book.trades:
-    #         print(trade.id)
-    #         instr = trade.payoff
-    #         fwd_flows = instr.evaluate(mkt_state)
-    #         mean_fwd_flows = np.mean(fwd_flows)
-    #         disc_pvs = self.df * mean_fwd_flows
-    #         results.append({'id': trade.id, 'results': {'pv': disc_pvs}})
-
-    #     return results
-
-    # # def build_old(self, mkt_state, book):
-    # #     paths = mkt_state.event_paths
-    # #     ids, pvs = [], []
-    # #     for trade in book.trades:
-    # #         print(trade.id)
-    # #         instr = trade.payoff
-    # #         fwd_flows = instr.evaluate(mkt_state)
-    # #         mean_fwd_flows = np.mean(fwd_flows)
-    # #         disc_pvs = self.df * mean_fwd_flows
-    # #         ids.append(trade.id)
-    # #         pvs.append(disc_pvs)
-
-    # #     result = {'id': ids, 'pv': pvs}
-    # #     return result
+        return reports
 
     def print_timers(self):
         for timer in self.timers:
