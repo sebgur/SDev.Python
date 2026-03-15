@@ -78,10 +78,11 @@ class InterpolatedYieldCurve(YieldCurve):
             data_y = -np.log(dfs) / times
         elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOG_DISCOUNT]:
             times = [0.0]
-            times = times.extend(timegrids.model_time(self.valdate, self.dates))
+            times.extend(timegrids.model_time(self.valdate, self.dates))
             times = np.asarray(times)
             ext_dfs = [1.0]
-            ext_dfs = np.asarray(ext_dfs.extend(dfs))
+            ext_dfs.extend(dfs)
+            ext_dfs = np.asarray(ext_dfs)
             if self.interp_var == YieldCurveVariable.DISCOUNT:
                 data_y = ext_dfs
             else:
@@ -92,23 +93,34 @@ class InterpolatedYieldCurve(YieldCurve):
     def set_interpolation(self):
         # Get interpolation variable
         match self.interp_var_str.lower():
-            case 'zerorate': self.interp_var = YieldCurveVariable.ZERORATE
-            case 'discount': self.interp_var = YieldCurveVariable.DISCOUNT
-            case 'log_discount': self.interp_var = YieldCurveVariable.LOG_DISCOUNT
-            case _: raise RuntimeError(f"Unknown interpolation variable: {self.interp_var_str}")
+            case 'zerorate':
+                self.interp_var = YieldCurveVariable.ZERORATE
+            case 'discount':
+                self.interp_var = YieldCurveVariable.DISCOUNT
+            case 'log_discount':
+                self.interp_var = YieldCurveVariable.LOG_DISCOUNT
+            case _:
+                raise RuntimeError(f"Unknown interpolation variable: {self.interp_var_str}")
 
         # Set interpolation
         scheme = self.interp_type.lower()
         if self.interp_var == YieldCurveVariable.ZERORATE:
             match scheme:
-                case 'linear': self.interp = itp.create_interpolation(interp=scheme, l_extrap='flat', r_extrap='flat')
-                case 'cubicspline': self.interp = itp.create_interpolation(interp=scheme, l_extrap='flat', r_extrap='flat', bc_type='clamped')
-                case _: raise RuntimeError(f"Unsupported scheme: {scheme}")
+                case 'linear':
+                    self.interp = itp.create_interpolation(interp=scheme, l_extrap='flat', r_extrap='flat')
+                case 'cubicspline':
+                    self.interp = itp.create_interpolation(interp=scheme, l_extrap='flat', r_extrap='flat',
+                                                           bc_type='clamped')
+                case _:
+                    raise RuntimeError(f"Unsupported scheme: {scheme}")
         elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOG_DISCOUNT]:
             match scheme:
-                case 'linear': self.interp = itp.create_interpolation(interp=scheme, l_extrap='none', r_extrap='none')
-                case 'cubicspline': self.interp = itp.create_interpolation(interp=scheme, l_extrap='none', r_extrap='none')
-                case _: raise RuntimeError(f"Unsupported scheme: {scheme}")
+                case 'linear':
+                    self.interp = itp.create_interpolation(interp=scheme, l_extrap='none', r_extrap='none')
+                case 'cubicspline':
+                    self.interp = itp.create_interpolation(interp=scheme, l_extrap='none', r_extrap='none')
+                case _:
+                    raise RuntimeError(f"Unsupported scheme: {scheme}")
         else:
             raise RuntimeError("Unknown interpolation variable(2)")
 
@@ -121,7 +133,7 @@ class InterpolatedYieldCurve(YieldCurve):
                 'interp_var': self.interp_var_str, 'interp_type': self.interp_type}
 
         pillars = []
-        for expiry, df in zip(self.dates, self.dfs):
+        for expiry, df in zip(self.dates, self.dfs, strict=True):
             pillar = {'expiry': expiry.strftime(dates.DATE_FORMAT), 'df': df}
             pillars.append(pillar)
 
@@ -142,7 +154,7 @@ def get_yieldcurve(name, date, **kwargs):
 
 
 def yieldcurve_from_file(file):
-    with open(file, 'r') as f:
+    with open(file) as f:
         data = json.load(f)
 
     name = data.get('name')
@@ -153,7 +165,8 @@ def yieldcurve_from_file(file):
     pillars = data.get('pillars')
 
     valdate = dt.datetime.strptime(valdate, dates.DATE_FORMAT)
-    curve = InterpolatedYieldCurve(valdate=valdate, interp_var=interp_var, interp_type=interp_type)
+    curve = InterpolatedYieldCurve(valdate=valdate, interp_var=interp_var, interp_type=interp_type,
+                                   name=name, snapdate=snapdate)
 
     # Read pillar data
     pillar_dates, pillar_dfs = [], []

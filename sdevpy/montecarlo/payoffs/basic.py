@@ -1,5 +1,4 @@
 import numpy as np
-import datetime as dt
 from abc import ABC, abstractmethod
 from sdevpy.tools.scalendar import make_schedule
 from sdevpy.tools.utils import hash
@@ -120,14 +119,17 @@ class Payoff(ABC):
     def paths_for_all(self, paths):
         return paths[:, :, self.name_idxs]
 
-    def set_nameindexes(self, names):
-        pass  # Do nothing in base
+    def set_nameindexes(self, names): # noqa: B027
+        """ No-op default: override in subclasses when needed """
+        pass
 
-    def set_eventindexes(self, eventdates):
-        pass  # Do nothing in base
+    def set_eventindexes(self, eventdates): # noqa: B027
+        """ No-op default: override in subclasses when needed """
+        pass
 
-    def set_valuation_date(self, valdate):
-        pass  # Do nothing in base
+    def set_valuation_date(self, valdate): # noqa: B027
+        """ No-op default: override in subclasses when needed """
+        pass
 
     def set_multiindexes(self, enginenames):
         # Find path index for each name
@@ -140,7 +142,7 @@ class Payoff(ABC):
                     self.name_idxs.append(idx)
                     self.name_dic[name] = idx
                 except Exception as e:
-                    raise ValueError(f"Could not find name {name} in path names: {str(e)}")
+                    raise ValueError(f"Could not find name {name} in path names: {str(e)}") from e
 
     #### Algebra ##################################################################################
 
@@ -213,7 +215,7 @@ class Terminal(Payoff):
             self.name_idx = names.index(self.name)
         except Exception as e:
             self.name_idx = None
-            raise ValueError(f"Could not find name {name} in path names: {str(e)}")
+            raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 
     def set_valuation_date(self, valdate):
         if self.expiry < valdate:
@@ -247,7 +249,7 @@ class Average(Payoff):
             self.name_idx = names.index(self.name)
         except Exception as e:
             self.name_idx = None
-            raise ValueError(f"Could not find name {name} in path names: {str(e)}")
+            raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 
     def set_valuation_date(self, valdate):
         # Calculate current sum using fixings up to the day before valdate
@@ -506,8 +508,6 @@ class Div(Payoff):
 
     def evaluate(self, mkt_state):
         return self.left.evaluate(mkt_state) / self.right.evaluate(mkt_state)
-        # print(f"Div: {payoff.shape}")
-        return payoff
 
     def set_nameindexes(self, names):
         self.left.set_nameindexes(names)
@@ -536,7 +536,6 @@ class Neg(Payoff):
 
     def evaluate(self, mkt_state):
         payoff = -self.old.evaluate(mkt_state)
-        print(f"Neg: {payoff.shape}")
         return payoff
 
     def set_valuation_date(self, valdate):
