@@ -80,7 +80,7 @@ def cubicvol_check_params(params):
             try:
                 epsl = calculate_epsilon(atm, skew, kurt, vl, False)
                 epsr = calculate_epsilon(atm, skew, kurt, vr, True)
-            except:
+            except RuntimeError:
                 is_ok = False
 
     # Sudden death for now
@@ -95,40 +95,32 @@ def cubicvol(t, x, atm, skew, kurt, vl, vr):
 
 
 def cubicvoleps(t, x, atm, skew, kurt, epsl, epsr):
-    timeThreshold = 0.000001
-    xThreshold = 0.000001
+    time_threshold = 0.000001
+    x_threshold = 0.000001
     # x_ = -x
-    t_ = (timeThreshold if np.abs(t) < timeThreshold else t)
+    t_ = (time_threshold if np.abs(t) < time_threshold else t)
     x_ = -x / np.sqrt(t_)
     # # x_ = -np.log(x) / np.sqrt(t_) # Original model assumed input is moneyness, not log-moneyness
 
     kurt2 = kurt * kurt
 
     # Left
-    threeEpsl = 3.0 * epsl
-    deltal = kurt2 + threeEpsl * skew
-    soll = 1000000000.0 if deltal < 0 or np.abs(epsl) < xThreshold else (kurt + np.sqrt(deltal)) / threeEpsl
+    three_epsl = 3.0 * epsl
+    deltal = kurt2 + three_epsl * skew
+    soll = 1000000000.0 if deltal < 0 or np.abs(epsl) < x_threshold else (kurt + np.sqrt(deltal)) / three_epsl
     xprimel = np.minimum(x_, soll)
     epsprimel = -epsl
     voll = np.maximum(atm + xprimel * (skew + xprimel * (kurt + xprimel * epsprimel)), 0.0)
 
     # Right
-    threeEpsr = 3.0 * epsr
-    deltar = kurt2 - threeEpsr * skew
-    solr = -1000000000.0 if deltar < 0 or np.abs(epsr) < xThreshold else (-kurt - np.sqrt(deltar)) / threeEpsr
+    three_epsr = 3.0 * epsr
+    deltar = kurt2 - three_epsr * skew
+    solr = -1000000000.0 if deltar < 0 or np.abs(epsr) < x_threshold else (-kurt - np.sqrt(deltar)) / three_epsr
     xprimer = np.maximum(x_, solr)
     epsprimer = epsr
     volr = np.maximum(atm + xprimer * (skew + xprimer * (kurt + xprimer * epsprimer)), 0.0)
 
     return np.where(x_ > 0.0, voll, volr)
-    # if x_ > 0:
-    #     xPrime = min(x_, soll)
-    #     epsilon = -epsl
-    # else:
-    #     xPrime = max(x_, solr)
-    #     epsilon = epsr
-
-    # return max(atm + xPrime * (skew + xPrime * (kurt + xPrime * epsilon)), 0.0)
 
 
 def calculate_epsilon(atm, skew, kurt, v, is_right):
@@ -140,24 +132,24 @@ def calculate_epsilon(atm, skew, kurt, v, is_right):
 
     skew2 = skew * skew
     skew3 = skew2 * skew
-    deltaV = v - atm
-    discri = skew2 + 3.0 * kurt * deltaV
+    delta_v = v - atm
+    discri = skew2 + 3.0 * kurt * delta_v
     if discri < 0.0:
         raise RuntimeError("Discrimant is negative in CubicVol surface")
 
     discri = discri**3
 
     sgn = -1.0 if is_right else 1.0
-    if deltaV == 0.0 and not is_right:
+    if delta_v == 0.0 and not is_right:
         raise RuntimeError("Invalid CubicVol parameters")
-    elif deltaV == 0.0 and is_right:
+    elif delta_v == 0.0 and is_right:
         if skew == 0.0:
             raise RuntimeError("Invalid CubicVol parameters")
         else:
             return kurt * kurt / (4.0 * skew)
     else:
-        num = sgn * 2.0 * skew3 + sgn * 9.0 * skew * kurt * deltaV + 2.0 * np.sqrt(discri)
-        return num / (27.0 * deltaV * deltaV)
+        num = sgn * 2.0 * skew3 + sgn * 9.0 * skew * kurt * delta_v + 2.0 * np.sqrt(discri)
+        return num / (27.0 * delta_v * delta_v)
 
 
 def is_valid_left(atm, skew, kurt, vl):

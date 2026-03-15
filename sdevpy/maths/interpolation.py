@@ -20,21 +20,31 @@ def create_interpolation(**kwargs):
 def create_extrapolator(interpolator, type='builtin'):
     type_dn = type.lower()
     match type_dn:
-        case 'none': return NoneExtrapolator()
-        case 'builtin': return interpolator
-        case 'flat': return FlatExtrapolator()
-        case 'linear': return LinearInterpolator()
-        case _: raise TypeError(f"Unknown extrapolator type: {type}")
+        case 'none':
+            return NoneExtrapolator()
+        case 'builtin':
+            return interpolator
+        case 'flat':
+            return FlatExtrapolator()
+        case 'linear':
+            return LinearInterpolator()
+        case _:
+            raise TypeError(f"Unknown extrapolator type: {type}")
 
 
 def create_interpolator(type='linear', **kwargs):
     type_dn = type.lower()
     match type_dn:
-        case 'step': return StepInterpolator(**kwargs)
-        case 'linear': return LinearInterpolator(**kwargs)
-        case 'cubicspline': return CubicSplineInterpolator(**kwargs)
-        case 'bspline': return BSplineInterpolator(**kwargs)
-        case _: raise TypeError(f"Unknown interpolator type: {type}")
+        case 'step':
+            return StepInterpolator(**kwargs)
+        case 'linear':
+            return LinearInterpolator(**kwargs)
+        case 'cubicspline':
+            return CubicSplineInterpolator(**kwargs)
+        case 'bspline':
+            return BSplineInterpolator(**kwargs)
+        case _:
+            raise TypeError(f"Unknown interpolator type: {type}")
 
 
 class Interpolator(ABC):
@@ -110,8 +120,8 @@ class StepInterpolator(Interpolator):
         if self.direction not in ['left', 'l', 'right', 'r']:
             raise RuntimeError(f"Unknown step interpolation direction: {self.direction}")
 
-        self.direction == ('left' if self.direction == 'l' else self.direction)
-        self.direction == ('right' if self.direction == 'r' else self.direction)
+        self.direction = ('left' if self.direction == 'l' else self.direction)
+        self.direction = ('right' if self.direction == 'r' else self.direction)
 
     def initialize(self):
         pass
@@ -127,10 +137,10 @@ class StepInterpolator(Interpolator):
                 y = np.asarray([self.y_grid[i] for i in indices])
         elif self.direction == 'right':
             indices = np.searchsorted(self.x_grid, x, side='left') - 1
-            np.clip(indices, 0, len(self.y_grid) - 1)
+            indices = np.clip(indices, 0, len(self.y_grid) - 1)
             ilen = safe_len(indices)
             if ilen == 0:
-                y = self.y_grid[i]
+                y = self.y_grid[indices]
             else:
                 y = np.asarray([self.y_grid[i] for i in indices])
         else:
@@ -171,8 +181,15 @@ class NoneExtrapolator(Interpolator):
     def initialize(self):
         pass
 
-    def value(x):
-        raise ValueError("Extrapolation not allowed")
+    def value(self, x):
+        # raise ValueError("Extrapolation not allowed")
+        xlen = safe_len(x)
+        if xlen == 0:
+            v = np.nan
+        else:
+            v = np.asarray([np.nan] * xlen)
+
+        return v
 
 
 class FlatExtrapolator(Interpolator):

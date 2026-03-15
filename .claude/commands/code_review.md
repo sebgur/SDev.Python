@@ -1,1 +1,1 @@
-Could you analyse my code, list the 10 worst practices, explain why they're bad, make suggestions to fix them and for the overall library, and put your results in the html file 'claude/code_review.html'?
+Could you analyse my code, give it a grade, then list the 10 most critical issues and practices, explain why they're bad and make suggestions to fix them? For each issue you point out, give a severity assessment. Put your results in the html file claude/code_review.html.

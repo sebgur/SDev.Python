@@ -15,11 +15,11 @@ class YieldCurve(ABC):
         self.name = kwargs.get('name', '')
 
     @abstractmethod
-    def discount(date):
+    def discount(self, date):
         pass
 
     @abstractmethod
-    def discount_float(t):
+    def discount_float(self, t):
         pass
 
     @abstractmethod
@@ -42,17 +42,20 @@ class InterpolatedYieldCurve(YieldCurve):
         self.set_interpolation()
 
     def discount(self, date):
-        t = timegrids.model_time(self.valdate, date)
         df = self.discount_float(timegrids.model_time(self.valdate, date))
         return df
 
     def discount_float(self, t):
         y = self.interp.value(t)
         match self.interp_var:
-            case YieldCurveVariable.ZERORATE: return np.exp(-y * t)
-            case YieldCurveVariable.DISCOUNT: return y
-            case YieldCurveVariable.LOG_DISCOUNT: return np.exp(y)
-            case _: raise RuntimeError(f"Unsupported interpolation variable: {str(self.interp_var)}")
+            case YieldCurveVariable.ZERORATE:
+                return np.exp(-y * t)
+            case YieldCurveVariable.DISCOUNT:
+                return y
+            case YieldCurveVariable.LOG_DISCOUNT:
+                return np.exp(y)
+            case _:
+                raise RuntimeError(f"Unsupported interpolation variable: {str(self.interp_var)}")
 
     def set_data(self, dates, dfs):
         if self.interp is None:
@@ -62,7 +65,7 @@ class InterpolatedYieldCurve(YieldCurve):
             raise RuntimeError("Incorrect input contains dates <= valdate")
 
         # Sort by increasing date
-        sorted_pillars = [{'expiry': d, 'df': df} for d, df in zip(dates, dfs)]
+        sorted_pillars = [{'expiry': d, 'df': df} for d, df in zip(dates, dfs, strict=True)]
         sorted_pillars.sort(key=lambda x: x['expiry'])
 
         # Store pillar information

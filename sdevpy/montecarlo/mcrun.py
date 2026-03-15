@@ -1,24 +1,22 @@
 import numpy as np
 import datetime as dt
-from sdevpy.montecarlo.FactorModel import MultiAssetGBM
-from sdevpy.montecarlo.PathGenerator import PathGenerator
+# from sdevpy.montecarlo.FactorModel import MultiAssetGBM
+# from sdevpy.montecarlo.PathGenerator import PathGenerator
 from sdevpy.montecarlo.payoffs.basic import *
-from sdevpy.montecarlo.payoffs.vanillas import VanillaOption, VanillaOptionPayoff
+from sdevpy.montecarlo.payoffs.vanillas import VanillaOption#, VanillaOptionPayoff
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
 from sdevpy.montecarlo.MonteCarloPricer import *
-from sdevpy.models import localvol_factory as lvf
+# from sdevpy.models import localvol_factory as lvf
 from sdevpy.analytics import black
-from sdevpy.tools import timegrids, timer
+from sdevpy.tools import timegrids#, timer
 from sdevpy.tools import book as bk
 from sdevpy.market.yieldcurve import get_yieldcurve
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 
 #################### TODO #########################################################################
-# * Fixings are working but there are issues in the interpolation classes.
-#   Fix interpolation and other critical issues pointed out by Claude. Then test
+# * Fix interpolation and other critical issues pointed out by Claude. Then test
 #   fixings interpolation again before moving on.
-# * Introduce clean json layer for trade readings/DataTransferObject
 # * Implement var swap spread payoff
 # * Check accuracy against LV calib
 # * Calculate vega through LV calib (save BM/interpolation)

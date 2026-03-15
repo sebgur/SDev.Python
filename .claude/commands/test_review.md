@@ -1,0 +1,1 @@
+Could you look through my code and list small methods (say less then 20 lines) that are not tested under pytest? Then for each of them suggest test(s). Put your results in the html file claude/test_review.html.
