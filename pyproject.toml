@@ -25,6 +25,14 @@ where = ["."]
 include = ["sdevpy*", "notebooks*"]  # Only include these
 #exclude = ["notebooks*", "spreadsheets*"]      # Exclude these
 
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]  # pycodestyle errors, pyflakes, isort
+ignore = []
+
 [project.urls]
 "Git page" = "https://github.com/sebgur/SDev.Python"
 "SDev Finance" = "http://sdev-finance.com/"
