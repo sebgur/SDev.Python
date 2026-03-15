@@ -1,0 +1,1 @@
+Could you analyse my code, list the 10 worst practices, explain why they're bad, make suggestions to fix them and for the overall library, and put your results in the html file 'claude/code_review.html'?

@@ -12,7 +12,7 @@ def get_forward_curves(names, valdate, **kwargs):
     spots = get_spots(names, valdate)
 
     fwd_curves = []
-    for name, spot in zip(names, spots):
+    for name, spot in zip(names, spots, strict=True):
         file = data_file(name, valdate, **kwargs)
         data = eqforwarddata_from_file(file)
         curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
@@ -50,7 +50,7 @@ class EqForwardData:
 
     def dump_data(self):
         pillars = []
-        for expiry, forward in zip(self.expiries, self.forwards):
+        for expiry, forward in zip(self.expiries, self.forwards, strict=True):
             expiry_str = expiry.strftime(dates.DATE_FORMAT)
             pillar = {'expiry': expiry_str, 'forward': forward}
             pillars.append(pillar)
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     ztimes = timegrids.model_time(valdate, expiries)
     zfwds = spot * np.exp(-zrs * ztimes)
 
-    pillars = [{'expiry': d, 'forward': f} for d, f in zip(expiries, zfwds)]
+    pillars = [{'expiry': d, 'forward': f} for d, f in zip(expiries, zfwds, strict=True)]
     data = EqForwardData(valdate, pillars, name=name)
     file = data_file(name, valdate)
     data.dump(file)

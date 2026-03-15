@@ -15,7 +15,9 @@ from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 
 #################### TODO #########################################################################
-# * Introduce concept of past fixings
+# * Fixings are working but there are issues in the interpolation classes.
+#   Fix interpolation and other critical issues pointed out by Claude. Then test
+#   fixings interpolation again before moving on.
 # * Introduce clean json layer for trade readings/DataTransferObject
 # * Implement var swap spread payoff
 # * Check accuracy against LV calib
