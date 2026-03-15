@@ -185,7 +185,7 @@ if __name__ == "__main__":
     curve.calibrate(test_data, spot, yieldcurve)
 
     # Interpolate and display
-    test_dates = [dates.date_advance(valdate, months=1*n) for n in range(1, 150)]
+    test_dates = [dates.advance(valdate, months=1*n) for n in range(1, 150)]
     test_fwds = curve.value(test_dates)
 
     # Original data

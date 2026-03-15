@@ -14,7 +14,7 @@ db_root = r'C:\\temp\\database'
 print(today.strftime('%d-%b-%Y'))
 
 # Retrieving all data
-hist_start = dates.date_advance(today, years=-1)
+hist_start = dates.advance(today, years=-1)
 print(hist_start.strftime('%d-%b-%Y'))
 
 start = "2025-03-01"

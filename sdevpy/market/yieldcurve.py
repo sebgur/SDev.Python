@@ -205,7 +205,7 @@ if __name__ == "__main__":
     curve.set_data(zdates, dfs)
 
     # Interpolate and display
-    test_dates = [dates.date_advance(valdate, months=1*n) for n in range(1, 600)]
+    test_dates = [dates.advance(valdate, months=1*n) for n in range(1, 600)]
     test_dfs = curve.discount(test_dates)
     test_times = timegrids.model_time(valdate, test_dates)
     test_zrs = -np.log(test_dfs) / test_times

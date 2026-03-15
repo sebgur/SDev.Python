@@ -26,12 +26,12 @@ include = ["sdevpy*", "notebooks*"]  # Only include these
 #exclude = ["notebooks*", "spreadsheets*"]      # Exclude these
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 target-version = "py313"
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]  # pycodestyle errors, pyflakes, isort
-ignore = []
+select = ["E", "F", "N", "W", "UP", "B"]
+ignore = ["E401", "I001"]
 
 [project.urls]
 "Git page" = "https://github.com/sebgur/SDev.Python"

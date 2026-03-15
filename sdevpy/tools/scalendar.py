@@ -149,7 +149,7 @@ def make_schedule(calstr, start, end, term, convention=BDC.F, convert_to_datetim
     # while d <= end:
     #     schedule_dates.append(cal.adjust(d, convention))
     #     d += speriods.period(term)
-    #     # d = dates.date_advance(d, days=freq_days, months=freq_months, years=freq_years)#relativedelta(months=freq_months)
+    #     # d = dates.advance(d, days=freq_days, months=freq_months, years=freq_years)#relativedelta(months=freq_months)
     #     # # d += relativedelta(months=freq_months)
 
     # return to_datetime(schedule_dates) if convert_to_datetime else schedule_dates

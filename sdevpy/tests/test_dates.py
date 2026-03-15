@@ -4,6 +4,13 @@ from sdevpy.tools import scalendar as cdr
 from sdevpy.tools import speriods
 
 
+def test_to_oadate():
+    d = dt.datetime(2026, 3, 8)
+    test = dates.to_oadate(d)
+    ref = 46089.0
+    assert abs(test - ref) < 1e-12
+
+
 def test_tenor_advance():
     base = dt.datetime(2025, 12, 15)
     tenors = ['1D', '2W', '1M', '2Y', '1Y6M']
@@ -42,7 +49,7 @@ def test_calendar_adjust():
 
 def test_date_advance():
     base = dt.datetime(2026, 2, 15)
-    test = dates.date_advance(base, years=-1)
+    test = dates.advance(base, years=-1)
     ref = dt.datetime(2025, 2, 15)
     assert test == ref
 
