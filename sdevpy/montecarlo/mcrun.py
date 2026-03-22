@@ -15,8 +15,6 @@ from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 
 #################### TODO #########################################################################
-# * Fix interpolation and other critical issues pointed out by Claude. Then test
-#   fixings interpolation again before moving on.
 # * Implement var swap spread payoff
 # * Check accuracy against LV calib
 # * Calculate vega through LV calib (save BM/interpolation)

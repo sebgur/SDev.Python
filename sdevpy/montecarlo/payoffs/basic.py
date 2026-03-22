@@ -2,6 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from sdevpy.tools.scalendar import make_schedule
 from sdevpy.tools.utils import hash
+from sdevpy.market import fixings as fxgs
 
 
 def list_payoff_eventdates(payoffs):
@@ -253,7 +254,7 @@ class Average(Payoff):
 
     def set_valuation_date(self, valdate):
         # Calculate current sum using fixings up to the day before valdate
-        # For days from and including vadate, collect the date as event date
+        # For days from and including valdate, collect the date as event date
         self.current_sum = 0.0
         self.eventdates = []
         for date in self.alldates:
@@ -283,7 +284,6 @@ class Max(Payoff):
         # is the number of payoffs being maxed on each path. Then take the max
         # of the payoffs along the payoff direction (axis=1)
         payoff = np.max(np.column_stack(values), axis=1)
-        # print(f"Max: {payoff.shape}")
         return payoff
 
     def set_nameindexes(self, names):
@@ -316,7 +316,6 @@ class Min(Payoff):
         # is the number of payoffs being maxed on each path. Then take the min
         # of the payoffs along the payoff direction (axis=1)
         payoff = np.min(np.column_stack(values), axis=1)
-        # print(f"Min: {payoff.shape}")
         return payoff
 
     def set_nameindexes(self, names):
@@ -341,12 +340,10 @@ class Abs(Payoff):
         super().__init__()
         self.subpayoff = subpayoff
         self.names = self.subpayoff.names
-        # self.eventdates = self.subpayoffs.eventdates
 
     def evaluate(self, mkt_state):
         old_path = self.subpayoff.evaluate(mkt_state)
         payoff = np.abs(old_path)
-        # print(f"Abs: {payoff.shape}")
         return payoff
 
     def set_nameindexes(self, names):
@@ -373,10 +370,7 @@ class Basket(Payoff):
 
     def evaluate(self, mkt_state):
         sub_paths = np.asarray([p.evaluate(mkt_state) for p in self.subpayoffs])
-        # print(sub_paths.shape)
-        # print(self.weights.shape)
         payoff = self.weights @ sub_paths
-        # print(f"Basket: {payoff.shape}")
         return payoff
 
     def set_nameindexes(self, names):
@@ -406,12 +400,75 @@ class WorstOf(Payoff):
         spot_all_at_exp = spot_all[:, -1, :]
         worst_at_exp = spot_all_at_exp.min(axis=1)
         payoff = worst_at_exp
-        # print(f"WorstOf: {payoff.shape}")
         return payoff
 
     def set_nameindexes(self, names):
         self.set_multiindexes(names)
 
+
+class Variance(Payoff):
+    """ Variance value of the asset over time """
+    def __init__(self, name, start, end, freq="1D", cdr="USD"):
+        super().__init__()
+        self.names = [name]
+        self.name = name
+        self.name_idx, self.varidxs = None, None
+        self.start = start
+        self.end = end
+        self.alldates = make_schedule(cdr, self.start, self.end, freq)
+        self.current_var = None
+        self.current_fixing = None
+        self.n_dates = len(self.alldates)
+        self.scaling = 1 # ToDo
+
+    def evaluate(self, mkt_state):
+        paths = mkt_state.event_paths
+        spot_paths = paths[:, self.varidxs, self.name_idx]
+        # Historical variance
+        var = self.current_var
+        # Add current increment
+        var = var + spot_paths[:, 0] / self.current_fixing
+        # Add forward variance
+        print(f"spot paths: {spot_paths.shape}")
+        log_returns = np.diff(np.log(np.asarray(spot_paths)))
+        var = var + np.var(log_returns)
+        return self.scaling * var
+
+    def set_nameindexes(self, names):
+        try:
+            self.name_idx = names.index(self.name)
+        except Exception as e:
+            self.name_idx = None
+            raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
+
+    def set_valuation_date(self, valdate):
+        # Calculate current variance using fixings up to the day before valdate
+        # For days from and including valdate, collect the date as event date
+        self.eventdates = []
+        hist_fixing_dates = []
+        for date in self.alldates:
+            if date < valdate:
+                hist_fixing_dates.append(date)
+            else:
+                self.eventdates.append(date)
+
+        # Fetch historical fixings
+        hist_fixings = fxgs.get_fixings(self.name, hist_fixing_dates)
+
+        # Calculate historical variance up to the day before valuation
+        self.current_var = 0.0
+        if hist_fixings is not None and len(hist_fixings) > 1:
+            log_returns = np.diff(np.log(np.asarray(hist_fixings)))
+            self.current_var = np.var(log_returns)
+
+        if hist_fixings is not None and len(hist_fixings) >= 1:
+            self.current_fixing = hist_fixings[-1]
+
+
+    def set_eventindexes(self, eventdates):
+        self.varidxs = []
+        for date in self.eventdates:
+            self.varidxs.append(np.where(eventdates == date)[0][0])
 
 ########### Arithmetic Nodes ############################################################
 

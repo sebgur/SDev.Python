@@ -6,9 +6,10 @@ from sdevpy.tools import dates as dts
 from sdevpy.maths import interpolation as itp
 
 
-def get_fixings(names, dates, **kwargs):
-    fixings = None
-    return fixings
+def get_fixings(name, dates, **kwargs):
+    interpolate = kwargs.get('interpolate', False)
+    handler = fixinghandler(name, interpolate=interpolate, **kwargs)
+    return handler.values(dates)
 
 
 class FixingHandler:
