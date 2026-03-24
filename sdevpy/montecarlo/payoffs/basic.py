@@ -419,6 +419,12 @@ class Variance(Payoff):
         self.current_var = None
         self.current_fixing = None
         self.n_dates = len(self.alldates)
+        # variance = 10000 x 252 / Counter * sum log(return)^2
+        ## Varswap ##
+        # cash-flow = N_vega / (2 * strike) * (variance - strike^2)
+        ## Volswap ##
+        # vol = sqrt(variance)
+        # cashflow = N_vega * (vol - strike)
         self.scaling = 1 # ToDo
 
     def evaluate(self, mkt_state):
