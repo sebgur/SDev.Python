@@ -70,6 +70,14 @@ class Calendar:
         return count
 
     def make_schedule(self, start, end, term, convention=BDC.F, convert_to_datetime=False):
+        """ Simplified schedule generation for now (forward) """
+        # # New logic (to be tested)
+        # schedule_dates, d = [], self.adjust(start, convention)
+        # while d <= end:
+        #     schedule_dates.append(d)
+        #     d = self.adjust(d + speriods.period(term), convention)
+
+        # Old logic
         schedule_dates, d = [], start
         while d <= end:
             schedule_dates.append(self.adjust(d, convention))
@@ -160,7 +168,7 @@ def to_datetime(date):
         datetimes = [dt.datetime.combine(d, dt.time.min) for d in date]
         return datetimes
     else:
-        return dt.datetime.combine(d, time.min)
+        return dt.datetime.combine(date, dt.time.min)
 
 
 CCY_CALENDARS = {

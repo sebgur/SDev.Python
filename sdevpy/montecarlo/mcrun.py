@@ -1,6 +1,7 @@
 import numpy as np
 import datetime as dt
-from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
+import logging
+from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
 from sdevpy.montecarlo.MonteCarloPricer import price_book, get_local_vols
@@ -10,6 +11,8 @@ from sdevpy.tools import book as bk
 from sdevpy.market.yieldcurve import get_yieldcurve
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.montecarlo.payoffs import cashflows as cfl
+logger = logging.getLogger("mcrun")
+logger.setLevel(logging.DEBUG)
 
 
 #################### TODO #########################################################################
@@ -25,9 +28,16 @@ from sdevpy.montecarlo.payoffs import cashflows as cfl
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
 
+    logger.debug("some debug")
+    logger.info("some info")
+    logger.warning("some warning")
+    logger.error("some error")
+    logger.critical("some critical")
+
     # Create portfolio
     book = bk.Book()
     trades = []
+    start_date = dt.datetime(2025, 11, 15)
     expiry = dt.datetime(2026, 12, 15)
     expiry2 = dt.datetime(2027, 12, 15)
     v_name, v_strike, v_type = 'ABC', 100.0, 'Call' # For check against CF
@@ -49,6 +59,11 @@ if __name__ == "__main__":
 
     # Worst-of barrier
     index = WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0)
+    cf = cfl.Cashflow(index, expiry)
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
+
+    # VarSwap
+    index = Variance('ABC', start_date, expiry)
     cf = cfl.Cashflow(index, expiry)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 

@@ -67,6 +67,6 @@ def string_to_optiontype(s):
 
 
 if __name__ == "__main__":
-    expiry = dt.datime(2026, 12, 15)
+    expiry = dt.datetime(2026, 12, 15)
     payoff = VanillaOption('SPX', 100, 'call', expiry)
     print(payoff)

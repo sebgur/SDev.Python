@@ -351,8 +351,8 @@ class Abs(Payoff):
         self.subpayoff.set_valuation_date(valdate)
         self.eventdates = self.subpayoff.evendates
 
-    def set_eventindexes(self, evendates):
-        self.subpayoff.set_eventindexes(evendates)
+    def set_eventindexes(self, eventdates):
+        self.subpayoff.set_eventindexes(eventdates)
 
 
 class Basket(Payoff):
@@ -433,7 +433,6 @@ class Variance(Payoff):
         # Add current increment
         var = var + spot_paths[:, 0] / self.current_fixing
         # Add forward variance
-        print(f"spot paths: {spot_paths.shape}")
         log_returns = np.diff(np.log(np.asarray(spot_paths)))
         var = var + np.var(log_returns)
         return self.scaling * var

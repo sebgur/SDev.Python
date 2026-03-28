@@ -24,6 +24,7 @@ if USE_TF:
     silence_tensorflow() # This one works best at least in tf 2.15.0
 
 # Python.net
+USERNAME = "Unknown"
 if USE_PYTHONNET:
     import clr # For pythonnet
     from System import Environment
