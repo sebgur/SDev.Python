@@ -95,8 +95,7 @@ class Calendar:
     def make_schedule_fancy(self, start: dt.date, end: dt.date, term: str,
                             convention: BDC = BDC.MF,
                             stub: str = "short_front", # short_front|long_front|short_back|long_back
-                            eom: bool = False, include_effective: bool = True,
-                            convert_to_datetime: bool = False) -> list[dt.date]:
+                            eom: bool = False, convert_to_datetime: bool = False) -> list[dt.date]:
         """ Generate a schedule of adjusted dates from start to end """
         period = speriods.period(term)
         use_eom = eom and is_eom(start)
@@ -128,7 +127,7 @@ class Calendar:
             roll_dates = [to_eom(d) for d in roll_dates]
 
         # 3) Adjust all dates in one pass
-        period_ends = roll_dates[1:] # effective date is never a period-end
+        period_ends = roll_dates[:] # Effectively take them all
         seen = set()
         adjusted = []
         for d in period_ends:
@@ -137,8 +136,9 @@ class Calendar:
                 adjusted.append(a)
                 seen.add(a)
 
-        if include_effective:
-            adjusted = [self.adjust(start, convention)] + adjusted
+        # if include_effective:
+        #     eff_start = self.adjust(start, convention)
+        #     adjusted = [eff_start] + adjusted
 
         return to_datetime(adjusted) if convert_to_datetime else adjusted
 
@@ -278,10 +278,10 @@ if __name__ == "__main__":
     print(to_eom(d))
 
     # Schedule
-    start = dt.datetime(2026, 3, 27)
-    end = dt.datetime(2026, 4, 27)
-    sch1 = cal.make_schedule(start, end, "1d")
-    sch2 = cal.make_schedule_fancy(start, end, "1d")
+    start = dt.datetime(2025, 11, 15)
+    end = dt.datetime(2026, 12, 15)
+    sch1 = make_schedule("USD", start, end, "1d")
+    # sch2 = cal.make_schedule_fancy(start, end, "1d")
     print(sch1)
-    print(sch2)
+    # print(sch2)
 

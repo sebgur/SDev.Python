@@ -6,6 +6,12 @@ from sdevpy.tools import dates as dts
 from sdevpy.maths import interpolation as itp
 
 
+###### TODO #################
+# Need to change the name of method values() in FixingHandler as
+# it clashes with its self.values member data.
+# Or better: vectorize it
+
+
 def get_fixings(name, dates, **kwargs):
     interpolate = kwargs.get('interpolate', False)
     handler = fixinghandler(name, interpolate=interpolate, **kwargs)
