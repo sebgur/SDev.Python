@@ -55,8 +55,7 @@ def list_instrument_names(instruments):
 
 
 class Instrument:
-    def __init__(self, payoff, cashflow_legs=None, **kwargs):
-        self.payoff = payoff
+    def __init__(self, cashflow_legs, **kwargs):
         self.cashflow_legs = cashflow_legs
         self.id = kwargs.get('id', hash())
 
@@ -94,7 +93,6 @@ class Instrument:
 
 class Trade:
     def __init__(self, instrument, **kwargs):
-        self.payoff = instrument.payoff
         self.instrument = instrument
         self.notional = kwargs.get('notional', 1.0)
         self.id = kwargs.get('id', hash())
@@ -351,7 +349,7 @@ class Abs(Payoff):
 
     def set_valuation_date(self, valdate):
         self.subpayoff.set_valuation_date(valdate)
-        self.eventdates = self.subpayoffs.evendates
+        self.eventdates = self.subpayoff.evendates
 
     def set_eventindexes(self, evendates):
         self.subpayoff.set_eventindexes(evendates)

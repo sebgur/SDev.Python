@@ -1,11 +1,13 @@
 import numpy as np
 from sdevpy.montecarlo.payoffs.basic import list_instrument_names, list_instrument_eventdates
-# from sdevpy.montecarlo.payoffs.basic import list_payoff_names, list_payoff_eventdates
 from sdevpy.tools.utils import isiterable
 
 
 class Book:
-    def __init__(self, trades=[], csa_curve_id="USD.SOFR.1D"):
+    def __init__(self, trades=None, csa_curve_id="USD.SOFR.1D"):
+        if trades is None:
+            trades = []
+
         self.clear_trades()
         self.add_trades(trades)
         self.csa_curve_id = csa_curve_id
@@ -16,11 +18,9 @@ class Book:
         if isiterable(trades):
             self.trades.extend(trades)
             self.instruments.extend([t.instrument for t in trades])
-            # self.instruments.extend([t.instrument.payoff for t in trades])
         else:
             self.trades.append(trades)
             self.instruments.append(trades.instrument)
-            # self.instruments.append(trades.instrument.payoff)
 
     def clear_trades(self):
         self.trades, self.instruments, self.names = [], [], None
@@ -28,7 +28,6 @@ class Book:
 
     def set_nameindexes(self):
         self.names = list_instrument_names(self.instruments)
-        # self.names = list_payoff_names(self.instruments)
         for instr in self.instruments:
             instr.set_nameindexes(self.names)
 

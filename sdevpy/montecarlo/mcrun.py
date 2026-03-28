@@ -1,16 +1,14 @@
 import numpy as np
 import datetime as dt
-# from sdevpy.montecarlo.FactorModel import MultiAssetGBM
-# from sdevpy.montecarlo.PathGenerator import PathGenerator
-from sdevpy.montecarlo.payoffs.basic import *
-from sdevpy.montecarlo.payoffs.vanillas import VanillaOption#, VanillaOptionPayoff
+from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
+from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
-from sdevpy.montecarlo.MonteCarloPricer import *
-# from sdevpy.models import localvol_factory as lvf
+from sdevpy.montecarlo.MonteCarloPricer import price_book, get_local_vols
 from sdevpy.analytics import black
-from sdevpy.tools import timegrids#, timer
+from sdevpy.tools import timegrids
 from sdevpy.tools import book as bk
 from sdevpy.market.yieldcurve import get_yieldcurve
+from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 
@@ -37,22 +35,22 @@ if __name__ == "__main__":
     # Vanilla
     index = VanillaOption(v_name, v_strike, v_type, expiry)
     cf = cfl.Cashflow(index, expiry)
-    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Basket option
     index = BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry)
     cf = cfl.Cashflow(index, expiry)
-    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Asian option
     index = AsianOption('ABC', 100.0, 'Call', valdate, expiry, freq='5D')
     cf = cfl.Cashflow(index, expiry)
-    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Worst-of barrier
     index = WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0)
     cf = cfl.Cashflow(index, expiry)
-    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Create book
     book.add_trades(trades)

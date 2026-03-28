@@ -26,7 +26,7 @@ if USE_TF:
 # Python.net
 if USE_PYTHONNET:
     import clr # For pythonnet
-    from System import *
+    from System import Environment
     BIN_PATH = "C:\\Code\\SDev\\Excel\\SDev.Addin\\bin\\x64\\Release\\"
     USERNAME = Environment.UserName # Example usage of C# System
 
@@ -42,9 +42,8 @@ if USE_PYTHONNET:
     load_dll(BIN_PATH, 'SDev.Addin')
 
     from SDev.Addin import *
-    from SDev.Addin import Loader as sdev
-    # from SDev.Addin.WorksheetFunctions import *
-    from SDev.Addin import WorksheetFunctions as wf
+    from SDev.Addin import Loader as sDev
+    from SDev.Addin import WorksheetFunctions as wF
 
 # # Doing nothing for now, just to avoid warning of dummy import
 # def apply_settings():

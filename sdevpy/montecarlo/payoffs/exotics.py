@@ -1,4 +1,8 @@
-from sdevpy.montecarlo.payoffs.basic import *
+import numpy as np
+from sdevpy.montecarlo.payoffs.basic import (
+    Payoff, Average, Terminal, Basket,
+    list_payoff_names, list_payoff_eventdates
+)
 from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_option, VanillaOptionPayoff
 
 

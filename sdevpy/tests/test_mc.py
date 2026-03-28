@@ -1,7 +1,7 @@
 import numpy as np
 import datetime as dt
-from sdevpy.montecarlo.payoffs.basic import *
-from sdevpy.montecarlo.payoffs.vanillas import VanillaOption, VanillaOptionPayoff
+from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
+from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
 from sdevpy.tools import book as bk
 from sdevpy.montecarlo.MonteCarloPricer import price_book
@@ -20,22 +20,22 @@ def test_mc():
     # Vanilla
     index = VanillaOption('ABC', 100.0, 'Call', expiry)
     cf = cfl.Cashflow(index, expiry)
-    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Basket option
     index = BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry)
     cf = cfl.Cashflow(index, expiry)
-    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Asian option
     index = AsianOption('ABC', 100.0, 'Call', valdate, expiry, freq='5D')
     cf = cfl.Cashflow(index, expiry)
-    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Worst-of barrier
     index = WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0)
     cf = cfl.Cashflow(index, expiry)
-    trades.append(Trade(Instrument(payoff=index, cashflow_legs=[[cf]])))
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Create book
     book.add_trades(trades)

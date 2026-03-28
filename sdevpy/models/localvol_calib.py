@@ -1,16 +1,16 @@
 import os
 import datetime as dt
 import numpy as np
-from scipy.stats import norm
+# from scipy.stats import norm
 import matplotlib.pyplot as plt
 from sdevpy.tools import timegrids, dates
-from sdevpy.models import svivol, biexp
-from sdevpy.models import localvol
+# from sdevpy.models import svivol, biexp
+# from sdevpy.models import localvol
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
-from sdevpy.maths.optimization import *
+from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
 
 
@@ -70,7 +70,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
 
     if verbose:
         print(f"Val date: {valdate.strftime(dates.DATE_FORMAT)}")
-        print(f"Vol surface information")
+        print("Vol surface information")
         surface_data.pretty_print()
         print(f"Mesh vol: {mesh_vol*100:.2f}%")
         print(f"PDE time steps: {pde_config.n_timesteps}")
@@ -81,6 +81,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
     # Loop over expiries
     pde_vols = []
     sol_as_init = config['sol_as_init']
+    sol = None
     for exp_idx in range(len(expiry_grid)):
         if verbose:
             print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
@@ -219,7 +220,7 @@ class LvObjectiveBuilder:
     def calculate_vols(self):
         expiry = self.expiry_grid[self.exp_idx]
         pde_vols = []
-        for k, p in zip(self.strikes, self.pde_prices):
+        for k, p in zip(self.strikes, self.pde_prices, strict=True):
             pde_vols.append(black.implied_vol(expiry, k, IS_CALL, self.fwd, p))
 
         return pde_vols

@@ -1,10 +1,10 @@
 import json
-from sdevpy.machinelearning.llms.datasets import *
+from sdevpy.machinelearning.llms.datasets import format_input
 
 
 ######## Inspect dataset #################################################
 file = r"C:\\temp\\llms\\datasets\\instruction-data.json"
-with open(file, "r") as f:
+with open(file) as f:
     data = json.load(f)
 
 print("Number of entries:", len(data))

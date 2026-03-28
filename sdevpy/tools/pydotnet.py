@@ -1,8 +1,10 @@
-from sdevpy.settings import *
+from sdevpy.settings import USERNAME
 import datetime as dt
 import numpy as np
 import pandas as pd
-from System import *
+from System import DateTime
+from SDev.Addin import WorksheetFunctions as wF
+
 
 def to_oadate(cs_date):
     return int(cs_date.ToOADate())
@@ -35,7 +37,7 @@ def to_nparray(cs_matrix):
         else:
             raise TypeError("C# not of expected type Object[,]: " + type)
     except Exception as e:
-        raise TypeError("Could not convert C# object to numpay array: " + repr(e))
+        raise TypeError("Could not convert C# object to numpay array: " + repr(e)) from e
 
 
 def to_dataframe(cs_matrix):
@@ -54,7 +56,7 @@ def to_list(cs_matrix):
         p_list = [np_array[i, 0] for i in range(shape[0])]
     else:
         raise RuntimeError("Numpay array is not a list")
-    
+
     return p_list
 
 
@@ -66,5 +68,5 @@ if __name__ == "__main__":
     strike = 0.03
     maturity = 2.5
     is_call = True
-    price = wf.xlBachelier.sdBachelierPrice(fwd, strike, iv, is_call)
+    price = wF.xlBachelier.sdBachelierPrice(fwd, strike, iv, is_call)
     print(price)
