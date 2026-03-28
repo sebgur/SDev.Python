@@ -1,12 +1,12 @@
 import datetime as dt
 from datetime import timedelta
-from dateutil.relativedelta import relativedelta
+# from dateutil.relativedelta import relativedelta
 from enum import Enum
-from functools import lru_cache
+# from functools import lru_cache
 import pandas_market_calendars as mcal
 import holidays
 from sdevpy.tools.utils import isiterable
-from sdevpy.tools import dates, speriods
+from sdevpy.tools import speriods
 
 
 class BDC(Enum):
@@ -71,23 +71,81 @@ class Calendar:
 
     def make_schedule(self, start, end, term, convention=BDC.F, convert_to_datetime=False):
         """ Simplified schedule generation for now (forward) """
-        # # New logic (to be tested)
-        # schedule_dates, d = [], self.adjust(start, convention)
-        # while d <= end:
-        #     schedule_dates.append(d)
-        #     d = self.adjust(d + speriods.period(term), convention)
-
-        # Old logic
-        schedule_dates, d = [], start
+        # New logic (to be tested)
+        schedule_dates, d = [], self.adjust(start, convention)
         while d <= end:
-            schedule_dates.append(self.adjust(d, convention))
-            d += speriods.period(term)
+            schedule_dates.append(d)
+            d = self.adjust(d + speriods.period(term), convention)
 
-        return to_datetime(schedule_dates) if convert_to_datetime else schedule_dates
+        seen = set()
+        adjusted = []
+        for d in schedule_dates:
+            if d not in seen:
+                adjusted.append(d)
+                seen.add(d)
+
+        # # Old logic
+        # adjusted, d = [], start
+        # while d <= end:
+        #     adjusted.append(self.adjust(d, convention))
+        #     d += speriods.period(term)
+
+        return to_datetime(adjusted) if convert_to_datetime else adjusted
+
+    def make_schedule_fancy(self, start: dt.date, end: dt.date, term: str,
+                            convention: BDC = BDC.MF,
+                            stub: str = "short_front", # short_front|long_front|short_back|long_back
+                            eom: bool = False, include_effective: bool = True,
+                            convert_to_datetime: bool = False) -> list[dt.date]:
+        """ Generate a schedule of adjusted dates from start to end """
+        period = speriods.period(term)
+        use_eom = eom and is_eom(start)
+
+        # 1) Generate unadjusted roll dates
+        if stub in ("short_back", "long_back"):
+            # Roll forward from start
+            roll_dates, d = [start], start
+            while True:
+                d += period
+                roll_dates.append(min(d, end))
+                if d >= end:
+                    break
+            if stub == "long_back" and len(roll_dates) > 2:
+                roll_dates.pop(-2) # merge last two periods into one long stub
+        else:
+            # Roll backwards from end (industry standard for front stubs)
+            roll_dates, d = [end], end
+            while True:
+                d -= period
+                roll_dates.insert(0, max(d, start))
+                if d <= start:
+                    break
+            if stub == "long_front" and len(roll_dates) > 2:
+                roll_dates.pop(1) # merge first two periods into one long stub
+
+        # 2) Apply end-of-month roll
+        if use_eom:
+            roll_dates = [to_eom(d) for d in roll_dates]
+
+        # 3) Adjust all dates in one pass
+        period_ends = roll_dates[1:] # effective date is never a period-end
+        seen = set()
+        adjusted = []
+        for d in period_ends:
+            a = self.adjust(d, convention)
+            if a not in seen:
+                adjusted.append(a)
+                seen.add(a)
+
+        if include_effective:
+            adjusted = [self.adjust(start, convention)] + adjusted
+
+        return to_datetime(adjusted) if convert_to_datetime else adjusted
+
 
     def __add__(self, other: "Calendar") -> "Calendar":
-        """Combine two calendars — both holidays are observed. """
-        return Calendar(name=f"{self.name}+{other.name}", holiday_set=self._holidays | other._holidays,)
+        """ Combine two calendars — both holidays are observed """
+        return Calendar(name=f"{self.name}+{other.name}", holiday_set=self._holidays | other._holidays)
 
     def _shift(self, d: dt.date, step: int):
         current = d + timedelta(days=step)
@@ -103,6 +161,17 @@ class Calendar:
             return d.date()
         else:
             return d
+
+
+def is_eom(d: dt.date) -> bool:
+    """ True if d is the last calendar day of its month """
+    return (d + timedelta(days=1)).month != d.month
+
+
+def to_eom(d: dt.date) -> dt.date:
+    """ Roll d to the last calendar day of its month """
+    next_month = d.replace(day=28) + timedelta(days=4)
+    return next_month - timedelta(days=next_month.day)
 
 
 def make_calendar(name, start_year=2000, end_year=2100):
@@ -147,20 +216,12 @@ def list_mcal_calendars():
     print(mcal.get_calendar_names())
 
 
-# ToDo: this looks like a very simplified function. Make more precise one.
 def make_schedule(calstr, start, end, term, convention=BDC.F, convert_to_datetime=False):
+    """ Helper wrapping around the make_schedule_fancy() method of the calendard class """
     cdr = make_calendar(calstr)
-    schedule = cdr.make_schedule(start, end, term, convention=convention,
+    schedule = cdr.make_schedule_fancy(start, end, term, convention=convention,
                                  convert_to_datetime=convert_to_datetime)
     return schedule
-    # schedule_dates, d = [], start
-    # while d <= end:
-    #     schedule_dates.append(cal.adjust(d, convention))
-    #     d += speriods.period(term)
-    #     # d = dates.advance(d, days=freq_days, months=freq_months, years=freq_years)#relativedelta(months=freq_months)
-    #     # # d += relativedelta(months=freq_months)
-
-    # return to_datetime(schedule_dates) if convert_to_datetime else schedule_dates
 
 
 def to_datetime(date):
@@ -175,7 +236,7 @@ CCY_CALENDARS = {
         "WE": lambda y: {},
         "USD": lambda y: holidays.US(years=y),
         "GBP": lambda y: holidays.UK(years=y),
-        "EUR": lambda y: holidays.ECB(years=y),  # TARGET calendar
+        "EUR": lambda y: holidays.ECB(years=y), # TARGET calendar
         "JPY": lambda y: holidays.JP(years=y),
     }
 
@@ -211,4 +272,16 @@ if __name__ == "__main__":
 
     joint_cal = nyse_cal + lse_cal  # composability still works
 
-    # list_mcal_calendars()
+    # Eom
+    d = dt.datetime(2026, 2, 27)
+    print(is_eom(d))
+    print(to_eom(d))
+
+    # Schedule
+    start = dt.datetime(2026, 3, 27)
+    end = dt.datetime(2026, 4, 27)
+    sch1 = cal.make_schedule(start, end, "1d")
+    sch2 = cal.make_schedule_fancy(start, end, "1d")
+    print(sch1)
+    print(sch2)
+

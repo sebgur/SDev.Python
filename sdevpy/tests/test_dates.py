@@ -28,8 +28,8 @@ def test_make_schedule():
 
     start = dt.date(2024, 1, 15)
     end = dt.date(2025, 1, 15)
-    test = cal.make_schedule(start, end, '3M')
-    # test = cdr.make_schedule(cal, start, end, freq_months=3)
+    test = cal.make_schedule_fancy(start, end, '3M')
+    print(test)
     ref = [dt.date(2024, 1, 16), dt.date(2024, 4, 15), dt.date(2024, 7, 15),
            dt.date(2024, 10, 15), dt.date(2025, 1, 15)]
     assert test == ref
@@ -55,4 +55,4 @@ def test_date_advance():
 
 
 if __name__ == "__main__":
-    test_date_advance()
+    test_make_schedule()
