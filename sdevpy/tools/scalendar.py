@@ -50,7 +50,7 @@ class Calendar:
             # Roll forward if we've crossed into the previous month
             return self._shift(d, 1) if adjusted.month != d.month else adjusted
 
-    def add_business_days(self, d: dt.date, n: int) -> date:
+    def add_business_days(self, d: dt.date, n: int) -> dt.date:
         step = 1 if n >= 0 else -1
         current = d
         remaining = abs(n)
