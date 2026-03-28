@@ -295,9 +295,9 @@ class Max(Payoff):
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates(self.subpayoffs)
 
-    def set_eventindexes(self, evendates):
+    def set_eventindexes(self, eventdates):
         for subpayoff in self.subpayoffs:
-            subpayoff.set_eventindexes(evendates)
+            subpayoff.set_eventindexes(eventdates)
 
 
 class Min(Payoff):
@@ -327,9 +327,9 @@ class Min(Payoff):
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates(self.subpayoffs)
 
-    def set_eventindexes(self, evendates):
+    def set_eventindexes(self, eventdates):
         for subpayoff in self.subpayoffs:
-            subpayoff.set_eventindexes(evendates)
+            subpayoff.set_eventindexes(eventdates)
 
 
 class Abs(Payoff):

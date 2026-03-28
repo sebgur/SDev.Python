@@ -1,8 +1,6 @@
 """ Payoff smoothers for numerical methods """
 import numpy as np
 import tensorflow as tf
-# import scipy.stats
-# import tensorflow_probability as tfp
 
 
 # Smoothing parameters (for the max function)
@@ -12,7 +10,6 @@ SMOOTH_STDEV = SMOOTH_VOL * np.sqrt(SMOOTH_TIME)
 
 
 # Numpy versions (non-AAD)
-# N = scipy.stats.norm
 
 def approx_cdf(x):
     """ Simple approximation of CDF """
@@ -26,12 +23,9 @@ def smooth_max_diff(spot, strike):
     n1 = approx_cdf(d1)
     n2 = approx_cdf(d2)
     return spot * n1 - 0.5 * strike * (n1 + n2)  # Average
-    # return spot * N.cdf(d1) - strike * N.cdf(d2)  # BS, overestimates
-    # return (spot - strike) * N.cdf(d1)  # Underestimates
 
 
 # Tensorflow versions (AAD)
-# tf_N = tfp.distributions.Normal(0.0, 1.0)
 
 def tf_approx_cdf(x):
     """ Simple approximation of CDF """
@@ -43,6 +37,4 @@ def tf_smooth_max_diff(spot, strike):
     d2 = d1 - SMOOTH_STDEV
     n1 = tf_approx_cdf(d1)
     n2 = tf_approx_cdf(d2)
-    return spot * n1 - 0.5 * strike * (n1 + n2)  # Average
-    # return spot * tf_N.cdf(d1) - strike * tf_N.cdf(d2)  # BS, overestimates
-    # return (spot - strike) * tf_N.cdf(d1)  # Underestimates
+    return spot * n1 - 0.5 * strike * (n1 + n2) # Average
