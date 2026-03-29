@@ -17,10 +17,13 @@ logger.setLevel(logging.DEBUG)
 
 #################### TODO #########################################################################
 # * Finish varswap payoff, Check var swap values, Add volswaps
+# * Generalize correlation matrix, move get_lv to proper place
 # * Check accuracy against LV calib
 # * Calculate vega through LV calib (save BM/interpolation)
 
 # * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
+# * Using SVI may have the advantage that we could define a global parallel shift without
+#   recalibrating?
 # * Implementing exact Dupire through python vectorization and try parallelization
 # * Implement DE with parallelization on the population
 

@@ -37,7 +37,7 @@ class InterpolatedYieldCurve(YieldCurve):
         super().__init__(**kwargs)
         self.dates, self.dfs = None, None
         self.interp_var_str = kwargs.get('interp_var', 'zerorate')
-        self.interp_type = kwargs.get('interp_type', 'cubispline')
+        self.interp_type = kwargs.get('interp_type', 'cubicspline')
         self.interp_var, self.interp = None, None
         self.set_interpolation()
 

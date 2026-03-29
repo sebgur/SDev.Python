@@ -78,7 +78,11 @@ def path_interp_coeffs(disc_times, event_times):
     t_left = disc_times[idx]
     t_right = disc_times[idx + 1]
 
-    w1 = (event_times - t_left) / (t_right - t_left)
+    dts = t_right - t_left
+    if np.any(dts == 0):
+        raise ValueError("Duplicate dates in discretization grid")
+
+    w1 = (event_times - t_left) / dts
     w0 = 1.0 - w1
     return idx, w0, w1
 

@@ -212,7 +212,7 @@ class Terminal(Payoff):
     def set_nameindexes(self, names):
         try:
             self.name_idx = names.index(self.name)
-        except Exception as e:
+        except ValueError as e:
             self.name_idx = None
             raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 
@@ -249,7 +249,7 @@ class Average(Payoff):
     def set_nameindexes(self, names):
         try:
             self.name_idx = names.index(self.name)
-        except Exception as e:
+        except ValueError as e:
             self.name_idx = None
             raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 
@@ -477,7 +477,10 @@ class Variance(Payoff):
     def set_eventindexes(self, eventdates):
         self.varidxs = []
         for date in self.eventdates:
-            self.varidxs.append(np.where(eventdates == date)[0][0])
+            matches = np.where(eventdates == date)[0]
+            if len(matches) == 0:
+                raise ValueError(f"Date {self.expiry} not found in event date grid")
+            self.varidxs.append(matches[0])
 
 ########### Arithmetic Nodes ############################################################
 
@@ -504,9 +507,9 @@ class Add(Payoff):
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates([self.left, self.right])
 
-    def set_eventindexes(self, evendates):
-        self.left.set_eventindexes(evendates)
-        self.right.set_eventindexes(evendates)
+    def set_eventindexes(self, eventdates):
+        self.left.set_eventindexes(eventdates)
+        self.right.set_eventindexes(eventdates)
 
 
 class Sub(Payoff):
@@ -532,9 +535,9 @@ class Sub(Payoff):
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates([self.left, self.right])
 
-    def set_eventindexes(self, evendates):
-        self.left.set_eventindexes(evendates)
-        self.right.set_eventindexes(evendates)
+    def set_eventindexes(self, eventdates):
+        self.left.set_eventindexes(eventdates)
+        self.right.set_eventindexes(eventdates)
 
 
 class Mul(Payoff):
@@ -560,9 +563,9 @@ class Mul(Payoff):
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates([self.left, self.right])
 
-    def set_eventindexes(self, evendates):
-        self.left.set_eventindexes(evendates)
-        self.right.set_eventindexes(evendates)
+    def set_eventindexes(self, eventdates):
+        self.left.set_eventindexes(eventdates)
+        self.right.set_eventindexes(eventdates)
 
 
 class Div(Payoff):
@@ -586,9 +589,9 @@ class Div(Payoff):
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates([self.left, self.right])
 
-    def set_eventindexes(self, evendates):
-        self.left.set_eventindexes(evendates)
-        self.right.set_eventindexes(evendates)
+    def set_eventindexes(self, eventdates):
+        self.left.set_eventindexes(eventdates)
+        self.right.set_eventindexes(eventdates)
 
 
 class Neg(Payoff):
@@ -608,8 +611,8 @@ class Neg(Payoff):
         self.old.set_valuation_date(valdate)
         self.eventdates = self.old.eventdates
 
-    def set_eventindexes(self, evendates):
-        self.old.set_eventindexes(evendates)
+    def set_eventindexes(self, eventdates):
+        self.old.set_eventindexes(eventdates)
 
 
 #### Event Dates ##################################################################################
