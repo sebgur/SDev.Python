@@ -18,7 +18,7 @@ def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
         seed = 42
         rng = np.random.RandomState(seed)
         gaussians_ = []
-        for i in range(num_steps):
+        for _ in range(num_steps):
             gaussians_.append(rng.multivariate_normal(mean, corr, size=num_mc))
     elif method == 'Sobol':
         dim = num_steps * num_factors
@@ -51,9 +51,12 @@ def get_rng(dim=1, **kwargs) -> RandomNumberGenerator:
         case 'mt':
             seed = kwargs.get('seed', 42)
             return MersenneTwiser(dim=dim, seed=seed)
-        case 'sobol': return Sobol(dim=dim, **kwargs)
-        case 'halton': return Halton(dim=dim, **kwargs)
-        case 'latinhypercube': return LatinHypercube(dim=dim, **kwargs)
+        case 'sobol':
+            return Sobol(dim=dim, **kwargs)
+        case 'halton':
+            return Halton(dim=dim, **kwargs)
+        case 'latinhypercube':
+            return LatinHypercube(dim=dim, **kwargs)
         case _:
             raise TypeError(f"Unknown RNG type: {rng_type}")
 
