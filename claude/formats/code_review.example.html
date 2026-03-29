@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Code Review — sdevpy</title>
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --text:      #c9d1d9;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --orange:    #f0883e;
+      --red:       #f85149;
+      --purple:    #bc8cff;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+
+    /* ── Header ── */
+    header { margin-bottom: 2.5rem; padding-bottom: 1.4rem; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.75rem; color: var(--accent); letter-spacing: -.02em; }
+    header p  { color: var(--muted); margin-top: .35rem; font-size: .9rem; }
+
+    /* ── Grade card ── */
+    .grade-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+    .grade-letter {
+      font-size: 4.2rem;
+      font-weight: 800;
+      color: var(--yellow);
+      line-height: 1;
+      min-width: 3.8rem;
+      text-align: center;
+    }
+    .grade-details h2 { font-size: 1.05rem; margin-bottom: .35rem; }
+    .grade-details p  { color: var(--muted); font-size: .88rem; }
+
+    /* ── Scorecard ── */
+    .scorecard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+    .scorecard table { width: 100%; border-collapse: collapse; }
+    .scorecard thead th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      padding: .65rem 1.2rem;
+      text-align: left;
+    }
+    .scorecard tbody tr { border-top: 1px solid var(--border); }
+    .scorecard tbody tr:hover { background: var(--surface2); }
+    .scorecard td { padding: .7rem 1.2rem; font-size: .88rem; vertical-align: middle; }
+    .scorecard td:nth-child(2) { font-weight: 700; white-space: nowrap; }
+    .bar-wrap  { display: flex; align-items: center; gap: .55rem; }
+    .bar       { height: 6px; border-radius: 3px; background: var(--border); flex: 1; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 3px; }
+    .score-lbl { font-size: .78rem; color: var(--muted); white-space: nowrap; min-width: 4.5rem; }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1.1rem;
+      padding-bottom: .45rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Issue cards ── */
+    .issue {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 8px;
+      padding: 1.15rem 1.4rem;
+      margin-bottom: 1.1rem;
+    }
+    .issue.critical { border-left-color: var(--red);    }
+    .issue.high     { border-left-color: var(--orange); }
+    .issue.medium   { border-left-color: var(--yellow); }
+
+    .issue-header {
+      display: flex;
+      align-items: flex-start;
+      gap: .7rem;
+      margin-bottom: .7rem;
+      flex-wrap: wrap;
+    }
+    .issue-num {
+      font-size: .72rem; font-weight: 700;
+      background: #21262d; border-radius: 4px;
+      padding: .18rem .5rem; color: var(--muted);
+      white-space: nowrap; margin-top: .15rem;
+    }
+    .issue-title { font-weight: 600; font-size: .98rem; flex: 1; min-width: 0; }
+    .badge {
+      font-size: .7rem; font-weight: 700; padding: .18rem .55rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: .05em;
+      white-space: nowrap; margin-top: .1rem;
+    }
+    .badge.critical { background: #3d1515; color: var(--red);    }
+    .badge.high     { background: #2d1e0f; color: var(--orange); }
+    .badge.medium   { background: #2c2005; color: var(--yellow); }
+
+    .loc {
+      display: inline-block;
+      font-size: .76rem; color: var(--accent);
+      background: #0c2a4a; border: 1px solid #1f4068;
+      border-radius: 4px; padding: .12rem .48rem;
+      margin-bottom: .55rem;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    }
+
+    .issue p { color: var(--muted); font-size: .88rem; margin-bottom: .45rem; }
+    .issue p:last-child { margin-bottom: 0; }
+    .issue strong { color: var(--text); }
+
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .83em;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1em .38em;
+      color: var(--purple);
+    }
+    pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .9rem 1.1rem;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .82em;
+      line-height: 1.65;
+      margin: .55rem 0 .2rem;
+      color: #e6edf3;
+    }
+    .c  { color: #8b949e; }   /* comment */
+    .kw { color: #ff7b72; }   /* keyword  */
+    .st { color: #a5d6ff; }   /* string   */
+    .fn { color: #d2a8ff; }   /* function */
+    .ok { color: #3fb950; }   /* added    */
+    .rm { color: #f85149; }   /* removed  */
+
+    footer { margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; color: var(--muted); font-size: .8rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Code Review — <code>sdevpy</code></h1>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-03-28 (fresh scan)</p>
+  </header>
+
+  <!-- ── Grade ── -->
+  <div class="grade-card">
+    <div class="grade-letter">C+</div>
+    <div class="grade-details">
+      <h2>Solid domain design, but several live bugs and thin safety nets</h2>
+      <p>
+        The library covers an impressive breadth — Monte Carlo, PDE, market data, SVI/local-vol, interpolation, ML.
+        Architecture is coherent and the payoff-composition design is clean. However, multiple critical
+        runtime bugs exist in current code (typos, missing imports, unsafe indexing), test coverage is sparse,
+        and type hints are absent throughout. Targeted fixes would meaningfully raise the grade.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── Scorecard ── -->
+  <div class="scorecard">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th><th>Score</th><th style="width:38%">Rating</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Architecture</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Clear domain separation; payoff composition is elegant; some tight coupling in pricing</td>
+        </tr>
+        <tr>
+          <td>Correctness</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Several critical runtime bugs (typos, missing import, unsafe indexing)</td>
+        </tr>
+        <tr>
+          <td>Error Handling</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Inconsistent — some modules validate inputs, others assume valid data silently</td>
+        </tr>
+        <tr>
+          <td>Testing</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Basic tests exist; no coverage of error paths, Variance, WorstOfBarrier, or calibration</td>
+        </tr>
+        <tr>
+          <td>Type Safety</td><td>4 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f0883e"></div></div><span class="score-lbl">Poor</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">No type hints anywhere; type errors only surface at runtime deep in call stacks</td>
+        </tr>
+        <tr>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good NumPy vectorisation; debug prints in production; inconsistent naming</td>
+        </tr>
+        <tr>
+          <td>Maintainability</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good module organisation; hardcoded paths; mutable payoff state makes composition fragile</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Issues ── -->
+  <div class="section-title">Top 10 Issues</div>
+
+  <!-- 1 -->
+  <div class="issue critical">
+    <div class="issue-header">
+      <span class="issue-num">#1</span>
+      <span class="issue-title">Attribute typo in <code>Abs</code> payoff — <code>evendates</code> instead of <code>eventdates</code></span>
+      <span class="badge critical">Critical</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 352</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>self.eventdates = self.subpayoff.evendates</code> references a
+      non-existent attribute. Any call to <code>Abs.set_valuation_date()</code> raises an
+      <code>AttributeError</code> at runtime, silently breaking portfolio valuations that include
+      absolute-value payoffs.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">self.eventdates = self.subpayoff.evendates</span>
+<span class="ok">self.eventdates = self.subpayoff.eventdates</span></pre>
+  </div>
+
+  <!-- 2 -->
+  <div class="issue critical">
+    <div class="issue-header">
+      <span class="issue-num">#2</span>
+      <span class="issue-title">Typo in <code>datetime</code> constructor — <code>dt.datime</code></span>
+      <span class="badge critical">Critical</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/vanillas.py · line 70</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>dt.datime(2026, 12, 15)</code> raises a <code>NameError</code>
+      immediately when the module's <code>__main__</code> block runs. This crashes any script that
+      exercises the vanilla option example code.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">dt.datime(2026, 12, 15)</span>
+<span class="ok">dt.datetime(2026, 12, 15)</span></pre>
+  </div>
+
+  <!-- 3 -->
+  <div class="issue critical">
+    <div class="issue-header">
+      <span class="issue-num">#3</span>
+      <span class="issue-title">Missing <code>import numpy as np</code> in <code>cashflows.py</code></span>
+      <span class="badge critical">Critical</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/cashflows.py · line 48</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>DiscountEngine.df()</code> calls <code>np.interp()</code> but
+      <code>numpy</code> is never imported at the top of the file. Any call to <code>DiscountEngine</code>
+      raises a <code>NameError</code>, disabling discount-factor interpolation entirely.
+    </p>
+    <p><strong>Fix:</strong> Add at the top of <code>cashflows.py</code>:</p>
+    <pre><span class="ok">import numpy as np</span></pre>
+  </div>
+
+  <!-- 4 -->
+  <div class="issue critical">
+    <div class="issue-header">
+      <span class="issue-num">#4</span>
+      <span class="issue-title">Unsafe array indexing — <code>[0][0]</code> with no existence check</span>
+      <span class="badge critical">Critical</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 226, 268, 475</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>np.where(eventdates == self.expiry)[0][0]</code> assumes the
+      expiry date is always present in the event-date grid. If it is absent, the result array is empty
+      and <code>[0]</code> raises an <code>IndexError</code> with no meaningful message, making
+      misconfigured trades very hard to debug.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">self.idx = np.where(eventdates == self.expiry)[0][0]</span>
+<span class="ok">matches = np.where(eventdates == self.expiry)[0]</span>
+<span class="ok"><span class="kw">if</span> len(matches) == 0:</span>
+<span class="ok">    <span class="kw">raise</span> ValueError(<span class="st">f"Expiry {self.expiry} not found in event date grid"</span>)</span>
+<span class="ok">self.idx = matches[0]</span></pre>
+  </div>
+
+  <!-- 5 -->
+  <div class="issue critical">
+    <div class="issue-header">
+      <span class="issue-num">#5</span>
+      <span class="issue-title">Undefined <code>USERNAME</code> in <code>settings.py</code> when <code>USE_PYTHONNET=False</code></span>
+      <span class="badge critical">Critical</span>
+    </div>
+    <span class="loc">sdevpy/settings.py · line 54</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>USERNAME</code> is only assigned inside the
+      <code>if USE_PYTHONNET:</code> block (line 31). When the default <code>USE_PYTHONNET = False</code>
+      is in effect, the variable is never defined and line 54 raises a <code>NameError</code> when
+      <code>settings.py</code> is executed directly.
+    </p>
+    <p><strong>Fix:</strong> Initialise the variable before the conditional block:</p>
+    <pre><span class="ok">USERNAME = <span class="st">"Unknown"</span></span>
+<span class="kw">if</span> USE_PYTHONNET:
+    ...
+    USERNAME = ...</pre>
+  </div>
+
+  <!-- 6 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#6</span>
+      <span class="issue-title">Division by zero in <code>Variance.evaluate()</code> when no historical fixing exists</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 434</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>spot_paths[:, 0] / self.current_fixing</code> divides by
+      <code>self.current_fixing</code>, which can be <code>None</code> when no historical data is
+      provided. This raises a <code>TypeError</code> (or produces <code>nan</code> silently via NumPy
+      broadcasting), corrupting the variance-swap PV without any warning.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is not None</span>:
+    var = var + spot_paths[:, <span class="ok">0</span>] / self.current_fixing</pre>
+  </div>
+
+  <!-- 7 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#7</span>
+      <span class="issue-title">Division by zero in <code>path_interp_coeffs()</code> with duplicate time-grid entries</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/MonteCarloPricer.py · line 81</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>w1 = (event_times - t_left) / (t_right - t_left)</code>
+      produces <code>inf</code> or <code>nan</code> if any two adjacent discretisation times are
+      identical. The corrupted weights silently propagate through the entire MC pricing without any error.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre>dt = t_right - t_left
+<span class="kw">if</span> np.any(dt == <span class="ok">0</span>):
+    <span class="kw">raise</span> ValueError(<span class="st">"Duplicate times detected in discretisation grid"</span>)
+w1 = (event_times - t_left) / dt</pre>
+  </div>
+
+  <!-- 8 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#8</span>
+      <span class="issue-title">Division by zero in <code>LinearInterpolator.initialize()</code> with duplicate x-values</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/maths/interpolation.py · lines 162–163</span>
+    <p>
+      <strong>Why it's bad:</strong> Slope computation <code>(y[1] - y[0]) / (x[1] - xl)</code>
+      divides by zero when consecutive x-grid values are identical (e.g. a vol surface with
+      duplicate tenors). The result is <code>inf</code> or <code>nan</code> stored silently in
+      the interpolator, producing wrong values for all subsequent queries.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="kw">if</span> np.any(np.diff(self.x_grid) == <span class="ok">0</span>):
+    <span class="kw">raise</span> ValueError(<span class="st">"x_grid contains duplicate values"</span>)</pre>
+  </div>
+
+  <!-- 9 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#9</span>
+      <span class="issue-title">Debug <code>print()</code> in <code>Variance.evaluate()</code> — executes on every MC call</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 436</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>print(f"spot paths: {spot_paths.shape}")</code> fires on
+      every simulation path evaluation — potentially thousands of times per price call. This floods
+      stdout, degrades performance, and breaks any pipeline that parses stdout. It indicates the code
+      was never hardened beyond a debugging session.
+    </p>
+    <p><strong>Fix:</strong> Remove the line, or replace with a <code>logging.debug()</code> call:</p>
+    <pre><span class="kw">import</span> logging
+log = logging.getLogger(__name__)
+log.debug(<span class="st">"spot_paths shape: %s"</span>, spot_paths.shape)</pre>
+  </div>
+
+  <!-- 10 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#10</span>
+      <span class="issue-title">No type annotations across the entire codebase</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">Codebase-wide</span>
+    <p>
+      <strong>Why it's bad:</strong> Without type hints, IDEs cannot autocomplete correctly,
+      <code>mypy</code> cannot catch type errors before runtime, and callers have no indication
+      what types are expected. In a numerical library this is especially risky — passing a scalar
+      where a NumPy array is expected can produce wrong results instead of an error.
+    </p>
+    <p>
+      <strong>Fix:</strong> Add type hints incrementally to public method signatures, starting at the
+      most-used boundaries (<code>Payoff.evaluate</code>, <code>YieldCurve.discount</code>,
+      <code>Interpolation.value</code>). Run <code>mypy</code> in CI to prevent regression.
+    </p>
+    <pre><span class="c"># Before</span>
+<span class="kw">def</span> <span class="fn">evaluate</span>(self, market_state):
+    ...
+
+<span class="c"># After</span>
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+<span class="kw">from</span> sdevpy.montecarlo.marketstate <span class="kw">import</span> MarketState
+
+<span class="kw">def</span> <span class="fn">evaluate</span>(self, market_state: MarketState) -> np.ndarray:
+    ...</pre>
+  </div>
+
+  <footer>
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-03-28
+  </footer>
+</div>
+</body>
+</html>
