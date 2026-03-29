@@ -23,7 +23,7 @@ from sdevpy.projects.stovol import stovolplot as xplt
 from sdevpy.analytics import bachelier
 
 
-# ################ ToDo ###########################################################################
+# ################ Notes ##########################################################################
 # At the comparison check between model and calibration, we tried adding random noise to the normal
 # vols used for comparison, on top of their values that come from a chosen SABR model. This way the
 # vols we apply the model/calibration to are not longer exactly SABR.
@@ -240,7 +240,7 @@ if SHOW_VOL_CHARTS:
     NUM_EXPIRIES = EXPIRIES.shape[0]
 
     # Calculate market strikes and prices on the training spreads
-    # ToDo: ideally we shouldn't hardcode them but retrieve from knowledge of the datasets
+    # Note: ideally we shouldn't hardcode them but retrieve from knowledge of the datasets
     # and/or the saved model
     TRAINING_SPREADS = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
     TRAINING_SPREADS = np.asarray(TRAINING_SPREADS)

@@ -4,7 +4,7 @@ import numpy as np
 
 class FactorModel(ABC):
     @abstractmethod
-    def evolve_state(self, state, t_idx, dW):
+    def evolve_state(self, state, t_idx, dw):
         pass
 
     @abstractmethod
@@ -32,7 +32,7 @@ class MultiAssetGBM(FactorModel):
     def initial_state(self):
         return self.spot.copy()
 
-    def evolve_state(self, state, t_idx, dW):
+    def evolve_state(self, state, t_idx, dw):
         fs = self.fwd_grid[t_idx - 1]
         fe = self.fwd_grid[t_idx]
         ts = self.time_grid[t_idx - 1]
@@ -41,7 +41,7 @@ class MultiAssetGBM(FactorModel):
         # Calculate the log-moneyness to evaluate the local vol
         logms = np.log(state / fs)
         # Vols
-        if self.use_lv == False: # Constant vol
+        if not self.use_lv: # Constant vol
             vol = self.sigma
         else: # Local vol
             lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
@@ -52,7 +52,7 @@ class MultiAssetGBM(FactorModel):
 
         # Now evolve
         dt = te - ts
-        return fe * np.exp(logms - 0.5 * vol**2 * dt + vol * dW)
+        return fe * np.exp(logms - 0.5 * vol**2 * dt + vol * dw)
 
 
 if __name__ == "__main__":

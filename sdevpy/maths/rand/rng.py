@@ -31,19 +31,6 @@ def gaussians(num_steps, num_mc, num_factors, method='PseudoRandom'):
     return np.asarray(gaussians_)
 
 
-def get_rng(dim=1, **kwargs):
-    rng_type = kwargs.get('rng_type', 'MT')
-    match rng_type.lower():
-        case 'mt':
-            seed = kwargs.get('seed', 42)
-            return MersenneTwiser(dim=dim, seed=seed)
-        case 'sobol': return Sobol(dim=dim, **kwargs)
-        case 'halton': return Halton(dim=dim, **kwargs)
-        case 'latinhypercube': return LatinHypercube(dim=dim, **kwargs)
-        case _:
-            raise TypeError(f"Unknown RNG type: {rng_type}")
-
-
 class RandomNumberGenerator(ABC):
     def __init__(self, dim=1):
         self.dim = dim
@@ -56,6 +43,19 @@ class RandomNumberGenerator(ABC):
         """ Draw n_draws gaussians, converted from uniforms with scipy's normal inverse CDF """
         uniforms = self.uniform(n_draws)
         return norm.ppf(uniforms)
+
+
+def get_rng(dim=1, **kwargs) -> RandomNumberGenerator:
+    rng_type = kwargs.get('rng_type', 'MT')
+    match rng_type.lower():
+        case 'mt':
+            seed = kwargs.get('seed', 42)
+            return MersenneTwiser(dim=dim, seed=seed)
+        case 'sobol': return Sobol(dim=dim, **kwargs)
+        case 'halton': return Halton(dim=dim, **kwargs)
+        case 'latinhypercube': return LatinHypercube(dim=dim, **kwargs)
+        case _:
+            raise TypeError(f"Unknown RNG type: {rng_type}")
 
 
 class MersenneTwiser(RandomNumberGenerator):

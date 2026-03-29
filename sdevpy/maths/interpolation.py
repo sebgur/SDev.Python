@@ -155,6 +155,9 @@ class LinearInterpolator(Interpolator):
         super().__init__(**kwargs)
 
     def initialize(self):
+        if np.any(np.diff(self.x_grid) == 0):
+            raise ValueError("x_grid contains duplicate values, interpolation undefined")
+
         self.xl = self.x_grid[0]
         self.xr = self.x_grid[-1]
         self.yl = self.y_grid[0]

@@ -13,7 +13,7 @@ print("pytorch version: ", torch.__version__)
 # Chp 5.1, page 141, reference to large scale dataset of public domain books.
 # Chp 5.2, page 146, learn about learning rate warmup, cosine annealing and gradient clipping
 
-# ToDo: would be interesting to understand, after training, what are the actual words
+# Note: would be interesting to understand, after training, what are the actual words
 # in the rest of the context output by the model. That is, we only use the last element
 # in the sequence and interpret it as the predicted word, but in reality the model
 # outputs a whole sequence, out of which we only use the last token. But what do the

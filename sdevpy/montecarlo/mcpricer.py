@@ -1,10 +1,10 @@
 """ The MC path builder only requires the paths of the underlying assets as a big
     multi-d vector. This way we can get those paths from an independent engine. """
 import numpy as np
-import datetime as dt
+# import datetime as dt
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.tools import timegrids, timer
-from sdevpy.montecarlo.FactorModel import MultiAssetGBM
+from sdevpy.montecarlo.assetmodels import MultiAssetGBM
 from sdevpy.montecarlo.PathGenerator import PathGenerator
 from sdevpy.market.spot import get_spots
 from sdevpy.market.yieldcurve import get_yieldcurve
@@ -29,8 +29,8 @@ def get_correlations(names, valdate):
 
 def build_timegrid(valdate, eventdates, config):
     max_date = eventdates.max()
-    max_T = timegrids.model_time(valdate, max_date)
-    disc_tgrid = timegrids.build_timegrid(0.0, max_T, config)
+    max_t = timegrids.model_time(valdate, max_date)
+    disc_tgrid = timegrids.build_timegrid(0.0, max_t, config)
     return disc_tgrid
 
 
@@ -87,14 +87,14 @@ def interp_paths(paths, idx, w0, w1):
     """ Input path shape (n_paths, n_disctimes, n_factors).
         Output path shape (n_paths, n_eventtimes, n_factors) """
     # Path shape: (n_paths, n_times, n_assets)
-    S_left = paths[:, idx, :] # broadcasting
-    S_right = paths[:, idx + 1, :]
+    s_left = paths[:, idx, :] # broadcasting
+    s_right = paths[:, idx + 1, :]
 
     # Reshape weights for broadcasting
     w0 = w0.reshape(1, -1, 1)
     w1 = w1.reshape(1, -1, 1)
 
-    return w0 * S_left + w1 * S_right
+    return w0 * s_left + w1 * s_right
 
 
 class MarketState:
@@ -149,7 +149,7 @@ class MonteCarloPricer:
         return pvs
 
     def build(self, mkt_state, book):
-        paths = mkt_state.event_paths
+        # paths = mkt_state.event_paths
         reports = []
         for trade in book.trades:
             print(trade.id)
@@ -181,12 +181,12 @@ class MonteCarloPricer:
         return reports
 
     def print_timers(self):
-        for timer in self.timers:
-            timer.print()
+        for timer_ in self.timers:
+            timer_.print()
 
 
 class McConfig:
-    """ Monte-Carlo engine config 
+    """ Monte-Carlo engine config
         - constr_type: Brownian motion construction (incremental, brownianbridge)
         - rng_type: random number generator (mt, sobol, halton, latinhypercube)
     """

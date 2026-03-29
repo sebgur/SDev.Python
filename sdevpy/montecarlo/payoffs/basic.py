@@ -140,7 +140,7 @@ class Payoff(ABC):
                     idx = enginenames.index(name)
                     self.name_idxs.append(idx)
                     self.name_dic[name] = idx
-                except Exception as e:
+                except ValueError as e:
                     raise ValueError(f"Could not find name {name} in path names: {str(e)}") from e
 
     #### Algebra ##################################################################################
@@ -223,7 +223,10 @@ class Terminal(Payoff):
         self.eventdates = [self.expiry]
 
     def set_eventindexes(self, eventdates):
-        self.expiry_idx = np.where(eventdates == self.expiry)[0][0]
+        matches = np.where(eventdates == self.expiry)[0]
+        if len(matches) == 0:
+            raise ValueError(f"Date {self.expiry} not found in event date grid")
+        self.expiry_idx = matches[0]
 
 
 class Average(Payoff):
@@ -265,7 +268,10 @@ class Average(Payoff):
     def set_eventindexes(self, eventdates):
         self.averageidxs = []
         for date in self.eventdates:
-            self.averageidxs.append(np.where(eventdates == date)[0][0])
+            matches = np.where(eventdates == date)[0]
+            if len(matches) == 0:
+                raise ValueError(f"Date {date} not found in event date grid")
+            self.averageidxs.append(matches[0])
 
 
 class Max(Payoff):
@@ -349,7 +355,7 @@ class Abs(Payoff):
 
     def set_valuation_date(self, valdate):
         self.subpayoff.set_valuation_date(valdate)
-        self.eventdates = self.subpayoff.evendates
+        self.eventdates = self.subpayoff.eventdates
 
     def set_eventindexes(self, eventdates):
         self.subpayoff.set_eventindexes(eventdates)

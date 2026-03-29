@@ -185,7 +185,7 @@ if __name__ == "__main__":
         # PDE
         pde_x = []
         pde_p = []
-        for u, v in zip(x, p):
+        for u, v in zip(x, p, strict=True):
             if np.abs(u) < x_max:
                 pde_x.append(u)
                 pde_p.append(v)

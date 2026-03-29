@@ -7,19 +7,20 @@ from sdevpy.maths import interpolation as itp
 
 
 ###### TODO #################
+# Generate real-looking fixing data
 # Need to change the name of method values() in FixingHandler as
 # it clashes with its self.values member data.
 # Or better: vectorize it
 
 
-def get_fixings(name, dates, **kwargs):
+def get_fixings(name: str, dates, **kwargs):
     interpolate = kwargs.get('interpolate', False)
     handler = fixinghandler(name, interpolate=interpolate, **kwargs)
     return handler.values(dates)
 
 
 class FixingHandler:
-    def __init__(self, name, dates, values, **kwargs):
+    def __init__(self, name: str, dates, values, **kwargs):
         self.name = name
         self.interpolate = kwargs.get('interpolate', False)
 
@@ -46,18 +47,18 @@ class FixingHandler:
         try:
             idx = self.dates.index(date)
             return self.values[idx]
-        except Exception as e:
+        except ValueError as e:
             if self.interpolate:
                 t = dts.to_oadate(date)
                 fixing = self.interpolate_values(t)
                 return fixing
             else:
                 msg = f"No fixing found for {self.name} and date {date.strftime(dts.DATETIME_FORMAT)}"
-                raise RuntimeError(msg) from e
+                raise ValueError(msg) from e
 
     def interpolate_values(self, t):
         if self.interp is None:
-            raise RuntimeError("Fixing interpolation not turned on")
+            raise ValueError("Fixing interpolation not turned on")
 
         return self.interp.value(t)
 
@@ -88,7 +89,7 @@ def add_fixing(name, dates, values, **kwargs):
         check_fixings(name)
 
 
-def check_fixings(name, **kwargs):
+def check_fixings(name: str, **kwargs) -> None:
     """ Diagnostic tool reading existing series, ordering it and checking for duplicates """
     # Retrieve existing data
     file = data_file(name, **kwargs)
@@ -112,13 +113,18 @@ def check_fixings(name, **kwargs):
     df.to_csv(file, index=False)
 
 
-def data_file(name, **kwargs):
+def data_file(name: str, **kwargs) -> str:
+    """ Returns file path corresponding to name
+        Args:
+            **kwargs: folder (str, optional): defaults to test data folder
+    """
     folder = kwargs.get('folder', test_data_folder())
     file = os.path.join(folder, name + ".csv")
     return file
 
 
 def test_data_folder():
+    """ Returns test data folder for fixings """
     folder = Path(__file__).parent.parent.parent.resolve()
     dataset_folder = os.path.join(folder, "datasets")
     folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "fixings")
@@ -127,6 +133,10 @@ def test_data_folder():
 
 
 if __name__ == "__main__":
+    import numpy as np
+    from sdevpy.tools.scalendar import make_schedule
+    from sdevpy.tools.timegrids import model_time
+    from sdevpy.maths.rand.rng import get_rng
     name = "ABC"
 
     # # Diagnostics
@@ -137,9 +147,35 @@ if __name__ == "__main__":
     # new_values = [10.0, 20.0]
     # add_fixing(name, new_dates, new_values)
 
-    # Retrieve data
-    data = fixinghandler(name, interpolate=True)
-    # f = data.value(dt.datetime(2025, 1, 2))
-    f = data.value(dt.datetime(2025, 9, 15))
-    print(f)
+    # # Retrieve data
+    # data = fixinghandler(name, interpolate=True)
+    # f = data.value(dt.datetime(2025, 9, 15))
+    # print(f)
 
+    #### Generate simulated data ####
+    valdate = dt.datetime(2025, 12, 15)
+    start_date = dt.datetime(2025, 11, 15)
+    expiry = dt.datetime(2026, 12, 15)
+    all_dates = make_schedule("USD", start_date, expiry, '1D')
+    sim_dates = [date for date in all_dates if date < valdate]
+
+    # Quick simulation to generate sample
+    spot_s = 100
+    vol = 0.25
+    sim_values = [spot_s]
+    rng = get_rng()
+    gaussians = rng.normal(len(sim_dates) - 1)
+    for i in range(len(sim_dates) - 1):
+        ds = sim_dates[i]
+        de = sim_dates[i + 1]
+        dt = model_time(ds, de)
+        stdev = vol * np.sqrt(dt)
+        g = gaussians[i][0]
+        spot_e = spot_s * np.exp(-0.5 * stdev * stdev + stdev * g)
+        sim_values.append(spot_e)
+        spot_s = spot_e
+
+    # Output sample to file
+    sim_values = [round(v, 4) for v in sim_values]
+    print(sim_values)
+    add_fixing(name, sim_dates, sim_values)

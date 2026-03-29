@@ -29,7 +29,7 @@ class SmileGenerator(ABC):
     @abstractmethod
     def price(self, expiries, strikes, are_calls, fwd, parameters):
         """ Calculate option price under the specified model and its parameters """
-        # ToDo: couldn't we identify this with price_surface_ref? Ideally rename as
+        # Note: couldn't we identify this with price_surface_ref? Ideally rename as
         # price_options_ref given that now we have price_straddles_ref
 
     @abstractmethod
@@ -93,8 +93,7 @@ class SmileGenerator(ABC):
                 lnvol = parameters['LnVol']
                 stdev = lnvol * np.sqrt(expiries)
                 sfwd = fwd + self.shift
-                N = sp.norm
-                return sfwd * np.exp(-0.5 * stdev**2 + stdev * N.ppf(strike_inputs)) - self.shift
+                return sfwd * np.exp(-0.5 * stdev**2 + stdev * sp.norm.ppf(strike_inputs)) - self.shift
             else:
                 raise RuntimeError("Lognormal vol parameter not provided")
         else:
@@ -122,7 +121,7 @@ class SmileGenerator(ABC):
                 print(f"Converting to normal vol, batch {batch_id:,} out of {num_batches:,}")
             try:
                 nvol.append(bachelier.implied_vol(t[i], strike[i], self.is_call, fwd[i], price[i]))
-            except (Exception,):
+            except Exception:
                 nvol.append(-9999)
 
         np.seterr(divide='warn')  # Set back to warning

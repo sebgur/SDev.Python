@@ -1,11 +1,8 @@
 import os
 import datetime as dt
 import numpy as np
-# from scipy.stats import norm
 import matplotlib.pyplot as plt
 from sdevpy.tools import timegrids, dates
-# from sdevpy.models import svivol, biexp
-# from sdevpy.models import localvol
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black

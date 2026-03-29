@@ -37,7 +37,7 @@ class Tree(ABC):
                 if exer_v.shape != cont_v.shape:
                     raise RuntimeError("Incompatible shapes between continuation and exercise values")
 
-                pv_vector = np.maximum(exer_v, cont_v) # ToDo: test
+                pv_vector = np.maximum(exer_v, cont_v)
             else:
                 pv_vector = cont_v
 
@@ -84,21 +84,6 @@ class BinomialTree(Tree):
 
         cont_v = np.asarray([df * (p * v[i + 1] + (1.0 - p) * v[i]) for i in range(size)])
         return cont_v
-
-        # # Check american exercise
-        # if payoff.is_american:
-        #     # Calculate exercise value
-        #     spots = self.spot_vector(step_idx, spot)
-        #     exer_v = payoff.exercise_value(spots)
-        #     if exer_v.shape != cont_v.shape:
-        #         raise RuntimeError("Incompatible shapes between continuation and exercise values")
-
-        #     # Calculate optimum value
-        #     pv = np.maximum(exer_v, cont_v) # ToDo: test
-        # else:
-        #     pv = cont_v
-
-        # return pv
 
 
 class TrinomialTree(Tree):

@@ -28,7 +28,7 @@ class GPTModel(nn.Module):
         self.trf_blocks = nn.Sequential(*[TransformerBlock(cfg) for _ in range(cfg["n_layers"])])
 
         self.final_norm = LayerNorm(cfg["emb_dim"])
-        # ToDo: clarify what nn.Linear(n1, n2) is: n2 neurons with n1 incoming connections?
+        # Note: clarify what nn.Linear(n1, n2) is: n2 neurons with n1 incoming connections?
         self.out_head = nn.Linear(cfg["emb_dim"], cfg["vocab_size"], bias=False)
 
     def forward(self, in_idx):
@@ -42,7 +42,7 @@ class GPTModel(nn.Module):
         x = tok_embeds + pos_embeds
         # print(f"Embedding: {x.shape}")
 
-        x = self.drop_emb(x) # ToDo: what is this doing, again?
+        x = self.drop_emb(x) # Note: what is this doing, again?
         # print(f"After drop-out: {x.shape}")
         x = self.trf_blocks(x)
         # print(f"After Transformers: {x.shape}")
