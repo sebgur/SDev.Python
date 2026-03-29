@@ -19,27 +19,6 @@ class Cashflow:
     #     self.payoff.set_nameindexes(names)
 
 
-# class CashflowLeg:
-#     def __init__(self):
-#         self.cashflows = {}
-
-#     def add_cashflow(self, time, amount):
-#         if time in self.cashflows:
-#             self.cashflows[time] += amount
-#         else:
-#             self.cashflows[time] = amount.copy()
-
-#     def __add__(self, other):
-#         result = CashflowSchedule()
-#         for t, a in self.cashflows.items():
-#             result.add_cashflow(t, a)
-
-#         for t, a in other.cashflows.items():
-#             result.add_cashflow(t, a)
-
-#         return result
-
-
 class DiscountEngine:
     def __init__(self, curve_times, discount_factors):
         self.curve_times = curve_times

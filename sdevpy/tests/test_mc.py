@@ -4,8 +4,7 @@ from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
 from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
 from sdevpy.tools import book as bk
-from sdevpy.montecarlo.MonteCarloPricer import price_book
-from sdevpy.montecarlo.MonteCarloPricer import path_interp_coeffs, interp_paths
+from sdevpy.montecarlo.mcpricer import price_book, path_interp_coeffs, interp_paths
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 
