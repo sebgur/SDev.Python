@@ -3,20 +3,14 @@ import datetime as dt
 import pandas as pd
 from pathlib import Path
 from sdevpy.tools import dates as dts
+from sdevpy.tools.utils import isiterable
 from sdevpy.maths import interpolation as itp
-
-
-###### TODO #################
-# Generate real-looking fixing data
-# Need to change the name of method values() in FixingHandler as
-# it clashes with its self.values member data.
-# Or better: vectorize it
 
 
 def get_fixings(name: str, dates, **kwargs):
     interpolate = kwargs.get('interpolate', False)
     handler = fixinghandler(name, interpolate=interpolate, **kwargs)
-    return handler.values(dates)
+    return handler.value(dates)
 
 
 class FixingHandler:
@@ -40,10 +34,13 @@ class FixingHandler:
         else:
             self.oadates, self.interp = None, None
 
-    def values(self, dates):
-        return [self.value(d) for d in dates]
-
     def value(self, date):
+        if isiterable(date):
+            return [self.value_onedate(d) for d in date]
+        else:
+            return self.value_onedate(date)
+
+    def value_onedate(self, date):
         try:
             idx = self.dates.index(date)
             return self.values[idx]
@@ -53,7 +50,7 @@ class FixingHandler:
                 fixing = self.interpolate_values(t)
                 return fixing
             else:
-                msg = f"No fixing found for {self.name} and date {date.strftime(dts.DATETIME_FORMAT)}"
+                msg = f"Fixing not found for {self.name} on date {date.strftime(dts.DATETIME_FORMAT)}"
                 raise ValueError(msg) from e
 
     def interpolate_values(self, t):
@@ -133,10 +130,10 @@ def test_data_folder():
 
 
 if __name__ == "__main__":
-    import numpy as np
-    from sdevpy.tools.scalendar import make_schedule
-    from sdevpy.tools.timegrids import model_time
-    from sdevpy.maths.rand.rng import get_rng
+    # import numpy as np
+    # from sdevpy.tools.scalendar import make_schedule
+    # from sdevpy.tools.timegrids import model_time
+    # from sdevpy.maths.rand.rng import get_rng
     name = "ABC"
 
     # # Diagnostics
@@ -147,35 +144,38 @@ if __name__ == "__main__":
     # new_values = [10.0, 20.0]
     # add_fixing(name, new_dates, new_values)
 
-    # # Retrieve data
-    # data = fixinghandler(name, interpolate=True)
-    # f = data.value(dt.datetime(2025, 9, 15))
-    # print(f)
+    # Retrieve data
+    data = fixinghandler(name, interpolate=False)
+    f = data.value(dt.datetime(2025, 12, 1))
+    print(f)
 
-    #### Generate simulated data ####
-    valdate = dt.datetime(2025, 12, 15)
-    start_date = dt.datetime(2025, 11, 15)
-    expiry = dt.datetime(2026, 12, 15)
-    all_dates = make_schedule("USD", start_date, expiry, '1D')
-    sim_dates = [date for date in all_dates if date < valdate]
+    f = data.value([dt.datetime(2025, 12, 1), dt.datetime(2025, 12, 6)])
+    print(f)
 
-    # Quick simulation to generate sample
-    spot_s = 100
-    vol = 0.25
-    sim_values = [spot_s]
-    rng = get_rng()
-    gaussians = rng.normal(len(sim_dates) - 1)
-    for i in range(len(sim_dates) - 1):
-        ds = sim_dates[i]
-        de = sim_dates[i + 1]
-        dt = model_time(ds, de)
-        stdev = vol * np.sqrt(dt)
-        g = gaussians[i][0]
-        spot_e = spot_s * np.exp(-0.5 * stdev * stdev + stdev * g)
-        sim_values.append(spot_e)
-        spot_s = spot_e
+    # #### Generate simulated data ####
+    # valdate = dt.datetime(2025, 12, 15)
+    # start_date = dt.datetime(2025, 11, 15)
+    # expiry = dt.datetime(2026, 12, 15)
+    # all_dates = make_schedule("USD", start_date, expiry, '1D')
+    # sim_dates = [date for date in all_dates if date < valdate]
 
-    # Output sample to file
-    sim_values = [round(v, 4) for v in sim_values]
-    print(sim_values)
-    add_fixing(name, sim_dates, sim_values)
+    # # Quick simulation to generate sample
+    # spot_s = 100
+    # vol = 0.25
+    # sim_values = [spot_s]
+    # rng = get_rng()
+    # gaussians = rng.normal(len(sim_dates) - 1)
+    # for i in range(len(sim_dates) - 1):
+    #     ds = sim_dates[i]
+    #     de = sim_dates[i + 1]
+    #     dt = model_time(ds, de)
+    #     stdev = vol * np.sqrt(dt)
+    #     g = gaussians[i][0]
+    #     spot_e = spot_s * np.exp(-0.5 * stdev * stdev + stdev * g)
+    #     sim_values.append(spot_e)
+    #     spot_s = spot_e
+
+    # # Output sample to file
+    # sim_values = [round(v, 4) for v in sim_values]
+    # print(sim_values)
+    # add_fixing(name, sim_dates, sim_values)

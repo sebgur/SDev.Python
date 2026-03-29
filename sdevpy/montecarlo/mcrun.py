@@ -16,7 +16,7 @@ logger.setLevel(logging.DEBUG)
 
 
 #################### TODO #########################################################################
-# * Implement var swap spread payoff
+# * Finish varswap payoff, Check var swap values, Add volswaps
 # * Check accuracy against LV calib
 # * Calculate vega through LV calib (save BM/interpolation)
 
@@ -90,8 +90,7 @@ if __name__ == "__main__":
     sigma = np.asarray([0.2] * len(names))
     cf_price = df * black.price(ttm, v_strike, v_type, fwd, sigma[name_idx])
 
-    print("MC:", mc_price['pv'][0])
-    print("MC:", mc_price['pv'][1])
-    print("MC:", mc_price['pv'][2])
-    print("MC:", mc_price['pv'][3])
+    for i in range(len(mc_price['pv'])):
+        print("MC:", mc_price['pv'][i])
+
     print("CF:", cf_price)
