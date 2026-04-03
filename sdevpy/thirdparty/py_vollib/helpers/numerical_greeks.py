@@ -1,3 +1,4 @@
+# ruff: noqa
 # -*- coding: utf-8 -*-
 """
 py_vollib.helpers.numerical_greeks
