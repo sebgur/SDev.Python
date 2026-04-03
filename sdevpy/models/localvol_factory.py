@@ -134,7 +134,7 @@ def load_lv_from_data(new_t_grid, data):
 def write_example(date, name, folder):
     file = os.path.join(folder, name)
     os.makedirs(file, exist_ok=True)
-    file = os.path.join(file, "localvol_" + valdate.strftime("%Y%m%d-%H.%M.%S") + ".json")
+    file = os.path.join(file, "localvol_" + date.strftime("%Y%m%d-%H.%M.%S") + ".json")
     sections = []
     print(file)
     for i in range(4):
@@ -144,7 +144,7 @@ def write_example(date, name, folder):
         section = {'time': time, 'model': model, 'params': params}
         sections.append(section)
 
-    obj = {'name': name, 'datetime': valdate.strftime(dates.DATE_FORMAT), 'sections': sections}
+    obj = {'name': name, 'datetime': date.strftime(dates.DATE_FORMAT), 'sections': sections}
 
     with open(file, 'w') as f:
         json.dump(obj, f, indent=2)
