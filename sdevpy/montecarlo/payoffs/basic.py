@@ -388,9 +388,9 @@ class Basket(Payoff):
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates(self.subpayoffs)
 
-    def set_eventindexes(self, evendates):
+    def set_eventindexes(self, eventdates):
         for subpayoff in self.subpayoffs:
-            subpayoff.set_eventindexes(evendates)
+            subpayoff.set_eventindexes(eventdates)
 
 
 class WorstOf(Payoff):
@@ -411,7 +411,14 @@ class WorstOf(Payoff):
 
 
 class Variance(Payoff):
-    """ Variance value of the asset over time """
+    """ Variance value of the asset over time. It calculates
+
+        variance = 10000 x 252 / num_returns * sum log(return)^2
+
+        That is, we calculate the (non-centered, simply summed) variance from trade start
+        to trade end, then normalize to 1 day by dividing by the total number of returns
+        from start to end, then multiply by 252 to express it in annual terms, then
+        multiply by 10000 to scale to standard quotation terms.  """
     def __init__(self, name, start, end, freq="1D", cdr="USD"):
         super().__init__()
         self.names = [name]
@@ -420,28 +427,34 @@ class Variance(Payoff):
         self.start = start
         self.end = end
         self.alldates = make_schedule(cdr, self.start, self.end, freq)
-        self.current_var = None
+        self.current_sum = None
         self.current_fixing = None
         self.n_dates = len(self.alldates)
-        # variance = 10000 x 252 / Counter * sum log(return)^2
+        self.n_returns = len(self.alldates) - 1
+        print(f"n_returns: {self.n_returns}")
         ## Varswap ##
         # cash-flow = N_vega / (2 * strike) * (variance - strike^2)
         ## Volswap ##
         # vol = sqrt(variance)
         # cashflow = N_vega * (vol - strike)
-        self.scaling = 1 # ToDo
+        self.scaling = 10000 * 252
 
     def evaluate(self, mkt_state):
         paths = mkt_state.event_paths
         spot_paths = paths[:, self.varidxs, self.name_idx]
         # Historical variance
-        var = self.current_var
+        var_sum = self.current_sum
         # Add current increment
-        var = var + spot_paths[:, 0] / self.current_fixing
+        var_sum = var_sum + np.power(np.log(spot_paths[:, 0] / self.current_fixing), 2)
         # Add forward variance
         log_returns = np.diff(np.log(np.asarray(spot_paths)))
-        var = var + np.var(log_returns)
-        return self.scaling * var
+        log_returns2 = np.power(log_returns, 2)
+        print(f"spot paths: {spot_paths.shape}")
+        print(f"var_sum: {var_sum.shape}")
+        print(f"log_returns2: {log_returns2.shape}")
+        print(f"new_var_sum: {log_returns2.sum(axis=1).shape}")
+        var_sum = var_sum + log_returns2.sum(axis=1)
+        return self.scaling * var_sum / self.n_returns
 
     def set_nameindexes(self, names):
         try:
@@ -465,13 +478,17 @@ class Variance(Payoff):
         hist_fixings = fxgs.get_fixings(self.name, hist_fixing_dates)
 
         # Calculate historical variance up to the day before valuation
-        self.current_var = 0.0
+        self.current_sum = 0.0
         if hist_fixings is not None and len(hist_fixings) > 1:
             log_returns = np.diff(np.log(np.asarray(hist_fixings)))
-            self.current_var = np.var(log_returns)
+            self.current_sum = np.power(log_returns, 2).sum()
 
         if hist_fixings is not None and len(hist_fixings) >= 1:
             self.current_fixing = hist_fixings[-1]
+
+        print(f"N hist returns: {len(log_returns)}")
+        print(f"Current sum: {self.current_sum}")
+        print(f"Current fixing: {self.current_fixing}")
 
 
     def set_eventindexes(self, eventdates):
