@@ -431,7 +431,6 @@ class Variance(Payoff):
         self.current_fixing = None
         self.n_dates = len(self.alldates)
         self.n_returns = len(self.alldates) - 1
-        print(f"n_returns: {self.n_returns}")
         ## Varswap ##
         # cash-flow = N_vega / (2 * strike) * (variance - strike^2)
         ## Volswap ##
@@ -449,10 +448,10 @@ class Variance(Payoff):
         # Add forward variance
         log_returns = np.diff(np.log(np.asarray(spot_paths)))
         log_returns2 = np.power(log_returns, 2)
-        print(f"spot paths: {spot_paths.shape}")
-        print(f"var_sum: {var_sum.shape}")
-        print(f"log_returns2: {log_returns2.shape}")
-        print(f"new_var_sum: {log_returns2.sum(axis=1).shape}")
+        # print(f"spot paths: {spot_paths.shape}")
+        # print(f"var_sum: {var_sum.shape}")
+        # print(f"log_returns2: {log_returns2.shape}")
+        # print(f"new_var_sum: {log_returns2.sum(axis=1).shape}")
         var_sum = var_sum + log_returns2.sum(axis=1)
         return self.scaling * var_sum / self.n_returns
 
@@ -486,9 +485,9 @@ class Variance(Payoff):
         if hist_fixings is not None and len(hist_fixings) >= 1:
             self.current_fixing = hist_fixings[-1]
 
-        print(f"N hist returns: {len(log_returns)}")
-        print(f"Current sum: {self.current_sum}")
-        print(f"Current fixing: {self.current_fixing}")
+        # print(f"N hist returns: {len(log_returns)}")
+        # print(f"Current sum: {self.current_sum}")
+        # print(f"Current fixing: {self.current_fixing}")
 
 
     def set_eventindexes(self, eventdates):
