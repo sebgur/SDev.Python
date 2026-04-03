@@ -17,6 +17,7 @@ logger.setLevel(logging.DEBUG)
 
 
 #################### TODO #########################################################################
+# * Check what's up with WorstOfBarrier and the missing implementations
 # * Make notebook with varswap and volswap trades pricing in MC from scratch (market data)
     ## Varswap ##
     # cash-flow = N_vega / (2 * strike) * (variance - strike^2)

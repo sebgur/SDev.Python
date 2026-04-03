@@ -10,7 +10,7 @@ def scheme(config, ts):
     elif scheme_type == 'CN':
         return ThetaScheme(0.5)
     elif scheme_type == 'THETA':
-        return ThetaScheme(config['theta'])
+        return ThetaScheme(config.theta)
     elif scheme_type == 'EXPLICIT':
         return ExplicitScheme()
     elif scheme_type == 'RANNACHER':

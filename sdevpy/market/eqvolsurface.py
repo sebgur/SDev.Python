@@ -78,7 +78,7 @@ class EqVolSurfaceData:
 
 
 def eqvolsurfacedata_from_file(file):
-    with open(file, 'r') as f:
+    with open(file) as f:
         data = json.load(f)
 
     name = data.get('name')

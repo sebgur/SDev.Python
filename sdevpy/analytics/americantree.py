@@ -4,6 +4,7 @@ import time
 import matplotlib.pyplot as plt
 from sdevpy.analytics import black
 from sdevpy.tree import trees
+from sdevpy.tree.trees import Payoff
 
 
 def option_price(ttm, strike, is_call, is_american, spot, vol, rf_rate, div_rate, disc_rate,

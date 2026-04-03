@@ -9,6 +9,7 @@ from sdevpy.analytics import black
 from sdevpy.maths import metrics
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
+from sdevpy.models.surfaces.optionsurface import calibration_targets, IS_CALL
 
 
 ########## ToDo ########################################################################
@@ -20,7 +21,6 @@ from sdevpy.market import eqvolsurface as vsurf
 # * Use seaborn to represent diffs between IV and LV prices on quoted pillars
 # * Upload to pypi, make Colab, post.
 
-IS_CALL = True
 
 def calibrate_lv(valdate, name, config, **kwargs):
     # Arguments
@@ -220,23 +220,6 @@ class LvObjectiveBuilder:
             pde_vols.append(black.implied_vol(expiry, k, IS_CALL, self.fwd, p))
 
         return pde_vols
-
-
-def calibration_targets(expiry_grid, fwds, strike_surface, vol_surface):
-    cf_price_surface = []
-    ftols = []
-    itol = 1e-6 # 1bp
-    for exp_idx, expiry in enumerate(expiry_grid):
-        fwd = fwds[exp_idx]
-        strikes = strike_surface[exp_idx]
-        vols = vol_surface[exp_idx]
-        cf_price = black.price(expiry, strikes, IS_CALL, fwd, vols)
-        cf_price_surface.append(cf_price)
-        vols = vols + itol
-        cf_price_bump = black.price(expiry, strikes, IS_CALL, fwd, vols)
-        ftols.append(metrics.rmse(cf_price, cf_price_bump))
-
-    return cf_price_surface, ftols
 
 
 if __name__ == "__main__":

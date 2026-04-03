@@ -90,7 +90,7 @@ def roll_forward(p, x, dx, ts, te, local_vol, pde_config):
     return p_new
 
 
-def shift_to_match_forward(x, p, target_forward):
+def shift_to_match_forward(s0, x, p, target_forward):
     """ Shift the density to match the forward. We are not using this for now.
         This code was written by Claude and has not been tested. """
     ex = np.exp(x)
@@ -105,7 +105,7 @@ def shift_to_match_forward(x, p, target_forward):
     p_shifted = np.maximum(p_shifted, 0.0)
     mass = np.trapz(p_shifted, x)
     if mass <= 0:
-        p_shifted = np.exp(-0.5 * ((x - np.log(S0)) / (0.1))**2)
+        p_shifted = np.exp(-0.5 * ((x - np.log(s0)) / (0.1))**2)
         mass = np.trapz(p_shifted, x)
     p_shifted /= mass
     return p_shifted
@@ -137,7 +137,7 @@ if __name__ == "__main__":
     def my_lv(t, x_grid):
         """ As a function of log forward moneyness """
         # vol_atm = 0.20
-        skew = -0.1
+        # skew = -0.1
         return np.asarray([atm_vol for x in x_grid])
         # return np.asarray([np.maximum(0.01, atm_vol + skew * x) for x in x_grid])
 

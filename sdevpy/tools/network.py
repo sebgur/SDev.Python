@@ -5,11 +5,12 @@ from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 TARGET = "8.8.8.8"          # You can change this to any reliable IP
 INTERVAL = 5                # Seconds between pings
 LOG_FILE = "new_cord.csv"   # Output file
-
 RUN_LOG = False
+
 
 def ping(host):
     try:
@@ -27,6 +28,7 @@ def ping(host):
     except subprocess.CalledProcessError:
         return None
 
+
 def ping_log():
     with open(LOG_FILE, mode='a', newline='') as file:
         writer = csv.writer(file)
@@ -41,6 +43,7 @@ def ping_log():
                 writer.writerow([timestamp, "", "Timeout"])
                 print(f"{timestamp} | Timeout")
             time.sleep(INTERVAL)
+
 
 def ping_view():
     # Load the CSV file

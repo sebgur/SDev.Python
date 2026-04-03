@@ -159,7 +159,9 @@ def yieldcurve_from_file(file):
 
     name = data.get('name')
     valdate = data.get('valdate')
-    snapdate = data.get('snapdate')
+    snapdate = data.get('snapdate') # Claude says this will be wrong
+    # Claude says to do the below but this fails in UT
+    # snapdate = dt.datetime.strptime(data.get('snapdate'), dates.DATE_FILE_FORMAT)
     interp_var = data.get('interp_var')
     interp_type = data.get('interp_type')
     pillars = data.get('pillars')

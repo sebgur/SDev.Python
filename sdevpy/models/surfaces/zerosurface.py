@@ -1,27 +1,33 @@
 from abc import ABC, abstractmethod
 import numpy as np
-from enum import Enum
-
-
-class OptionQuotationType(Enum):
-    LogNormalVol = 0
-    NormalVol = 1
-    ShiftedLogNormalVol = 2
-    ForwardPremium = 3
+import datetime as dt
+from scipy.stats import norm
+from scipy.optimize import brentq
+from sdevpy.maths import constants
+from sdevpy.analytics import black, bachelier
+from sdevpy.models.surfaces.optionsurface import OptionQuotationType
 
 
 class ZeroSurface(ABC):
     def __init__(self):
         # Set defaults
-        self.modelledtype = OptionQuotationType.LogNormalVol
-        self.shift = 0.0
+        self.modelled_type = OptionQuotationType.LogNormalVol
+        self.shift = 0.0 # In Math format, i.e. 0.01 for 1%
         self.allow_negative_variables = False
         self.calculable_at_zero = True
         self.localvol_method = 0
+        self.daycount = None
+        self.expiry_times = []
+        self.epsilon = 100.0 * constants.FLOAT_EPS
+        self.time_epsilon = 0.000001
+        self.base_date = None
+        self.check_degrees_of_freedom = True
+
+    ############### Dupire Logic ##################################################################
 
     def volatility(self, t: float, x: float) -> float:
         """ Black volatility """
-        return BlackVolatility(t, x, 1.0)
+        return self.black_volatility(t, x, 1.0)
 
     def dvariance_dt(self, ts: float, te: float, x: float) -> float:
         """ Differential of variance against time """
@@ -35,8 +41,8 @@ class ZeroSurface(ABC):
         if x - h < 0.0:
             raise ValueError("Negative strike in numerical 1st differential of implied volatility")
 
-        tmp1 = Volatility(t, x + h)
-        tmp2 = Volatility(t, x - h)
+        tmp1 = self.volatility(t, x + h)
+        tmp2 = self.volatility(t, x - h)
         return (tmp1 - tmp2) / (2.0 * h)
 
     def d2volatility_dx2(self, t: float, x: float) -> float:
@@ -54,204 +60,181 @@ class ZeroSurface(ABC):
     def differentiate(self, ts: float, te: float, x: float) -> float:
         """ Retrieve all the quantities needed for Dupire's formula """
         theta = self.volatility(ts, x)
-        dVarDt = self.dvariance_dt(ts, te, x)
-        dThetaDx = self.dvolatility_dx(ts, x)
-        d2ThetaDx2 = self.d2volatility_dx2(ts, x)
-        return theta, dvardt, dthetadx, d2thetad2x
+        dvar_dt = self.dvariance_dt(ts, te, x)
+        dtheta_dx = self.dvolatility_dx(ts, x)
+        d2theta_dx2 = self.d2volatility_dx2(ts, x)
+        return theta, dvar_dt, dtheta_dx, d2theta_dx2
 
     def density(self, t: float, fwd: float, strike: float) -> float:
+        """ Probability density corresponding to the surface """
         if np.abs(t) < self.time_epsilon:
             raise ValueError("Probability density cannot be calculated at t = 0")
 
         # Get from implied volatility
         x = strike / fwd
-        sqrtT = Math.Sqrt(t)
-        stDev = Volatility(t, x) * sqrtT
-        xDThetaDx = x * DVolatilityDx(t, x)
-        x2D2ThetaDx2 = x * x * D2VolatilityDx2(t, x)
+        sqrt_t = np.sqrt(t)
+        stdev = self.volatility(t, x) * sqrt_t
+        xdtheta_dx = x * self.dvolatility_dx(t, x)
+        x2d2theta_dx2 = x * x * self.d2volatility_dx2(t, x)
 
-        if np.abs(stDev) < self.stdev_epsilon:
+        if np.abs(stdev) < self.stdev_epsilon:
             raise ValueError("Probability density cannot be calculated at standard deviation 0")
 
         if x < self.x_epsilon: # 0 or negative
             return 0.0
 
-        dMinus = -np.log(x) / stDev - 0.5 * stDev
-        dPlusSqrtT = (dMinus + stDev) * sqrtT
-        deltaNMinus = np.exp(-0.5 * dMinus * dMinus) / Constant.C_SQRT2PI
-        tmp = 1.0 + dPlusSqrtT * xDThetaDx
-        main = x2D2ThetaDx2 - dPlusSqrtT * xDThetaDx * xDThetaDx + tmp * tmp / (stDev * sqrtT)
-        return sqrtT * deltaNMinus * main / strike
+        d_minus = -np.log(x) / stdev - 0.5 * stdev
+        d_plus_sqrt_t = (d_minus + stdev) * sqrt_t
+        delta_n_minus = np.exp(-0.5 * d_minus * d_minus) / constants.C_SQRT2PI
+        tmp = 1.0 + d_plus_sqrt_t * xdtheta_dx
+        main = x2d2theta_dx2 - d_plus_sqrt_t * xdtheta_dx * xdtheta_dx + tmp * tmp / (stdev * sqrt_t)
+        return sqrt_t * delta_n_minus * main / strike
 
     def cumulative(self, t: float, fwd: float, strike: float) -> float:
+        """ Cumulative function of the surface's probability density """
         x = strike / fwd
         theta = self.Volatility(t, x)
-        sqrtT = np.sqrt(t)
-        stDev = theta * sqrtT
-        dm = -np.log(x) / stDev - 0.5 * stDev
+        sqrt_t = np.sqrt(t)
+        stdev = theta * sqrt_t
+        dm = -np.log(x) / stdev - 0.5 * stdev
         dtheta = self.dvolatility_dx(t, x)
-        N = new NormalDistribution()
-        return N.Density(dm) * x * sqrtT * dtheta - N.Cumulative(dm) + 1.0
+        return norm.pdf(dm) * x * sqrt_t * dtheta - norm.cdf(dm) + 1.0
 
     def cumulative_inverse(self, t: float, p: float) -> float:
+        """ Inverse cumulative function of the surface's probability density """
         if np.abs(t) < self.time_epsilon:
             raise ValueError("Cumulative inverse at t = 0 is not defined for implied volatility")
 
         if np.abs(p) < 1e-10:
             return 0.0
 
-        cumulativeFunction = new CumulativeFunction(this, t)
-        solver = new ZBrent(1e-6, 100.0, 1000000, 0.000000001)
-        return solver.Solve(cumulativeFunction.Value, p)
+        # cumulativeFunction = CumulativeFunction(self, t)
+        # solver = new ZBrent(1e-6, 100.0, 1000000, 0.000000001)
+        fwd = 1.0
+        result = brentq(f=lambda x: self.cumulative(t, fwd, x) - p, a=1e-6, b=100.0, xtol=1e-9, maxiter=1000)
+        return result
+
+    ############### Price-Vol Logic ###############################################################
 
     def forward_price(self, t: float, k: float, f: float, is_call: bool) -> float:
-        value = self.calculate(t, k, f, isCall)
-        match self.ModelledType:
+        """ Option forward price """
+        value = self.calculate(t, k, f, is_call)
+        match self.modelled_type:
             case OptionQuotationType.ForwardPremium:
-                 return value
+                return value
             case OptionQuotationType.LogNormalVol:
-                 return BlackFormula.Price(f, k, value * Math.Sqrt(t), isCall)
+                return black.price(t, k, is_call, f, value)
             case OptionQuotationType.NormalVol:
-                 return BachelierFormula.Price(f, k, value * Math.Sqrt(t), isCall)
+                return bachelier.price(t, k, is_call, f, value)
             case OptionQuotationType.ShiftedLogNormalVol:
-                 return ShiftedBlackFormula.Price(f, k, value * Math.Sqrt(t), isCall, Shift)
+                return black.price(t, k + self.shift, is_call, f + self.shift, value)
             case _:
-             raise TypeError(f"Invalid modelled type in zero-surface: " + ModelledType.ToString())
+                raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
 
     def black_volatility(self, t: float, k: float, f: float) -> float:
+        """ Option Black implied volatility """
         is_call = True
         value = self.calculate(t, k, f, is_call)
-        if self.ModelledType == OptionQuotationType.LogNormalVol
+        if self.modelled_type == OptionQuotationType.LogNormalVol:
             return value
         else:
-            match self.ModelledType:
+            match self.modelled_type:
                 case OptionQuotationType.ForwardPremium:
                     price = value
                 case OptionQuotationType.NormalVol:
-                    price = BachelierFormula.Price(f, k, value * Math.Sqrt(t), isCall)
+                    price = bachelier.price(t, k, is_call, f, value)
                 case OptionQuotationType.ShiftedLogNormalVol:
-                    price = ShiftedBlackFormula.Price(f, k, value * Math.Sqrt(t), isCall, Shift)
+                    price = black.price(t, k + self.shift, is_call, f + self.shift, value)
                 case _:
-                    raise TypeError("Invalid modelled type in zero-surface: " + ModelledType.ToString())
+                    raise TypeError("Invalid modelled type in zero-surface: " + self.modelled_type)
 
-            return BlackFormula.ImpliedVolatility(price, f, k, t, is_call)
+            return black.implied_vol(t, k, is_call, f, price)
 
     def bachelier_volatility(self, t: float, k: float, f: float):
+        """ Option Bachelier implied volatility """
         is_call = True
         value = self.calculate(t, k, f, is_call)
-        if self.ModelledType == OptionQuotationType.NormalVol:
+        if self.modelled_type == OptionQuotationType.NormalVol:
             return value
         else:
-            match self.ModelledType:
+            match self.modelled_type:
                 case OptionQuotationType.ForwardPremium:
                     price = value
                 case OptionQuotationType.LogNormalVol:
-                    price = BlackFormula.Price(f, k, value * Math.Sqrt(t), is_call)
+                    price = black.Price(t, k, is_call, f, value)
                 case OptionQuotationType.ShiftedLogNormalVol:
-                    price = ShiftedBlackFormula.Price(f, k, value * Math.Sqrt(t), is_call, Shift)
+                    price = black.Price(t, k + self.shift, is_call, f + self.shift, value)
                 case _:
-                    raise TypeError("Invalid modelled type in zero-surface: " + ModelledType.ToString())
+                    raise TypeError("Invalid modelled type in zero-surface: " + self.modelled_type)
 
-            return BachelierFormula.ImpliedVolatility(price, f, k, t, is_call)
+            return bachelier.implied_vol(t, k, is_call, f, price)
 
-    public double ShiftedBlackVolatility(double t, double k, double f)
-    {
-        bool isCall = true;
-        double value = Calculate(t, k, f, isCall);
-        if (ModelledType == OptionQuotationType.ShiftedLogNormalVol)
-            return value;
-        else
-        {
-            double price;
-            switch (ModelledType)
-            {
-                case OptionQuotationType.ForwardPremium: price = value; break;
-                case OptionQuotationType.LogNormalVol: price = BlackFormula.Price(f, k, value * Math.Sqrt(t), isCall); break;
-                case OptionQuotationType.NormalVol: price = BachelierFormula.Price(f, k, value * Math.Sqrt(t), isCall); break;
-                default: throw new Exception("Invalid modelled type in zero-surface: " + ModelledType.ToString());
-            }
-            return ShiftedBlackFormula.ImpliedVolatility(price, f, k, t, isCall, Shift);
-        }
-    }
-    #endregion
+    def shifted_black_volatility(self, t: float, k: float, f: float) -> float:
+        """ Option shifted Black volatility """
+        is_call = True
+        value = self.calculate(t, k, f, is_call)
+        if self.modelled_type == OptionQuotationType.ShiftedLogNormalVol:
+            return value
+        else:
+            match self.modelled_type:
+                case OptionQuotationType.ForwardPremium:
+                    price = value
+                case OptionQuotationType.LogNormalVol:
+                    price = black.Price(f, k, value * np.sqrt(t), is_call)
+                case OptionQuotationType.NormalVol:
+                    price = bachelier.Price(f, k, value * np.sqrt(t), is_call)
+                case _:
+                    raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
 
-    #region Calibration
-    //
-    public void Calibrate(Date date, OptionSurface mktSurface)
-    {
-        baseDate = date;
-        Date[] expiries;
-        OptionTarget[][] inputOptions = mktSurface.CalibrationTargets(out expiries);
-        Calibrate(baseDate, inputOptions);
-    }
-    //
-    public void Calibrate(Date date, OptionTarget[][] options)
-    {
-        baseDate = date;
-        // Check consistency of input data, convert to modelled type
-        OptionTarget[][] targetOptions = CheckConsistency(options);
+            return black.implied_vol(t, k + self.shift, is_call, f + self.shift, price)
 
-        // Get expiry times
-        expiryTimes = targetOptions.Select(x => x[0].Expiry).ToArray();
+    ############### Calibration ###################################################################
 
-        // Model-dependent calibration of inherited types
-        CalibrateModelledType(date, targetOptions);
-    }
-    /// <summary>
-    /// Take out negative rate options depending on model features, check consistency of expiries, forwards, etc...
-    /// </summary>
-    private OptionTarget[][] CheckConsistency(OptionTarget[][] options)
-    {
-        // Strip out negative rate options if needed
-        OptionTarget[][] tOptions = (AllowNegativeVariables ? options : OptionTargetChecker.KeepPositive(options));
+    def calibrate1(self, date: dt.datetime, mkt_surface: OptionSurface) -> None:
+        """ Calibrate surface """
+        self.baseDate = date
+        input_options, expiries = mkt_surface.calibration_targets()
+        self.calibrate(self.baseDate, input_options)
 
-        // Check consistency of expiries and forwards
-        OptionTargetChecker.CheckExpiriesAndForwards(tOptions);
+    def calibrate2(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
+        """ Calibrate surface """
+        self.baseDate = date
+        # Check consistency of input data, convert to modelled type
+        target_options = self.check_consistency(options)
 
-        // Convert from quoted type to targetType required for model calibration.
-        OptionTarget[][] cOptions = OptionTargetChecker.ConvertToTargetValues(tOptions, ModelledType, Shift);
+        # Get expiry times
+        self.expiry_times = [x[0].expiry for x in target_options]
 
-        // Check degrees of freedom
-        if (this is ParametricZeroSurface && checkDegreesOfFreedom)
-        {
-            int nParameters = ((ParametricZeroSurface)this).NumberParameters();
-            OptionTargetChecker.CheckDegreesOfFreedom(cOptions, nParameters);
-        }
+        # Model-dependent calibration of inherited types
+        self.calibrate_modelled_type(date, target_options)
 
-        return cOptions;
-    }
-    #endregion
+    def check_consistency(self, options: list[list[OptionTarget]]) -> list[list[OptionTarget]]:
+        """ Take out negative rate options depending on model features.
+            Check consistency of expiries, forwards, etc. """
+        # Strip out negative rate options if needed
+        t_options = (options if self.allow_negative_variables else OptionTargetChecker.KeepPositive(options))
 
-    #region Abstract Methods
-    public abstract double Calculate(double t, double k, double f, bool isCall);
-    public abstract void CalibrateModelledType(Date date, OptionTarget[][] options);
-    #endregion
+        # Check consistency of expiries and forwards
+        OptionTargetChecker.CheckExpiriesAndForwards(t_options)
 
-    #region Getters
-    //
-    public double[] ExpiryTimes()
-    {
-        return expiryTimes;
-    }
-    #endregion
+        # Convert from quoted type to targetType required for model calibration.
+        c_options = OptionTargetChecker.ConvertToTargetValues(t_options, self.modelled_type, self.shift)
 
-    #region Fields
-    protected DayCounter dayCount = new ModelDayCounter();
-    protected double[] expiryTimes;
-    protected const double epsilon = 100.0 * Constant.MACHINE_EPSILON;
-    const double timeEpsilon = 0.000001;
-    Date baseDate;
-    protected bool checkDegreesOfFreedom = true;
-    #endregion
+        # Check degrees of freedom
+        if self is ParametricZeroSurface and self.check_degrees_of_freedom:
+            n_params = self.number_parameters()
+            OptionTargetChecker.CheckDegreesOfFreedom(c_options, n_params)
 
-    #region Properties
-    public OptionQuotationType ModelledType { get; set; }
-    /// <summary>
-    /// In Math format, i.e. 0.01 for 1%
-    /// </summary>
-    public double Shift { get; set; }
-    public bool AllowNegativeVariables { get; set; }
-    public bool CalculableAtZero { get; set; }
-    public int LocalVolMethod { get; set; }
-    #endregion
-}
+        return c_options
+
+    ############ Abstract Methods #################################################################
+    @abstractmethod
+    def calculate(self, t: float, k: float, f: float, is_call: bool) -> float:
+        pass
+
+    @abstractmethod
+    def calibrate_modelled_type(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
+        pass
+
+    def expiry_times(self) -> list[float]:
+        return self.expiry_times

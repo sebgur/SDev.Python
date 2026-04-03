@@ -1,13 +1,8 @@
 import os
 import numpy as np
 import pandas as pd
-# import datetime as dt
 import math
 from sdevpy.timeseries import timeseriestools as tst
-
-# from sdevpy.cointegration import data_io as myio
-# from sdevpy.cointegration import back_testing as btest
-# from sdevpy.cointegration import utils as ut
 
 
 def backtest_one_trade(from_date, trade_date, now_date, df_data, weights, zscore_trade_date):
@@ -20,19 +15,19 @@ def backtest_one_trade(from_date, trade_date, now_date, df_data, weights, zscore
     stdev_to_tdate = np.std(series_up_to_now.loc[:trade_date])
     series_tdate_to_now = series_up_to_now.loc[trade_date:now_date]
 
-    returns2d_from_tdate = tst.x_day_historical_returns_in_SD(series_tdate_to_now, 2, stdev_to_tdate).iloc[0]
-    returns5d_from_tdate = tst.x_day_historical_returns_in_SD(series_tdate_to_now, 5, stdev_to_tdate).iloc[0]
-    returns10d_from_tdate = tst.x_day_historical_returns_in_SD(series_tdate_to_now, 10, stdev_to_tdate).iloc[0]
+    returns2d_from_tdate = tst.x_day_historical_returns_in_sd(series_tdate_to_now, 2, stdev_to_tdate).iloc[0]
+    returns5d_from_tdate = tst.x_day_historical_returns_in_sd(series_tdate_to_now, 5, stdev_to_tdate).iloc[0]
+    returns10d_from_tdate = tst.x_day_historical_returns_in_sd(series_tdate_to_now, 10, stdev_to_tdate).iloc[0]
 
-    min_max_res_2d = tst.min_max_return_x_days_in_SD(series_tdate_to_now, 2, stdev_to_tdate).iloc[0]
+    min_max_res_2d = tst.min_max_return_x_days_in_sd(series_tdate_to_now, 2, stdev_to_tdate).iloc[0]
     min_2d_rtns_in_sd = min_max_res_2d['min']
     max_2d_rtns_in_sd = min_max_res_2d['max']
 
-    min_max_res_5d = tst.min_max_return_x_days_in_SD(series_tdate_to_now, 5, stdev_to_tdate).iloc[0]
+    min_max_res_5d = tst.min_max_return_x_days_in_sd(series_tdate_to_now, 5, stdev_to_tdate).iloc[0]
     min_5d_rtns_in_sd = min_max_res_5d['min']
     max_5d_rtns_in_sd = min_max_res_5d['max']
 
-    min_max_res_10d = tst.min_max_return_x_days_in_SD(series_tdate_to_now, 10, stdev_to_tdate).iloc[0]
+    min_max_res_10d = tst.min_max_return_x_days_in_sd(series_tdate_to_now, 10, stdev_to_tdate).iloc[0]
     min_10d_rtns_in_sd = min_max_res_10d['min']
     max_10d_rtns_in_sd = min_max_res_10d['max']
 
