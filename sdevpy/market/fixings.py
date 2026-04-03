@@ -7,7 +7,7 @@ from sdevpy.tools.utils import isiterable
 from sdevpy.maths import interpolation as itp
 
 
-def get_fixings(name: str, dates, **kwargs):
+def get_fixings(name: str, dates: dt.datetime|list[dt.datetime], **kwargs):
     interpolate = kwargs.get('interpolate', False)
     handler = fixinghandler(name, interpolate=interpolate, **kwargs)
     return handler.value(dates)
@@ -34,7 +34,7 @@ class FixingHandler:
         else:
             self.oadates, self.interp = None, None
 
-    def value(self, date):
+    def value(self, date: dt.datetime|list[dt.datetime]):
         if isiterable(date):
             return [self.value_onedate(d) for d in date]
         else:

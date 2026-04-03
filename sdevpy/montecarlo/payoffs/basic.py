@@ -230,7 +230,8 @@ class Terminal(Payoff):
 
 
 class Average(Payoff):
-    """ Average value of the asset over time """
+    """ Average value of the asset over time.
+        ToDo: test with inception date in the past """
     def __init__(self, name, start, end, freq="1D", cdr="USD"):
         super().__init__()
         self.names = [name]
@@ -240,11 +241,13 @@ class Average(Payoff):
         self.end = end
         self.alldates = make_schedule(cdr, self.start, self.end, freq)
         self.current_sum = 0.0
-        self.n_dates = len(self.alldates)
+        self.n_samples = len(self.alldates)
 
     def evaluate(self, mkt_state):
         paths = mkt_state.event_paths
-        return paths[:, self.averageidxs, self.name_idx].mean(axis=1)
+        new_sum = paths[:, self.averageidxs, self.name_idx].sum(axis=1)
+        # average = new_sum / len(self.averageidxs)
+        return (self.current_sum + new_sum) / self.n_samples
 
     def set_nameindexes(self, names):
         try:
@@ -256,14 +259,20 @@ class Average(Payoff):
     def set_valuation_date(self, valdate):
         # Calculate current sum using fixings up to the day before valdate
         # For days from and including valdate, collect the date as event date
-        self.current_sum = 0.0
         self.eventdates = []
+        hist_fixing_dates = []
         for date in self.alldates:
             if date < valdate:
-                fixing = 0.0  # ToDo: get from fixing data
-                self.current_sum += fixing
+                hist_fixing_dates.appendd(date)
             else:
                 self.eventdates.append(date)
+
+        # Fetch historical fixings
+        hist_fixings = fxgs.get_fixings(self.name, hist_fixing_dates)
+
+        # Calculate historical sum up to the day before valuation
+        self.current_sum = np.asarray(hist_fixings).sum()
+
 
     def set_eventindexes(self, eventdates):
         self.averageidxs = []
@@ -482,10 +491,6 @@ class Variance(Payoff):
 
         if hist_fixings is not None and len(hist_fixings) >= 1:
             self.current_fixing = hist_fixings[-1]
-
-        # print(f"N hist returns: {len(log_returns)}")
-        # print(f"Current sum: {self.current_sum}")
-        # print(f"Current fixing: {self.current_fixing}")
 
 
     def set_eventindexes(self, eventdates):
