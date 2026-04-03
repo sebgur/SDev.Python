@@ -239,7 +239,7 @@ class Average(Payoff):
         self.start = start
         self.end = end
         self.alldates = make_schedule(cdr, self.start, self.end, freq)
-        self.current_sum = None
+        self.current_sum = 0.0
         self.n_dates = len(self.alldates)
 
     def evaluate(self, mkt_state):
@@ -427,15 +427,10 @@ class Variance(Payoff):
         self.start = start
         self.end = end
         self.alldates = make_schedule(cdr, self.start, self.end, freq)
-        self.current_sum = None
+        self.current_sum = 0.0
         self.current_fixing = None
         self.n_dates = len(self.alldates)
         self.n_returns = len(self.alldates) - 1
-        ## Varswap ##
-        # cash-flow = N_vega / (2 * strike) * (variance - strike^2)
-        ## Volswap ##
-        # vol = sqrt(variance)
-        # cashflow = N_vega * (vol - strike)
         self.scaling = 10000 * 252
 
     def evaluate(self, mkt_state):
@@ -444,6 +439,9 @@ class Variance(Payoff):
         # Historical variance
         var_sum = self.current_sum
         # Add current increment
+        if self.current_fixing is None:
+            raise ValueError(f"Fixing not set for variance on {self.name}")
+
         var_sum = var_sum + np.power(np.log(spot_paths[:, 0] / self.current_fixing), 2)
         # Add forward variance
         log_returns = np.diff(np.log(np.asarray(spot_paths)))
@@ -495,7 +493,7 @@ class Variance(Payoff):
         for date in self.eventdates:
             matches = np.where(eventdates == date)[0]
             if len(matches) == 0:
-                raise ValueError(f"Date {self.expiry} not found in event date grid")
+                raise ValueError(f"Date {date} not found in event date grid")
             self.varidxs.append(matches[0])
 
 ########### Arithmetic Nodes ############################################################

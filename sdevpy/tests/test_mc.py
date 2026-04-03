@@ -1,6 +1,6 @@
 import numpy as np
 import datetime as dt
-from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
+from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
 from sdevpy.tools import book as bk
@@ -14,6 +14,7 @@ def test_mc():
     ## Create portfolio ##
     book = bk.Book()
     trades = []
+    start_date = dt.datetime(2025, 11, 15)
     expiry = dt.datetime(2026, 12, 15)
 
     # Vanilla
@@ -36,6 +37,13 @@ def test_mc():
     cf = cfl.Cashflow(index, expiry)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
+    # Variance swap
+    index = Variance('ABC', start_date, expiry)
+    vstrike = 14.0
+    payoff = index - vstrike * vstrike
+    cf = cfl.Cashflow(payoff, expiry)
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
+
     # Create book
     book.add_trades(trades)
 
@@ -43,7 +51,7 @@ def test_mc():
     mc_price = price_book(valdate, book, scramble=False, constr_type='brownianbridge',
                           rng_type='sobol', n_paths=2000)
     test = mc_price['pv']
-    ref = np.asarray([8.811443508, 0.0, 4.90812947, 0.003307153])
+    ref = np.asarray([8.811443508, 0.0, 4.90812947, 0.003307153, -53.12764205195])
     # ref = np.asarray([8.811443508, 0.0, 4.90812947, 0.006843482])
     assert np.allclose(test, ref, 1e-8)
 

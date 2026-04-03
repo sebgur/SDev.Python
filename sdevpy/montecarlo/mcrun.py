@@ -17,7 +17,12 @@ logger.setLevel(logging.DEBUG)
 
 
 #################### TODO #########################################################################
-# * Make samples of varswap and volswap trades
+# * Make notebook with varswap and volswap trades pricing in MC from scratch (market data)
+    ## Varswap ##
+    # cash-flow = N_vega / (2 * strike) * (variance - strike^2)
+    ## Volswap ##
+    # vol = sqrt(variance)
+    # cashflow = N_vega * (vol - strike)
 
 # * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
 # * Using SVI may have the advantage that we could define a global parallel shift without
@@ -68,7 +73,9 @@ if __name__ == "__main__":
 
     # VarSwap
     index = Variance('ABC', start_date, expiry)
-    cf = cfl.Cashflow(index, expiry)
+    vstrike = 14.0
+    payoff = index - vstrike * vstrike
+    cf = cfl.Cashflow(payoff, expiry)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Create book
