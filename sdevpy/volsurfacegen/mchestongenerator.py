@@ -156,7 +156,7 @@ class McHestonGenerator(SmileGenerator):
         # Price with learning model
         md_nvols = model.predict(md_inputs)
         md_prices = []
-        for (point, vol, is_call) in zip(md_inputs, md_nvols, flat_types):
+        for (point, vol, is_call) in zip(md_inputs, md_nvols, flat_types, strict=True):
             expiry = point[0]
             strike = point[1]
             md_prices.append(bachelier.price(expiry, strike, is_call, fwd, vol))
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     ranges = {'Ttm': [1.0 / 12.0, 5.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041],
               'LnVol': [0.05, 0.25], 'Kappa': [0.25, 4.00], 'Theta': [0.05**2, 0.25**2],
               'Xi': [0.10, 0.50], 'Rho': [-0.40, 0.40]}
-    
+
     print("Generating " + str(NUM_SAMPLES) + " samples")
     gen_timer = timer.Stopwatch("Sample Generation")
     gen_timer.trigger()

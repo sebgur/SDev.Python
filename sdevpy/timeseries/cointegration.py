@@ -1,5 +1,5 @@
 import os
-import datetime as dt
+# import datetime as dt
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
@@ -7,8 +7,8 @@ from ta.momentum import RSIIndicator
 from sdevpy.timeseries import meanreversion as mr
 from sdevpy.timeseries import timeseriestools as tst
 
-from sdevpy.cointegration import data_io as myio
-from sdevpy.cointegration import coint_trading as ct
+# from sdevpy.cointegration import data_io as myio
+# from sdevpy.cointegration import coint_trading as ct
 from sdevpy.tools import clipboard as clipboard
 
 # [johansen_test_diag]
@@ -45,10 +45,10 @@ def johansen_diagnostics(test, df_data, verbose=True, det_order=0, k_ar_diff=1):
     half_life = mr_ts.get_half_life()
     series_stdev = mr_ts.get_stdev()
 
-    position_df, USD_amount = tst.create_position(df_data, weights)
+    position_df, usd_amount = tst.create_position(df_data, weights)
 
     what_you_should_trade = list(position_df['market convention notional'].values)
-    what_you_should_trade_USD_amount = USD_amount
+    what_you_should_trade_usd_amount = usd_amount
 
     rsi_14 = RSIIndicator(johansen_basket, 14).rsi().iloc[-1]
 
@@ -57,14 +57,14 @@ def johansen_diagnostics(test, df_data, verbose=True, det_order=0, k_ar_diff=1):
         for i in range(len(what_you_should_trade)):
             what_you_should_trade[i] = -what_you_should_trade[i]
 
-        what_you_should_trade_USD_amount = -1 * what_you_should_trade_USD_amount
+        what_you_should_trade_usd_amount = -1 * what_you_should_trade_usd_amount
 
     if verbose:
         const_pvalue = round(mr_ts.get_const_pvalue(), 8)
         series_pvalue = round(mr_ts.get_series_pvalue(), 8)
         print(' -------------------------------------------------------')
         print(position_df)
-        print('USD_amount = ' + str(round(USD_amount, 4)))
+        print('USD_amount = ' + str(round(usd_amount, 4)))
         print(' -------------------------------------------------------')
         print('Pass trace test (5%) = ' + str(bool_trace_5pct))
         print('Pass eigen test (5%) = ' + str(bool_eigen_5pct))
@@ -89,18 +89,18 @@ def johansen_diagnostics(test, df_data, verbose=True, det_order=0, k_ar_diff=1):
     rounded_weights = [round(w, 8) for w in weights]
 
     # Round PX_LAST and what_you_should_trade to 4 decimal for easy printing
-    PX_LAST = list(position_df['PX_LAST'].values) 
+    px_last = list(position_df['PX_LAST'].values)
     what_you_should_trade = [round(w, 4) for w in what_you_should_trade]
-    PX_LAST = [round(w, 4) for w in PX_LAST]
+    px_last = [round(w, 4) for w in px_last]
 
     return {'Half life': half_life, 'Rounded weights': rounded_weights,
             'What you should trade': what_you_should_trade,
-            'What you should trade USD amount': what_you_should_trade_USD_amount,
+            'What you should trade USD amount': what_you_should_trade_usd_amount,
             'Current zscore': current_zscore,
             'Trace (5%)': bool_trace_5pct, 'Eigen (5%)': bool_eigen_5pct,
             'Trace (10%)': bool_trace_10pct, 'Eigen (10%)': bool_eigen_10pct,
             'Johansen Series': johansen_basket, '1mio 1SD in USD': 1e6 * series_stdev,
-            'PX_LAST' : PX_LAST, 'Series stdev': series_stdev, 'MR level': mr_level,
+            'PX_LAST' : px_last, 'Series stdev': series_stdev, 'MR level': mr_level,
             'Half life Sharpe Ratio': sharpe_ratio_half_life, 'RSI 14': rsi_14}
 
 # [johansen_test_estimation]
@@ -132,7 +132,7 @@ def check_johansen_stats_fast(res_jo):
     if trace_test_stats > trace_5_pct:
         bool_trace_5pct = True
 
-    bool_trace_10pct = False 
+    bool_trace_10pct = False
     if trace_test_stats > trace_10_pct:
         bool_trace_10pct = True
 
@@ -156,17 +156,17 @@ def check_johansen_stats_fast(res_jo):
 def trace_stats(res_jo):
     """ Retrieve the trace test statistics from the result of Johansen test in a pretty format """
     # Find out the size of the vector. This is the number of assets.
-    N = len(res_jo.lr1)
+    n = len(res_jo.lr1)
 
-    data = np.zeros((N, 4))
+    data = np.zeros((n, 4))
 
     # create the row labels
     index_list = ['r=0']
-    for i in range(1, N):
+    for i in range(1, n):
         index_list.append('r<=' + str(i))
 
     # populate the data in the desired format
-    for i in range(N):
+    for i in range(n):
         data[i][0] = res_jo.lr1[i]
         for j in range(3):
             data[i][j+1] = res_jo.cvt[i][j]
@@ -178,17 +178,17 @@ def trace_stats(res_jo):
 def eigen_stats(res_jo):
     """ Retrieve the eigen test statistics from the result of Johansen test in a pretty format """
     # Find out the size of the vector. This is the number of assets.
-    N = len(res_jo.lr2)
+    n = len(res_jo.lr2)
 
-    data = np.zeros((N, 4))
+    data = np.zeros((n, 4))
 
     # create the row labels
     index_list = ['r=0']
-    for i in range(1, N):
+    for i in range(1, n):
         index_list.append('r<=' + str(i))
 
     # populate the data in the desired format
-    for i in range(N):
+    for i in range(n):
         data[i][0] = res_jo.lr2[i]
         for j in range(3):
             data[i][j+1] = res_jo.cvm[i][j]
@@ -201,9 +201,9 @@ def norm_1st_eigvec(res_jo):
     """ Retrieve the normalized first eigen vector from the result of Johansen test.
         The normalized vector are the weights of the cointegrated basket """
     # Size of the eigenvector
-    N = len(res_jo.evec)
+    n = len(res_jo.evec)
     first_eigvec = []
-    for i in range(N):
+    for i in range(n):
         first_eigvec.append(res_jo.evec[i][0])
 
     # Normalized with respect to the first element

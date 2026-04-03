@@ -36,6 +36,7 @@ class WorstOfBarrier(Payoff):
     def set_nameindexes(self, names):
         self.set_multiindexes(names)
 
+    # ToDo: implement?
     # def set_valuation_date(self, valdate):
     #     for subpayoff in self.subpayoffs:
     #         subpayoff.set_valuation_date(valdate)
@@ -43,6 +44,7 @@ class WorstOfBarrier(Payoff):
     #     # Gather event dates from subpayoofs
     #     self.eventdates = list_payoff_eventdates(self.subpayoffs)
 
+    # ToDo: implement?
     # def set_eventindexes(self, evendates):
     #     for subpayoff in self.subpayoffs:
     #         subpayoff.set_eventindexes(evendates)

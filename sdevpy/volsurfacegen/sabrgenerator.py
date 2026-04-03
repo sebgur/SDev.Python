@@ -146,7 +146,7 @@ class SabrGenerator(SmileGenerator):
 
             # Calculate strikes
             ks = []
-            for exp_idx in range(self.num_expiries):
+            for _ in range(self.num_expiries):
                 k = fwd + n_spreads
                 ks.append(k)
 
@@ -220,7 +220,7 @@ class SabrGenerator(SmileGenerator):
         for i, expiry in enumerate(expiries_):
             k_prices = []
             if output_nvol:
-                for (k, sk) in zip(strikes[i], shifted_k[i]):  # Normal vols
+                for (k, sk) in zip(strikes[i], shifted_k[i], strict=True):  # Normal vols
                     iv = sabr.implied_vol_vec(expiry, sk, shifted_f, parameters)
                     is_call = True
                     price = black.price(expiry, sk, is_call, shifted_f, iv)
@@ -233,7 +233,7 @@ class SabrGenerator(SmileGenerator):
                         if use_noise:
                             noise = (np.random.rand() - 0.5) * rel_noise / 0.5
                             n_vol = n_vol * (1.0 + noise)
-                    except (Exception,):
+                    except Exception:
                         n_vol = -9999
                     k_prices.append(n_vol)
             else:
@@ -318,7 +318,7 @@ class SabrGenerator(SmileGenerator):
 
         # Price with Bachelier
         md_prices = []
-        for (point, vol, is_call) in zip(md_inputs, md_nvols, flat_types):
+        for (point, vol, is_call) in zip(md_inputs, md_nvols, flat_types, strict=True):
             expiry = point[0]
             strike = point[1]
             md_prices.append(bachelier.price(expiry, strike, is_call, fwd, vol))
@@ -386,7 +386,7 @@ class SabrGenerator(SmileGenerator):
             args = (self, expiries[i], strikes[i], fwd, mkt_prices[i], weights)
             result, nfev = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)
             x = result.x
-            fun = result.fun
+            # fun = result.fun
             nfevs = nfevs + nfev
             cal_params.append({'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]})
             # cal_params.append({'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25})

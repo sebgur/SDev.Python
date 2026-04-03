@@ -7,7 +7,7 @@ from sdevpy.tools import dates as dts
 
 def get_correlations(names: list[str], date: dt.datetime, **kwargs):
     """ Retrieve correlation matrix for given names """
-    print(names)
+    # print(names)
     # Load data from file
     file = data_file(date, **kwargs)
     data_df = pd.read_csv(file, index_col=0)
@@ -38,8 +38,6 @@ def get_correlations(names: list[str], date: dt.datetime, **kwargs):
                 corr_matrix[i, j] = 1.0
             elif j < i:
                 corr_matrix[i, j] = corr_matrix[j, i]
-
-    print(corr_matrix)
 
     # Make matrix
     # corr_matrix = np.array([[1.0, 0.5, 0.1],

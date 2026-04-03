@@ -118,8 +118,7 @@ def calibrate_lv(valdate, name, config, **kwargs):
                 print(f"Result f: {result.fun}")
                 print(f"Func evals: {result['nfev']}")
                 for key in result.keys():
-                    if key in result:
-                        print(key + "\n", result[key])
+                    print(key + "\n", result[key])
 
         # Retrieve RMSE on vols
         if calc_pde_vols:

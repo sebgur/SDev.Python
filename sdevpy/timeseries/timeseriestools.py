@@ -32,7 +32,6 @@ def compute_diff(time_series, num_of_days, to_shift):
     return df
 
 
-# [min_max_return_x_days]
 def min_max_return_x_days(basket, time_in_days):
     """ Compute the min and max loss over x days of a basket over a period of trade dates """
     # Initialize the dataframe
@@ -52,14 +51,12 @@ def min_max_return_x_days(basket, time_in_days):
     return df
 
 
-# [min_max_return_x_days_in_SD]
-def min_max_return_x_days_in_SD(basket, time_in_days, basket_stdev):
+def min_max_return_x_days_in_sd(basket, time_in_days, basket_stdev):
     res = min_max_return_x_days(basket, time_in_days)
     return res / basket_stdev
 
 
-# [compute_x_day_historical_returns_in_SD]
-def x_day_historical_returns_in_SD(basket, time, basket_stdev):
+def x_day_historical_returns_in_sd(basket, time, basket_stdev):
     """ Note that the mean cancels out if we take diff. So we don't need the mean """
     res = x_day_historical_returns(basket, time)
     return res / basket_stdev
@@ -96,32 +93,32 @@ def weighted_series(df_data, weights):
 # [create_position_df]
 def create_position(df_data, weights):
     name_list = list(df_data.keys())
-    XXXUSD_last = df_data.iloc[-1].values
-    N = len(name_list)
+    xxxusd_last = df_data.iloc[-1].values
+    n = len(name_list)
 
     # Initialize
     weights_market_convention = np.array(weights)
-    FX_market_convention = np.array(XXXUSD_last)
+    fx_market_convention = np.array(xxxusd_last)
 
     # Compute the weights in market convention quoting
-    for x in range(N):
+    for x in range(n):
         if is_inverted_quote(name_list[x]):
-            weights_market_convention[x] = -XXXUSD_last[x] * weights[x]
-            FX_market_convention[x] = 1.0 / FX_market_convention[x]
+            weights_market_convention[x] = -xxxusd_last[x] * weights[x]
+            fx_market_convention[x] = 1.0 / fx_market_convention[x]
 
     # Compute USD amount
-    USD_amount = 0
-    for x in range(N):
+    usd_amount = 0
+    for x in range(n):
         if is_inverted_quote(name_list[x]): # Like SGDUSD or CNHUSD
-            USD_amount += weights_market_convention[x]
+            usd_amount += weights_market_convention[x]
         else: # Like GBPUSD, AUDUSD
-            USD_amount += -weights[x] * FX_market_convention[x]
+            usd_amount += -weights[x] * fx_market_convention[x]
 
-    res_df = pd.DataFrame(list(zip(weights, FX_market_convention, weights_market_convention)), 
-                          index = name_list, 
+    res_df = pd.DataFrame(list(zip(weights, fx_market_convention, weights_market_convention, strict=True)),
+                          index = name_list,
                           columns=['weights', 'PX_LAST', 'market convention notional'])
 
-    return res_df, USD_amount
+    return res_df, usd_amount
 
 
 def last_daily_hist_normal_vol(series, period=15):

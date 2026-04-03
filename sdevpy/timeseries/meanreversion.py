@@ -4,58 +4,58 @@ import statsmodels.api as sm
 
 
 class MeanRevertingTimeSeries:
-    def __init__(self, time_series): 
+    def __init__(self, time_series):
         self.time_series = time_series
-        
+
         # Compute mean reversion statistics
         res = compute_mean_reversion_params(self.time_series)
-        
+
         self.half_life = res['Half Life']
         self.mr_rate = res['MR Rate']
         self.mr_level =  res['MR Level']
-        
+
         # Check accuracy of the OLS estimate. The smaller the value, the more accurate the result.
         self.const_pvalue = res['Const p-value']
-        self.series_pvalue = res['Series p-value']   
+        self.series_pvalue = res['Series p-value']
 
-        self.stdev = np.std(self.time_series)   
-        
+        self.stdev = np.std(self.time_series)
+
         # Compute z score
         self.z_score_ts = (self.time_series - self.mr_level) / self.stdev
-        self.z_score_ts = self.z_score_ts.rename('z score')   
+        self.z_score_ts = self.z_score_ts.rename('z score')
 
     def get_half_life(self):
         return self.half_life
- 
+
     def get_mr_rate(self):
         return self.mr_rate
-        
+
     def get_mr_level(self):
         return self.mr_level
-        
+
     def get_const_pvalue(self):
-        return self.const_pvalue    
-    
+        return self.const_pvalue
+
     def get_series_pvalue(self):
         return self.series_pvalue
-    
+
     def get_level_at_t(self, date):
         return self.time_series.loc[date]
-    
+
     def get_current_level(self):
         return self.time_series.iloc[-1]
 
     def get_stdev(self):
         return self.stdev
-        
+
     def get_zscores_time_series(self):
         return self.z_score_ts
 
     def get_current_zscore(self):
-        return self.z_score_ts.iloc[-1]        
+        return self.z_score_ts.iloc[-1]
 
 
-def compute_mean_reversion_params(s): 
+def compute_mean_reversion_params(s):
     """ Estimate mean reversion by assuming the process to be of the form
         ds = lambda x (sbar - s(t-1))dt + sigma x dW(t) """
     # Check consistency of input data and rename column
@@ -63,47 +63,47 @@ def compute_mean_reversion_params(s):
     # cols = s.columns
     # if len(cols) != 1:
     #     raise RuntimeError("Column number is unexpected: " + len(cols))
-    
+
     # s = s.rename(columns={cols[0]: 'Series'})
 
     # Compute the diff and the shift the position by -1 to have ds(t) facing s(t-1)
     ds = s.diff().shift(-1)
-    
+
     # Skip the last element which is NA
     ds = ds.iloc[:-1]
-    
+
     # Skip the last element of the original series as it's not used
     s = s.iloc[:-1]
 
-    # Perform regression: dS(t) = a + b * S(t-1)    
+    # Perform regression: dS(t) = a + b * S(t-1)
     s_const = sm.add_constant(s)
     reg = sm.OLS(ds, s_const).fit()
-    
+
     # If we assume ds(t) = lambda (sbar - s(t-1))dt + sigma dW(t), then
     # a = lambda * S_bar * dt
     # b = -lambda * dt
     a = reg.params['const']
     b = reg.params['Series']
-    
+
     # See Clewlow and Strickland's energy derivatives pricing and risk management p28, 29
     # this is the proper way to do it, not using np.mean(basket) to compute the mean
     mr_level = -a / b
-    
+
     # We expect this is a positive number. This is just a convention that quantopian use.
     if b > 0:
         print('The series is not mean reverting')
-    
+
     # Modulo the Brownian noise, the proxe has the solution x(t) = x0 e^{-lambda t}
     # so the half-life is T1/2 = ln(2) / lambda. To obtain the half-life in number of days,
     # we need to do T1/2 / dt, which is -ln(2) / b.
-    half_life = -np.log(2) / b # This is a number of days i.e. a number of dt  
-    
+    half_life = -np.log(2) / b # This is a number of days i.e. a number of dt
+
     # This is -lambda * dt, where dt depends on the data freq. If daily, dt = 1/365.
     # To use this later, all we need is to put the number of days rather than year fraction
     # and we don't need to put the minus sign
     # e.g. 5 days -> exp(mean_rev_rate_in_days * 5) NOT exp(mean_rev_rate_in_days * 5/365)
     mr_rate = b
-    
+
     return {'Half Life': half_life, 'MR Rate': mr_rate, 'MR Level': mr_level,
             'Const p-value': reg.pvalues['const'], 'Series p-value': reg.pvalues['Series']}
 
@@ -115,37 +115,37 @@ def mr_expected_and_variance_change(mr_level, mr_rate, time, current_level, norm
         time in days - because we estimate using daily data
         current_level - current level of basket, i.e. X(0)
         normal_vol - daily standard dev of the basket """
-    exp_lam_T = np.exp(mr_rate * time)
-    exp_2lam_T = np.exp(2.0 * mr_rate * time)
-    level_at_T = current_level * exp_lam_T + mr_level * (1.0 - exp_lam_T)
+    exp_lam_t = np.exp(mr_rate * time)
+    exp_2lam_t = np.exp(2.0 * mr_rate * time)
+    level_at_t = current_level * exp_lam_t + mr_level * (1.0 - exp_lam_t)
 
     # Expectation of return in time_in_days
-    EdX = level_at_T - current_level
+    edx = level_at_t - current_level
     daily_var = normal_vol * normal_vol
-    
-    # Variance of return in time_in_days    
-    vardX = daily_var / (-2.0 * mr_rate) * (1.0 - exp_2lam_T)  
-    
-    return EdX, vardX 
+
+    # Variance of return in time_in_days
+    vardx = daily_var / (-2.0 * mr_rate) * (1.0 - exp_2lam_t)
+
+    return edx, vardx
 
 
 def compute_sharpe_ratio(mr_level, mr_rate, time, current_level, normal_vol, current_zscore):
-    mean_S, var_S = mr_expected_and_variance_change(mr_level, mr_rate, time, current_level, normal_vol)
-    expectation_over_T = 0
-    vol_over_T = np.sqrt(var_S)
-    
+    mean_s, var_s = mr_expected_and_variance_change(mr_level, mr_rate, time, current_level, normal_vol)
+    expectation_over_t = 0
+    vol_over_t = np.sqrt(var_s)
+
     if current_zscore < 0: # We buy the basket
-        expectation_over_T = mean_S
+        expectation_over_t = mean_s
     else: # We short the basket
-        expectation_over_T = -mean_S
+        expectation_over_t = -mean_s
 
-    sharpe_ratio = expectation_over_T / vol_over_T
+    sharpe_ratio = expectation_over_t / vol_over_t
 
-    return {'Sharpe Ratio': sharpe_ratio, 'Return Expectation': expectation_over_T, 'Return SD': vol_over_T}
+    return {'Sharpe Ratio': sharpe_ratio, 'Return Expectation': expectation_over_t, 'Return SD': vol_over_t}
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
+    # import matplotlib.pyplot as plt
     # Generate a mean reverting time series i.e. a process s(t) defined by
     # ds(t) = lambda x (sbar - s(t-1))dt + sigma x dW(t)
     # where sbar is the long term mean and lambda is the mean reversion speed
@@ -193,4 +193,3 @@ if __name__ == "__main__":
     print(f"Estimated MR level: {mr_level:,.6f}")
     print(f"True MR speed: {kappa:,.6f}")
     print(f"Estimated MR speed: {-mr_rate / dt:,.6f}")
- 

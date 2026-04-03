@@ -5,7 +5,7 @@ from pathlib import Path
 from sdevpy.tools import dates
 
 
-class EqVolSufaceData:
+class EqVolSurfaceData:
     def __init__(self, valdate, sections, **kwargs):
         self.valdate = valdate
         self.name = kwargs.get('name', '')
@@ -93,9 +93,9 @@ def eqvolsurfacedata_from_file(file):
         date = dt.datetime.strptime(date_str, dates.DATE_FORMAT)
         section['expiry'] = date
 
-    data = EqVolSufaceData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), sections,
-                           name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT),
-                           strike_input_type=strike_input_type)
+    data = EqVolSurfaceData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), sections,
+                            name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT),
+                            strike_input_type=strike_input_type)
     return data
 
 

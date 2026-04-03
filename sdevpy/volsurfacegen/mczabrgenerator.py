@@ -156,7 +156,7 @@ class McZabrGenerator(SmileGenerator):
         # Price with learning model
         md_nvols = model.predict(md_inputs)
         md_prices = []
-        for (point, vol, is_call) in zip(md_inputs, md_nvols, flat_types):
+        for (point, vol, is_call) in zip(md_inputs, md_nvols, flat_types, strict=True):
             expiry = point[0]
             strike = point[1]
             md_prices.append(bachelier.price(expiry, strike, is_call, fwd, vol))
