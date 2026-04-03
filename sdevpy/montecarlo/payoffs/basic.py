@@ -213,7 +213,6 @@ class Terminal(Payoff):
         try:
             self.name_idx = names.index(self.name)
         except ValueError as e:
-            self.name_idx = None
             raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 
     def set_valuation_date(self, valdate):
@@ -253,7 +252,6 @@ class Average(Payoff):
         try:
             self.name_idx = names.index(self.name)
         except ValueError as e:
-            self.name_idx = None
             raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 
     def set_valuation_date(self, valdate):

@@ -33,9 +33,8 @@ class ParamSection(Section):
             Inherited classes may have constraints and calculate non-trivial penalties. """
         return True, 0.0
 
-    @abstractmethod
     def constraints(self):
-        pass
+        return None
 
     @abstractmethod
     def dump_params(self):

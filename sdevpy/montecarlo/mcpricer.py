@@ -113,10 +113,10 @@ class MonteCarloPricer:
 
         # Interpolate paths from disc. to event date grid
         timer_interp = timer.Stopwatch("Interpolate to event grid")
-        print(f"Disc. path shape: {disc_paths.shape}")
+        # print(f"Disc. path shape: {disc_paths.shape}")
         idx, w0, w1 = path_interp_coeffs(self.disc_times, self.event_times)
         event_paths = interp_paths(disc_paths, idx, w0, w1)
-        print(f"Event path shape: {event_paths.shape}")
+        # print(f"Event path shape: {event_paths.shape}")
         timer_interp.stop()
 
         # Define market state
