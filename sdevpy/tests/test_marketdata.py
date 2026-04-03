@@ -1,7 +1,28 @@
 import datetime as dt
 import numpy as np
+from sdevpy.market.spot import get_spots
 from sdevpy.market import yieldcurve as ycrv
 from sdevpy.market import eqforward as eqf
+from sdevpy.market import correlations
+
+
+def test_correlations():
+    names = ['ABC', 'KLM', 'XYZ']
+    valdate = dt.datetime(2025, 12, 15)
+    c = correlations.get_correlations(names, valdate)
+    ref = np.asarray([0.5, 0.1, 0.1])
+    test = np.asarray([c[0, 1], c[0, 2], c[1, 2]])
+    assert np.allclose(test, ref, 1e-10)
+
+
+def test_spotdata():
+    name = "ABC"
+    valdate = dt.datetime(2025, 12, 15)
+
+    # Fetch data
+    test = get_spots([name], valdate)[0]
+    ref = 100.0
+    assert test == ref
 
 
 def test_eqforward_creation():

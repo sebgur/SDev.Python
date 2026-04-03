@@ -1,7 +1,7 @@
 """ The MC path builder only requires the paths of the underlying assets as a big
     multi-d vector. This way we can get those paths from an independent engine. """
 import numpy as np
-# import datetime as dt
+import datetime as dt
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.tools import timegrids, timer
 from sdevpy.montecarlo.assetmodels import MultiAssetGBM
@@ -9,43 +9,29 @@ from sdevpy.montecarlo.PathGenerator import PathGenerator
 from sdevpy.market.spot import get_spots
 from sdevpy.market.yieldcurve import get_yieldcurve
 from sdevpy.market.eqforward import get_forward_curves
+from sdevpy.market.correlations import get_correlations
 
 
-def get_local_vols(names, valdate, **kwargs):
-    folder = kwargs.get('folder', lvf.test_data_folder())
-    lvs = []
-    for name in names:
-        lvs.append(lvf.load_lv_from_folder(None, valdate, name, folder))
-
-    return lvs
-
-
-def get_correlations(names, valdate):
-    corr = np.array([[1.0, 0.5, 0.1],
-                     [0.5, 1.0, 0.1],
-                     [0.1, 0.5, 1.0]])
-    return corr
-
-
-def build_timegrid(valdate, eventdates, config):
+def build_timegrid(valdate: dt.datetime, eventdates, config):
+    """ Create simple time grid based on max of eventdates """
     max_date = eventdates.max()
     max_t = timegrids.model_time(valdate, max_date)
     disc_tgrid = timegrids.build_timegrid(0.0, max_t, config)
     return disc_tgrid
 
 
-def price_book(valdate, book, **kwargs):
+def price_book(valdate: dt.datetime, book, **kwargs):
+    """ Price book (PV) by Monte-Carlo """
     names = book.set_nameindexes()
     book.set_valuation_date(valdate)
     eventdates = book.eventdates
-    # book.set_eventindexes(eventdates)
 
     # Retrieve modelling data
     names = book.names
     disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     spot = get_spots(names, valdate)
     fwd_curves = get_forward_curves(names, valdate)
-    lvs = get_local_vols(names, valdate)
+    lvs = lvf.get_local_vols(names, valdate)
     corr = get_correlations(names, valdate)
 
     # Build time grid

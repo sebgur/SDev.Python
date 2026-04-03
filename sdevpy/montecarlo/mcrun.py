@@ -4,7 +4,8 @@ import logging
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
-from sdevpy.montecarlo.mcpricer import price_book, get_local_vols
+from sdevpy.montecarlo.mcpricer import price_book
+from sdevpy.models.localvol_factory import get_local_vols
 from sdevpy.analytics import black
 from sdevpy.tools import timegrids
 from sdevpy.tools import book as bk

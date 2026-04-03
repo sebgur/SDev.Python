@@ -32,7 +32,7 @@ def test_mc():
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Worst-of barrier
-    index = WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0)
+    index = WorstOfBarrier(['ABC', 'XYZ'], 90.0, 'Call', 35.0)
     cf = cfl.Cashflow(index, expiry)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
@@ -43,8 +43,8 @@ def test_mc():
     mc_price = price_book(valdate, book, scramble=False, constr_type='brownianbridge',
                           rng_type='sobol', n_paths=2000)
     test = mc_price['pv']
-    ref = np.asarray([8.811443508, 0.0, 4.90812947, 0.006843482])
-    # ref = np.asarray([8.811443508, 0.0, 4.890335672, 0.006843482])
+    ref = np.asarray([8.811443508, 0.0, 4.90812947, 0.003307153])
+    # ref = np.asarray([8.811443508, 0.0, 4.90812947, 0.006843482])
     assert np.allclose(test, ref, 1e-8)
 
 

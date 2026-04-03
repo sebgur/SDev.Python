@@ -2,8 +2,18 @@ import os, json
 from pathlib import Path
 import datetime as dt
 from sdevpy.models import biexp, svivol, cubicvol, localvol
-from sdevpy.tools import timegrids, dates
+from sdevpy.tools import dates
 from sdevpy.maths import interpolation as itp
+
+
+def get_local_vols(names, valdate, **kwargs):
+    folder = kwargs.get('folder', test_data_folder())
+    lvs = []
+    for name in names:
+        lvs.append(load_lv_from_folder(None, valdate, name, folder))
+
+    return lvs
+
 
 
 def create_sections(t_grid, model):
@@ -53,7 +63,7 @@ def load_lv_from_folder(t_grid, store_date, name, folder):
         raise FileNotFoundError(f"Local vol file not found: {file}")
 
     # Retrieve LV definition
-    with open(file, 'r') as f:
+    with open(file) as f:
         data = json.load(f)
 
     # Load LV
@@ -134,7 +144,7 @@ def write_example(date, name, folder):
         section = {'time': time, 'model': model, 'params': params}
         sections.append(section)
 
-    obj = {'name': name, 'datetime': valdate.strftime(DATE_FORMAT), 'sections': sections}
+    obj = {'name': name, 'datetime': valdate.strftime(dt.DATE_FORMAT), 'sections': sections}
 
     with open(file, 'w') as f:
         json.dump(obj, f, indent=2)
