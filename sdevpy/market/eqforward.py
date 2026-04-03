@@ -67,7 +67,7 @@ class EqForwardCurve:
         self.name = kwargs.get('name', '')
         self.dates, self.fwds, self.spot, self.yieldcurve = None, None, None, None
         self.interp_var = kwargs.get('interp_var', 'yield').lower()
-        self.interp_type = kwargs.get('interp_type', 'cubispline').lower()
+        self.interp_type = kwargs.get('interp_type', 'cubicspline').lower()
         self.interp = None
 
     def calibrate(self, data, spot, yieldcurve=None):
@@ -103,12 +103,12 @@ class EqForwardCurve:
         else:
             raise RuntimeError(f"Unknown forward interpolation variable: {self.interp_var}")
 
-    def value(self, date):
+    def value(self, date: dt.datetime|list[dt.datetime]):
         t = timegrids.model_time(self.valdate, date)
         fwd = self.value_float(t)
         return fwd
 
-    def value_float(self, t):
+    def value_float(self, t: float):
         if self.interp_var == 'yield':
             if self.yieldcurve is None:
                 raise RuntimeError("Missing yield curve when calculating EQ forward using dividend yields")
@@ -122,7 +122,7 @@ class EqForwardCurve:
 
 
 def eqforwarddata_from_file(file):
-    with open(file, 'r') as f:
+    with open(file) as f:
         data = json.load(f)
 
     name = data.get('name')

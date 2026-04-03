@@ -49,6 +49,7 @@ df = pd.DataFrame({'Date': hist_fixing_dates, 'Fixing': hist_fixings})
 print("Hist data", df)
 
 # Hist variance
+current_sum = 0.0
 current_var = 0.0
 if hist_fixings is not None and len(hist_fixings) > 1:
     log_returns = np.diff(np.log(np.asarray(hist_fixings)))

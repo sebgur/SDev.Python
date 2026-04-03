@@ -144,7 +144,7 @@ def write_example(date, name, folder):
         section = {'time': time, 'model': model, 'params': params}
         sections.append(section)
 
-    obj = {'name': name, 'datetime': valdate.strftime(dt.DATE_FORMAT), 'sections': sections}
+    obj = {'name': name, 'datetime': valdate.strftime(dates.DATE_FORMAT), 'sections': sections}
 
     with open(file, 'w') as f:
         json.dump(obj, f, indent=2)

@@ -142,7 +142,7 @@ class MonteCarloPricer:
         # paths = mkt_state.event_paths
         reports = []
         for trade in book.trades:
-            print(trade.id)
+            # print(trade.id)
             instr = trade.instrument
             leg_cf_pvs = []
             for leg in instr.cashflow_legs:

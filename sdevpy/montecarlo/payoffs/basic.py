@@ -261,7 +261,7 @@ class Average(Payoff):
         hist_fixing_dates = []
         for date in self.alldates:
             if date < valdate:
-                hist_fixing_dates.appendd(date)
+                hist_fixing_dates.append(date)
             else:
                 self.eventdates.append(date)
 
@@ -636,7 +636,7 @@ class Neg(Payoff):
 
 
 if __name__ == "__main__":
-    from sdevpy.montecarlo.MonteCarloPricer import build_eventdate_interpolator, interpolate_paths
+    from sdevpy.montecarlo.mcpricer import path_interp_coeffs, interp_paths
     # Discretization
     disc_times = np.asarray([0, 1, 2])
     disc_paths = np.asarray([
@@ -649,8 +649,8 @@ if __name__ == "__main__":
     event_times = np.asarray([0.0, 0.2, 1.0, 1.4, 2.0, 2.5])
 
     # Interpolation
-    idx, w0, w1 = build_eventdate_interpolator(disc_times, event_times)
-    int_paths = interpolate_paths(disc_paths, idx, w0, w1)
+    idx, w0, w1 = path_interp_coeffs(disc_times, event_times)
+    int_paths = interp_paths(disc_paths, idx, w0, w1)
 
     # Display
     np.set_printoptions(suppress=True, precision=2)
