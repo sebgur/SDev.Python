@@ -11,7 +11,6 @@ from sdevpy.models.surfaces.optionsurface import (OptionQuoteType, OptionTarget,
 
 class ZeroSurface(ABC):
     def __init__(self):
-        # Set defaults
         self.modelled_type = OptionQuoteType.LogNormalVol
         self.shift = 0.0 # In Math format, i.e. 0.01 for 1%
         self.allow_negative_variables = False
@@ -118,7 +117,7 @@ class ZeroSurface(ABC):
     ############### Price-Vol Logic ###############################################################
 
     def forward_price(self, t: float, k: float, f: float, is_call: bool) -> float:
-        """ Option forward price """
+        """ Forward price """
         value = self.calculate(t, k, f, is_call)
         match self.modelled_type:
             case OptionQuoteType.ForwardPremium:
@@ -133,7 +132,7 @@ class ZeroSurface(ABC):
                 raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
 
     def black_volatility(self, t: float, k: float, f: float) -> float:
-        """ Option Black implied volatility """
+        """ Black implied volatility """
         is_call = True
         value = self.calculate(t, k, f, is_call)
         if self.modelled_type == OptionQuoteType.LogNormalVol:
@@ -152,7 +151,7 @@ class ZeroSurface(ABC):
             return black.implied_vol(t, k, is_call, f, price)
 
     def bachelier_volatility(self, t: float, k: float, f: float):
-        """ Option Bachelier implied volatility """
+        """ Bachelier implied volatility """
         is_call = True
         value = self.calculate(t, k, f, is_call)
         if self.modelled_type == OptionQuoteType.NormalVol:
@@ -171,7 +170,7 @@ class ZeroSurface(ABC):
             return bachelier.implied_vol(t, k, is_call, f, price)
 
     def shifted_black_volatility(self, t: float, k: float, f: float) -> float:
-        """ Option shifted Black volatility """
+        """ Shifted Black implied volatility """
         is_call = True
         value = self.calculate(t, k, f, is_call)
         if self.modelled_type == OptionQuoteType.ShiftedLogNormalVol:
