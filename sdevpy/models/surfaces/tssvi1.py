@@ -76,6 +76,9 @@ class TsSvi1(TermStructureParametricZeroSurface):
 
 
 if __name__ == "__main__":
+    # Bring in same sample market as for localvol calib
+    # Estimate model on points and calculate RMSE, plot comparison
+    # Do the calibration
     surface = TsSvi1()
     params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     surface.calibrated_parameters = params
