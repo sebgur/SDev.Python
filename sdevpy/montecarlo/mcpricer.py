@@ -5,7 +5,7 @@ import datetime as dt
 from sdevpy.models import localvol_factory as lvf
 from sdevpy.tools import timegrids, timer
 from sdevpy.montecarlo.assetmodels import MultiAssetGBM
-from sdevpy.montecarlo.PathGenerator import PathGenerator
+from sdevpy.montecarlo.pathgenerator import PathGenerator
 from sdevpy.market.spot import get_spots
 from sdevpy.market.yieldcurve import get_yieldcurve
 from sdevpy.market.eqforward import get_forward_curves

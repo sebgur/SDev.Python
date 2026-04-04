@@ -1,5 +1,6 @@
 import datetime as dt
 import numpy as np
+import numpy.typing as npt
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from scipy.stats import norm
@@ -8,6 +9,7 @@ from sdevpy.maths import constants
 
 
 def create_section(time, param_config=None, fill_sample=True):
+    """ Create an SviVol section """
     section = SviVolSection(time)
     if param_config is None and fill_sample:
         params = sample_params(time) # Fill with sample
@@ -73,10 +75,11 @@ def svivol(x, *params):
 
 
 def svivol_check_params(params):
+    """ Check parameters of the SviVol model """
     a = params[0]
     b = params[1]
     rho = params[2]
-    m = params[3]
+    # m = params[3] # No constraints on m
     sigma = params[4]
 
     is_ok = True
@@ -94,12 +97,12 @@ def svivol_check_params(params):
     return is_ok, penalty
 
 
-def svivol_formula(t, x, params):
+def svivol_formula(t: float, x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
     """ Wrapper on SVI formula to take parameter vector as input """
     return svivol(x, *params)
 
 
-def sample_params(t, vol=0.25):
+def sample_params(t: float, vol: float=0.25) -> npt.ArrayLike:
     """ Guess parameters for display or optimization initial point """
     a = vol
     b = 0.1 / t
@@ -109,8 +112,10 @@ def sample_params(t, vol=0.25):
     return np.array([a, b, rho, m, sigma])
 
 
-def generate_sample_data(valdate, terms, base_vol=0.25,
-                         percents=[0.10, 0.25, 0.50, 0.75, 0.90]):
+DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
+
+def generate_sample_data(valdate: dt.datetime, terms, base_vol=0.25, percents=DFLT_PERCENTS):
+    """ Generate sample data for the SviVol model """
     spot, r, q = 100.0, 0.04, 0.02
 
     expiries, fwds, strike_surface, vol_surface = [], [], [], []

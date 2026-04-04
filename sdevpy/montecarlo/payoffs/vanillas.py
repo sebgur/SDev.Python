@@ -10,7 +10,7 @@ class VanillaOptionType(Enum):
     STRADDLE = 2
 
 
-def VanillaOptionPayoff(payoff, strike, optiontype):
+def make_vanilla_option_payoff(payoff, strike, optiontype):
     optiontype_ = string_to_optiontype(optiontype)
     match optiontype_:
         case VanillaOptionType.CALL:
@@ -25,7 +25,7 @@ def VanillaOptionPayoff(payoff, strike, optiontype):
     return option_payoff
 
 
-def VanillaOption(name, strike, optiontype, expiry):
+def make_vanilla_option(name, strike, optiontype, expiry):
     optiontype_ = string_to_optiontype(optiontype)
     match optiontype_:
         case VanillaOptionType.CALL:
@@ -68,5 +68,5 @@ def string_to_optiontype(s):
 
 if __name__ == "__main__":
     expiry = dt.datetime(2026, 12, 15)
-    payoff = VanillaOption('SPX', 100, 'call', expiry)
+    payoff = make_vanilla_option('SPX', 100, 'call', expiry)
     print(payoff)

@@ -2,7 +2,7 @@ import numpy as np
 import datetime as dt
 import logging
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
-from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
+from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option, make_asian_option
 from sdevpy.montecarlo.mcpricer import price_book
 from sdevpy.models.localvol_factory import get_local_vols
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     v_name, v_strike, v_type = 'ABC', 100.0, 'Call' # For check against CF
 
     # Vanilla
-    index = VanillaOption(v_name, v_strike, v_type, expiry)
+    index = make_vanilla_option(v_name, v_strike, v_type, expiry)
     cf = cfl.Cashflow(index, expiry)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 

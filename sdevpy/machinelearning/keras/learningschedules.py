@@ -1,4 +1,5 @@
 """ Custom learning schedules """
+import numpy as np
 import tensorflow as tf
 from sdevpy.tools.constants import TWO_PI
 
@@ -35,8 +36,6 @@ class FlooredExponentialDecay(tf.keras.optimizers.schedules.LearningRateSchedule
                    'decay': self.decay,
                    'decay_steps': self.steps_to_target }
         return config
-
-import numpy as np
 
 # Custom learning rate scheduler, cyclically exponentially decreases between given values
 class CyclicalExponentialDecay(tf.keras.optimizers.schedules.LearningRateSchedule):

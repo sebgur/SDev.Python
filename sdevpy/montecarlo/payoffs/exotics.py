@@ -1,9 +1,8 @@
 import numpy as np
 from sdevpy.montecarlo.payoffs.basic import (
     Payoff, Average, Terminal, Basket,
-    list_payoff_names, list_payoff_eventdates
-)
-from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_option, VanillaOptionPayoff
+    list_payoff_names, list_payoff_eventdates)
+from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_option, make_vanilla_option_payoff
 
 
 class WorstOfBarrier(Payoff):
@@ -54,14 +53,14 @@ class WorstOfBarrier(Payoff):
 
 def make_asian_option(name, strike, optiontype, start, end, freq="1D", cdr="USD"):
     index = Average(name, start, end, freq, cdr)
-    payoff = VanillaOptionPayoff(index, strike, optiontype)
+    payoff = make_vanilla_option_payoff(index, strike, optiontype)
     return payoff
 
 
 def make_basket_option(names, weights, strike, optiontype, expiry):
     spots = [Terminal(name, expiry) for name in names]
     basket = Basket(spots, weights)
-    payoff = VanillaOptionPayoff(basket, strike, optiontype)
+    payoff = make_vanilla_option_payoff(basket, strike, optiontype)
     return payoff
 
 

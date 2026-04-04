@@ -1,7 +1,7 @@
 import numpy as np
 import datetime as dt
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
-from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
+from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option, make_asian_option
 from sdevpy.tools import book as bk
 from sdevpy.montecarlo.mcpricer import price_book, path_interp_coeffs, interp_paths
@@ -18,7 +18,7 @@ def test_mc():
     expiry = dt.datetime(2026, 12, 15)
 
     # Vanilla
-    index = VanillaOption('ABC', 100.0, 'Call', expiry)
+    index = make_vanilla_option('ABC', 100.0, 'Call', expiry)
     cf = cfl.Cashflow(index, expiry)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 

@@ -15,13 +15,14 @@ import numpy as np
 import scipy.optimize as opt
 from scipy.stats import norm
 from sdevpy.models.impliedvol import ParamSection
-from sdevpy.maths import constants
+# from sdevpy.maths import constants
 
 
 DEATH_PENALTY = 1e6
 
 
 def create_section(time, param_config=None, fill_sample=True):
+    """ Create section of the BiExp model """
     section = BiExpSection(time)
     if param_config is None and fill_sample:
         params = sample_params(time) # Fill with sample
@@ -95,6 +96,7 @@ def biexp(x, *params):
 
 
 def biexp_check_params(params):
+    """ Check parameters of the BiExp model """
     is_ok = False
     if len(params) == 6:
         f0 = params[0]
@@ -102,7 +104,7 @@ def biexp_check_params(params):
         fr = params[2]
         taul = params[3]
         taur = params[4]
-        fp = params[5]
+        # fp = params[5] # No constraints
 
         is_ok = True
         # Check constraints
@@ -134,9 +136,10 @@ def sample_params(t, vol=0.25):
     fp = 0.0
     return np.array([f0, fl, fr, taul, taur, fp])
 
+DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
 
-def generate_sample_data(valdate, terms, base_vol=0.25,
-                         percents=[0.10, 0.25, 0.50, 0.75, 0.90]):
+def generate_sample_data(valdate, terms, base_vol=0.25, percents=DFLT_PERCENTS):
+    """ Generate sample data for the BiExp model """
     spot, r, q = 100.0, 0.04, 0.02
 
     expiries, fwds, strike_surface, vol_surface = [], [], [], []

@@ -20,8 +20,8 @@ class PathGenerator:
 
         # Construct underlying paths along the time direction
         for t_idx in range(1, self.n_steps + 1):
-            dW = bm_paths[:, t_idx - 1, :] # Increments for this time step
-            state = self.model.evolve_state(state, t_idx, dW)
+            dw = bm_paths[:, t_idx - 1, :] # Increments for this time step
+            state = self.model.evolve_state(state, t_idx, dw)
             paths[:, t_idx, :] = state
 
         return paths
