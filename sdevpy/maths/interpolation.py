@@ -49,7 +49,7 @@ def create_interpolator(type='linear', **kwargs):
 
 class Interpolator(ABC):
     def __init__(self, **kwargs):
-        self.eps = kwargs.get('eps', 100.0 * constants.FLOAT_EPS)
+        self.eps = kwargs.get('eps', constants.EPS)
         x_grid = kwargs.get('x_grid', None)
         y_grid = kwargs.get('y_grid', None)
         if (x_grid is None and y_grid is not None) or (x_grid is not None and y_grid is None):
@@ -230,7 +230,7 @@ def safe_len(x):
 ######## Interpolation ############################################################################
 class Interpolation:
     def __init__(self, interpolation, l_extrapolation, r_extrapolation, **kwargs):
-        self.eps = kwargs.get('eps', 100.0 * constants.FLOAT_EPS)
+        self.eps = kwargs.get('eps', constants.EPS)
         self.interp = interpolation
         self.l_extrap = l_extrapolation
         self.r_extrap = r_extrapolation

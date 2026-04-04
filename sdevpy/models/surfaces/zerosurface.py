@@ -5,20 +5,21 @@ from scipy.stats import norm
 from scipy.optimize import brentq
 from sdevpy.maths import constants
 from sdevpy.analytics import black, bachelier
-from sdevpy.models.surfaces.optionsurface import OptionQuotationType
+from sdevpy.models.surfaces.optionsurface import (OptionQuoteType, OptionTarget, keep_positive,
+    check_expiries_and_forwards, convert_to_target_values, check_degrees_of_freedom)
 
 
 class ZeroSurface(ABC):
     def __init__(self):
         # Set defaults
-        self.modelled_type = OptionQuotationType.LogNormalVol
+        self.modelled_type = OptionQuoteType.LogNormalVol
         self.shift = 0.0 # In Math format, i.e. 0.01 for 1%
         self.allow_negative_variables = False
         self.calculable_at_zero = True
         self.localvol_method = 0
         self.daycount = None
         self.expiry_times = []
-        self.epsilon = 100.0 * constants.FLOAT_EPS
+        self.epsilon = constants.EPS
         self.time_epsilon = 0.000001
         self.base_date = None
         self.check_degrees_of_freedom = True
@@ -120,13 +121,13 @@ class ZeroSurface(ABC):
         """ Option forward price """
         value = self.calculate(t, k, f, is_call)
         match self.modelled_type:
-            case OptionQuotationType.ForwardPremium:
+            case OptionQuoteType.ForwardPremium:
                 return value
-            case OptionQuotationType.LogNormalVol:
+            case OptionQuoteType.LogNormalVol:
                 return black.price(t, k, is_call, f, value)
-            case OptionQuotationType.NormalVol:
+            case OptionQuoteType.NormalVol:
                 return bachelier.price(t, k, is_call, f, value)
-            case OptionQuotationType.ShiftedLogNormalVol:
+            case OptionQuoteType.ShiftedLogNormalVol:
                 return black.price(t, k + self.shift, is_call, f + self.shift, value)
             case _:
                 raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
@@ -135,15 +136,15 @@ class ZeroSurface(ABC):
         """ Option Black implied volatility """
         is_call = True
         value = self.calculate(t, k, f, is_call)
-        if self.modelled_type == OptionQuotationType.LogNormalVol:
+        if self.modelled_type == OptionQuoteType.LogNormalVol:
             return value
         else:
             match self.modelled_type:
-                case OptionQuotationType.ForwardPremium:
+                case OptionQuoteType.ForwardPremium:
                     price = value
-                case OptionQuotationType.NormalVol:
+                case OptionQuoteType.NormalVol:
                     price = bachelier.price(t, k, is_call, f, value)
-                case OptionQuotationType.ShiftedLogNormalVol:
+                case OptionQuoteType.ShiftedLogNormalVol:
                     price = black.price(t, k + self.shift, is_call, f + self.shift, value)
                 case _:
                     raise TypeError("Invalid modelled type in zero-surface: " + self.modelled_type)
@@ -154,15 +155,15 @@ class ZeroSurface(ABC):
         """ Option Bachelier implied volatility """
         is_call = True
         value = self.calculate(t, k, f, is_call)
-        if self.modelled_type == OptionQuotationType.NormalVol:
+        if self.modelled_type == OptionQuoteType.NormalVol:
             return value
         else:
             match self.modelled_type:
-                case OptionQuotationType.ForwardPremium:
+                case OptionQuoteType.ForwardPremium:
                     price = value
-                case OptionQuotationType.LogNormalVol:
+                case OptionQuoteType.LogNormalVol:
                     price = black.Price(t, k, is_call, f, value)
-                case OptionQuotationType.ShiftedLogNormalVol:
+                case OptionQuoteType.ShiftedLogNormalVol:
                     price = black.Price(t, k + self.shift, is_call, f + self.shift, value)
                 case _:
                     raise TypeError("Invalid modelled type in zero-surface: " + self.modelled_type)
@@ -173,15 +174,15 @@ class ZeroSurface(ABC):
         """ Option shifted Black volatility """
         is_call = True
         value = self.calculate(t, k, f, is_call)
-        if self.modelled_type == OptionQuotationType.ShiftedLogNormalVol:
+        if self.modelled_type == OptionQuoteType.ShiftedLogNormalVol:
             return value
         else:
             match self.modelled_type:
-                case OptionQuotationType.ForwardPremium:
+                case OptionQuoteType.ForwardPremium:
                     price = value
-                case OptionQuotationType.LogNormalVol:
+                case OptionQuoteType.LogNormalVol:
                     price = black.Price(f, k, value * np.sqrt(t), is_call)
-                case OptionQuotationType.NormalVol:
+                case OptionQuoteType.NormalVol:
                     price = bachelier.Price(f, k, value * np.sqrt(t), is_call)
                 case _:
                     raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
@@ -190,13 +191,13 @@ class ZeroSurface(ABC):
 
     ############### Calibration ###################################################################
 
-    def calibrate1(self, date: dt.datetime, mkt_surface: OptionSurface) -> None:
-        """ Calibrate surface """
-        self.baseDate = date
-        input_options, expiries = mkt_surface.calibration_targets()
-        self.calibrate(self.baseDate, input_options)
+    # def calibrate1(self, date: dt.datetime, mkt_surface: OptionSurface) -> None:
+    #     """ Calibrate surface """
+    #     self.baseDate = date
+    #     input_options, expiries = mkt_surface.calibration_targets()
+    #     self.calibrate(self.baseDate, input_options)
 
-    def calibrate2(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
+    def calibrate(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
         """ Calibrate surface """
         self.baseDate = date
         # Check consistency of input data, convert to modelled type
@@ -212,18 +213,19 @@ class ZeroSurface(ABC):
         """ Take out negative rate options depending on model features.
             Check consistency of expiries, forwards, etc. """
         # Strip out negative rate options if needed
-        t_options = (options if self.allow_negative_variables else OptionTargetChecker.KeepPositive(options))
+        t_options = (options if self.allow_negative_variables else keep_positive(options))
 
         # Check consistency of expiries and forwards
-        OptionTargetChecker.CheckExpiriesAndForwards(t_options)
+        check_expiries_and_forwards(t_options)
 
         # Convert from quoted type to targetType required for model calibration.
-        c_options = OptionTargetChecker.ConvertToTargetValues(t_options, self.modelled_type, self.shift)
+        c_options = convert_to_target_values(t_options, self.modelled_type, self.shift)
 
         # Check degrees of freedom
-        if self is ParametricZeroSurface and self.check_degrees_of_freedom:
-            n_params = self.number_parameters()
-            OptionTargetChecker.CheckDegreesOfFreedom(c_options, n_params)
+        # ToDo: the original in C# it was done only for slice models. Extend to all parametric models.
+        # if self.check_degrees_of_freedom:
+        #     n_params = self.number_parameters()
+        #     check_degrees_of_freedom(c_options, n_params)
 
         return c_options
 

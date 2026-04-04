@@ -4,7 +4,8 @@ import sys
 FLOAT_INFTY = float('inf')
 FLOAT_MAX = sys.float_info.max
 FLOAT_MIN = sys.float_info.min
-FLOAT_EPS = sys.float_info.epsilon
+MACHINE_EPS = sys.float_info.epsilon
+EPS = 1e-11 # Practical machine epsilon to avoid risk of confusion, well above real eps~1e-15
 DEATH_PENALTY = 1e6
 C_SQRT_2 = 0.7071067811865475244008443621048490392848359376887
 C_SQRT1_2 = 0.7071067811865475244008443621048490392848359376887
@@ -21,6 +22,7 @@ if __name__ == "__main__":
     print(f"FLOAT_INFTY: {FLOAT_INFTY}")
     print(f"FLOAT_MAX: {FLOAT_MAX}")
     print(f"FLOAT_MIN: {FLOAT_MIN}")
-    print(f"FLOAT_EPS: {FLOAT_EPS}")
+    print(f"MACHINE_EPS: {MACHINE_EPS}")
+    print(f"EPS: {EPS}")
     print(f"DEATH_PENALTY: {DEATH_PENALTY}")
     print(f"FLOAT_INFTY: {FLOAT_INFTY}")
