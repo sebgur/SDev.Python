@@ -94,19 +94,19 @@ def shift_to_match_forward(s0, x, p, target_forward):
     """ Shift the density to match the forward. We are not using this for now.
         This code was written by Claude and has not been tested. """
     ex = np.exp(x)
-    cur_forward = np.trapz(ex * p, x)
+    cur_forward = np.trapezoid(ex * p, x)
     if cur_forward <= 0:
         p = np.maximum(p, 0)
-        p = p / np.trapz(p, x)
+        p = p / np.trapezoid(p, x)
         return p
     alpha = np.log(target_forward / cur_forward)
     x_shifted = x - alpha
     p_shifted = np.interp(x, x_shifted, p, left=0.0, right=0.0)
     p_shifted = np.maximum(p_shifted, 0.0)
-    mass = np.trapz(p_shifted, x)
+    mass = np.trapezoid(p_shifted, x)
     if mass <= 0:
         p_shifted = np.exp(-0.5 * ((x - np.log(s0)) / (0.1))**2)
-        mass = np.trapz(p_shifted, x)
+        mass = np.trapezoid(p_shifted, x)
     p_shifted /= mass
     return p_shifted
 
