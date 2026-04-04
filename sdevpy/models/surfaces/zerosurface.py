@@ -243,14 +243,23 @@ class ParametricZeroSurface(ZeroSurface):
     def __init__(self):
         super().__init__()
         self.n_params = None
-        self.calculator = None
+        # self.formula = None
 
     def calculate(self, t: float, k: float, is_call: bool, f: float) -> float:
         params = self.parameters(t)
-        return self.calculator.formula(t, k, is_call, f, params)
+        # if self.formula is None:
+        #     raise RuntimeError("Formula not set")
+
+        return self.formula(t, k, is_call, f, params)
 
     @abstractmethod
     def parameters(self, t: float) -> list[float]:
+        """ Abtract method for retrieval of parameters """
+        pass
+
+    @abstractmethod
+    def formula(self, t: float, k: float, is_call: bool, f: float, params: list[float]) -> float:
+        """ Abtract method for calculation of the core formula """
         pass
 
 
@@ -259,15 +268,18 @@ class TermStructureParametricZeroSurface(ParametricZeroSurface):
         super().__init__()
         self.calibrated_parameters = []
 
-    def set_calculator(self, calculator) -> None:
-        self.calculator = calculator
-        self.n_params = calculator.number_parameters()
-        self.allow_negative_variables = calculator.allow_negative_variables()
-        self.modelled_type = calculator.modelled_type()
+    # def set_calculator(self, calculator) -> None:
+    #     self.calculator = calculator
+    #     self.n_params = calculator.number_parameters()
+    #     self.allow_negative_variables = calculator.allow_negative_variables()
+    #     self.modelled_type = calculator.modelled_type()
 
     def parameters(self, t: float) -> list[float]:
         """ Retrieve formula parameters """
         return self.formula_parameters(t, self.calibrated_parameters)
+
+    def calibrate_modelled_type(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
+        raise NotImplementedError("Not implemented yet: calibrate_modelled_type")
 
     @abstractmethod
     def formula_parameters(self, t: float, params: list[float]) -> list[float]:

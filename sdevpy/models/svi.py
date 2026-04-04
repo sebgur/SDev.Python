@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 import matplotlib.pyplot as plt
 from sdevpy.models.impliedvol import ParamSection
 from sdevpy.maths import constants
@@ -11,20 +12,23 @@ class SviSection(ParamSection):
         self.model = 'SVI'
 
     def check_params(self):
+        """ Check parameter consistency """
         return svi_check_params(self.params, self.check_butterfly)
 
     def dump_params(self):
+        """ Dump parameter to dictionary """
         data = {'a': self.params[0], 'b': self.params[1], 'rho': self.params[2],
                 'm': self.params[3], 'sigma': self.params[4]}
         return data
 
-def svi(t, x, *params):
+
+def svi(t: float, x: npt.ArrayLike, *params) -> npt.ArrayLike:
     """ SVI formula. Original by J. Gatheral, modified here:
         * x is the log-moneyness, not just the moneyness as in the original
     """
     # Retrieve parameters
-    if (len(params) != 5):
-        raise RuntimeError(f"Incorrect parameter size in SVI: {len(params)}")
+    if len(params) != 5:
+        raise ValueError(f"Incorrect parameter size in SVI: {len(params)}")
 
     a = params[0]
     b = params[1]
@@ -35,7 +39,7 @@ def svi(t, x, *params):
     # Check constraints
     is_ok, _ = svi_check_params(params)
     if not is_ok:
-        raise RuntimeError("Invalid SVI parameters")
+        raise ValueError("Invalid SVI parameters")
 
     # Calculate
     xm = x - m # x is the log-moneyness
@@ -47,24 +51,25 @@ def svi(t, x, *params):
     return vol
 
 
-def svi_check_params(params, check_butterfly=False):
+def svi_check_params(params: list[float], check_butterfly: bool=False) -> None:
+    """ Check consistency of SVI parameters """
     a = params[0]
     b = params[1]
     rho = params[2]
-    m = params[3]
+    # m = params[3] # No particular conditions on m
     sigma = params[4]
 
     is_ok = True
     # Check constraints
-    if a < 0.0 or b < 0.0 or abs(rho) >= 1 or sigma < 0.0:
+    if np.any(a < 0.0) or np.any(b < 0.0) or np.any(np.abs(rho) >= 1) or np.any(sigma < 0.0):
         is_ok = False
 
     if is_ok:
-        if a + b * sigma * np.sqrt(1.0 - rho**2) < 0.0:
+        if np.any(a + b * sigma * np.sqrt(1.0 - rho**2) < 0.0):
             is_ok = False
 
     if is_ok and check_butterfly:
-        if b * (1.0 + abs(rho)) >= 4.0: # This one we may choose to only enforce during calibration
+        if b * (1.0 + np.abs(rho)) >= 4.0: # This one we may choose to only enforce during calibration
             is_ok = False
 
     # Sudden death for now
@@ -73,12 +78,12 @@ def svi_check_params(params, check_butterfly=False):
     return is_ok, penalty
 
 
-def svi_formula(t, x, params):
+def svi_formula(t: float, x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
     """ Wrapper on SVI formula to take parameter vector as input """
     return svi(t, x, *params)
 
 
-def sample_params(t):
+def sample_params(t: float) -> list[float]:
     """ Guess parameters for display or optimization initial point """
     a = 0.25**2 * t
     b = 0.0
@@ -88,19 +93,28 @@ def sample_params(t):
 
 
 if __name__ == "__main__":
+    # One chart example
     t = 1/365
     alnv = 0.25
     a = alnv**2 * t # a > 0
-    b = 0.0 #a / np.log(2) # b > 0
+    b = 0.0 # a / np.log(2) # b > 0
     rho = 0.0 # -1 < rho < 1
-    m = 0.0# No constraints
-    sigma = 0.0 #0.5 / np.sqrt(t) # > 0
+    m = 0.0 # No constraints
+    sigma = 0.0 # 0.5 / np.sqrt(t) # > 0
     params = [a, b, rho, m, sigma]
 
     k = np.linspace(0.2, 3.0, 100)
     x = np.log(k)
 
     vol = svi_formula(t, x, params)
-    print(svi_formula(t, m, params))
     plt.plot(x, vol)
     plt.show()
+
+    # Vectorization
+    times = np.asarray([t])
+    times = np.full_like(k, times)
+    print(f"times: {times.shape}")
+    params = [np.full_like(k, np.asarray([a])), np.full_like(k, np.asarray([b])), np.full_like(k, np.asarray([rho])),
+              np.full_like(k, np.asarray([m])), np.full_like(k, np.asarray([sigma]))]
+    vols = svi_formula(times, x, params)
+    print(f"shape: {vols.shape}")
