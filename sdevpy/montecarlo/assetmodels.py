@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 
+TEST_VOL = 0.20
+
+
 class FactorModel(ABC):
     @abstractmethod
     def evolve_state(self, state, t_idx, dw):
@@ -19,7 +22,7 @@ class MultiAssetGBM(FactorModel):
         self.lv = lv
         self.time_grid = time_grid
         self.n_factors = len(self.spot) # Used by PathGenerator
-        self.sigma = np.asarray([0.2 for _ in range(self.n_factors)])#np.asarray(sigma)
+        self.sigma = np.asarray([TEST_VOL for _ in range(self.n_factors)])
         self.use_lv = kwargs.get('use_lv', False)
 
         # Cache forwards

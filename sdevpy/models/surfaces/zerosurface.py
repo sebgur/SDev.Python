@@ -6,7 +6,7 @@ from scipy.optimize import brentq
 from sdevpy.maths import constants
 from sdevpy.analytics import black, bachelier
 from sdevpy.models.surfaces.optionsurface import (OptionQuoteType, OptionTarget, keep_positive,
-    check_expiries_and_forwards, convert_to_target_values, check_degrees_of_freedom)
+    check_expiries_and_forwards, convert_to_target_values)
 
 
 class ZeroSurface(ABC):
@@ -19,7 +19,7 @@ class ZeroSurface(ABC):
         self.localvol_method = 0
         self.daycount = None
         self.expiry_times = []
-        self.epsilon = constants.EPS
+        self.eps = constants.EPS
         self.time_epsilon = 0.000001
         self.base_date = None
         self.check_degrees_of_freedom = True
@@ -78,10 +78,10 @@ class ZeroSurface(ABC):
         xdtheta_dx = x * self.dvolatility_dx(t, x)
         x2d2theta_dx2 = x * x * self.d2volatility_dx2(t, x)
 
-        if np.abs(stdev) < self.stdev_epsilon:
+        if np.abs(stdev) < self.eps:
             raise ValueError("Probability density cannot be calculated at standard deviation 0")
 
-        if x < self.x_epsilon: # 0 or negative
+        if x < self.eps: # 0 or negative
             return 0.0
 
         d_minus = -np.log(x) / stdev - 0.5 * stdev
@@ -94,7 +94,7 @@ class ZeroSurface(ABC):
     def cumulative(self, t: float, fwd: float, strike: float) -> float:
         """ Cumulative function of the surface's probability density """
         x = strike / fwd
-        theta = self.Volatility(t, x)
+        theta = self.volatility(t, x)
         sqrt_t = np.sqrt(t)
         stdev = theta * sqrt_t
         dm = -np.log(x) / stdev - 0.5 * stdev
@@ -162,9 +162,9 @@ class ZeroSurface(ABC):
                 case OptionQuoteType.ForwardPremium:
                     price = value
                 case OptionQuoteType.LogNormalVol:
-                    price = black.Price(t, k, is_call, f, value)
+                    price = black.price(t, k, is_call, f, value)
                 case OptionQuoteType.ShiftedLogNormalVol:
-                    price = black.Price(t, k + self.shift, is_call, f + self.shift, value)
+                    price = black.price(t, k + self.shift, is_call, f + self.shift, value)
                 case _:
                     raise TypeError("Invalid modelled type in zero-surface: " + self.modelled_type)
 
@@ -181,9 +181,9 @@ class ZeroSurface(ABC):
                 case OptionQuoteType.ForwardPremium:
                     price = value
                 case OptionQuoteType.LogNormalVol:
-                    price = black.Price(f, k, value * np.sqrt(t), is_call)
+                    price = black.price(t, k, is_call, f, value)
                 case OptionQuoteType.NormalVol:
-                    price = bachelier.Price(f, k, value * np.sqrt(t), is_call)
+                    price = bachelier.Price(t, k, is_call, f, value)
                 case _:
                     raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
 

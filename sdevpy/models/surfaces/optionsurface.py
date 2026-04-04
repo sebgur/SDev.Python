@@ -20,11 +20,11 @@ class OptionTarget:
     expiry: float
     forward: float
     strike: float
-    is_call: bool = True
     is_atm: bool
     market_input: float
-    quote_type: OptionQuoteType = OptionQuoteType.LogNormalVol
     market_shift: float
+    is_call: bool = True
+    quote_type: OptionQuoteType = OptionQuoteType.LogNormalVol
 
 
 def calibration_targets(expiries: list[float], fwds: list[float], strike_surface: list[list[float]],
