@@ -20,9 +20,9 @@ class TsSvi1(TermStructureParametricZeroSurface):
                 params: list[float]) -> float:
         # Calculate log-moneyness
         log_m = np.log(k / f)
-        print(f"time: {t}")
-        print(f"x: {log_m}")
-        print(f"params: {params}")
+        # print(f"time: {t}")
+        # print(f"x: {log_m}")
+        # print(f"params: {params}")
         vol = svi_formula(t, log_m, params)
         return vol
 
@@ -63,8 +63,6 @@ class TsSvi1(TermStructureParametricZeroSurface):
         m = xstar + r * lambda_
         s = lambda_ * np.sqrt(one_minus_rho2)
 
-        svi_params = np.asarray([a, b, r, m, s])
-        print(f"shape inside: {svi_params.shape}")
         return [a, b, r, m, s]
 
     def get_parameters(self, x: list[float]) -> tuple[float, ...]:

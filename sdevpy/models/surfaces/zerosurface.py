@@ -21,7 +21,7 @@ class ZeroSurface(ABC):
         self.eps = constants.EPS
         self.time_epsilon = 0.000001
         self.base_date = None
-        self.check_degrees_of_freedom = True
+        self.check_dof = True # Check degrees of freedom
 
     ############### Dupire Logic ##################################################################
 
@@ -215,11 +215,10 @@ class ZeroSurface(ABC):
         c_options = convert_to_target_values(t_options, self.modelled_type, self.shift)
 
         # Check degrees of freedom
-        if self.check_degrees_of_freedom:
+        if self.check_dof:
             self.check_degrees_of_freedom(c_options)
 
         return c_options
-
 
     def check_degrees_of_freedom(self, options: list[list[OptionTarget]]) -> None: # noqa: B027
         pass

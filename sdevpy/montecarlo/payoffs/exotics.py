@@ -8,23 +8,26 @@ from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_opt
 
 class WorstOfBarrier(Payoff):
     """ Not doing by algebra yet. Will need implementation of barrier monitoring first. """
-    def __init__(self, names, strike, optiontype, barrier):
+    def __init__(self, names, date, strike, optiontype, barrier):
         super().__init__()
         self.names = names
         self.strike = strike
         self.optiontype = string_to_optiontype(optiontype)
         self.barrier = barrier
+        self.expiry = date
+        self.expiry_idx = None
 
     def evaluate(self, mkt_state):
         paths = mkt_state.event_paths
         spot_all = self.paths_for_all(paths)
 
         # Monitor barrier
-        min_path = spot_all.min(axis=2)  # Worst asset at each time
-        knocked = (min_path < self.barrier).any(axis=1)  # Knocked indicator
+        min_path = spot_all.min(axis=2) # Worst asset at each time
+        knocked = (min_path < self.barrier).any(axis=1) # Knocked indicator
 
         # Payoff at expiry
-        spot_all_at_exp = spot_all[:, -1, :]
+        spot_all_at_exp = spot_all[:, self.expiry_idx, :]
+        # spot_all_at_exp = spot_all[:, -1, :]
         worst_at_exp = spot_all_at_exp.min(axis=1)
         payoff = vanilla_option(worst_at_exp, self.strike, self.optiontype)
 
@@ -36,27 +39,26 @@ class WorstOfBarrier(Payoff):
     def set_nameindexes(self, names):
         self.set_multiindexes(names)
 
-    # ToDo: implement?
-    # def set_valuation_date(self, valdate):
-    #     for subpayoff in self.subpayoffs:
-    #         subpayoff.set_valuation_date(valdate)
+    def set_valuation_date(self, valdate):
+        if self.expiry < valdate:
+            raise RuntimeError("Past trade found")
 
-    #     # Gather event dates from subpayoofs
-    #     self.eventdates = list_payoff_eventdates(self.subpayoffs)
+        self.eventdates = [self.expiry]
 
-    # ToDo: implement?
-    # def set_eventindexes(self, evendates):
-    #     for subpayoff in self.subpayoffs:
-    #         subpayoff.set_eventindexes(evendates)
+    def set_eventindexes(self, eventdates):
+        matches = np.where(eventdates == self.expiry)[0]
+        if len(matches) == 0:
+            raise ValueError(f"Date {self.expiry} not found in event date grid")
+        self.expiry_idx = matches[0]
 
 
-def AsianOption(name, strike, optiontype, start, end, freq="1D", cdr="USD"):
+def make_asian_option(name, strike, optiontype, start, end, freq="1D", cdr="USD"):
     index = Average(name, start, end, freq, cdr)
     payoff = VanillaOptionPayoff(index, strike, optiontype)
     return payoff
 
 
-def BasketOption(names, weights, strike, optiontype, expiry):
+def make_basket_option(names, weights, strike, optiontype, expiry):
     spots = [Terminal(name, expiry) for name in names]
     basket = Basket(spots, weights)
     payoff = VanillaOptionPayoff(basket, strike, optiontype)

@@ -3,7 +3,7 @@ import datetime as dt
 import logging
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.payoffs.vanillas import VanillaOption
-from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, BasketOption, AsianOption
+from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option, make_asian_option
 from sdevpy.montecarlo.mcpricer import price_book
 from sdevpy.models.localvol_factory import get_local_vols
 from sdevpy.analytics import black
@@ -17,7 +17,6 @@ logger.setLevel(logging.DEBUG)
 
 
 #################### TODO #########################################################################
-# * Check what's up with WorstOfBarrier and the missing implementations
 # * Make notebook with varswap and volswap trades pricing in MC from scratch (market data)
     ## Varswap ##
     # cash-flow = N_vega / (2 * strike) * (variance - strike^2)
@@ -25,12 +24,7 @@ logger.setLevel(logging.DEBUG)
     # vol = sqrt(variance)
     # cashflow = N_vega * (vol - strike)
 
-# * Implement no-arb time parametric IVs (mixture of lognormals, SVI)
-# * Using SVI may have the advantage that we could define a global parallel shift without
-#   recalibrating?
 # * Implementing exact Dupire through python vectorization and try parallelization
-# * Implement DE with parallelization on the population
-
 # * Check vanilla accuracy against LV calib
 # * Implement clever greeks (vega through 1D recalib, save BM/interpolation)
 
@@ -58,17 +52,17 @@ if __name__ == "__main__":
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Basket option
-    index = BasketOption(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry)
+    index = make_basket_option(['XYZ', 'KLM'], [0.5, 0.1], 100.0, 'Call', expiry)
     cf = cfl.Cashflow(index, expiry)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Asian option
-    index = AsianOption('ABC', 100.0, 'Call', valdate, expiry, freq='5D')
+    index = make_asian_option('ABC', 100.0, 'Call', valdate, expiry, freq='5D')
     cf = cfl.Cashflow(index, expiry)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Worst-of barrier
-    index = WorstOfBarrier(['ABC', 'XYZ'], 100.0, 'Call', 35.0)
+    index = WorstOfBarrier(['ABC', 'XYZ'], expiry, 100.0, 'Call', 35.0)
     cf = cfl.Cashflow(index, expiry)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 

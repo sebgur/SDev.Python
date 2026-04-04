@@ -1,4 +1,5 @@
 import numpy as np
+import datetime as dt
 from abc import ABC, abstractmethod
 from sdevpy.tools.scalendar import make_schedule
 from sdevpy.tools.utils import hash
@@ -189,7 +190,6 @@ class Constant(Payoff):
     def evaluate(self, mkt_state):
         paths = mkt_state.event_paths
         payoff = np.full(paths.shape[0], self.value)
-        # print(f"Constant: {payoff.shape}")
         return payoff
 
 
@@ -401,20 +401,34 @@ class Basket(Payoff):
 
 
 class WorstOf(Payoff):
-    def __init__(self, names):
+    def __init__(self, names: list[str], date: dt.datetime):
         super().__init__()
         self.names = names
+        self.expiry = date
+        self.expiry_idx = None
 
     def evaluate(self, mkt_state):
         paths = mkt_state.event_paths
         spot_all = self.paths_for_all(paths)
-        spot_all_at_exp = spot_all[:, -1, :]
+        spot_all_at_exp = spot_all[:, self.expiry_idx, :]
         worst_at_exp = spot_all_at_exp.min(axis=1)
         payoff = worst_at_exp
         return payoff
 
     def set_nameindexes(self, names):
         self.set_multiindexes(names)
+
+    def set_valuation_date(self, valdate):
+        if self.expiry < valdate:
+            raise ValueError("Past trade found")
+
+        self.eventdates = [self.expiry]
+
+    def set_eventindexes(self, eventdates):
+        matches = np.where(eventdates == self.expiry)[0]
+        if len(matches) == 0:
+            raise ValueError(f"Date {self.expiry} not found in event date grid")
+        self.expiry_idx = matches[0]
 
 
 class Variance(Payoff):
@@ -510,7 +524,6 @@ class Add(Payoff):
 
     def evaluate(self, mkt_state):
         payoff = self.left.evaluate(mkt_state) + self.right.evaluate(mkt_state)
-        # print(f"Add: {payoff.shape}")
         return payoff
 
     def set_nameindexes(self, names):
@@ -538,7 +551,6 @@ class Sub(Payoff):
 
     def evaluate(self, mkt_state):
         payoff = self.left.evaluate(mkt_state) - self.right.evaluate(mkt_state)
-        # print(f"Sub: {payoff.shape}")
         return payoff
 
     def set_nameindexes(self, names):
@@ -630,9 +642,6 @@ class Neg(Payoff):
 
     def set_eventindexes(self, eventdates):
         self.old.set_eventindexes(eventdates)
-
-
-#### Event Dates ##################################################################################
 
 
 if __name__ == "__main__":
