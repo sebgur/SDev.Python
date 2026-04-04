@@ -463,7 +463,7 @@ class Variance(Payoff):
     def set_nameindexes(self, names):
         try:
             self.name_idx = names.index(self.name)
-        except Exception as e:
+        except ValueError as e:
             self.name_idx = None
             raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 

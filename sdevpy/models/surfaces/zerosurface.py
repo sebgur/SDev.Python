@@ -147,7 +147,7 @@ class ZeroSurface(ABC):
                 case OptionQuoteType.ShiftedLogNormalVol:
                     price = black.price(t, k + self.shift, is_call, f + self.shift, value)
                 case _:
-                    raise TypeError("Invalid modelled type in zero-surface: " + self.modelled_type)
+                    raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
 
             return black.implied_vol(t, k, is_call, f, price)
 
@@ -166,7 +166,7 @@ class ZeroSurface(ABC):
                 case OptionQuoteType.ShiftedLogNormalVol:
                     price = black.price(t, k + self.shift, is_call, f + self.shift, value)
                 case _:
-                    raise TypeError("Invalid modelled type in zero-surface: " + self.modelled_type)
+                    raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
 
             return bachelier.implied_vol(t, k, is_call, f, price)
 
@@ -183,19 +183,13 @@ class ZeroSurface(ABC):
                 case OptionQuoteType.LogNormalVol:
                     price = black.price(t, k, is_call, f, value)
                 case OptionQuoteType.NormalVol:
-                    price = bachelier.Price(t, k, is_call, f, value)
+                    price = bachelier.price(t, k, is_call, f, value)
                 case _:
                     raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
 
             return black.implied_vol(t, k + self.shift, is_call, f + self.shift, price)
 
     ############### Calibration ###################################################################
-
-    # def calibrate1(self, date: dt.datetime, mkt_surface: OptionSurface) -> None:
-    #     """ Calibrate surface """
-    #     self.baseDate = date
-    #     input_options, expiries = mkt_surface.calibration_targets()
-    #     self.calibrate(self.baseDate, input_options)
 
     def calibrate(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
         """ Calibrate surface """
