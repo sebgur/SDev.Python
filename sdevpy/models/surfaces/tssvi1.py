@@ -45,7 +45,7 @@ class TsSvi1(TermStructureParametricZeroSurface):
             raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
 
         if delta + 1.0 < self.eps:
-            raise ValueError("Delta should be stricktly higher than -1 in TsSvi1")
+            raise ValueError("Delta should be strictly higher than -1 in TsSvi1")
 
         # Calculate new variables
         one_minus_rho2 = 1.0 - r * r
@@ -82,6 +82,7 @@ class TsSvi1(TermStructureParametricZeroSurface):
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
 
@@ -101,18 +102,57 @@ if __name__ == "__main__":
 
     # Set up the model
     surface = TsSvi1()
-    params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+    params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.9, 0.1, 0.1, 0.1, 0.1]
     surface.calibrated_parameters = params
 
-    t = expiry_grid
-    k = strike_surface
-    f = fwds
+    # Reformat inputs to flat vectors
+    t, k, f, s = [], [], [], []
+    for i in range(len(expiries)):
+        expiry = expiry_grid[i]
+        fwd = fwds[i]
+        strikes = strike_surface[i]
+        vols = vol_surface[i]
+        for strike, vol in zip(strikes, vols, strict=True):
+            t.append(expiry)
+            f.append(fwd)
+            k.append(strike)
+            s.append(vol)
+
+    t = np.asarray(t)
+    k = np.asarray(k)
+    f = np.asarray(f)
     # t = np.asarray([0.5, 1.5, 2.5])
     # k = np.asarray([90, 100, 110])
     # f = np.asarray([95, 105, 115])
+    # print(f"t-shape: {t.shape}")
+    # print(f"k-shape: {k.shape}")
+    # print(f"f-shape: {f.shape}")
     is_call = True
-    z = surface.calculate(t, k, is_call, f)
+    z = []
+    for t_, k_, f_ in zip(t, k, f, strict=True):
+        try:
+            print(f"t:{t_}, k:{k_}, f:{f_}")
+            mv = surface.calculate(t_, k_, is_call, f_)
+            z.append(mv)
+        except Exception as e:
+            print(f"Error: {str(e)}")
+
+    # z = surface.calculate(t, k, is_call, f)
+    z = np.asarray(z)
     print(f"Result shape: {z.shape}")
-    print(f"Result {z}")
+    # print(f"Result {z}")
+
+    # Reshape results per maturity
+    model_vols = []
+    counter = 0
+    for _ in expiries:
+        vols = []
+        for _ in strikes:
+            vols.append(z[counter])
+            counter += 1
+        model_vols.append(vols)
 
     # Estimate model on points and calculate RMSE, plot comparison
+    plt.scatter(strike_surface[0], vol_surface[0], label='market', color='black')
+    plt.scatter(strike_surface[0], model_vols[0], label='model', color='green')
+    plt.show()
