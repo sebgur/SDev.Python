@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Code Review — sdevpy</title>
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --text:      #c9d1d9;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --orange:    #f0883e;
+      --red:       #f85149;
+      --purple:    #bc8cff;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+
+    header { margin-bottom: 2.5rem; padding-bottom: 1.4rem; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.75rem; color: var(--accent); letter-spacing: -.02em; }
+    header p  { color: var(--muted); margin-top: .35rem; font-size: .9rem; }
+
+    .grade-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+    .grade-letter {
+      font-size: 4.2rem;
+      font-weight: 800;
+      color: var(--yellow);
+      line-height: 1;
+      min-width: 3.8rem;
+      text-align: center;
+    }
+    .grade-details h2 { font-size: 1.05rem; margin-bottom: .35rem; }
+    .grade-details p  { color: var(--muted); font-size: .88rem; }
+
+    .scorecard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+    .scorecard table { width: 100%; border-collapse: collapse; }
+    .scorecard thead th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      padding: .65rem 1.2rem;
+      text-align: left;
+    }
+    .scorecard tbody tr { border-top: 1px solid var(--border); }
+    .scorecard tbody tr:hover { background: var(--surface2); }
+    .scorecard td { padding: .7rem 1.2rem; font-size: .88rem; vertical-align: middle; }
+    .scorecard td:nth-child(2) { font-weight: 700; white-space: nowrap; }
+    .bar-wrap  { display: flex; align-items: center; gap: .55rem; }
+    .bar       { height: 6px; border-radius: 3px; background: var(--border); flex: 1; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 3px; }
+    .score-lbl { font-size: .78rem; color: var(--muted); white-space: nowrap; min-width: 4.5rem; }
+
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1.1rem;
+      padding-bottom: .45rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .progress-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      padding: .9rem 1.2rem;
+      margin-bottom: 1.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .progress-banner strong { color: var(--text); }
+
+    .issue {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 8px;
+      padding: 1.15rem 1.4rem;
+      margin-bottom: 1.1rem;
+    }
+    .issue.critical { border-left-color: var(--red);    }
+    .issue.high     { border-left-color: var(--orange); }
+    .issue.medium   { border-left-color: var(--yellow); }
+
+    .issue-header {
+      display: flex;
+      align-items: flex-start;
+      gap: .7rem;
+      margin-bottom: .7rem;
+      flex-wrap: wrap;
+    }
+    .issue-num {
+      font-size: .72rem; font-weight: 700;
+      background: #21262d; border-radius: 4px;
+      padding: .18rem .5rem; color: var(--muted);
+      white-space: nowrap; margin-top: .15rem;
+    }
+    .issue-title { font-weight: 600; font-size: .98rem; flex: 1; min-width: 0; }
+    .badge {
+      font-size: .7rem; font-weight: 700; padding: .18rem .55rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: .05em;
+      white-space: nowrap; margin-top: .1rem;
+    }
+    .badge.critical { background: #3d1515; color: var(--red);    }
+    .badge.high     { background: #2d1e0f; color: var(--orange); }
+    .badge.medium   { background: #2c2005; color: var(--yellow); }
+
+    .loc {
+      display: inline-block;
+      font-size: .76rem; color: var(--accent);
+      background: #0c2a4a; border: 1px solid #1f4068;
+      border-radius: 4px; padding: .12rem .48rem;
+      margin-bottom: .55rem;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    }
+
+    .issue p { color: var(--muted); font-size: .88rem; margin-bottom: .45rem; }
+    .issue p:last-child { margin-bottom: 0; }
+    .issue strong { color: var(--text); }
+
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .83em;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1em .38em;
+      color: var(--purple);
+    }
+    pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .9rem 1.1rem;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .82em;
+      line-height: 1.65;
+      margin: .55rem 0 .2rem;
+      color: #e6edf3;
+    }
+    .c  { color: #8b949e; }
+    .kw { color: #ff7b72; }
+    .st { color: #a5d6ff; }
+    .fn { color: #d2a8ff; }
+    .ok { color: #3fb950; }
+    .rm { color: #f85149; }
+
+    footer { margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; color: var(--muted); font-size: .8rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Code Review — <code>sdevpy</code></h1>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-04-04 (full scan, 6th review)</p>
+  </header>
+
+  <div class="grade-card">
+    <div class="grade-letter">C+</div>
+    <div class="grade-details">
+      <h2>Five more critical bugs resolved — same attribute/method shadow pattern reintroduced</h2>
+      <p>
+        All five remaining critical and high-severity issues from the previous review are now fixed:
+        <code>convert_target</code> is correct, <code>bachelier.implied_vol</code> has the right
+        arguments, the ShiftedLogNormal forward shift is applied consistently, the wrong error
+        variable is fixed, and <code>expiry_times</code> no longer shadows a method.
+        The <code>convert_option</code> implementation is now solid.
+        However, the exact same attribute-vs-method shadowing bug has reappeared with
+        <code>check_degrees_of_freedom</code>, and three debug <code>print()</code> calls were
+        left in <code>tssvi1.py</code>. One critical calibration blocker remains.
+      </p>
+    </div>
+  </div>
+
+  <div class="progress-banner">
+    <strong>Fixed since last review (5 of 10):</strong>
+    <code>convert_target()</code> now correctly passes <code>market_input=0.0</code> &nbsp;·&nbsp;
+    <code>bachelier.implied_vol()</code> now receives all 5 arguments &nbsp;·&nbsp;
+    ShiftedLogNormal FROM-conversion now shifts forward correctly &nbsp;·&nbsp;
+    Error message in to-type conversion now references <code>to_type</code> &nbsp;·&nbsp;
+    <code>expiry_times</code> method/attribute conflict resolved
+  </div>
+
+  <div class="scorecard">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th><th>Score</th><th style="width:38%">Rating</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Architecture</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Clean payoff algebra, solid ABC hierarchy, <code>TermStructureParametricZeroSurface</code> chain is well-structured</td>
+        </tr>
+        <tr>
+          <td>Correctness</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Conversion math is now correct; <code>check_degrees_of_freedom</code> shadow crashes every calibration call</td>
+        </tr>
+        <tr>
+          <td>Error Handling</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Logging and exception narrowing are consistently applied; empty-expiry sublists still silently propagated</td>
+        </tr>
+        <tr>
+          <td>Testing</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good MC, interpolation, timegrid, utils tests; calibration, TsSvi1, analytics, PDE still untested</td>
+        </tr>
+        <tr>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Debug prints left in <code>tssvi1.py</code>; <code>TEST_VOL</code> still not injectable; wrong exception type in one place</td>
+        </tr>
+        <tr>
+          <td>Maintainability</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good module layout; recurring attribute/method naming conflict needs a team convention to prevent recurrence</td>
+        </tr>
+        <tr>
+          <td>Type Safety</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Type hints added to tssvi1 and optionsurface; <code>formula</code> return hint says <code>float</code> but returns <code>ndarray</code></td>
+        </tr>
+        <tr>
+          <td>Documentation</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good docstrings in zerosurface and optionsurface; payoff classes, tssvi1, and analytics still sparse</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Top 10 Issues</div>
+
+  <!-- 1 -->
+  <div class="issue critical">
+    <div class="issue-header">
+      <span class="issue-num">#1</span>
+      <span class="issue-title"><code>check_degrees_of_freedom</code> boolean attribute shadows the method of the same name — <code>TypeError</code> on every calibration call</span>
+      <span class="badge critical">Critical</span>
+    </div>
+    <span class="loc">sdevpy/models/surfaces/zerosurface.py · lines 24, 218–219, 224</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>__init__</code> sets
+      <code>self.check_degrees_of_freedom = True</code> (line 24), an instance attribute that
+      shadows the method <code>def check_degrees_of_freedom(self, options)</code> defined at
+      line 224. In <code>check_consistency()</code> lines 218–219:
+    </p>
+    <pre><span class="kw">if</span> self.check_degrees_of_freedom:        <span class="c"># evaluates the boolean True → truthy</span>
+    self.check_degrees_of_freedom(c_options) <span class="c"># calls True(...) → TypeError!</span></pre>
+    <p>
+      Python raises <code>TypeError: 'bool' object is not callable</code> on every calibration
+      call where <code>check_degrees_of_freedom</code> is <code>True</code>.
+      This is the same attribute/method shadowing pattern that previously affected
+      <code>expiry_times</code>.
+    </p>
+    <p><strong>Fix:</strong> Use a distinct name for the flag and the method:</p>
+    <pre><span class="c"># In __init__:</span>
+<span class="rm">self.check_degrees_of_freedom = True</span>
+<span class="ok">self.do_check_degrees_of_freedom = True</span>
+
+<span class="c"># In check_consistency():</span>
+<span class="rm">if self.check_degrees_of_freedom:</span>
+<span class="rm">    self.check_degrees_of_freedom(c_options)</span>
+<span class="ok">if self.do_check_degrees_of_freedom:</span>
+<span class="ok">    self.check_degrees_of_freedom(c_options)</span></pre>
+  </div>
+
+  <!-- 2 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#2</span>
+      <span class="issue-title">Debug <code>print()</code> statements left in <code>TsSvi1.formula()</code> and <code>formula_parameters()</code></span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · lines 23–25, 67</span>
+    <p>
+      <strong>Why it's bad:</strong> Four <code>print()</code> calls fire on every option
+      evaluation. For a vol surface queried across a grid of strikes and expiries — or repeatedly
+      during calibration — this floods stdout with thousands of lines, degrades performance,
+      and breaks any pipeline that parses or captures output.
+      Line 67 also prints the internal <code>svi_params</code> array that is immediately
+      discarded (the function returns the list on line 68, making the array redundant).
+    </p>
+    <p><strong>Fix:</strong> Remove all four lines. If diagnostic output is needed during
+       development, replace with <code>logging.debug()</code>:</p>
+    <pre><span class="rm">print(f"time: {t}")</span>
+<span class="rm">print(f"x: {log_m}")</span>
+<span class="rm">print(f"params: {params}")</span>
+<span class="c"># and</span>
+<span class="rm">svi_params = np.asarray([a, b, r, m, s])</span>
+<span class="rm">print(f"shape inside: {svi_params.shape}")</span></pre>
+  </div>
+
+  <!-- 3 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#3</span>
+      <span class="issue-title"><code>WorstOfBarrier</code> missing <code>set_valuation_date</code> and <code>set_eventindexes</code></span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 39–51</span>
+    <p>
+      <strong>Why it's bad:</strong> Both lifecycle methods are commented out with
+      <code># ToDo: implement?</code>. The base-class no-ops fire instead, so
+      <code>self.eventdates</code> is never populated and <code>evaluate()</code> operates on
+      whatever path layout happens to be present. The expiry is hardcoded to <code>[:, -1, :]</code>
+      (last event index), which is wrong whenever the book contains trades with later maturities.
+      This produces silently wrong prices with no error.
+    </p>
+    <p>
+      <strong>Fix:</strong> Implement both methods following the <code>Terminal</code> pattern:
+      accept an expiry date, register it in <code>set_valuation_date</code>, resolve the grid
+      index in <code>set_eventindexes</code>, and use <code>self.expiry_idx</code> in
+      <code>evaluate()</code>.
+    </p>
+  </div>
+
+  <!-- 4 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#4</span>
+      <span class="issue-title"><code>WorstOf.evaluate()</code> hardcodes the last event index — wrong for non-terminal expiries</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 411</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>spot_all[:, -1, :]</code> always picks the last
+      position in the event grid, which only coincides with the trade's expiry when it is the
+      longest-dated trade in the book. In a multi-trade portfolio any shorter-dated
+      <code>WorstOf</code> is evaluated at the wrong date, silently producing wrong PVs.
+      <code>WorstOf</code> also has no <code>set_valuation_date</code> or
+      <code>set_eventindexes</code>, so there is no mechanism to correct this.
+    </p>
+    <p><strong>Fix:</strong> Accept an expiry, resolve the index via <code>set_eventindexes</code>,
+    and use it:</p>
+    <pre>spot_all_at_exp = spot_all[:, <span class="rm">-1</span><span class="ok">self.expiry_idx</span>, :]</pre>
+  </div>
+
+  <!-- 5 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#5</span>
+      <span class="issue-title">Flat-vol sigma fixed at <code>TEST_VOL = 0.20</code> — not injectable via constructor</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/assetmodels.py · lines 5, 25</span>
+    <p>
+      <strong>Why it's bad:</strong> When <code>use_lv=False</code> (the default),
+      every asset is always simulated at 20% flat volatility regardless of market data.
+      The value is now a named constant (<code>TEST_VOL</code>), which signals it is for
+      testing only — but it is still hardwired with no <code>kwargs</code> hook, so any
+      production use of the constant-vol path yields wrong prices with no warning.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">self.sigma = np.asarray([TEST_VOL for _ in range(self.n_factors)])</span>
+<span class="ok">sigma = kwargs.get('sigma', [TEST_VOL] * self.n_factors)
+self.sigma = np.asarray(sigma)</span></pre>
+  </div>
+
+  <!-- 6 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#6</span>
+      <span class="issue-title">Empty expiry sublists silently appended — downstream <code>x[0]</code> raises <code>IndexError</code></span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/models/surfaces/optionsurface.py · lines 162–165</span>
+    <p>
+      <strong>Why it's bad:</strong> When all targets for an expiry fail conversion,
+      <code>convert_to_target_values()</code> logs a warning but still appends an empty list
+      to <code>conv_options</code>. Back in <code>ZeroSurface.calibrate()</code> line 200:
+      <code>self.expiry_times = [x[0].expiry for x in target_options]</code> — the
+      <code>x[0]</code> access on an empty list raises <code>IndexError</code>, crashing
+      calibration with an unhelpful traceback that points to the wrong location.
+    </p>
+    <p><strong>Fix:</strong> Filter out empty slices before returning, or raise immediately:</p>
+    <pre><span class="rm">        conv_options.append(conv_at_exp)</span>
+<span class="ok">        if len(conv_at_exp) > 0:
+            conv_options.append(conv_at_exp)</span></pre>
+  </div>
+
+  <!-- 7 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#7</span>
+      <span class="issue-title"><code>RuntimeError</code> used for wrong parameter count — should be <code>ValueError</code></span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · line 73</span>
+    <p>
+      <strong>Why it's bad:</strong> Python convention is that <code>ValueError</code> signals
+      a value (including container size) that is structurally valid but wrong in content.
+      <code>RuntimeError</code> is a last resort for errors that don't fit elsewhere.
+      Using the wrong exception type means callers that catch <code>ValueError</code> for
+      bad-input recovery will silently miss this failure.
+      The codebase already uses <code>ValueError</code> correctly for size checks elsewhere
+      (e.g. <code>svi.py</code>).
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">raise RuntimeError("The number of parameters should be 11 for TsSvi1")</span>
+<span class="ok">raise ValueError(f"Expected 11 parameters for TsSvi1, got {len(x)}")</span></pre>
+  </div>
+
+  <!-- 8 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#8</span>
+      <span class="issue-title"><code>formula()</code> return type hint says <code>float</code> but actually returns <code>ndarray</code></span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · line 20 &nbsp;·&nbsp; sdevpy/models/surfaces/zerosurface.py · line 261</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>formula()</code> receives <code>k: npt.ArrayLike</code>
+      and returns <code>svi_formula(t, log_m, params)</code>, which produces a NumPy array
+      when <code>k</code> is an array. The declared return type <code>-&gt; float</code> is
+      wrong, misleading IDEs and static analysis tools into thinking a scalar is returned.
+      The same incorrect hint is inherited from <code>ParametricZeroSurface.formula</code>
+      in <code>zerosurface.py</code>.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
+            params: list[float]) -> float:</span>
+<span class="ok">def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
+            params: list[float]) -> npt.ArrayLike:</span></pre>
+  </div>
+
+  <!-- 9 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#9</span>
+      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP classes exposed in the public API</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 66–89</span>
+    <p>
+      <strong>Why it's bad:</strong> Both classes are marked <em>"Warning: work in progress"</em>,
+      implement only <code>evaluate()</code>, and skip all lifecycle hooks
+      (<code>set_nameindexes</code>, <code>set_valuation_date</code>, <code>set_eventindexes</code>).
+      <code>Maximum</code> sets <code>self.eventdates</code> at construction time — the wrong
+      lifecycle phase. <code>BarrierDown</code> takes a raw integer index, bypassing the
+      name-resolution system entirely. Any caller that uses these classes will get wrong results
+      or an <code>IndexError</code> with no indication of why.
+    </p>
+    <p>
+      <strong>Fix:</strong> Either complete the implementation or guard with
+      <code>raise NotImplementedError</code> in <code>evaluate()</code> so failures are explicit.
+    </p>
+  </div>
+
+  <!-- 10 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#10</span>
+      <span class="issue-title">No tests for calibration, <code>TsSvi1</code>, analytics, or PDE — new code is entirely unverified</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/tests/ · codebase-wide</span>
+    <p>
+      <strong>Why it's bad:</strong> The newly implemented <code>convert_option()</code>,
+      <code>convert_target()</code>, and <code>TsSvi1.formula_parameters()</code> have no tests.
+      Issue #1 above (the <code>check_degrees_of_freedom</code> shadow) would have been caught
+      immediately by a basic calibration smoke test. The same applies to the recurring
+      attribute/method naming bugs — a test suite that exercises the calibration path would
+      surface these within seconds of the bad commit.
+    </p>
+    <p>
+      <strong>Fix:</strong> Add at minimum: (1) a round-trip vol conversion test in
+      <code>test_optionsurface.py</code>; (2) a <code>TsSvi1</code> forward-evaluation test
+      checking output shape and positivity; (3) a smoke test that calls
+      <code>ZeroSurface.check_consistency()</code> to catch the attribute/method shadow class
+      of bugs before they reach production.
+    </p>
+  </div>
+
+  <footer>
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-04-04 (6th review)
+  </footer>
+</div>
+</body>
+</html>

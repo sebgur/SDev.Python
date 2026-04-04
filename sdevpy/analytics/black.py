@@ -3,7 +3,7 @@ import numpy as np
 import scipy.stats
 from scipy.optimize import minimize_scalar
 from sdevpy.thirdparty.py_vollib.black import implied_volatility as jaeckel
-from sdevpy import settings
+# from sdevpy import settings
 
 N = scipy.stats.norm.cdf
 

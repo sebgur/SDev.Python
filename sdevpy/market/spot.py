@@ -5,7 +5,7 @@ from pathlib import Path
 from sdevpy.tools import dates
 
 
-def get_spots(names, valdate, **kwargs):
+def get_spots(names: list[str], valdate: dt.datetime, **kwargs):
     spots = []
     for name in names:
         file = data_file(name, valdate, **kwargs)
@@ -16,18 +16,20 @@ def get_spots(names, valdate, **kwargs):
 
 
 class SpotData:
-    def __init__(self, valdate, value, **kwargs):
+    def __init__(self, valdate: dt.datetime, value: float, **kwargs):
         self.valdate = valdate
         self.snapdate = kwargs.get('snapdate', self.valdate)
         self.name = kwargs.get('name', '')
         self.value = value
 
-    def dump(self, file, indent=2):
+    def dump(self, file: str, indent: int=2) -> None:
+        """ Dump object to json file """
         data = self.dump_data()
         with open(file, 'w') as f:
             json.dump(data, f, indent=indent)
 
-    def dump_data(self):
+    def dump_data(self) -> dict:
+        """ Dump object to dictionary """
         data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 'value': self.value}
         return data

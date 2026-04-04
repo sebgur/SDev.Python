@@ -6,8 +6,8 @@ class CorrelationEngine:
         self.L = np.linalg.cholesky(corr_matrix)
 
     def correlate_normals(self, n_paths, n_factors):
-        Z = np.random.normal(size=(n_paths, n_factors))
-        return Z @ self.L.T
+        z = np.random.normal(size=(n_paths, n_factors))
+        return z @ self.L.T
 
     def correlate_paths(self, paths):
         return paths @ self.L.T

@@ -23,7 +23,7 @@ class MultiHeadAttention(nn.Module):
     def forward(self, x):
         b, num_tokens, d_in = x.shape
         # As in `CausalAttention`, for inputs where `num_tokens` exceeds `context_length`,
-        # this will result in errors in the mask creation further below. 
+        # this will result in errors in the mask creation further below.
         # In practice, this is not a problem since the LLM (chapters 4-7) ensures that inputs
         # do not exceed `context_length` before reaching this forward method.
         keys = self.W_key(x) # Shape: (b, num_tokens, d_out)
@@ -32,7 +32,7 @@ class MultiHeadAttention(nn.Module):
 
         # We implicitly split the matrix by adding a `num_heads` dimension
         # Unroll last dim: (b, num_tokens, d_out) -> (b, num_tokens, num_heads, head_dim)
-        keys = keys.view(b, num_tokens, self.num_heads, self.head_dim) 
+        keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
         values = values.view(b, num_tokens, self.num_heads, self.head_dim)
         queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
 
@@ -54,7 +54,7 @@ class MultiHeadAttention(nn.Module):
         attn_weights = self.dropout(attn_weights)
 
         # Shape: (b, num_tokens, num_heads, head_dim)
-        context_vec = (attn_weights @ values).transpose(1, 2) 
+        context_vec = (attn_weights @ values).transpose(1, 2)
 
         # Combine heads, where self.d_out = self.num_heads * self.head_dim
         context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)

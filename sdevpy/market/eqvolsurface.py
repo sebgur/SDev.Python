@@ -6,7 +6,7 @@ from sdevpy.tools import dates
 
 
 class EqVolSurfaceData:
-    def __init__(self, valdate, sections, **kwargs):
+    def __init__(self, valdate: dt.datetime, sections, **kwargs):
         self.valdate = valdate
         self.name = kwargs.get('name', '')
         self.snapdate = kwargs.get('snapdate', self.valdate)
@@ -29,7 +29,7 @@ class EqVolSurfaceData:
         else:
             raise RuntimeError(f"Strike input type not supported yet: {self.strike_input_type}")
 
-    def get_strikes(self, type='absolute'):
+    def get_strikes(self, type: str='absolute'):
         req_type = type.lower()
         if req_type == 'absolute':
             return self.abs_strikes

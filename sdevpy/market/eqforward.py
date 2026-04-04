@@ -85,7 +85,7 @@ class EqForwardCurve:
         # Calibrate
         if self.interp_var == 'yield':
             if yieldcurve is None:
-                raise RuntimeError("Yield curve must be provided for dividend yield-based EQ forward curve construction")
+                raise RuntimeError("Yield curve must be provided for dividend yield-based forward curve construction")
 
             int_dates, calc_fwds = np.asarray(self.dates), np.asarray(self.fwds)
             int_times = timegrids.model_time(self.valdate, int_dates)

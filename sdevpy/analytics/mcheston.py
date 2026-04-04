@@ -5,7 +5,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as sp
-# from analytics.sabr import calculate_alpha
 from sdevpy.tools.timegrids import SimpleTimeGridBuilder
 from sdevpy.tools import timer
 

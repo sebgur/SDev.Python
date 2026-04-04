@@ -1,6 +1,5 @@
 """ Custom learning schedules """
 import tensorflow as tf
-import math
 from sdevpy.tools.constants import TWO_PI
 
 # Custom learning rate scheduler, exponentially decreases between given values

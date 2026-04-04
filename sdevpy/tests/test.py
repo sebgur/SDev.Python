@@ -3,7 +3,6 @@ import datetime as dt
 import pandas as pd
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.mcpricer import price_book
-from sdevpy.tools import timegrids
 from sdevpy.tools import book as bk
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.tools.scalendar import make_schedule

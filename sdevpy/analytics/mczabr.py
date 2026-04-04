@@ -173,7 +173,7 @@ if __name__ == "__main__":
         mc_iv4 = []
         mc_iv5 = []
         sb_iv = []
-        for j, sstrike in enumerate(SSTRIKES[a]):
+        for j, _ in enumerate(SSTRIKES[a]):
             mc_iv1.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD,
                                             MC_PRICES1[a, j]))
             mc_iv2.append(black.implied_vol(expiry, SSTRIKES[a, j], IS_CALL, SFWD,

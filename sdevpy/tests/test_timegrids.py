@@ -18,8 +18,8 @@ def test_timegridbuilder_dates():
 
 def test_timegridbuilder_times():
     time_grid_builder = tmg.SimpleTimeGridBuilder(points_per_year=3)
-    EXPIRIES = np.asarray([1.4, 0.125, 0.5]).reshape(-1, 1)
-    time_grid_builder.add_grid(EXPIRIES)
+    expiries = np.asarray([1.4, 0.125, 0.5]).reshape(-1, 1)
+    time_grid_builder.add_grid(expiries)
     time_grid_builder.refine()
     time_grid_builder.clean()
     test = np.asarray(time_grid_builder.time_grid_)

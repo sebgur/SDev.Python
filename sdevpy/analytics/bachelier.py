@@ -13,6 +13,7 @@ def price(expiry, strike, is_call, fwd, vol):
 
 
 def price_straddles(expiries, strikes, fwd, vols):
+    """ Straddle price under the Bachelier model """
     expiries_ = np.asarray(expiries).reshape(-1, 1)
     prices = []
     for i, expiry in enumerate(expiries_):

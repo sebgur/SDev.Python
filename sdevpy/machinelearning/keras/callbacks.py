@@ -1,12 +1,10 @@
 """ Custom callbacks for Keras training """
-# import numpy as np
 import keras
 from sklearn.preprocessing import MinMaxScaler
-# from sdevpy.maths.metrics import rmse
 
 
 class SDevPyCallback(keras.callbacks.Callback):
-    """ SDevPy's base class for callbacks. Compared to Keras's base, it also keeps track of 
+    """ SDevPy's base class for callbacks. Compared to Keras's base, it also keeps track of
         the learning rate and displays it at each period """
     def __init__(self, epoch_sampling=1, optimizer=None, loss_function=None, x_train=None, y_train=None):
         keras.callbacks.Callback.__init__(self)

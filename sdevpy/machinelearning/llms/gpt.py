@@ -157,7 +157,7 @@ def download_gpt2(model_size, model_dir):
 
 def load_gpt2(model_dir):
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
-    settings = json.load(open(os.path.join(model_dir, "hparams.json"), "r", encoding="utf-8"))
+    settings = json.load(open(os.path.join(model_dir, "hparams.json"), encoding="utf-8"))
     params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
 
     return settings, params

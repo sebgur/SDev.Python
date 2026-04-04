@@ -2,7 +2,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as sp
-# from analytics.sabr import calculate_alpha
 from sdevpy.tools.timegrids import SimpleTimeGridBuilder
 from sdevpy.tools import timer
 
@@ -156,7 +155,7 @@ if __name__ == "__main__":
     mc_ivs = []
     for a, expiry in enumerate(EXPIRIES):
         mc_iv = []
-        for j, sstrike in enumerate(SSTRIKES[a]):
+        for j, _ in enumerate(SSTRIKES[a]):
             # mc_iv.append(black.implied_vol(expiry, sstrike, IS_CALL, SFWD, MC_PRICES[a, j]))
             mc_iv.append(bachelier.implied_vol(expiry, STRIKES[a, j], IS_CALL, FWD,
                                                MC_PRICES[a, j]))

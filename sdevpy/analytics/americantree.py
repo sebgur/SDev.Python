@@ -94,11 +94,10 @@ if __name__ == "__main__":
     if not payoff.is_american:
         plt.plot(cf_t, cf_p, label='Vanilla CF Price')
     # # plt.plot(steps_range, trinomial_prices, label='Trinomial Tree Price')
-    # plt.hlines(bs_price, steps_range[0], steps_range[-1], colors='r', linestyles='dashed', label='Black-Scholes Price')
+    # plt.hlines(bs_price, steps_range[0], steps_range[-1], colors='r', linestyles='dashed',
+    #            label='Black-Scholes Price')
     plt.title('Convergence to Black-Scholes Price for Call Options')
     plt.xlabel('Runtime')
     plt.ylabel('Option Price')
     plt.legend()
     plt.show()
-
-

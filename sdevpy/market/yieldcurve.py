@@ -15,18 +15,18 @@ class YieldCurve(ABC):
         self.name = kwargs.get('name', '')
 
     @abstractmethod
-    def discount(self, date):
+    def discount(self, date: dt.datetime) -> float:
         pass
 
     @abstractmethod
-    def discount_float(self, t):
+    def discount_float(self, t) -> float:
         pass
 
     @abstractmethod
     def dump_data(self):
         pass
 
-    def dump(self, file, indent=2):
+    def dump(self, file: str, indent: int=2):
         data = self.dump_data()
         with open(file, 'w') as f:
             json.dump(data, f, indent=indent)

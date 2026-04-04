@@ -4,7 +4,7 @@ from sdevpy.maths.rand.rng import get_rng
 from sdevpy.maths.rand.correlations import CorrelationEngine
 
 
-def get_path_builder(time_grid, n_factors=1, **kwargs):
+def get_path_builder(time_grid, n_factors: int=1, **kwargs):
     """ Create a Brownian path constructor """
     # Get random number generator
     n_steps = len(time_grid) - 1
@@ -14,9 +14,12 @@ def get_path_builder(time_grid, n_factors=1, **kwargs):
     constr_type = kwargs.get('constr_type', 'incremental')
     path_builder = None
     match constr_type.lower():
-        case 'incremental': path_builder = IncrementalPathBuilder(time_grid, n_factors, rng)
-        case 'brownianbridge': path_builder = BrownianBridgePathBuilder(time_grid, n_factors, rng)
-        case _: raise TypeError(f"Invalid path construction type: {constr_type}")
+        case 'incremental':
+            path_builder = IncrementalPathBuilder(time_grid, n_factors, rng)
+        case 'brownianbridge':
+            path_builder = BrownianBridgePathBuilder(time_grid, n_factors, rng)
+        case _:
+            raise TypeError(f"Invalid path construction type: {constr_type}")
 
     # Correlations
     corr_matrix = kwargs.get('corr_matrix', None)
@@ -26,19 +29,19 @@ def get_path_builder(time_grid, n_factors=1, **kwargs):
 
 def brownianbridge(n_paths, time_grid, n_factors, rng):
     n_steps = len(time_grid) - 1
-    T = time_grid[-1]
+    t = time_grid[-1]
 
     # Draw gaussians
-    Z = rng.normal(n_paths)
+    z = rng.normal(n_paths)
 
     # Allocate dimensions: split (factor1, factor2, ...) into (factor1 x factor x ...)
-    Z = Z.reshape(n_paths, n_steps, n_factors)
+    z = z.reshape(n_paths, n_steps, n_factors)
 
     # Build paths
-    W = np.zeros((n_paths, n_steps + 1, n_factors)) # Because we use the first point at 0
+    w = np.zeros((n_paths, n_steps + 1, n_factors)) # Because we use the first point at 0
     for d in range(n_factors):
         # First assign W(T)
-        W[:, -1, d] = np.sqrt(T) * Z[:, 0, d]
+        w[:, -1, d] = np.sqrt(t) * z[:, 0, d]
 
         # Recursive midpoint fill
         intervals = [(0, n_steps)]
@@ -54,10 +57,10 @@ def brownianbridge(n_paths, time_grid, n_factors, rng):
             t_mid = time_grid[mid]
             t_end = time_grid[end]
 
-            mean = ((t_mid - t_start) * W[:, end, d] + (t_end - t_mid) * W[:, start, d]) / (t_end - t_start)
+            mean = ((t_mid - t_start) * w[:, end, d] + (t_end - t_mid) * w[:, start, d]) / (t_end - t_start)
             var = (t_mid - t_start) * (t_end - t_mid) / (t_end - t_start)
 
-            W[:, mid, d] = mean + np.sqrt(var) * Z[:, z_index, d]
+            w[:, mid, d] = mean + np.sqrt(var) * z[:, z_index, d]
 
             z_index += 1
 
@@ -65,8 +68,8 @@ def brownianbridge(n_paths, time_grid, n_factors, rng):
             intervals.append((mid, end))
 
     # Convert to increments
-    dW = np.diff(W, axis=1)
-    return dW
+    dw = np.diff(w, axis=1)
+    return dw
 
 
 class PathBuilder(ABC):
@@ -97,16 +100,16 @@ class IncrementalPathBuilder(PathBuilder):
         n_steps = len(self.time_grid) - 1
 
         # Draw gaussians
-        Z = self.rng.normal(n_paths)
+        z = self.rng.normal(n_paths)
 
         # Allocate dimensions: split (factor1, factor2, ...) into (factor1 x factor x ...)
-        Z = Z.reshape(n_paths, n_steps, self.n_factors)
+        z = z.reshape(n_paths, n_steps, self.n_factors)
 
         # Build paths
         dt = np.diff(self.time_grid)
         dt = dt.reshape(1, n_steps, 1)
-        dW = Z * np.sqrt(dt)
-        return dW
+        dw = z * np.sqrt(dt)
+        return dw
 
 
 class BrownianBridgePathBuilder(PathBuilder):
@@ -127,8 +130,8 @@ if __name__ == "__main__":
     # Therefore, from a runtime perspective, it seems more advantageous to run
     # Sobol with scrambling in incremental construction thatn Sobol without scrambling
     # in the Brownian bridge construction.
-    from sdevpy.maths.rand import rng
-    from sdevpy.tools import timer
+    # from sdevpy.maths.rand import rng
+    # from sdevpy.tools import timer
 
     # Make time grid
     n_steps = 5

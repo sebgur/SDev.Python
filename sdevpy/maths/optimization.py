@@ -6,7 +6,7 @@ from abc import abstractmethod
 import numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
-from sdevpy.maths.constants import FLOAT_MAX
+# from sdevpy.maths.constants import FLOAT_MAX
 
 
 SCIPY_OPTIMIZERS = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA',
@@ -74,7 +74,7 @@ class SciPyOptimizer(Optimizer):
             popsize = self.kwargs.get('popsize', 15)
             strategy = self.kwargs.get('strategy', 'best1bin')
             recombination = self.kwargs.get('recombination', 0.7)
-            mutation = self.kwargs.get('mutation', (0.5, 1.0)) # ToDo: parameter not used
+            # mutation = self.kwargs.get('mutation', (0.5, 1.0)) # ToDo: parameter not used
             result = opt.differential_evolution(f, x0=x0, args=args, bounds=bounds, atol=atol,
                                                 popsize=popsize, strategy=strategy,
                                                 recombination=recombination)
@@ -83,10 +83,11 @@ class SciPyOptimizer(Optimizer):
 
         return result
 
+DFLT_METHODS = ['L-BFGS-B', 'DE']
 
 class MultiOptimizer(Optimizer):
     """ Wrapper for SciPy optimizers, including differential_evolution """
-    def __init__(self, methods = ['L-BFGS-B', 'DE'], mtol=1e-4, **kwargs):
+    def __init__(self, methods: list[str]=DFLT_METHODS, mtol: float=1e-4, **kwargs):
         self.methods_ = methods
         self.mtol_ = mtol
         self.kwargs = kwargs

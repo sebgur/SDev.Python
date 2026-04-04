@@ -2,7 +2,6 @@
     evaluation, history tracking, exporting to/importing from files, etc. """
 import os
 from sklearn.preprocessing import StandardScaler
-# from keras.models import load_model
 import tensorflow as tf
 import joblib
 import absl.logging
@@ -12,10 +11,13 @@ from sdevpy.tools import filemanager
 class LearningModel:
     """ Wrapper class for machine learning models, including scalers, and simplifying
         evaluation, history tracking, exporting to/importing from files, etc. """
-    def __init__(self, model, is_scaled=False,
-                 x_scaler=StandardScaler(copy=True), y_scaler=StandardScaler(copy=True)):
+    def __init__(self, model, is_scaled=False, x_scaler=None, y_scaler=None):
         self.model = model
+        if x_scaler is None:
+            x_scaler = StandardScaler(copy=True)
         self.x_scaler = x_scaler
+        if y_scaler is None:
+            y_scaler = StandardScaler(copy=True)
         self.y_scaler = y_scaler
         self.is_scaled = is_scaled
         self.topology_ = None
@@ -128,7 +130,7 @@ def load_learning_model(path, compile_=False):
         the keras model as we do not know how to save and load custom components such as
         the scheduler or the callback. To restart the training after loading the model from
         file, we would have to be able to properly save and load those custom components.
-         
+
         One possibility could be to implement additional custom saving, recreate those components
         by hand, and then compile again. """
 

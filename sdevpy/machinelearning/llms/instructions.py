@@ -2,11 +2,11 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import json
 import re
-from typing import Dict, Optional
+
 
 class JSONExtractor:
     """Extract structured JSON from text using a trained model"""
-    def __init__(self, model_path: str, device: Optional[str] = None):
+    def __init__(self, model_path: str, device: str=None):
         """ Initialize the extractor with a trained model
         Args:
             model_path: Path to saved model directory
@@ -22,7 +22,7 @@ class JSONExtractor:
 
         print(f"Model loaded successfully on {self.device}")
 
-    def extract_json(self, text: str, schema: Optional[Dict] = None) -> Dict:
+    def extract_json(self, text: str, schema: dict=None) -> dict:
         """ Extract JSON information from text
         Args:
             text: Input text to process
@@ -56,7 +56,7 @@ class JSONExtractor:
 
         return result
 
-    def _parse_json_safely(self, json_string: str) -> Dict:
+    def _parse_json_safely(self, json_string: str) -> dict:
         """ Attempt to parse JSON with error recovery
         Args:
             json_string: String to parse as JSON
@@ -70,7 +70,7 @@ class JSONExtractor:
             fixed_string = self._fix_json_errors(json_string)
             try:
                 return json.loads(fixed_string)
-            except:
+            except Exception:
                 # If all else fails, return the raw output
                 return {"error": "Failed to parse JSON", "raw_output": json_string}
 
@@ -86,14 +86,14 @@ class JSONExtractor:
         s = re.sub(r',(\s*[}\]])', r'\1', s)
         return s
 
-    def _apply_schema(self, result: Dict, schema: Dict) -> Dict:
+    def _apply_schema(self, result: dict, schema: dict) -> dict:
         """ Looks like this copies the schema, then fill it in with the fields/values
             it finds in result? ToDo: test with all kinds of missing/differing data configs """
         output = schema.copy()
         output.update(result)
         return output
 
-    def batch_extract(self, texts: list, schema: Optional[Dict] = None) -> list:
+    def batch_extract(self, texts: list, schema: dict=None) -> list:
         """ Process multiple texts at once
         Args:
             texts: List of input texts
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     # Step 3: Read text from a file
     text_content = """
-    Sarah Johnson is a 32-year-old marketing director at Tech Corp. 
+    Sarah Johnson is a 32-year-old marketing director at Tech Corp.
     You can reach her at sarah.j@techcorp.com or call her at 555-0123.
     She has over 10 years of experience in digital marketing.
     """

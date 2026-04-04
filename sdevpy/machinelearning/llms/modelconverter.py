@@ -7,8 +7,6 @@ Raschka into a format usable by Ollama as just another local model.
 """
 import torch
 import json
-import struct
-import numpy as np
 from pathlib import Path
 
 class PTHToGGUFConverter:
@@ -48,7 +46,7 @@ class PTHToGGUFConverter:
 
         # Print some keys to understand structure
         print("\nFirst 10 keys:")
-        for i, key in enumerate(list(self.state_dict.keys())[:10]):
+        for _, key in enumerate(list(self.state_dict.keys())[:10]):
             print(f"  {key}: {self.state_dict[key].shape}")
 
     def convert_to_huggingface_format(self, output_dir: str):
@@ -189,8 +187,8 @@ def print_model_info(pth_path: str):
         # Print state dict info
         print("STATE DICT:")
         print(f"  Total parameters: {len(state_dict)}")
-        print(f"  First 15 keys:")
-        for i, (key, tensor) in enumerate(list(state_dict.items())[:15]):
+        print("  First 15 keys:")
+        for _, (key, tensor) in enumerate(list(state_dict.items())[:15]):
             print(f"    {key}: {tensor.shape} ({tensor.dtype})")
 
         # Try to infer architecture
