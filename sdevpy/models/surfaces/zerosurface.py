@@ -118,7 +118,7 @@ class ZeroSurface(ABC):
 
     def forward_price(self, t: float, k: float, f: float, is_call: bool) -> float:
         """ Forward price """
-        value = self.calculate(t, k, f, is_call)
+        value = self.calculate(t, k, is_call, f)
         match self.modelled_type:
             case OptionQuoteType.ForwardPremium:
                 return value
@@ -134,7 +134,7 @@ class ZeroSurface(ABC):
     def black_volatility(self, t: float, k: float, f: float) -> float:
         """ Black implied volatility """
         is_call = True
-        value = self.calculate(t, k, f, is_call)
+        value = self.calculate(t, k, is_call, f)
         if self.modelled_type == OptionQuoteType.LogNormalVol:
             return value
         else:
@@ -153,7 +153,7 @@ class ZeroSurface(ABC):
     def bachelier_volatility(self, t: float, k: float, f: float):
         """ Bachelier implied volatility """
         is_call = True
-        value = self.calculate(t, k, f, is_call)
+        value = self.calculate(t, k, is_call, f)
         if self.modelled_type == OptionQuoteType.NormalVol:
             return value
         else:
@@ -172,7 +172,7 @@ class ZeroSurface(ABC):
     def shifted_black_volatility(self, t: float, k: float, f: float) -> float:
         """ Shifted Black implied volatility """
         is_call = True
-        value = self.calculate(t, k, f, is_call)
+        value = self.calculate(t, k, is_call, f)
         if self.modelled_type == OptionQuoteType.ShiftedLogNormalVol:
             return value
         else:
@@ -215,21 +215,61 @@ class ZeroSurface(ABC):
         c_options = convert_to_target_values(t_options, self.modelled_type, self.shift)
 
         # Check degrees of freedom
-        # ToDo: the original in C# it was done only for slice models. Extend to all parametric models.
-        # if self.check_degrees_of_freedom:
-        #     n_params = self.number_parameters()
-        #     check_degrees_of_freedom(c_options, n_params)
+        if self.check_degrees_of_freedom:
+            self.check_degrees_of_freedom(c_options)
 
         return c_options
 
+
+    def check_degrees_of_freedom(self, options: list[list[OptionTarget]]) -> None: # noqa: B027
+        pass
+
+
+    def number_parameters(self) -> int:
+        """ Number of parameters. Return None in the base. """
+        return None
+
     ############ Abstract Methods #################################################################
     @abstractmethod
-    def calculate(self, t: float, k: float, f: float, is_call: bool) -> float:
+    def calculate(self, t: float, k: float, is_call: bool, f: float) -> float:
         pass
 
     @abstractmethod
     def calibrate_modelled_type(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
         pass
 
-    def expiry_times(self) -> list[float]:
-        return self.expiry_times
+
+class ParametricZeroSurface(ZeroSurface):
+    def __init__(self):
+        super().__init__()
+        self.n_params = None
+        self.calculator = None
+
+    def calculate(self, t: float, k: float, is_call: bool, f: float) -> float:
+        params = self.parameters(t)
+        return self.calculator.formula(t, k, is_call, f, params)
+
+    @abstractmethod
+    def parameters(self, t: float) -> list[float]:
+        pass
+
+
+class TermStructureParametricZeroSurface(ParametricZeroSurface):
+    def __init__(self):
+        super().__init__()
+        self.calibrated_parameters = []
+
+    def set_calculator(self, calculator) -> None:
+        self.calculator = calculator
+        self.n_params = calculator.number_parameters()
+        self.allow_negative_variables = calculator.allow_negative_variables()
+        self.modelled_type = calculator.modelled_type()
+
+    def parameters(self, t: float) -> list[float]:
+        """ Retrieve formula parameters """
+        return self.formula_parameters(t, self.calibrated_parameters)
+
+    @abstractmethod
+    def formula_parameters(self, t: float, params: list[float]) -> list[float]:
+        """ Convert from the surface parameters to the formula parameters """
+        pass

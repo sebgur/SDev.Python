@@ -87,8 +87,8 @@ def convert_target(target: OptionTarget, to_type: OptionQuoteType, to_shift: flo
     """ Convert option target from its type to the chosen target type """
     t, f, k, is_call = target.expiry, target.forward, target.strike, target.is_call
     from_input, from_type, from_shift = target.market_input, target.quote_type, target.market_shift
-    conv_target = OptionTarget(expiry=t, forward=f, strike=k, is_call=is_call, quote_type=to_type,
-                               market_shift=to_shift, is_atm=target.is_atm)
+    conv_target = OptionTarget(expiry=t, forward=f, strike=k, market_input=0.0, is_call=is_call,
+                               quote_type=to_type, market_shift=to_shift, is_atm=target.is_atm)
     conv_target.market_input = convert_option(t, k, is_call, f, from_input, from_type, from_shift,
                                               to_type, to_shift)
     return conv_target
@@ -127,7 +127,7 @@ def convert_option(expiry: float, strike: float, is_call: bool, fwd: float, from
                 case OptionQuoteType.NormalVol:
                     fwd_premium = bachelier.price(expiry, strike, is_call, fwd, vol)
                 case OptionQuoteType.ShiftedLogNormalVol:
-                    fwd_premium = black.price(expiry, strike + from_shift, is_call, fwd, vol)
+                    fwd_premium = black.price(expiry, strike + from_shift, is_call, fwd + from_shift, vol)
                 case _:
                     raise ValueError(f"Unknown quotation type: {from_type}")
 
@@ -139,11 +139,11 @@ def convert_option(expiry: float, strike: float, is_call: bool, fwd: float, from
                 case OptionQuoteType.LogNormalVol:
                     to_input = black.implied_vol(expiry, strike, is_call, fwd, fwd_premium)
                 case OptionQuoteType.NormalVol:
-                    to_input = bachelier.implied_vol(expiry, strike, is_call, fwd_premium)
+                    to_input = bachelier.implied_vol(expiry, strike, is_call, fwd, fwd_premium)
                 case OptionQuoteType.ShiftedLogNormalVol:
                     to_input = black.implied_vol(expiry, strike + to_shift, is_call, fwd + to_shift, fwd_premium)
                 case _:
-                    raise ValueError(f"Unknown quotation type: {from_type}")
+                    raise ValueError(f"Unknown quotation type: {to_type}")
 
     return to_input
 
