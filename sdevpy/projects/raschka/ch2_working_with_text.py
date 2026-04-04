@@ -2,7 +2,7 @@ import re
 from importlib.metadata import version
 import tiktoken
 import torch
-from torch.utils.data import Dataset, DataLoader
+# from torch.utils.data import Dataset, DataLoader
 from sdevpy.machinelearning.llms.tokenizers import SimpleTokenizerV1, SimpleTokenizerV2
 from sdevpy.projects.raschka import raschka_datasetloader as tdsl
 
@@ -32,7 +32,7 @@ result = [item.strip() for item in result if item.strip()]
 ############ Build vocabulary ################################################
 # Read text file
 file = "datasets/llms/the-verdict.txt"
-with open(file, "r", encoding="utf-8") as f:
+with open(file, encoding="utf-8") as f:
     raw_text = f.read()
 
 print(f"Number of characters in text: {len(raw_text)}")

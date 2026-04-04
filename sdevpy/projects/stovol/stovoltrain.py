@@ -16,7 +16,6 @@ from sdevpy.machinelearning.callbacks import RefCallback
 from sdevpy.machinelearning import datasets
 from sdevpy.tools import filemanager
 from sdevpy.tools.timer import Stopwatch
-# from sdevpy.tools import clipboard
 from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
 from sdevpy.volsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt

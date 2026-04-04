@@ -38,7 +38,7 @@ class GPTDatasetV1(Dataset):
 
 def create_dataloader_v1(txt, batch_size=4, max_length=256, stride=128, shuffle=True, drop_last=True,
                          num_workers=0):
-    """ A DataLoader is an object that takes a Dataset and construct batches (lists) of tensors of 
+    """ A DataLoader is an object that takes a Dataset and construct batches (lists) of tensors of
         length 2 each containing a pair made out of the input and its target window. """
     tokenizer = tiktoken.get_encoding("gpt2")
     dataset = GPTDatasetV1(txt, tokenizer, max_length, stride)
@@ -50,7 +50,7 @@ def create_dataloader_v1(txt, batch_size=4, max_length=256, stride=128, shuffle=
 
 if __name__ == "__main__":
     file = "datasets/llms/the-verdict.txt"
-    with open(file, "r", encoding="utf-8") as f:
+    with open(file, encoding="utf-8") as f:
         raw_text = f.read()
 
     # The targets are always the inputs shifted by 1 token

@@ -161,7 +161,7 @@ def convert_to_target_values(target_options: list[list[OptionTarget]], target_ty
 
         if len(conv_at_exp) == 0: # Or we could raise ValueError
             log.warning("No successful option conversion: skipping expiry")
-
-        conv_options.append(conv_at_exp)
+        else:
+            conv_options.append(conv_at_exp)
 
     return conv_options

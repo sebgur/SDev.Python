@@ -1,9 +1,9 @@
 # Import packages
 import os
 import datetime as dt
-import pandas as pd
-from dateutil.relativedelta import relativedelta
-from sdevpy.tools import utils
+# import pandas as pd
+# from dateutil.relativedelta import relativedelta
+# from sdevpy.tools import utils
 from sdevpy.tools import filemanager
 from openbb import obb
 obb.user.preferences.output_type = "dataframe"

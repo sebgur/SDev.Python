@@ -13,7 +13,7 @@ from sdevpy.tools.timer import Stopwatch
 # and Monte-Carlo with Algorithm Differentiation (AD).
 
 # We measure the runtime of the bump and AD MCs to compare their performances. We
-# find that the one-off costs of AD to build the dependency graf and its memory 
+# find that the one-off costs of AD to build the dependency graf and its memory
 # storage is rather heavy, and AD only starts winning against bumps in very heavy
 # configurations.
 
@@ -110,7 +110,7 @@ def greeks_mc(spot, strikes, gaussians, pv, calc_gammas):
     """ Calculate all bumps """
     num_strikes = strikes.shape[0]
     delta = np.ndarray(shape=(DIM, num_strikes))
-    gamma = None if calc_gammas is False else np.ndarray(shape=(DIM, DIM, num_strikes)) 
+    gamma = None if calc_gammas is False else np.ndarray(shape=(DIM, DIM, num_strikes))
 
     # Single bumps
     for idx in range(DIM):
@@ -182,7 +182,7 @@ def value_cf(spot, strikes):
     d1 = np.log(prod_fwd / strikes) / prod_stdev + 0.5 * prod_stdev
     nd1 = norm.cdf(W * d1)
     for index in range(DIM):
-        delta[index] = DF * W * (prod_fwd / spot[index]) * nd1 
+        delta[index] = DF * W * (prod_fwd / spot[index]) * nd1
 
     # Gamma
     gamma = np.ndarray(shape=(DIM, DIM, strikes.shape[0]))

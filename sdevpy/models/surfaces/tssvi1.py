@@ -5,8 +5,16 @@
 """
 import numpy as np
 import numpy.typing as npt
+import datetime as dt
 from sdevpy.models.surfaces.zerosurface import TermStructureParametricZeroSurface
 from sdevpy.models.svi import svi_formula
+from sdevpy.market import eqvolsurface as vsurf
+from sdevpy.models.surfaces.optionsurface import calibration_targets
+from sdevpy.tools import timegrids
+
+
+################## TODO ###########################################
+# Do the calibration
 
 
 class TsSvi1(TermStructureParametricZeroSurface):
@@ -17,7 +25,7 @@ class TsSvi1(TermStructureParametricZeroSurface):
         self.tmax = kwargs.get('tmax', 42)
 
     def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
-                params: list[float]) -> float:
+                params: list[float]) -> npt.ArrayLike:
         # Calculate log-moneyness
         log_m = np.log(k / f)
         # print(f"time: {t}")
@@ -68,25 +76,43 @@ class TsSvi1(TermStructureParametricZeroSurface):
     def get_parameters(self, x: list[float]) -> tuple[float, ...]:
         """ Return named parameters from input list """
         if len(x) != 11:
-            raise RuntimeError("The number of parameters should be 11 for TsSvi1")
+            raise ValueError("The number of parameters should be 11 for TsSvi1")
 
         return x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10]
 
 
 if __name__ == "__main__":
-    # Bring in same sample market as for localvol calib
-    # Estimate model on points and calculate RMSE, plot comparison
-    # Do the calibration
+    name = "ABC"
+    valdate = dt.datetime(2025, 12, 15)
+
+    # Retrieve target market option data
+    file = vsurf.data_file(vsurf.test_data_folder(), name, valdate)
+    surface_data = vsurf.eqvolsurfacedata_from_file(file)
+    expiries = surface_data.expiries
+    fwds = surface_data.forwards
+    strike_surface = surface_data.get_strikes('absolute')
+    vol_surface = surface_data.vols
+
+    # Set calibration time grid
+    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
+
+    # Set calibration targets
+    cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
+
+    # Set up the model
     surface = TsSvi1()
     params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     surface.calibrated_parameters = params
-    print(len(params))
 
-    t = np.asarray([0.5, 1.5, 2.5])
-    k = np.asarray([90, 100, 110])
-    f = np.asarray([95, 105, 115])
+    t = expiry_grid
+    k = strike_surface
+    f = fwds
+    # t = np.asarray([0.5, 1.5, 2.5])
+    # k = np.asarray([90, 100, 110])
+    # f = np.asarray([95, 105, 115])
     is_call = True
     z = surface.calculate(t, k, is_call, f)
     print(f"Result shape: {z.shape}")
     print(f"Result {z}")
 
+    # Estimate model on points and calculate RMSE, plot comparison

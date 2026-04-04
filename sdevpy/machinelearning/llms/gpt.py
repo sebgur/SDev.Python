@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress all messages except errors
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # Disable oneDNN messagesimport tensorflow as tf
-import tensorflow as tf
 import numpy as np
 from sdevpy.machinelearning.llms.attention import MultiHeadAttention
 
@@ -156,6 +155,7 @@ def download_gpt2(model_size, model_dir):
 
 
 def load_gpt2(model_dir):
+    import tensorflow as tf
     tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
     settings = json.load(open(os.path.join(model_dir, "hparams.json"), encoding="utf-8"))
     params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
@@ -215,6 +215,7 @@ def download_file(url, destination, backup_url=None):
 
 
 def load_gpt2_params_from_tf_ckpt(ckpt_path, settings):
+    import tensorflow as tf
     # Initialize parameters dictionary with empty blocks for each layer
     params = {"blocks": [{} for _ in range(settings["n_layer"])]}
 

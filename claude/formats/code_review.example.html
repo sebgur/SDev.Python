@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Code Review — sdevpy</title>
+  <title>Claude's Code Review — sdevpy</title>
   <style>
     :root {
       --bg:        #0d1117;
@@ -30,12 +30,10 @@
     }
     .container { max-width: 980px; margin: 0 auto; }
 
-    /* ── Header ── */
     header { margin-bottom: 2.5rem; padding-bottom: 1.4rem; border-bottom: 1px solid var(--border); }
     header h1 { font-size: 1.75rem; color: var(--accent); letter-spacing: -.02em; }
     header p  { color: var(--muted); margin-top: .35rem; font-size: .9rem; }
 
-    /* ── Grade card ── */
     .grade-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -57,7 +55,6 @@
     .grade-details h2 { font-size: 1.05rem; margin-bottom: .35rem; }
     .grade-details p  { color: var(--muted); font-size: .88rem; }
 
-    /* ── Scorecard ── */
     .scorecard {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -84,7 +81,6 @@
     .bar-fill  { height: 100%; border-radius: 3px; }
     .score-lbl { font-size: .78rem; color: var(--muted); white-space: nowrap; min-width: 4.5rem; }
 
-    /* ── Section title ── */
     .section-title {
       font-size: 1.15rem;
       font-weight: 600;
@@ -94,7 +90,18 @@
       border-bottom: 1px solid var(--border);
     }
 
-    /* ── Issue cards ── */
+    .progress-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      padding: .9rem 1.2rem;
+      margin-bottom: 1.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .progress-banner strong { color: var(--text); }
+
     .issue {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -164,12 +171,12 @@
       margin: .55rem 0 .2rem;
       color: #e6edf3;
     }
-    .c  { color: #8b949e; }   /* comment */
-    .kw { color: #ff7b72; }   /* keyword  */
-    .st { color: #a5d6ff; }   /* string   */
-    .fn { color: #d2a8ff; }   /* function */
-    .ok { color: #3fb950; }   /* added    */
-    .rm { color: #f85149; }   /* removed  */
+    .c  { color: #8b949e; }
+    .kw { color: #ff7b72; }
+    .st { color: #a5d6ff; }
+    .fn { color: #d2a8ff; }
+    .ok { color: #3fb950; }
+    .rm { color: #f85149; }
 
     footer { margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; color: var(--muted); font-size: .8rem; }
   </style>
@@ -178,25 +185,36 @@
 <div class="container">
 
   <header>
-    <h1>Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-03-28 (fresh scan)</p>
+    <h1>Claude's Code Review — <code>sdevpy</code></h1>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-04-04 (full scan, 6th review)</p>
   </header>
 
-  <!-- ── Grade ── -->
   <div class="grade-card">
     <div class="grade-letter">C+</div>
     <div class="grade-details">
-      <h2>Solid domain design, but several live bugs and thin safety nets</h2>
+      <h2>Five more critical bugs resolved — same attribute/method shadow pattern reintroduced</h2>
       <p>
-        The library covers an impressive breadth — Monte Carlo, PDE, market data, SVI/local-vol, interpolation, ML.
-        Architecture is coherent and the payoff-composition design is clean. However, multiple critical
-        runtime bugs exist in current code (typos, missing imports, unsafe indexing), test coverage is sparse,
-        and type hints are absent throughout. Targeted fixes would meaningfully raise the grade.
+        All five remaining critical and high-severity issues from the previous review are now fixed:
+        <code>convert_target</code> is correct, <code>bachelier.implied_vol</code> has the right
+        arguments, the ShiftedLogNormal forward shift is applied consistently, the wrong error
+        variable is fixed, and <code>expiry_times</code> no longer shadows a method.
+        The <code>convert_option</code> implementation is now solid.
+        However, the exact same attribute-vs-method shadowing bug has reappeared with
+        <code>check_degrees_of_freedom</code>, and three debug <code>print()</code> calls were
+        left in <code>tssvi1.py</code>. One critical calibration blocker remains.
       </p>
     </div>
   </div>
 
-  <!-- ── Scorecard ── -->
+  <div class="progress-banner">
+    <strong>Fixed since last review (5 of 10):</strong>
+    <code>convert_target()</code> now correctly passes <code>market_input=0.0</code> &nbsp;·&nbsp;
+    <code>bachelier.implied_vol()</code> now receives all 5 arguments &nbsp;·&nbsp;
+    ShiftedLogNormal FROM-conversion now shifts forward correctly &nbsp;·&nbsp;
+    Error message in to-type conversion now references <code>to_type</code> &nbsp;·&nbsp;
+    <code>expiry_times</code> method/attribute conflict resolved
+  </div>
+
   <div class="scorecard">
     <table>
       <thead>
@@ -208,253 +226,292 @@
         <tr>
           <td>Architecture</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clear domain separation; payoff composition is elegant; some tight coupling in pricing</td>
+          <td style="color:var(--muted);font-size:.83rem">Clean payoff algebra, solid ABC hierarchy, <code>TermStructureParametricZeroSurface</code> chain is well-structured</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Several critical runtime bugs (typos, missing import, unsafe indexing)</td>
-        </tr>
-        <tr>
-          <td>Error Handling</td><td>5 / 10</td>
+          <td>Correctness</td><td>5 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Inconsistent — some modules validate inputs, others assume valid data silently</td>
+          <td style="color:var(--muted);font-size:.83rem">Conversion math is now correct; <code>check_degrees_of_freedom</code> shadow crashes every calibration call</td>
         </tr>
         <tr>
-          <td>Testing</td><td>6 / 10</td>
+          <td>Error Handling</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Basic tests exist; no coverage of error paths, Variance, WorstOfBarrier, or calibration</td>
+          <td style="color:var(--muted);font-size:.83rem">Logging and exception narrowing are consistently applied; empty-expiry sublists still silently propagated</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>4 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f0883e"></div></div><span class="score-lbl">Poor</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">No type hints anywhere; type errors only surface at runtime deep in call stacks</td>
+          <td>Testing</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good MC, interpolation, timegrid, utils tests; calibration, TsSvi1, analytics, PDE still untested</td>
         </tr>
         <tr>
           <td>Code Quality</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good NumPy vectorisation; debug prints in production; inconsistent naming</td>
+          <td style="color:var(--muted);font-size:.83rem">Debug prints left in <code>tssvi1.py</code>; <code>TEST_VOL</code> still not injectable; wrong exception type in one place</td>
         </tr>
         <tr>
           <td>Maintainability</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good module organisation; hardcoded paths; mutable payoff state makes composition fragile</td>
+          <td style="color:var(--muted);font-size:.83rem">Good module layout; recurring attribute/method naming conflict needs a team convention to prevent recurrence</td>
+        </tr>
+        <tr>
+          <td>Type Safety</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Type hints added to tssvi1 and optionsurface; <code>formula</code> return hint says <code>float</code> but returns <code>ndarray</code></td>
+        </tr>
+        <tr>
+          <td>Documentation</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good docstrings in zerosurface and optionsurface; payoff classes, tssvi1, and analytics still sparse</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <!-- ── Issues ── -->
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
   <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title">Attribute typo in <code>Abs</code> payoff — <code>evendates</code> instead of <code>eventdates</code></span>
+      <span class="issue-title"><code>check_degrees_of_freedom</code> boolean attribute shadows the method of the same name — <code>TypeError</code> on every calibration call</span>
       <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 352</span>
+    <span class="loc">sdevpy/models/surfaces/zerosurface.py · lines 24, 218–219, 224</span>
     <p>
-      <strong>Why it's bad:</strong> <code>self.eventdates = self.subpayoff.evendates</code> references a
-      non-existent attribute. Any call to <code>Abs.set_valuation_date()</code> raises an
-      <code>AttributeError</code> at runtime, silently breaking portfolio valuations that include
-      absolute-value payoffs.
+      <strong>Why it's bad:</strong> <code>__init__</code> sets
+      <code>self.check_degrees_of_freedom = True</code> (line 24), an instance attribute that
+      shadows the method <code>def check_degrees_of_freedom(self, options)</code> defined at
+      line 224. In <code>check_consistency()</code> lines 218–219:
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="rm">self.eventdates = self.subpayoff.evendates</span>
-<span class="ok">self.eventdates = self.subpayoff.eventdates</span></pre>
+    <pre><span class="kw">if</span> self.check_degrees_of_freedom:        <span class="c"># evaluates the boolean True → truthy</span>
+    self.check_degrees_of_freedom(c_options) <span class="c"># calls True(...) → TypeError!</span></pre>
+    <p>
+      Python raises <code>TypeError: 'bool' object is not callable</code> on every calibration
+      call where <code>check_degrees_of_freedom</code> is <code>True</code>.
+      This is the same attribute/method shadowing pattern that previously affected
+      <code>expiry_times</code>.
+    </p>
+    <p><strong>Fix:</strong> Use a distinct name for the flag and the method:</p>
+    <pre><span class="c"># In __init__:</span>
+<span class="rm">self.check_degrees_of_freedom = True</span>
+<span class="ok">self.do_check_degrees_of_freedom = True</span>
+
+<span class="c"># In check_consistency():</span>
+<span class="rm">if self.check_degrees_of_freedom:</span>
+<span class="rm">    self.check_degrees_of_freedom(c_options)</span>
+<span class="ok">if self.do_check_degrees_of_freedom:</span>
+<span class="ok">    self.check_degrees_of_freedom(c_options)</span></pre>
   </div>
 
   <!-- 2 -->
-  <div class="issue critical">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title">Typo in <code>datetime</code> constructor — <code>dt.datime</code></span>
-      <span class="badge critical">Critical</span>
+      <span class="issue-title">Debug <code>print()</code> statements left in <code>TsSvi1.formula()</code> and <code>formula_parameters()</code></span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/vanillas.py · line 70</span>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · lines 23–25, 67</span>
     <p>
-      <strong>Why it's bad:</strong> <code>dt.datime(2026, 12, 15)</code> raises a <code>NameError</code>
-      immediately when the module's <code>__main__</code> block runs. This crashes any script that
-      exercises the vanilla option example code.
+      <strong>Why it's bad:</strong> Four <code>print()</code> calls fire on every option
+      evaluation. For a vol surface queried across a grid of strikes and expiries — or repeatedly
+      during calibration — this floods stdout with thousands of lines, degrades performance,
+      and breaks any pipeline that parses or captures output.
+      Line 67 also prints the internal <code>svi_params</code> array that is immediately
+      discarded (the function returns the list on line 68, making the array redundant).
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="rm">dt.datime(2026, 12, 15)</span>
-<span class="ok">dt.datetime(2026, 12, 15)</span></pre>
+    <p><strong>Fix:</strong> Remove all four lines. If diagnostic output is needed during
+       development, replace with <code>logging.debug()</code>:</p>
+    <pre><span class="rm">print(f"time: {t}")</span>
+<span class="rm">print(f"x: {log_m}")</span>
+<span class="rm">print(f"params: {params}")</span>
+<span class="c"># and</span>
+<span class="rm">svi_params = np.asarray([a, b, r, m, s])</span>
+<span class="rm">print(f"shape inside: {svi_params.shape}")</span></pre>
   </div>
 
   <!-- 3 -->
-  <div class="issue critical">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title">Missing <code>import numpy as np</code> in <code>cashflows.py</code></span>
-      <span class="badge critical">Critical</span>
+      <span class="issue-title"><code>WorstOfBarrier</code> missing <code>set_valuation_date</code> and <code>set_eventindexes</code></span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/cashflows.py · line 48</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 39–51</span>
     <p>
-      <strong>Why it's bad:</strong> <code>DiscountEngine.df()</code> calls <code>np.interp()</code> but
-      <code>numpy</code> is never imported at the top of the file. Any call to <code>DiscountEngine</code>
-      raises a <code>NameError</code>, disabling discount-factor interpolation entirely.
+      <strong>Why it's bad:</strong> Both lifecycle methods are commented out with
+      <code># ToDo: implement?</code>. The base-class no-ops fire instead, so
+      <code>self.eventdates</code> is never populated and <code>evaluate()</code> operates on
+      whatever path layout happens to be present. The expiry is hardcoded to <code>[:, -1, :]</code>
+      (last event index), which is wrong whenever the book contains trades with later maturities.
+      This produces silently wrong prices with no error.
     </p>
-    <p><strong>Fix:</strong> Add at the top of <code>cashflows.py</code>:</p>
-    <pre><span class="ok">import numpy as np</span></pre>
+    <p>
+      <strong>Fix:</strong> Implement both methods following the <code>Terminal</code> pattern:
+      accept an expiry date, register it in <code>set_valuation_date</code>, resolve the grid
+      index in <code>set_eventindexes</code>, and use <code>self.expiry_idx</code> in
+      <code>evaluate()</code>.
+    </p>
   </div>
 
   <!-- 4 -->
-  <div class="issue critical">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title">Unsafe array indexing — <code>[0][0]</code> with no existence check</span>
-      <span class="badge critical">Critical</span>
+      <span class="issue-title"><code>WorstOf.evaluate()</code> hardcodes the last event index — wrong for non-terminal expiries</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 226, 268, 475</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 411</span>
     <p>
-      <strong>Why it's bad:</strong> <code>np.where(eventdates == self.expiry)[0][0]</code> assumes the
-      expiry date is always present in the event-date grid. If it is absent, the result array is empty
-      and <code>[0]</code> raises an <code>IndexError</code> with no meaningful message, making
-      misconfigured trades very hard to debug.
+      <strong>Why it's bad:</strong> <code>spot_all[:, -1, :]</code> always picks the last
+      position in the event grid, which only coincides with the trade's expiry when it is the
+      longest-dated trade in the book. In a multi-trade portfolio any shorter-dated
+      <code>WorstOf</code> is evaluated at the wrong date, silently producing wrong PVs.
+      <code>WorstOf</code> also has no <code>set_valuation_date</code> or
+      <code>set_eventindexes</code>, so there is no mechanism to correct this.
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="rm">self.idx = np.where(eventdates == self.expiry)[0][0]</span>
-<span class="ok">matches = np.where(eventdates == self.expiry)[0]</span>
-<span class="ok"><span class="kw">if</span> len(matches) == 0:</span>
-<span class="ok">    <span class="kw">raise</span> ValueError(<span class="st">f"Expiry {self.expiry} not found in event date grid"</span>)</span>
-<span class="ok">self.idx = matches[0]</span></pre>
+    <p><strong>Fix:</strong> Accept an expiry, resolve the index via <code>set_eventindexes</code>,
+    and use it:</p>
+    <pre>spot_all_at_exp = spot_all[:, <span class="rm">-1</span><span class="ok">self.expiry_idx</span>, :]</pre>
   </div>
 
   <!-- 5 -->
-  <div class="issue critical">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title">Undefined <code>USERNAME</code> in <code>settings.py</code> when <code>USE_PYTHONNET=False</code></span>
-      <span class="badge critical">Critical</span>
+      <span class="issue-title">Flat-vol sigma fixed at <code>TEST_VOL = 0.20</code> — not injectable via constructor</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/settings.py · line 54</span>
+    <span class="loc">sdevpy/montecarlo/assetmodels.py · lines 5, 25</span>
     <p>
-      <strong>Why it's bad:</strong> <code>USERNAME</code> is only assigned inside the
-      <code>if USE_PYTHONNET:</code> block (line 31). When the default <code>USE_PYTHONNET = False</code>
-      is in effect, the variable is never defined and line 54 raises a <code>NameError</code> when
-      <code>settings.py</code> is executed directly.
+      <strong>Why it's bad:</strong> When <code>use_lv=False</code> (the default),
+      every asset is always simulated at 20% flat volatility regardless of market data.
+      The value is now a named constant (<code>TEST_VOL</code>), which signals it is for
+      testing only — but it is still hardwired with no <code>kwargs</code> hook, so any
+      production use of the constant-vol path yields wrong prices with no warning.
     </p>
-    <p><strong>Fix:</strong> Initialise the variable before the conditional block:</p>
-    <pre><span class="ok">USERNAME = <span class="st">"Unknown"</span></span>
-<span class="kw">if</span> USE_PYTHONNET:
-    ...
-    USERNAME = ...</pre>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">self.sigma = np.asarray([TEST_VOL for _ in range(self.n_factors)])</span>
+<span class="ok">sigma = kwargs.get('sigma', [TEST_VOL] * self.n_factors)
+self.sigma = np.asarray(sigma)</span></pre>
   </div>
 
   <!-- 6 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">Division by zero in <code>Variance.evaluate()</code> when no historical fixing exists</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Empty expiry sublists silently appended — downstream <code>x[0]</code> raises <code>IndexError</code></span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 434</span>
+    <span class="loc">sdevpy/models/surfaces/optionsurface.py · lines 162–165</span>
     <p>
-      <strong>Why it's bad:</strong> <code>spot_paths[:, 0] / self.current_fixing</code> divides by
-      <code>self.current_fixing</code>, which can be <code>None</code> when no historical data is
-      provided. This raises a <code>TypeError</code> (or produces <code>nan</code> silently via NumPy
-      broadcasting), corrupting the variance-swap PV without any warning.
+      <strong>Why it's bad:</strong> When all targets for an expiry fail conversion,
+      <code>convert_to_target_values()</code> logs a warning but still appends an empty list
+      to <code>conv_options</code>. Back in <code>ZeroSurface.calibrate()</code> line 200:
+      <code>self.expiry_times = [x[0].expiry for x in target_options]</code> — the
+      <code>x[0]</code> access on an empty list raises <code>IndexError</code>, crashing
+      calibration with an unhelpful traceback that points to the wrong location.
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is not None</span>:
-    var = var + spot_paths[:, <span class="ok">0</span>] / self.current_fixing</pre>
+    <p><strong>Fix:</strong> Filter out empty slices before returning, or raise immediately:</p>
+    <pre><span class="rm">        conv_options.append(conv_at_exp)</span>
+<span class="ok">        if len(conv_at_exp) > 0:
+            conv_options.append(conv_at_exp)</span></pre>
   </div>
 
   <!-- 7 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title">Division by zero in <code>path_interp_coeffs()</code> with duplicate time-grid entries</span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>RuntimeError</code> used for wrong parameter count — should be <code>ValueError</code></span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/MonteCarloPricer.py · line 81</span>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · line 73</span>
     <p>
-      <strong>Why it's bad:</strong> <code>w1 = (event_times - t_left) / (t_right - t_left)</code>
-      produces <code>inf</code> or <code>nan</code> if any two adjacent discretisation times are
-      identical. The corrupted weights silently propagate through the entire MC pricing without any error.
+      <strong>Why it's bad:</strong> Python convention is that <code>ValueError</code> signals
+      a value (including container size) that is structurally valid but wrong in content.
+      <code>RuntimeError</code> is a last resort for errors that don't fit elsewhere.
+      Using the wrong exception type means callers that catch <code>ValueError</code> for
+      bad-input recovery will silently miss this failure.
+      The codebase already uses <code>ValueError</code> correctly for size checks elsewhere
+      (e.g. <code>svi.py</code>).
     </p>
     <p><strong>Fix:</strong></p>
-    <pre>dt = t_right - t_left
-<span class="kw">if</span> np.any(dt == <span class="ok">0</span>):
-    <span class="kw">raise</span> ValueError(<span class="st">"Duplicate times detected in discretisation grid"</span>)
-w1 = (event_times - t_left) / dt</pre>
+    <pre><span class="rm">raise RuntimeError("The number of parameters should be 11 for TsSvi1")</span>
+<span class="ok">raise ValueError(f"Expected 11 parameters for TsSvi1, got {len(x)}")</span></pre>
   </div>
 
   <!-- 8 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title">Division by zero in <code>LinearInterpolator.initialize()</code> with duplicate x-values</span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>formula()</code> return type hint says <code>float</code> but actually returns <code>ndarray</code></span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/maths/interpolation.py · lines 162–163</span>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · line 20 &nbsp;·&nbsp; sdevpy/models/surfaces/zerosurface.py · line 261</span>
     <p>
-      <strong>Why it's bad:</strong> Slope computation <code>(y[1] - y[0]) / (x[1] - xl)</code>
-      divides by zero when consecutive x-grid values are identical (e.g. a vol surface with
-      duplicate tenors). The result is <code>inf</code> or <code>nan</code> stored silently in
-      the interpolator, producing wrong values for all subsequent queries.
+      <strong>Why it's bad:</strong> <code>formula()</code> receives <code>k: npt.ArrayLike</code>
+      and returns <code>svi_formula(t, log_m, params)</code>, which produces a NumPy array
+      when <code>k</code> is an array. The declared return type <code>-&gt; float</code> is
+      wrong, misleading IDEs and static analysis tools into thinking a scalar is returned.
+      The same incorrect hint is inherited from <code>ParametricZeroSurface.formula</code>
+      in <code>zerosurface.py</code>.
     </p>
     <p><strong>Fix:</strong></p>
-    <pre><span class="kw">if</span> np.any(np.diff(self.x_grid) == <span class="ok">0</span>):
-    <span class="kw">raise</span> ValueError(<span class="st">"x_grid contains duplicate values"</span>)</pre>
+    <pre><span class="rm">def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
+            params: list[float]) -> float:</span>
+<span class="ok">def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
+            params: list[float]) -> npt.ArrayLike:</span></pre>
   </div>
 
   <!-- 9 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title">Debug <code>print()</code> in <code>Variance.evaluate()</code> — executes on every MC call</span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP classes exposed in the public API</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 436</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 66–89</span>
     <p>
-      <strong>Why it's bad:</strong> <code>print(f"spot paths: {spot_paths.shape}")</code> fires on
-      every simulation path evaluation — potentially thousands of times per price call. This floods
-      stdout, degrades performance, and breaks any pipeline that parses stdout. It indicates the code
-      was never hardened beyond a debugging session.
+      <strong>Why it's bad:</strong> Both classes are marked <em>"Warning: work in progress"</em>,
+      implement only <code>evaluate()</code>, and skip all lifecycle hooks
+      (<code>set_nameindexes</code>, <code>set_valuation_date</code>, <code>set_eventindexes</code>).
+      <code>Maximum</code> sets <code>self.eventdates</code> at construction time — the wrong
+      lifecycle phase. <code>BarrierDown</code> takes a raw integer index, bypassing the
+      name-resolution system entirely. Any caller that uses these classes will get wrong results
+      or an <code>IndexError</code> with no indication of why.
     </p>
-    <p><strong>Fix:</strong> Remove the line, or replace with a <code>logging.debug()</code> call:</p>
-    <pre><span class="kw">import</span> logging
-log = logging.getLogger(__name__)
-log.debug(<span class="st">"spot_paths shape: %s"</span>, spot_paths.shape)</pre>
+    <p>
+      <strong>Fix:</strong> Either complete the implementation or guard with
+      <code>raise NotImplementedError</code> in <code>evaluate()</code> so failures are explicit.
+    </p>
   </div>
 
   <!-- 10 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title">No type annotations across the entire codebase</span>
+      <span class="issue-title">No tests for calibration, <code>TsSvi1</code>, analytics, or PDE — new code is entirely unverified</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">Codebase-wide</span>
+    <span class="loc">sdevpy/tests/ · codebase-wide</span>
     <p>
-      <strong>Why it's bad:</strong> Without type hints, IDEs cannot autocomplete correctly,
-      <code>mypy</code> cannot catch type errors before runtime, and callers have no indication
-      what types are expected. In a numerical library this is especially risky — passing a scalar
-      where a NumPy array is expected can produce wrong results instead of an error.
+      <strong>Why it's bad:</strong> The newly implemented <code>convert_option()</code>,
+      <code>convert_target()</code>, and <code>TsSvi1.formula_parameters()</code> have no tests.
+      Issue #1 above (the <code>check_degrees_of_freedom</code> shadow) would have been caught
+      immediately by a basic calibration smoke test. The same applies to the recurring
+      attribute/method naming bugs — a test suite that exercises the calibration path would
+      surface these within seconds of the bad commit.
     </p>
     <p>
-      <strong>Fix:</strong> Add type hints incrementally to public method signatures, starting at the
-      most-used boundaries (<code>Payoff.evaluate</code>, <code>YieldCurve.discount</code>,
-      <code>Interpolation.value</code>). Run <code>mypy</code> in CI to prevent regression.
+      <strong>Fix:</strong> Add at minimum: (1) a round-trip vol conversion test in
+      <code>test_optionsurface.py</code>; (2) a <code>TsSvi1</code> forward-evaluation test
+      checking output shape and positivity; (3) a smoke test that calls
+      <code>ZeroSurface.check_consistency()</code> to catch the attribute/method shadow class
+      of bugs before they reach production.
     </p>
-    <pre><span class="c"># Before</span>
-<span class="kw">def</span> <span class="fn">evaluate</span>(self, market_state):
-    ...
-
-<span class="c"># After</span>
-<span class="kw">import</span> numpy <span class="kw">as</span> np
-<span class="kw">from</span> sdevpy.montecarlo.marketstate <span class="kw">import</span> MarketState
-
-<span class="kw">def</span> <span class="fn">evaluate</span>(self, market_state: MarketState) -> np.ndarray:
-    ...</pre>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-03-28
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-04-04 (6th review)
   </footer>
 </div>
 </body>

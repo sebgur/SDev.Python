@@ -1,13 +1,13 @@
 """ Utilities for Black-Scholes model """
-import numpy as np
+# import numpy as np
 import scipy.stats
-from scipy.optimize import minimize_scalar
+# from scipy.optimize import minimize_scalar
 import tensorflow as tf
 import tensorflow_probability as tfp
 from sdevpy import settings
 
 N = scipy.stats.norm.cdf
-tf_N = tfp.distributions.Normal(0.0, 1.0)
+tf_n = tfp.distributions.Normal(0.0, 1.0)
 
 
 def price_and_greeks(expiry, strike, spot, vol, rate, div):
@@ -28,7 +28,7 @@ def price_and_greeks(expiry, strike, spot, vol, rate, div):
             d1 = tf.math.log(fwd / strike) / stdev + 0.5 * stdev
             d2 = d1 - stdev
             df = tf.math.exp(-tf_rate * tf_time)
-            pv = df * (fwd * tf_N.cdf(d1) - strike * tf_N.cdf(d2))
+            pv = df * (fwd * tf_n.cdf(d1) - strike * tf_n.cdf(d2))
 
         # Calculate delta and vega
         g_delta = tape2nd.gradient(pv, tf_spot)

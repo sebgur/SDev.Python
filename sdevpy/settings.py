@@ -37,14 +37,15 @@ if USE_PYTHONNET:
 
     # Load dlls
     def load_dll(bin_path, dll_name):
-        path = r'%s%s' % (bin_path, dll_name)
+        path = f'{bin_path}{dll_name}'
+        # path = r'%s%s' % (bin_path, dll_name)
         clr.AddReference(path)
 
     load_dll(BIN_PATH, 'SDev.Addin')
 
-    from SDev.Addin import *
-    from SDev.Addin import Loader as sDev
-    from SDev.Addin import WorksheetFunctions as wF
+    # from SDev.Addin import *
+    # from SDev.Addin import Loader as sDev
+    # from SDev.Addin import WorksheetFunctions as wF
 
 # # Doing nothing for now, just to avoid warning of dummy import
 # def apply_settings():

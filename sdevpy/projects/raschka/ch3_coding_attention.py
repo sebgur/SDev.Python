@@ -1,4 +1,4 @@
-from importlib.metadata import version
+# from importlib.metadata import version
 import torch
 from sdevpy.machinelearning.llms.attention import SelfAttentionV1, SelfAttentionV2, CausalAttention
 from sdevpy.machinelearning.llms.attention import MultiHeadAttentionWrapper, MultiHeadAttention

@@ -192,7 +192,8 @@ class ZeroSurface(ABC):
 
     def calibrate(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
         """ Calibrate surface """
-        self.baseDate = date
+        self.base_date = date
+
         # Check consistency of input data, convert to modelled type
         target_options = self.check_consistency(options)
 

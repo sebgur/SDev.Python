@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sdevpy.machinelearning.llms.gpt import GPTModel
 import sdevpy.machinelearning.llms.textgen as tg
 from sdevpy.projects.raschka import raschka_datasetloader as ds
-from sdevpy.machinelearning.llms.training import calc_loss_loader, train_model_simple, plot_losses
+from sdevpy.machinelearning.llms.training import calc_loss_loader
 
 print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)
@@ -81,9 +81,9 @@ print("Probas text 2\n", target_probas_2, "\n")
 log_probas = torch.log(torch.cat((target_probas_1, target_probas_2)))
 print("Log target probas\n", log_probas, "\n")
 avg_log_probas = torch.mean(log_probas)
-print(f"Average log proba\n", avg_log_probas, "\n")
+print("Average log proba\n", avg_log_probas, "\n")
 neg_avg_log_probas = avg_log_probas * -1
-print(f"Negative average log proba (Cross-Entropy)\n", neg_avg_log_probas, "\n")
+print("Negative average log proba (Cross-Entropy)\n", neg_avg_log_probas, "\n")
 
 # Using PyTorch's cross-entropy function
 print("Logits shape: ", logits.shape)
@@ -103,7 +103,7 @@ print("<><><><><><><><> Training <><><><><><><><><><><><><><><><><><><><><><><><
 print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
 print("<><><><> Loss on the entire sets <><><><>")
 file = "datasets/llms/the-verdict.txt"
-with open(file, "r", encoding="utf-8") as f:
+with open(file, encoding="utf-8") as f:
     text_data = f.read()
 
 total_characters = len(text_data)
