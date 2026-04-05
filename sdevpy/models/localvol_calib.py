@@ -18,8 +18,6 @@ from sdevpy.models.surfaces.optionsurface import calibration_targets, IS_CALL
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
 # * Use actual data from SPX
 # * Calibration weights based on percentiles, with possible removal of options
-# * Use seaborn to represent diffs between IV and LV prices on quoted pillars
-# * Upload to pypi, make Colab, post.
 
 
 def calibrate_lv(valdate, name, config, **kwargs):

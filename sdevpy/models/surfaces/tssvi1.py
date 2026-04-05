@@ -12,6 +12,7 @@ from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.models.surfaces.optionsurface import calibration_targets
 from sdevpy.tools import timegrids
 from sdevpy.maths.metrics import rmse
+from sdevpy.maths.optimization import create_optimizer
 
 
 ################## TODO ###########################################
@@ -82,6 +83,48 @@ class TsSvi1(TermStructureParametricZeroSurface):
         return x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10]
 
 
+def calibrate_tssvi1(valdate, name, config, **kwargs):
+    # Arguments
+    # verbose = kwargs.get('verbose', False)
+    # disp_opt = kwargs.get('disp_opt', False)
+    # calc_pde_vols = kwargs.get('calc_pde_vols', False)
+
+    # return {'lv': lv, 'iv_data': surface_data, 'pde_vols': pde_vols}
+    raise NotImplementedError("Not implemented yet: calibrate_tssvi1")
+
+
+class TsSvi1ObjectiveBuilder:
+    def __init__(self, model: TermStructureParametricZeroSurface, expiries: npt.ArrayLike,
+                 strikes: npt.ArrayLike, fwds: npt.ArrayLike, market_vols: npt.ArrayLike, config: dict):
+        self.model = model
+        self.expiries = expiries
+        self.strikes = strikes
+        self.fwds = fwds
+        self.market_vols = market_vols
+        self.config = config
+        self.is_call = True
+
+    def objective(self, params):
+        # Update params
+        self.model.update_params(params)
+        is_ok, penalty = self.model.check_params()
+
+        if is_ok:
+            # Calculate model vols
+            model_vols = self.model.calculate(self.expiries, self.strikes, self.is_call, self.fwds)
+
+            # Calculate the objective function
+            obj = rmse(model_vols, self.market_vols)
+            return obj
+        else:
+            # In principle we should return a penalty number. However, it is not clear at the moment if
+            # that penalty should come from the model (where we know the parameters) or the
+            # objective function (where we know the problem). It might need to come from both.
+            # For now we are using a problem-specific penalty, i.e. the value if all the model prices
+            # were 0, assuming that should be much bigger than at any reasonable solution.
+            return 100.0 * self.market_vols.sum()
+
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     name = "ABC"
@@ -99,12 +142,7 @@ if __name__ == "__main__":
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Set calibration targets
-    cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
-
-    # Set up the model
-    surface = TsSvi1()
-    params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.9, 0.1, 0.1, 0.1, 0.1]
-    surface.calibrated_parameters = params
+    # cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
 
     # Reformat inputs to flat vectors
     t, k, f, s = [], [], [], []
@@ -122,13 +160,35 @@ if __name__ == "__main__":
     t = np.asarray(t)
     k = np.asarray(k)
     f = np.asarray(f)
+    s = np.asarray(s)
     is_call = True
 
-    # Estimate model
+    # Initialize model
+    surface = TsSvi1()
+    params_init = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.9, 0.1, 0.1, 0.1, 0.1]
+    surface.calibrated_parameters = params_init
+
+    # Optimizer settings
+    method = 'SLSQP' # L-BFGS-B, SLSQP, DE
+    tol = 1e-4
+
+    # Constraints
+    bounds = surface.bounds()
+
+    # Objective
+    obj_builder = TsSvi1ObjectiveBuilder(surface, expiry_grid, k, f, s, config={})
+    objective = obj_builder.objective
+
+    # Optimize
+    optimizer = create_optimizer(method, tol=tol)
+    # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
+    result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+    sol = result.x # Optimum parameters
+
+    # Calculate model vols and reshape results per maturity
+    surface.calibrated_parameters = sol
     z = surface.calculate(t, k, is_call, f)
     print(f"Result shape: {z.shape}")
-
-    # Reshape results per maturity
     model_vols = []
     counter = 0
     for _ in expiries:
@@ -162,4 +222,3 @@ if __name__ == "__main__":
     fig.suptitle('Option vols, Model vs Market', fontsize=16, fontweight='bold')
     plt.tight_layout()
     plt.show()
-
