@@ -11,6 +11,7 @@ from sdevpy.models.svi import svi_formula
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.models.surfaces.optionsurface import calibration_targets
 from sdevpy.tools import timegrids
+from sdevpy.maths.metrics import rmse
 
 
 ################## TODO ###########################################
@@ -121,12 +122,6 @@ if __name__ == "__main__":
     t = np.asarray(t)
     k = np.asarray(k)
     f = np.asarray(f)
-    # t = np.asarray([0.5, 1.5, 2.5])
-    # k = np.asarray([90, 100, 110])
-    # f = np.asarray([95, 105, 115])
-    # print(f"t-shape: {t.shape}")
-    # print(f"k-shape: {k.shape}")
-    # print(f"f-shape: {f.shape}")
     is_call = True
     z = []
     for t_, k_, f_ in zip(t, k, f, strict=True):
@@ -153,6 +148,27 @@ if __name__ == "__main__":
         model_vols.append(vols)
 
     # Estimate model on points and calculate RMSE, plot comparison
-    plt.scatter(strike_surface[0], vol_surface[0], label='market', color='black')
-    plt.scatter(strike_surface[0], model_vols[0], label='model', color='green')
+    n_rows, n_cols = 3, 2
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            ax = axes[i, j]
+            exp_idx = n_cols * i + j
+            expiry = expiry_grid[exp_idx]
+            fwd = fwds[exp_idx]
+            strikes = strike_surface[exp_idx]
+            min_k, max_k = strikes[0], strikes[-1]
+            m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
+            m_vols = surface.calculate(expiry, m_strikes, is_call, fwd)
+            ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
+            ax.plot(m_strikes, m_vols, label="model", color='green')
+            vol_rmse = rmse(vol_surface[exp_idx], model_vols[exp_idx])
+            ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
+            ax.set_xlabel('strike')
+            ax.set_ylabel('vol')
+            ax.legend()
+
+    fig.suptitle('Option vols, Model vs Market', fontsize=16, fontweight='bold')
+    plt.tight_layout()
     plt.show()
+
