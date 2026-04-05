@@ -51,13 +51,15 @@ class WorstOfBarrier(Payoff):
         self.expiry_idx = matches[0]
 
 
-def make_asian_option(name, strike, optiontype, start, end, freq="1D", cdr="USD"):
+def make_asian_option(name: str, strike: float, optiontype, start, end, freq="1D", cdr="USD"):
+    """ Create Asian option payoff """
     index = Average(name, start, end, freq, cdr)
     payoff = make_vanilla_option_payoff(index, strike, optiontype)
     return payoff
 
 
-def make_basket_option(names, weights, strike, optiontype, expiry):
+def make_basket_option(names: list[str], weights: list[float], strike: float, optiontype, expiry):
+    """ Create Basket option payoff """
     spots = [Terminal(name, expiry) for name in names]
     basket = Basket(spots, weights)
     payoff = make_vanilla_option_payoff(basket, strike, optiontype)
@@ -65,7 +67,7 @@ def make_basket_option(names, weights, strike, optiontype, expiry):
 
 
 class Maximum(Payoff):
-    """ Warning: work in progress. ToDo: document """
+    """ ToDo: [Warning] work in progress. """
     def __init__(self, left, right):
         super().__init__()
         self.left = left
@@ -74,17 +76,19 @@ class Maximum(Payoff):
         self.eventdates = list_payoff_eventdates([self.left, self.right])
 
     def evaluate(self, mkt_state):
-        return np.maximum(self.left.evaluate(mkt_state), self.right.evaluate(mkt_state))
+        # return np.maximum(self.left.evaluate(mkt_state), self.right.evaluate(mkt_state))
+        raise NotImplementedError("Not implemented yet: Maximum(Payoff)")
 
 
 class BarrierDown(Payoff):
-    """ Warning: work in progress. ToDo: document """
+    """ ToDo: [Warning] work in progress. """
     def __init__(self, asset_index, level):
         super().__init__()
         self.asset_index = asset_index
         self.level = level
 
     def evaluate(self, mkt_state):
-        paths = mkt_state.event_paths
-        breached = (paths[:, :, self.asset_index] < self.level).any(axis=1)
-        return (~breached).astype(float)
+        # paths = mkt_state.event_paths
+        # breached = (paths[:, :, self.asset_index] < self.level).any(axis=1)
+        # return (~breached).astype(float)
+        raise NotImplementedError("Not implemented yet: Maximum(Payoff)")

@@ -51,8 +51,8 @@ def svivol(x, *params):
         of Heston. It is purely used for its parametric shape here.
     """
     # Retrieve parameters
-    if (len(params) != 5):
-        raise RuntimeError(f"Incorrect parameter size in SviVol: {len(params)}")
+    if len(params) != 5:
+        raise ValueError(f"Incorrect parameter size in SviVol: {len(params)}")
 
     a = params[0]
     b = params[1]
@@ -63,7 +63,7 @@ def svivol(x, *params):
     # Check constraints
     is_ok, _ = svivol_check_params(params)
     if not is_ok:
-        raise RuntimeError("Invalid SviVol parameters")
+        raise ValueError("Invalid SviVol parameters")
 
     # Calculate
     xm = x - m # x is the log-moneyness

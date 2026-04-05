@@ -2,23 +2,24 @@
 # https://machinelearningmastery.com/how-to-use-nelder-mead-optimization-in-python/
 # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html
 # For DE: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
-# from sdevpy.maths.constants import FLOAT_MAX
 
 
 SCIPY_OPTIMIZERS = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA',
                     'SLSQP', 'trust-constr', 'Newton-CG', 'dogleg', 'trust-ncg',
                     'trust-exact', 'trust-krylov', 'DE']
 
+DFLT_METHODS = ['L-BFGS-B', 'DE']
 
 # Available strategies for DE
 # best1bin, best1exp, best2exp, best2bin, rand1bin, rand1exp, rand2bin, rand2exp,
 # randtobest1bin, randtobest1exp, currenttobest1bin, currenttobest1exp
 
-def create_optimizer(method, **kwargs):
+
+def create_optimizer(method: str, **kwargs):
     """ Create an optimizer. Currently only supporting SciPy """
     optimizer = None
     if method in SCIPY_OPTIMIZERS:
@@ -29,11 +30,12 @@ def create_optimizer(method, **kwargs):
     return optimizer
 
 
-def create_bounds(lw_bounds, up_bounds):
+def create_bounds(lw_bounds: list[float], up_bounds: list[float]):
+    """ Create Bounds object for optimizers """
     return opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
 
 
-class Optimizer:
+class Optimizer(ABC):
     @abstractmethod
     def minimize(self, f, x0, args, bounds):
         """ Minimization """
@@ -83,7 +85,6 @@ class SciPyOptimizer(Optimizer):
 
         return result
 
-DFLT_METHODS = ['L-BFGS-B', 'DE']
 
 class MultiOptimizer(Optimizer):
     """ Wrapper for SciPy optimizers, including differential_evolution """
@@ -98,11 +99,11 @@ class MultiOptimizer(Optimizer):
 
     def minimize(self, f, x0=None, args=(), bounds=None):
         result = None
-        nfev = 0
+        self.total_nfev = 0
         for i, optimizer in enumerate(self.optimizers_):
             print("Trying optimization using " + self.methods_[i] + ": ", end='')
             result = optimizer.minimize(f, x0, args, bounds)
-            nfev = nfev + result.nfev
+            self.total_nfev += result.nfev
             if result.fun < self.mtol_:
                 print("Good enough!")
                 break
@@ -111,10 +112,10 @@ class MultiOptimizer(Optimizer):
             else:
                 print("Stopping")
 
-        return result, nfev
+        return result
 
 
-def record_history(enabled=True, verbose=False):
+def record_history(enabled: bool=True, verbose: bool=False):
     """ Decorator that records the history of evaluation of the given function """
     def decorator(func):
         # Initialize history

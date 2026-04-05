@@ -1,13 +1,14 @@
 """ Monte-Carlo simulation for Free-Boundary SABR model (vanillas) """
 import numpy as np
+import numpy.typing as npt
 import matplotlib.pyplot as plt
 import scipy.stats as sp
 from sdevpy.tools.timegrids import SimpleTimeGridBuilder
 from sdevpy.tools import timer
 
 
-def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_per_year=10,
-          scheme='Andersen'):
+def price(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_calls: npt.ArrayLike, fwd: float,
+          parameters: list[float], num_mc: int=10000, points_per_year: int=10, scheme: str='Andersen'):
     """ Calculate vanilla prices under Free-Boundary SABR model by Monte-Carlo simulation"""
     floor = 0.00001
 
@@ -97,7 +98,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     return np.asarray(mc_prices)
 
 
-def calculate_fbsabr_alpha(ln_vol, fwd, beta):
+def calculate_fbsabr_alpha(ln_vol: float, fwd: float, beta: float) -> float:
     """ Calculate parameter alpha with our definition in terms of ln_vol, i.e.
         alpha = ln_vol * fwd ^ (1.0 - beta) """
     floor = 0.00001

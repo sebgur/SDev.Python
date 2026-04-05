@@ -1,11 +1,12 @@
 """ Dataset preparation for training """
 import os
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from sdevpy.tools import filemanager
 
 
-def prepare_sets(inputs, outputs, train_percent):
+def prepare_sets(inputs: npt.ArrayLike, outputs: npt.ArrayLike, train_percent: float) -> npt.ArrayLike:
     """ Split input and output datasets into training and test datasets split
         according to specified percentage to put in the training set """
     data_size = inputs.shape[0]
@@ -21,10 +22,10 @@ def prepare_sets(inputs, outputs, train_percent):
 
     return train_inputs, train_outputs, test_inputs, test_outputs
 
-def retrieve_data(folder, num_samples, shuffle=True, sep='\t', export_file=""):
+
+def retrieve_data(folder: str, num_samples: int, shuffle: bool=True, sep: str='\t', export_file: str=""):
     """ Use all files in folder to create a dataset, shuffle its data,
         extract num_samples from it and return dataframe """
-
     # Set extension
     if sep == '\t':
         extension = ".tsv"
@@ -52,7 +53,8 @@ def retrieve_data(folder, num_samples, shuffle=True, sep='\t', export_file=""):
 
     return df
 
-def clip_dataframe(df, size):
+
+def clip_dataframe(df: pd.DataFrame, size: int) -> pd.DataFrame:
     """ Clip dataframe beyond specified size"""
     df_size = len(df.index)
     if df_size <= size:
@@ -60,7 +62,8 @@ def clip_dataframe(df, size):
     else:
         return df.iloc[range(0, size)]
 
-def shuffle_dataframe(df, frac=1):
+
+def shuffle_dataframe(df: pd.DataFrame, frac: float=1) -> pd.DataFrame:
     """ Shuffle dataframe """
     df = df.sample(frac=frac)
     return df

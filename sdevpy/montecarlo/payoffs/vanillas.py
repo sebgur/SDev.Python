@@ -10,7 +10,8 @@ class VanillaOptionType(Enum):
     STRADDLE = 2
 
 
-def make_vanilla_option_payoff(payoff, strike, optiontype):
+def make_vanilla_option_payoff(payoff, strike: float, optiontype: str):
+    """ Create a vanilla option on top of a given payoff """
     optiontype_ = string_to_optiontype(optiontype)
     match optiontype_:
         case VanillaOptionType.CALL:
@@ -25,7 +26,8 @@ def make_vanilla_option_payoff(payoff, strike, optiontype):
     return option_payoff
 
 
-def make_vanilla_option(name, strike, optiontype, expiry):
+def make_vanilla_option(name: str, strike: float, optiontype: str, expiry: dt.datetime):
+    """ Create a vanilla option on a simple index. ToDo: can't we merge? """
     optiontype_ = string_to_optiontype(optiontype)
     match optiontype_:
         case VanillaOptionType.CALL:
@@ -40,7 +42,8 @@ def make_vanilla_option(name, strike, optiontype, expiry):
     return payoff
 
 
-def vanilla_option(spot, strike, optiontype):
+def vanilla_option(spot, strike: float, optiontype):
+    """ Vanilla option given spot. ToDo: explain more """
     match optiontype:
         case VanillaOptionType.CALL:
             payoff = np.maximum(spot - strike, 0.0)
@@ -54,7 +57,8 @@ def vanilla_option(spot, strike, optiontype):
     return payoff
 
 
-def string_to_optiontype(s):
+def string_to_optiontype(s: str) -> VanillaOptionType:
+    """ Convert string to VanillaOptionType """
     match s.lower():
         case 'call':
             return VanillaOptionType.CALL

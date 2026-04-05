@@ -15,13 +15,12 @@ import numpy as np
 import scipy.optimize as opt
 from scipy.stats import norm
 from sdevpy.models.impliedvol import ParamSection
-# from sdevpy.maths import constants
 
 
 DEATH_PENALTY = 1e6
 
 
-def create_section(time, param_config=None, fill_sample=True):
+def create_section(time: float, param_config: dict=None, fill_sample: bool=True):
     """ Create section of the BiExp model """
     section = BiExpSection(time)
     if param_config is None and fill_sample:
@@ -66,8 +65,8 @@ def biexp(x, *params):
     m = 0.0
 
     # Retrieve parameters
-    if (len(params) != 6):
-        raise RuntimeError(f"Incorrect parameter size in BiExp: {len(params)}")
+    if len(params) != 6:
+        raise ValueError(f"Incorrect parameter size in BiExp: {len(params)}")
 
     f0 = params[0]
     fl = params[1]
@@ -79,7 +78,7 @@ def biexp(x, *params):
     # Check constraints
     is_ok, _ = biexp_check_params(params)
     if not is_ok:
-        raise RuntimeError("Invalid BiExp parameters")
+        raise ValueError("Invalid BiExp parameters")
 
     # Calculate
     xm = x - m
@@ -95,7 +94,7 @@ def biexp(x, *params):
     return np.where(xm >= 0.0, volr, voll)
 
 
-def biexp_check_params(params):
+def biexp_check_params(params: list[float]):
     """ Check parameters of the BiExp model """
     is_ok = False
     if len(params) == 6:
@@ -121,12 +120,12 @@ def biexp_check_params(params):
     return is_ok, penalty
 
 
-def biexp_formula(t, x, params):
+def biexp_formula(t: float, x, params: list[float]):
     """ Wrapper on BiExp formula to take parameter vector as input """
     return biexp(x, *params)
 
 
-def sample_params(t, vol=0.25):
+def sample_params(t: float, vol: float=0.25):
     """ Guess parameters for display or optimization initial point """
     f0 = vol
     fl = vol + 0.05
@@ -138,7 +137,9 @@ def sample_params(t, vol=0.25):
 
 DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
 
-def generate_sample_data(valdate, terms, base_vol=0.25, percents=DFLT_PERCENTS):
+
+def generate_sample_data(valdate: dt.datetime, terms: list[str], base_vol: float=0.25,
+                         percents: list[float]=DFLT_PERCENTS):
     """ Generate sample data for the BiExp model """
     spot, r, q = 100.0, 0.04, 0.02
 

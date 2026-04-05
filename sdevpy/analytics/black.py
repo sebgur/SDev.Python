@@ -1,14 +1,14 @@
 """ Utilities for Black-Scholes model """
 import numpy as np
+# import numpy.typing as npt
 import scipy.stats
 from scipy.optimize import minimize_scalar
 from sdevpy.thirdparty.py_vollib.black import implied_volatility as jaeckel
-# from sdevpy import settings
 
 N = scipy.stats.norm.cdf
 
 
-def price(expiry, strike, is_call, fwd, vol):
+def price(expiry: float, strike: float, is_call: bool, fwd: float, vol: float) -> float:
     """ Option price under the Black-Scholes model """
     w = 1.0 if is_call else -1.0
     s = vol * np.sqrt(expiry)
@@ -17,7 +17,7 @@ def price(expiry, strike, is_call, fwd, vol):
     return w * (fwd * N(w * d1) - strike * N(w * d2))
 
 
-def implied_vol_jaeckel(expiry, strike, is_call, fwd, fwd_price):
+def implied_vol_jaeckel(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
     """ Black-Scholes implied volatility using P. Jaeckel's 'Let's be rational' method,
         from package py_vollib. Install with pip install py_vollib or at
         https://pypi.org/project/py_vollib/. Unfortunately we found it has instabilities
@@ -28,7 +28,7 @@ def implied_vol_jaeckel(expiry, strike, is_call, fwd, fwd_price):
     return iv
 
 
-def implied_vol(expiry, strike, is_call, fwd, fwd_price):
+def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
     """ Direct method by numerical inversion using Brent """
     options = {'xtol': 1e-4, 'maxiter': 100, 'disp': False}
     xmin = 1e-6
