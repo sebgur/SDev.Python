@@ -29,6 +29,7 @@ def black_option_vega(f, # forward, double
     d_1 = (np.log(f / k) + 0.5 * v * v * t) / (v * np.sqrt(t))
     return f * norm.pdf(d_1) * np.sqrt(t)
 
+
 #compute black implied volatility
 def black_implied_vol(p,  # option price, double
                       f,  # forward, double
@@ -38,8 +39,14 @@ def black_implied_vol(p,  # option price, double
                       init_guess = 0.2 # initial guess
                       ):
 
-    f_ivol = lambda x: black_option_price(f, k, t, x, c_or_p) - p
-    f_vega = lambda x: black_option_vega(f, k, t, x)
+    def f_ivol(x):
+        return black_option_price(f, k, t, x, c_or_p) - p
+
+    def f_vega(x):
+        return black_option_vega(f, k, t, x)
+
+    # f_ivol = lambda x: black_option_price(f, k, t, x, c_or_p) - p
+    # f_vega = lambda x: black_option_vega(f, k, t, x)
     black_implied_vol = optimize.newton(f_ivol, init_guess, f_vega)
 
     return black_implied_vol

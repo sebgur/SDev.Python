@@ -1,11 +1,8 @@
-# ########################## Imports and versions ##########################################################
 import numpy as np
 import tensorflow as tf
-# import matplotlib.pyplot as plt
 import time as tm
 import scipy.stats
 import sklearn as sk
-from sklearn.metrics import mean_squared_error
 import tensorflow_probability as tfp
 from platform import python_version
 import os
@@ -75,7 +72,7 @@ print("Number of assets: " + str(num_assets))
 def print_vec(name, data):
     print(name + ": [", end=""),
     for i_ in range(len(data)):
-        print("{:,.2f}".format(data[i_]), end="")
+        print(f"{data[i_]:,.2f}", end="")
         if i_ < len(data) - 1:
             print(", ", end="")
     print("]")
@@ -86,7 +83,7 @@ smooth_vol = 0.02
 smooth_time = 10.0 / 365.0
 smooth_stdev = smooth_vol * np.sqrt(smooth_time)
 s2p = np.sqrt(2.0 * np.pi)
-tf_N = tfp.distributions.Normal(0.0, 1.0)
+tf_n = tfp.distributions.Normal(0.0, 1.0)
 
 
 # Tensorflow implementation of the payoff smoother ('tf_smooth_max')
@@ -108,23 +105,23 @@ tmax = tf.constant(expiry, dtype='float64')
 
 # Spot boundaries defined as extreme percentiles of the distribution
 N = scipy.stats.norm
-fwdT = np.asarray(spot) * np.exp((rate - div) * expiry)
+fwdt = np.asarray(spot) * np.exp((rate - div) * expiry)
 stdev = vol * np.sqrt(expiry)
 conf = 0.9999  # Chosen percentile of the distributions (0.9999 worked quite well in 1D)
 percentile = N.ppf(conf)
 xmin = -0.5 * stdev * stdev - percentile * stdev
 xmax = -0.5 * stdev * stdev + percentile * stdev
-smin = fwdT * np.exp(xmin)
-smax = fwdT * np.exp(xmax)
+smin = fwdt * np.exp(xmin)
+smax = fwdt * np.exp(xmax)
 
 # Bounds in vector form (for input scaling)
 lb = tf.concat([[tmin], xmin], axis=0)
 ub = tf.concat([[tmax], xmax], axis=0)
 
-print("Min time: {:,.2f}".format(tmin))
-print("Max time: {:,.2f}".format(tmax))
+print(f"Min time: {tmin:,.2f}")
+print(f"Max time: {tmax:,.2f}")
 print_vec("Spots", spot)
-print_vec("Forwards", fwdT)
+print_vec("Forwards", fwdt)
 print_vec("Min spots", smin)
 print_vec("Max spots", smax)
 print_vec("Min red. spots", xmin)
@@ -134,7 +131,7 @@ print_vec("Max red. spots", xmax)
 # ############################## Functions at boundaries ###################################################
 # Payoff at maturity
 def payoff(x):
-    s = fwdT * tf.math.exp(x)
+    s = fwdt * tf.math.exp(x)
     perf = (s - fixings) / fixings
     # perf = s / fixings - 1.0  # Weird Python bug? This line gives inaccuracies, but the above is accurate
     wperf = tf.math.reduce_min(perf, axis=1, keepdims=True)
@@ -470,7 +467,7 @@ for i in range(num_points):
     mc_gamma[i] = gamma
 
 mc_time = tm.time() - mc_start
-print('Runtime(Monte-Carlo): %.1f' % mc_time + 's')
+print(f'Runtime(Monte-Carlo): {mc_time:.1f}s')
 
 
 # Custom learning rate scheduler
@@ -504,7 +501,7 @@ def train_step(model_, optimizer_, pde_points_, boundary_points_, boundary_value
                                                                             boundary_values_)
 
     # Apply gradient descent
-    optimizer_.apply_gradients(zip(grad_, model_.trainable_variables))
+    optimizer_.apply_gradients(zip(grad_, model_.trainable_variables, strict=True))
 
     return loss_, pde_loss_, payoff_loss_, side_loss_
 
@@ -612,12 +609,12 @@ def launch_training(model_names_, model_rmses_, model_runtimes_):
             # md_pv = model(points)
             md_pv = model(tf.convert_to_tensor(points))
             rmse_ = np.sqrt(sk.metrics.mean_squared_error(mc_pv, md_pv))
-            print('Epoch {c:4,}/{h:,}: loss={a:,.0f}, '.format(h=num_epochs, c=epoch, a=loss), end="")
-            print('rmse(MC)={b:,.0f}'.format(b=rmse_), end="")
-            print(', pde={b:,.0f}'.format(b=pde_loss), end="")
-            print(', payoff={b:,.0f}'.format(b=payoff_loss), end="")
-            print(', side={b:,.0f}'.format(b=side_loss), end="")
-            print(', lr={b:.6f}'.format(b=lr))
+            print(f'Epoch {epoch:4,}/{num_epochs:,}: loss={loss:,.0f}', end="")
+            print(f'rmse(MC)={rmse_:,.0f}', end="")
+            print(f', pde={pde_loss:,.0f}', end="")
+            print(f', payoff={payoff_loss:,.0f}', end="")
+            print(f', side={side_loss:,.0f}', end="")
+            print(f', lr={lr:.6f}')
 
         if redraw_dataset and epoch % 1000 == 0:
             pde_points, boundary_points, boundary_values = build_dataset(num_final, nb, num_pde)
@@ -630,12 +627,12 @@ def launch_training(model_names_, model_rmses_, model_runtimes_):
 
     # Reload best status
     if use_best_model and weights_are_saved:
-        print("Best model has loss={a:,.0f}".format(a=best_loss_to_date))
+        print(f"Best model has loss={best_loss_to_date:,.0f}")
         model.load_weights(best_weight_file)
 
     print("")
     runtime = tm.time() - t0
-    print('Runtime: {:.3f} seconds'.format(runtime))
+    print(f'Runtime: {runtime:.3f} seconds')
 
     # Save the model to file
     now = datetime.now()
