@@ -1,9 +1,7 @@
 import numpy as np
 import pandas as pd
-# import statsmodels.api as sm
 from sdevpy.cointegration import utils as ut
 from sdevpy.cointegration import mean_reversion as my_mean_rev
-# from enum import Enum
 from itertools import combinations
 from tqdm import tqdm # for console progress bar
 from sdevpy.cointegration import model_settings as settings
@@ -200,9 +198,8 @@ def norm_1st_eigvec(res_jo):
     return res
 
 
-# --------------------------------------------------------------------------
-# extract the test stats for trace/eigen at 5% and 10% confident intervals
 def check_johansen_test_stats_fast(res_jo):
+    """ Extract the test stats for trace/eigen at 5% and 10% confident intervals """
     # trace_stats
     trace_test_stats = res_jo.lr1[0]
     trace_10_pct = res_jo.cvt[0][0]
@@ -344,16 +341,18 @@ def johansen_compute_all_baskets(start_list, today, all_name_list, df_fx_spot):
 
 # The functions below are all diagnostics for the Excel report for cointegration search
 
-# select the cointegrated baskets, we use trace 10% as the minimum requirement
-# res_df - output from the function, johansen_compute_all_baskets
 def filter_cointegration_basket_using_trace_10(res_df):
+    """ Select the cointegrated baskets, we use trace 10% as the minimum requirement
+        res_df - output from the function, johansen_compute_all_baskets """
     trace_condition = res_df['trace (10%)']
     res_df_filtered = res_df[trace_condition]
 
     return res_df_filtered
 
-# compute the diagnostics only for cointegrated basket
+
+
 def compute_johansen_test_diag_for_all_coint_baskets(res_df_filtered, df_fx_spot):
+    """ Compute the diagnostics only for cointegrated basket """
     for ind in tqdm(res_df_filtered.index):
         from_ = res_df_filtered['From'][ind]
         today_ = res_df_filtered['Today'][ind]
@@ -390,7 +389,6 @@ def compute_johansen_test_diag_for_all_coint_baskets(res_df_filtered, df_fx_spot
 # SD_threshold - we filter out basket with SD less than abs(SD_threshold). If SD_threshold = 2,
 # we only show baskets with abs(SD) > 2
 def filter_cointegration_basket_using_sd_threshold(res_df, sd_threshold):
-
     # select using SD criteria
     upper_distance_condition = res_df['SD Current'] > sd_threshold
     lower_distance_condition = res_df['SD Current'] < -sd_threshold
@@ -472,90 +470,6 @@ def compute_historical_min_max_sd_diagnostics(res_df_filtered, df_fx_spot):
             max_list.append((sd, date))
 
         res_df_filtered['Top 3 SD Max'][ind] = max_list
-
-    return res_df_filtered
-
-
-### No USE FOR NOW, but keep it here for future use
-#----- Compute the expcected return and return stdev
-#
-# df_fx_spot - fx spot data to be used to compute diagnostics
-#
-# This function modifies the input dataframe - res_df_filtered of the following columns
-# (1) 'hist 5D rtn ave'
-# (2) 'hist 5D rtn std'
-# (3) 'hist 5D ave/std'
-# (4) '# occurance'
-def compute_historical_return_diagnostics(res_df_filtered, df_fx_spot):
-
-    # for each recommended basket
-    for ind in tqdm(res_df_filtered.index):
-        # retrieve data from the input dataframe
-        from_ = res_df_filtered['From'][ind]
-        today_ = res_df_filtered['Today'][ind]
-
-        name_list = res_df_filtered['currency pairs'][ind]
-        weights_xxxusd = res_df_filtered['unadj weights in XXXusd'][ind]
-
-        sd_current = res_df_filtered['SD Current'][ind]
-
-        # get the full list fx spot time series
-        df_from_today = df_fx_spot.loc[from_:today_]
-        df_fx_name_list_xxxusd = df_from_today[name_list]
-
-        basket = ut.compute_basket(df_fx_name_list_xxxusd, weights_xxxusd)
-
-        # use the current SD as a reference level
-        lower_threshold = sd_current - settings.SAUSAGE_THICKNESS
-        higher_threshold = sd_current + settings.SAUSAGE_THICKNESS
-
-        # compute the buy or sell signal based on threshold range, i.e. buy or sell in the range
-
-        mean_rev_ts = my_mean_rev.MeanRevTimeSeries(basket)
-
-        mean_rev_level = mean_rev_ts.get_mean_rev_level()
-        basket_stdev = mean_rev_ts.get_stdev()
-        mean_rev_rate_in_days = mean_rev_ts.get_mean_rev_rate_in_days()
-
-        df_meanrevstats = my_mean_rev.compute_sharpe_and_buysell_signal_multi_period(basket,
-                                                                                     mean_rev_level,
-                                                                                     basket_stdev,
-                                                                                     mean_rev_rate_in_days,
-                                                                                     mean_rev_ts.get_half_life_in_days(),
-                                                                                     lower_threshold,
-                                                                                     higher_threshold)
-
-        df_buy_sell_signal = df_meanrevstats[['Buy Signal', 'Sell Signal']]
-
-        # compute the historical returns of the basket
-        basket_x_days_hist_rtns = ut.compute_x_day_historical_returns(basket)
-
-        hist_rtns_times_1mio = basket_x_days_hist_rtns * settings.ONE_MILLION
-
-        dates_to_buy, retns_to_buy, dates_to_sell, retns_to_sell = extract_data_conditions_on_buy_sell_signal(
-            hist_rtns_times_1mio, df_buy_sell_signal, today_)
-        if sd_current > 0:
-            # We sell so we flip the sign of return
-            retns_array = None # To let ruff continue, fix with line below
-            # retns_array = retns_to_sell * -l # ToDo: fix code error on this line
-
-            ave_retns = np.mean(retns_array)
-            std_retns = np.std(retns_array)
-            num_occurance = len(retns_array)
-
-        elif sd_current < 0:
-            # We buy so we don't need to flip the sign
-            retns_array = retns_to_buy
-
-            ave_retns = np.mean(retns_array)
-            std_retns = np.std(retns_array)
-            num_occurance = len(retns_array)
-
-        res_df_filtered['hist 5D rtn ave'][ind] = round(ave_retns, 0)
-        res_df_filtered['hist 5D rtn std'][ind] = round(std_retns, 0)
-        res_df_filtered['hist 5D ave/std'][ind] = round(ave_retns/std_retns, 3)
-
-        res_df_filtered['# occurance'][ind] = num_occurance
 
     return res_df_filtered
 
@@ -735,44 +649,6 @@ def compute_johansen_stability_diagnostics(res_df_filtered, df_fx_spot, datafreq
     res_df_filtered = filter_cointegration_basket_using_trace_10_stability(res_df_filtered)
     res_df_filtered = filter_cointegration_basket_using_range_in_sd_current(res_df_filtered)
     return res_df_filtered
-
-#----------------------------------------------------------------
-# check to see if a set of currency pairs are still cointegrated
-# from_ - dataset start date
-# TRADE_DATE - trade date of the basket
-# today_ - check from TRADE_DATE to today_ to see if the set of currency pairs (name list) is still cointegrated
-def name_list_is_still_cointegrated(from_, trade_date, today_, df_fx_spot, name_list):
-    output = []
-
-    range_start = date_formatter(trade_date, settings.DataFreq.DAILY)
-    range_end = date_formatter(today_, settings.DataFreq.DAILY)
-
-    for t in df_fx_spot.index:
-        if range_start < t and t <= range_end:
-            df_fx_truncated = df_fx_spot[from_:t]
-            res_estimation = johansen_test_estimation(df_fx_truncated, name_list, 0, 1)
-            # res_diag = johansen_test_diag(res_estimation, df_fx_truncated, name_list, False, 0, 1)
-            end_date_output = date_formatter(t, settings.DataFreq.DAILY)
-
-            output.append((end_date_output,
-                           res_estimation['trace (5%)'],
-                           res_estimation['eigen (5%)'],
-                           res_estimation['trace (10%)'],
-                           res_estimation['eigen (10%)']
-                           ))
-            # ---------END OF if RANGE_START < t and t <= RANGE_END:
-        # ----------END OF for t in df_fx_spot.index:
-
-    # store all the results in DataFrame and then output to Excel
-    res_df = pd.DataFrame(output, columns =['Current Date',
-                                            'trace (5%)',
-                                            'eigen (5%)',
-                                            'trace (10%)',
-                                            'eigen (10%)'
-                                            ])
-
-    res_df = res_df.set_index('Current Date')
-    return res_df
 
 
 # count the number of True, divided by the total number of elements.

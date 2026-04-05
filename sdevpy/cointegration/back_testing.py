@@ -222,14 +222,3 @@ def one_back_test_summary_table(back_test_res_df, start_date, end_date, sharpe_t
                                                   ])
 
     return res_df, my_trade_df
-
-
-def several_back_test_summary_tables(back_test_res_df, start_dates, end_dates, sharpe_thresholds, zscore_thresholds):
-    output_df = pd.DataFrame()
-    for start, end in zip(start_dates, end_dates, strict=True):
-        for sharpe in sharpe_thresholds:
-            for zscore in zscore_thresholds:
-                df_one_table, my_trade_df = one_back_test_summary_table(back_test_res_df, start, end, sharpe, zscore)
-                output_df = pd.concat([output_df, df_one_table], axis=0)
-
-    return output_df

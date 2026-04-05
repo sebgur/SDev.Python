@@ -1,12 +1,8 @@
 import numpy as np
 import pandas as pd
-import datetime
+# import datetime
 from sdevpy.cointegration import data_io as myio
 from sdevpy.cointegration import model_settings as settings
-
-
-def time_now():
-    return datetime.datetime.now()
 
 
 def zscore(level, mean, std):
@@ -85,13 +81,6 @@ def compute_x_day_historical_returns(basket, time_in_days=settings.HOLDING_PERIO
     basket_x_day_return = basket_x_day_return.rename('x days basket return')
 
     return basket_x_day_return
-
-
-def compute_x_day_historical_returns_in_sd(basket, time_in_days, basket_stdev):
-    """ Note that the mean cancels out if we take diff. So we don't need the mean. """
-    res = compute_x_day_historical_returns(basket, time_in_days)
-    res = res / basket_stdev
-    return res
 
 
 def compute_diff(time_series, num_of_days, to_shift):

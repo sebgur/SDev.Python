@@ -1,9 +1,7 @@
 import numpy as np
 import pandas as pd
-# from scipy.stats import norm
 import statsmodels.api as sm
 from sdevpy.cointegration import utils as ut
-# from sdevpy.cointegration import model_settings as settings
 
 
 class MeanRevTimeSeries:
@@ -71,6 +69,7 @@ class MeanRevTimeSeries:
 # daily_hist_normal_vol - daily standard dev of the basket
 def mean_rev_expected_and_variance_change(mean_rev_level, mean_rev_rate_in_days, time_in_days, current_level,
                                           daily_hist_normal_vol):
+    """ Compute expected mean reversion and variance change """
     exp_lam_t = np.exp(mean_rev_rate_in_days * time_in_days)
     exp_2lam_t = np.exp(2.0 * mean_rev_rate_in_days * time_in_days)
 
@@ -88,6 +87,7 @@ def mean_rev_expected_and_variance_change(mean_rev_level, mean_rev_rate_in_days,
 
 def compute_sharpe_ratio(mean_rev_level, mean_rev_rate_in_days, time_in_days, current_level, daily_hist_normal_vol,
                          current_zscore):
+    """ Compute Sharpe ratio """
     mean_s, var_s = mean_rev_expected_and_variance_change(mean_rev_level,
                                                           mean_rev_rate_in_days,
                                                           time_in_days,
@@ -117,6 +117,7 @@ def compute_sharpe_ratio(mean_rev_level, mean_rev_rate_in_days, time_in_days, cu
 # only if the current zscore is between abs_lower_threshold and abs_higher_threshold
 # with respect to the correct signal
 def compute_buy_sell_signal(current_zscore, abs_lower_threshold, abs_higher_threshold):
+    """ Compute buy/sell signal """
     assert abs_lower_threshold < abs_higher_threshold, 'abs_lower_threshold >= abs_higher_threshold'
 
     # 0 means no action , 1 means either buy or sell
@@ -142,8 +143,8 @@ def compute_sharpe_and_buysell_signal_multi_period(basket,
                                                    holding_period_in_days,
                                                    lower_threshold,
                                                    higher_threshold):
-    # compute daily historical basket normal vol time series. Default num of period = 15
-    # in other words, normal vol times series is 15 periods shorter than the basket
+    """ Compute daily historical basket normal vol time series. Default num of period = 15
+        in other words, normal vol times series is 15 periods shorter than the basket """
     normal_vol_ts = ut.compute_daily_hist_normal_vol(basket)
     zscores_ts = zscores_mean_revert_time_series(basket, mean_rev_level, basket_stdev)
 
@@ -186,6 +187,7 @@ def compute_sharpe_and_buysell_signal_multi_period(basket,
 
 
 def zscores_mean_revert_time_series(basket, mean_rev_level, stdev):
+    """ Compute zscores of a mean reverting time series """
     z_score_ts = (basket - mean_rev_level)/stdev
     z_score_ts = z_score_ts.rename('z score')
     return z_score_ts
@@ -197,6 +199,7 @@ def zscores_mean_revert_time_series(basket, mean_rev_level, stdev):
 # (3) mean reversion rate
 # (4) p values of the OLS estimation. The smaller the p-value, the better.
 def compute_mean_reversion_params(s):
+    """ Estimate mean reversion """
     # compute the diff and the shift the position by -1 so that we have dS(t) vs S(t-1)
     ds = s.diff().shift(-1)
 
@@ -249,6 +252,7 @@ def compute_mean_reversion_params(s):
 # name_list -  a list of currency basket
 # weights_XXXUSD - cointegrated weights of the basket in XXXUSD
 def compute_zscore_for_a_fixed_basket_for_multi_period(df_fx_xxxusd, name_list, weights_xxxusd):
+    """ Compute zscores """
     df_fx_name_list_xxxusd = df_fx_xxxusd[name_list]
 
     # Note that the weights are given here. This means that we are NOT estimating the weights are each day.

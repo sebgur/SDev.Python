@@ -4,8 +4,10 @@
 # For DE: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html
 from abc import ABC, abstractmethod
 import numpy as np
+import logging
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
+log = logging.getLogger(__name__)
 
 
 SCIPY_OPTIMIZERS = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA',
@@ -63,13 +65,13 @@ class SciPyOptimizer(Optimizer):
             self.options['gtol'] = gtol
 
         if self.method_ not in self.std_minimizers and self.method_ not in self.other_minimizers:
-            raise RuntimeError("Method " + self.method_ + " not found in SciPy")
+            raise ValueError("Method " + self.method_ + " not found in SciPy")
 
-    def minimize(self, f, x0=None, args=(), bounds=None):
+    def minimize(self, func, x0=None, args=(), bounds=None):
         result = None
         if self.method_ in self.std_minimizers:
             tol = self.kwargs.get('tol', None)
-            result = opt.minimize(f, x0, args, method=self.method_, bounds=bounds,
+            result = opt.minimize(func, x0, args, method=self.method_, bounds=bounds,
                                   tol=tol, options=self.options)
         elif self.method_== 'DE':
             atol = self.kwargs.get('atol', 0)
@@ -77,11 +79,11 @@ class SciPyOptimizer(Optimizer):
             strategy = self.kwargs.get('strategy', 'best1bin')
             recombination = self.kwargs.get('recombination', 0.7)
             # mutation = self.kwargs.get('mutation', (0.5, 1.0)) # ToDo: parameter not used
-            result = opt.differential_evolution(f, x0=x0, args=args, bounds=bounds, atol=atol,
+            result = opt.differential_evolution(func, x0=x0, args=args, bounds=bounds, atol=atol,
                                                 popsize=popsize, strategy=strategy,
                                                 recombination=recombination)
         else:
-            raise RuntimeError("Method " + self.method_ + " not recognized")
+            raise ValueError("Method " + self.method_ + " not recognized")
 
         return result
 
@@ -101,16 +103,16 @@ class MultiOptimizer(Optimizer):
         result = None
         self.total_nfev = 0
         for i, optimizer in enumerate(self.optimizers_):
-            print("Trying optimization using " + self.methods_[i] + ": ", end='')
+            log.info(f"Trying optimization using {self.methods_[i]}")
             result = optimizer.minimize(f, x0, args, bounds)
             self.total_nfev += result.nfev
             if result.fun < self.mtol_:
-                print("Good enough!")
+                log.info("Good enough!")
                 break
             elif i < len(self.methods_) - 1:
-                print("Continuing")
+                log.info("Continuing")
             else:
-                print("Stopping")
+                log.info("Stopping")
 
         return result
 
@@ -190,11 +192,11 @@ if __name__ == "__main__":
     fun = result.fun
 
     # Printing results
-    print("Sol Point", x)
-    print("Sol Value", fun)
+    log.info("Sol Point", x)
+    log.info("Sol Value", fun)
     for key in result.keys():
         if key in result:
-            print(f"{key}: {result[key]}")
+            log.info(f"{key}: {result[key]}")
 
     # Plot solution
     points = np.linspace(0, 4, 100).reshape(-1, 1)
