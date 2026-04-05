@@ -266,17 +266,15 @@ class ParametricZeroSurface(ZeroSurface):
 class TermStructureParametricZeroSurface(ParametricZeroSurface):
     def __init__(self):
         super().__init__()
-        self.calibrated_parameters = []
-
-    # def set_calculator(self, calculator) -> None:
-    #     self.calculator = calculator
-    #     self.n_params = calculator.number_parameters()
-    #     self.allow_negative_variables = calculator.allow_negative_variables()
-    #     self.modelled_type = calculator.modelled_type()
+        self.params = None
 
     def parameters(self, t: float) -> list[float]:
         """ Retrieve formula parameters """
-        return self.formula_parameters(t, self.calibrated_parameters)
+        return self.formula_parameters(t, self.params)
+
+    def update_params(self, x: list[float]) -> None:
+        """ Update the current parameters """
+        self.params = x
 
     def calibrate_modelled_type(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
         raise NotImplementedError("Not implemented yet: calibrate_modelled_type")
@@ -284,4 +282,14 @@ class TermStructureParametricZeroSurface(ParametricZeroSurface):
     @abstractmethod
     def formula_parameters(self, t: float, params: list[float]) -> list[float]:
         """ Convert from the surface parameters to the formula parameters """
+        pass
+
+    @abstractmethod
+    def bounds(self, keep_feasible: bool=False):
+        """ Recommended bounds for optimization """
+        pass
+
+    @abstractmethod
+    def initial_point(self):
+        """ Recommended initial point for optimization """
         pass

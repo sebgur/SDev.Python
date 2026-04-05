@@ -6,7 +6,7 @@ from sdevpy.models.surfaces.tssvi1 import TsSvi1
 def test_tssvi1():
     surface = TsSvi1()
     params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    surface.calibrated_parameters = params
+    surface.update_params(params)
     print(len(params))
 
     t = np.asarray([0.5, 1.5, 2.5])

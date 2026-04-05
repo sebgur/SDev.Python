@@ -19,83 +19,80 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     # the spot becomes so close to 0 that Python effectively handles it as 0. This results in
     # a warning when taking a negative power of it. However, this is not an issue as Python
     # correctly finds +infinity and since we use a floor, this case is correctly handled.
-    np.seterr(divide='ignore')
+    with np.errstate(divide='ignore'):
+        # Build time grid
+        time_grid_builder = SimpleTimeGridBuilder(points_per_year=points_per_year)
+        time_grid_builder.add_grid(expiries)
+        time_grid = time_grid_builder.complete_grid()
+        num_factors = 2
 
-    # Build time grid
-    time_grid_builder = SimpleTimeGridBuilder(points_per_year=points_per_year)
-    time_grid_builder.add_grid(expiries)
-    time_grid = time_grid_builder.complete_grid()
-    num_factors = 2
+        # Find payoff times
+        is_payoff = np.in1d(time_grid, expiries)
 
-    # Find payoff times
-    is_payoff = np.in1d(time_grid, expiries)
+        # Retrieve parameters
+        lnvol = parameters['LnVol']
+        kappa = parameters['Kappa']
+        theta = parameters['Theta']
+        xi = parameters['Xi']
+        rho = parameters['Rho']
+        sqrtmrho2 = np.sqrt(1.0 - rho**2)
+        v0 = calculate_v0(lnvol)
 
-    # Retrieve parameters
-    lnvol = parameters['LnVol']
-    kappa = parameters['Kappa']
-    theta = parameters['Theta']
-    xi = parameters['Xi']
-    rho = parameters['Rho']
-    sqrtmrho2 = np.sqrt(1.0 - rho**2)
-    v0 = calculate_v0(lnvol)
+        # Draw all gaussians
+        # gaussians = rand.gaussians(num_steps, num_mc, num_factors, rand_method)
 
-    # Draw all gaussians
-    # gaussians = rand.gaussians(num_steps, num_mc, num_factors, rand_method)
+        # Define dimensions
+        mean = np.zeros(num_factors)
+        corr = np.zeros((num_factors, num_factors))
+        for c in range(num_factors):
+            corr[c, c] = 1.0
 
-    # Define dimensions
-    mean = np.zeros(num_factors)
-    corr = np.zeros((num_factors, num_factors))
-    for c in range(num_factors):
-        corr[c, c] = 1.0
+        # Draw for each step
+        seed = 42
+        rng = np.random.RandomState(seed)
 
-    # Draw for each step
-    seed = 42
-    rng = np.random.RandomState(seed)
+        # Initialize paths
+        spot = np.ones((2 * num_mc, 1)) * fwd
+        vol2 = np.ones((2 * num_mc, 1)) * v0
 
-    # Initialize paths
-    spot = np.ones((2 * num_mc, 1)) * fwd
-    vol2 = np.ones((2 * num_mc, 1)) * v0
+        # Loop over time grid
+        ts = te = 0
+        payoff_count = 0
+        mc_prices = []
+        for i, t in enumerate(time_grid):
+            ts = te
+            te = t
+            dt = te - ts
+            sqrt_dt = np.sqrt(dt)
 
-    # Loop over time grid
-    ts = te = 0
-    payoff_count = 0
-    mc_prices = []
-    for i, t in enumerate(time_grid):
-        ts = te
-        te = t
-        dt = te - ts
-        sqrt_dt = np.sqrt(dt)
+            # Evolve
+            dz = rng.multivariate_normal(mean, corr, size=num_mc) * sqrt_dt
+            dz = np.concatenate((dz, -dz), axis=0) # Antithetic paths
+            dz0 = dz[:, 0].reshape(-1, 1)
+            dz1 = dz[:, 1].reshape(-1, 1)
 
-        # Evolve
-        dz = rng.multivariate_normal(mean, corr, size=num_mc) * sqrt_dt
-        dz = np.concatenate((dz, -dz), axis=0) # Antithetic paths
-        dz0 = dz[:, 0].reshape(-1, 1)
-        dz1 = dz[:, 1].reshape(-1, 1)
+            # Evolve vol
+            vol2s = np.abs(vol2)
+            sqrt_vol2s = np.sqrt(vol2s)
+            vol2e = vol2s + kappa * (theta - vol2s) * dt + xi * sqrt_vol2s * dz1
+            vol2e = np.abs(vol2e)
+            vol2 = vol2e
 
-        # Evolve vol
-        vol2s = np.abs(vol2)
-        sqrt_vol2s = np.sqrt(vol2s)
-        vol2e = vol2s + kappa * (theta - vol2s) * dt + xi * sqrt_vol2s * dz1
-        vol2e = np.abs(vol2e)
-        vol2 = vol2e
+            # Evolve spot
+            intvol2 = 0.5 * (vol2s + vol2e) * dt
+            ito = 0.5 * intvol2
+            dw = rho * dz1 + sqrtmrho2 * dz0
+            spot *= np.exp(-ito + sqrt_vol2s * dw)
 
-        # Evolve spot
-        intvol2 = 0.5 * (vol2s + vol2e) * dt
-        ito = 0.5 * intvol2
-        dw = rho * dz1 + sqrtmrho2 * dz0
-        spot *= np.exp(-ito + sqrt_vol2s * dw)
-
-        # Calculate payoff
-        if is_payoff[i]:
-            w = [1.0 if is_call else -1.0 for is_call in are_calls[payoff_count]]
-            w = np.asarray(w).reshape(1, -1)
-            k = np.asarray(strikes[payoff_count]).reshape(1, -1)
-            payoff = np.maximum(w * (spot - k), 0.0)
-            rpayoff = np.mean(payoff, axis=0)
-            mc_prices.append(rpayoff)
-            payoff_count += 1
-
-    np.seterr(divide='warn')
+            # Calculate payoff
+            if is_payoff[i]:
+                w = [1.0 if is_call else -1.0 for is_call in are_calls[payoff_count]]
+                w = np.asarray(w).reshape(1, -1)
+                k = np.asarray(strikes[payoff_count]).reshape(1, -1)
+                payoff = np.maximum(w * (spot - k), 0.0)
+                rpayoff = np.mean(payoff, axis=0)
+                mc_prices.append(rpayoff)
+                payoff_count += 1
 
     return np.asarray(mc_prices)
 

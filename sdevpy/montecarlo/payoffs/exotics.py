@@ -1,4 +1,5 @@
 import numpy as np
+import datetime as dt
 from sdevpy.montecarlo.payoffs.basic import (
     Payoff, Average, Terminal, Basket,
     list_payoff_names, list_payoff_eventdates)
@@ -7,7 +8,7 @@ from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_opt
 
 class WorstOfBarrier(Payoff):
     """ Not doing by algebra yet. Will need implementation of barrier monitoring first. """
-    def __init__(self, names, date, strike, optiontype, barrier):
+    def __init__(self, names: list[str], date: dt.datetime, strike: float, optiontype, barrier):
         super().__init__()
         self.names = names
         self.strike = strike
@@ -16,7 +17,7 @@ class WorstOfBarrier(Payoff):
         self.expiry = date
         self.expiry_idx = None
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         paths = mkt_state.event_paths
         spot_all = self.paths_for_all(paths)
 
@@ -51,14 +52,15 @@ class WorstOfBarrier(Payoff):
         self.expiry_idx = matches[0]
 
 
-def make_asian_option(name: str, strike: float, optiontype, start, end, freq="1D", cdr="USD"):
+def make_asian_option(name: str, strike: float, optiontype: str, start: dt.datetime, end: dt.datetime,
+                      freq: str="1D", cdr: str="USD"):
     """ Create Asian option payoff """
     index = Average(name, start, end, freq, cdr)
     payoff = make_vanilla_option_payoff(index, strike, optiontype)
     return payoff
 
 
-def make_basket_option(names: list[str], weights: list[float], strike: float, optiontype, expiry):
+def make_basket_option(names: list[str], weights: list[float], strike: float, optiontype: str, expiry: dt.dateime):
     """ Create Basket option payoff """
     spots = [Terminal(name, expiry) for name in names]
     basket = Basket(spots, weights)
@@ -68,27 +70,27 @@ def make_basket_option(names: list[str], weights: list[float], strike: float, op
 
 class Maximum(Payoff):
     """ ToDo: [Warning] work in progress. """
-    def __init__(self, left, right):
+    def __init__(self, left: Payoff, right: Payoff):
         super().__init__()
         self.left = left
         self.right = right
         self.names = list_payoff_names([self.left, self.right])
         self.eventdates = list_payoff_eventdates([self.left, self.right])
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         # return np.maximum(self.left.evaluate(mkt_state), self.right.evaluate(mkt_state))
         raise NotImplementedError("Not implemented yet: Maximum(Payoff)")
 
 
 class BarrierDown(Payoff):
     """ ToDo: [Warning] work in progress. """
-    def __init__(self, asset_index, level):
+    def __init__(self, asset_index: int, level: float):
         super().__init__()
         self.asset_index = asset_index
         self.level = level
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         # paths = mkt_state.event_paths
         # breached = (paths[:, :, self.asset_index] < self.level).any(axis=1)
         # return (~breached).astype(float)
-        raise NotImplementedError("Not implemented yet: Maximum(Payoff)")
+        raise NotImplementedError("Not implemented yet: BarrierDown(Payoff)")

@@ -71,8 +71,6 @@ class MultiHeadAttentionWrapper(nn.Module):
                                     for _ in range(num_heads)])
 
     def forward(self, x):
-        # print("First head\n", self.heads[0](x), "\n")
-        # print("Second head\n", self.heads[1](x), "\n")
         return torch.cat([head(x) for head in self.heads], dim=-1)
 
 

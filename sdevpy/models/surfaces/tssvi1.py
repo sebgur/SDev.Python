@@ -6,17 +6,14 @@
 import numpy as np
 import numpy.typing as npt
 import datetime as dt
+import scipy.optimize as opt
 from sdevpy.models.surfaces.zerosurface import TermStructureParametricZeroSurface
 from sdevpy.models.svi import svi_formula
 from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.models.surfaces.optionsurface import calibration_targets
+# from sdevpy.models.surfaces.optionsurface import calibration_targets
 from sdevpy.tools import timegrids
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths.optimization import create_optimizer
-
-
-################## TODO ###########################################
-# Do the calibration
 
 
 class TsSvi1(TermStructureParametricZeroSurface):
@@ -81,6 +78,16 @@ class TsSvi1(TermStructureParametricZeroSurface):
             raise ValueError("The number of parameters should be 11 for TsSvi1")
 
         return x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10]
+
+    def bounds(self, keep_feasible: bool=False):
+        lw_bounds = [0.0, 0.00001, -1.0,  0.1, 0.0000, 0.0001, -0.99, -0.50, 0.0, 0.0, -0.999]
+        up_bounds = [1.0, 1.00000,  1.0, 50.0, 5.0000, 0.9990,  0.20,  2.00, 2.0, 5.0,  5.000]
+        bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=keep_feasible)
+        return bounds
+
+    def initial_point(self):
+        init_point = [0.1, 0.10000, -0.1,  1.0, 0.1000, 0.1000, -0.30,  0.10, 0.1, 1.0,  1.000]
+        return np.asarray(init_point)
 
 
 def calibrate_tssvi1(valdate, name, config, **kwargs):
@@ -166,7 +173,7 @@ if __name__ == "__main__":
     # Initialize model
     surface = TsSvi1()
     params_init = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.9, 0.1, 0.1, 0.1, 0.1]
-    surface.calibrated_parameters = params_init
+    surface.update_params(params_init)
 
     # Optimizer settings
     method = 'SLSQP' # L-BFGS-B, SLSQP, DE
@@ -186,7 +193,7 @@ if __name__ == "__main__":
     sol = result.x # Optimum parameters
 
     # Calculate model vols and reshape results per maturity
-    surface.calibrated_parameters = sol
+    surface.update_params(sol)
     z = surface.calculate(t, k, is_call, f)
     print(f"Result shape: {z.shape}")
     model_vols = []

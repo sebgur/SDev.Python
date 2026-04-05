@@ -16,7 +16,7 @@ def price(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_calls: npt.ArrayL
     # the spot becomes so close to 0 that Python effectively handles it as 0. This results in
     # a warning when taking a negative power of it. However, this is not an issue as Python
     # correctly finds +infinity and since we use a floor, this case is correctly handled.
-    with np.seterr(divide='ignore'):
+    with np.errstate(divide='ignore'):
         # Build time grid
         time_grid_builder = SimpleTimeGridBuilder(points_per_year=points_per_year)
         time_grid_builder.add_grid(expiries)

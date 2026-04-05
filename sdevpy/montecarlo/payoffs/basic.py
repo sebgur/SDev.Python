@@ -107,7 +107,7 @@ class Payoff(ABC):
         self.eventdates = []
 
     @abstractmethod
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         pass
 
     def paths_for_index(self, paths, name_idx):
@@ -187,7 +187,7 @@ class Constant(Payoff):
         super().__init__()
         self.value = value
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         paths = mkt_state.event_paths
         payoff = np.full(paths.shape[0], self.value)
         return payoff
@@ -203,7 +203,7 @@ class Terminal(Payoff):
         self.expiry = date
         self.expiry_idx = None
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         paths = mkt_state.event_paths
         spot_at_exp = paths[:, self.expiry_idx, self.name_idx]
         payoff = spot_at_exp
@@ -242,7 +242,7 @@ class Average(Payoff):
         self.current_sum = 0.0
         self.n_samples = len(self.alldates)
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         paths = mkt_state.event_paths
         new_sum = paths[:, self.averageidxs, self.name_idx].sum(axis=1)
         # average = new_sum / len(self.averageidxs)
@@ -289,7 +289,7 @@ class Max(Payoff):
         self.subpayoffs = subpayoffs
         self.names = list_payoff_names(self.subpayoffs)
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         values = [subpayoff.evaluate(mkt_state) for subpayoff in self.subpayoffs]
         # Create an array whose shape[0] is the number of paths and shape[1]
         # is the number of payoffs being maxed on each path. Then take the max
@@ -321,7 +321,7 @@ class Min(Payoff):
         self.subpayoffs = subpayoffs
         self.names = list_payoff_names(self.subpayoffs)
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         values = [subpayoff.evaluate(mkt_state) for subpayoff in self.subpayoffs]
         # Create an array whose shape[0] is the number of paths and shape[1]
         # is the number of payoffs being maxed on each path. Then take the min
@@ -352,7 +352,7 @@ class Abs(Payoff):
         self.subpayoff = subpayoff
         self.names = self.subpayoff.names
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         old_path = self.subpayoff.evaluate(mkt_state)
         payoff = np.abs(old_path)
         return payoff
@@ -379,7 +379,7 @@ class Basket(Payoff):
         if len(self.subpayoffs) != len(self.weights):
             raise ValueError("Incompatible sizes between sub-payoffs and weights")
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         sub_paths = np.asarray([p.evaluate(mkt_state) for p in self.subpayoffs])
         payoff = self.weights @ sub_paths
         return payoff
@@ -407,7 +407,7 @@ class WorstOf(Payoff):
         self.expiry = date
         self.expiry_idx = None
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         paths = mkt_state.event_paths
         spot_all = self.paths_for_all(paths)
         spot_all_at_exp = spot_all[:, self.expiry_idx, :]
@@ -454,7 +454,7 @@ class Variance(Payoff):
         self.n_returns = len(self.alldates) - 1
         self.scaling = 10000 * 252
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         paths = mkt_state.event_paths
         spot_paths = paths[:, self.varidxs, self.name_idx]
         # Historical variance
@@ -522,7 +522,7 @@ class Add(Payoff):
         self.right = right
         self.names = list_payoff_names([self.left, self.right])
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         payoff = self.left.evaluate(mkt_state) + self.right.evaluate(mkt_state)
         return payoff
 
@@ -549,7 +549,7 @@ class Sub(Payoff):
         self.right = right
         self.names = list_payoff_names([self.left, self.right])
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         payoff = self.left.evaluate(mkt_state) - self.right.evaluate(mkt_state)
         return payoff
 
@@ -576,7 +576,7 @@ class Mul(Payoff):
         self.right = right
         self.names = list_payoff_names([self.left, self.right])
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         payoff = self.left.evaluate(mkt_state) * self.right.evaluate(mkt_state)
         # print(f"Mul: {payoff.shape}")
         return payoff
@@ -604,7 +604,7 @@ class Div(Payoff):
         self.right = right
         self.names = list_payoff_names([self.left, self.right])
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         return self.left.evaluate(mkt_state) / self.right.evaluate(mkt_state)
 
     def set_nameindexes(self, names):
@@ -632,7 +632,7 @@ class Neg(Payoff):
     def set_nameindexes(self, names):
         self.old.set_nameindexes(names)
 
-    def evaluate(self, mkt_state):
+    def evaluate(self, mkt_state: dict):
         payoff = -self.old.evaluate(mkt_state)
         return payoff
 

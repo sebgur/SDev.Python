@@ -18,98 +18,95 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     # the spot becomes so close to 0 that Python effectively handles it as 0. This results in
     # a warning when taking a negative power of it. However, this is not an issue as Python
     # correctly finds +infinity and since we use a floor, this case is correctly handled.
-    np.seterr(divide='ignore')
+    with np.errstate(divide='ignore'):
+        # Build time grid
+        time_grid_builder = SimpleTimeGridBuilder(points_per_year=points_per_year)
+        time_grid_builder.add_grid(expiries)
+        time_grid = time_grid_builder.complete_grid()
+        num_factors = 2
 
-    # Build time grid
-    time_grid_builder = SimpleTimeGridBuilder(points_per_year=points_per_year)
-    time_grid_builder.add_grid(expiries)
-    time_grid = time_grid_builder.complete_grid()
-    num_factors = 2
+        # Find payoff times
+        is_payoff = np.in1d(time_grid, expiries)
 
-    # Find payoff times
-    is_payoff = np.in1d(time_grid, expiries)
+        # Retrieve parameters
+        lnvol = parameters['LnVol']
+        beta = parameters['Beta']
+        nu = parameters['Nu']
+        rho = parameters['Rho']
+        alpha = calculate_alpha(lnvol, fwd, beta)
+        nu2 = nu**2
+        sqrtmrho2 = np.sqrt(1.0 - rho**2)
 
-    # Retrieve parameters
-    lnvol = parameters['LnVol']
-    beta = parameters['Beta']
-    nu = parameters['Nu']
-    rho = parameters['Rho']
-    alpha = calculate_alpha(lnvol, fwd, beta)
-    nu2 = nu**2
-    sqrtmrho2 = np.sqrt(1.0 - rho**2)
+        # Draw all gaussians
+        # gaussians = rand.gaussians(num_steps, num_mc, num_factors, rand_method)
 
-    # Draw all gaussians
-    # gaussians = rand.gaussians(num_steps, num_mc, num_factors, rand_method)
+        # Define dimensions
+        mean = np.zeros(num_factors)
+        corr = np.zeros((num_factors, num_factors))
+        for c in range(num_factors):
+            corr[c, c] = 1.0
 
-    # Define dimensions
-    mean = np.zeros(num_factors)
-    corr = np.zeros((num_factors, num_factors))
-    for c in range(num_factors):
-        corr[c, c] = 1.0
+        # Draw for each step
+        seed = 42
+        rng = np.random.RandomState(seed)
 
-    # Draw for each step
-    seed = 42
-    rng = np.random.RandomState(seed)
+        # Initialize paths
+        spot = np.ones((2 * num_mc, 1)) * fwd
+        vol = np.ones((2 * num_mc, 1)) * 1.0
 
-    # Initialize paths
-    spot = np.ones((2 * num_mc, 1)) * fwd
-    vol = np.ones((2 * num_mc, 1)) * 1.0
+        # Loop over time grid
+        ts = te = 0
+        payoff_count = 0
+        mc_prices = []
+        for i, t in enumerate(time_grid):
+            ts = te
+            te = t
+            dt = te - ts
+            sqrt_dt = np.sqrt(dt)
 
-    # Loop over time grid
-    ts = te = 0
-    payoff_count = 0
-    mc_prices = []
-    for i, t in enumerate(time_grid):
-        ts = te
-        te = t
-        dt = te - ts
-        sqrt_dt = np.sqrt(dt)
+            # Evolve
+            dz = rng.multivariate_normal(mean, corr, size=num_mc) * sqrt_dt
+            dz = np.concatenate((dz, -dz), axis=0) # Antithetic paths
+            dz0 = dz[:, 0].reshape(-1, 1)
+            dz1 = dz[:, 1].reshape(-1, 1)
 
-        # Evolve
-        dz = rng.multivariate_normal(mean, corr, size=num_mc) * sqrt_dt
-        dz = np.concatenate((dz, -dz), axis=0) # Antithetic paths
-        dz0 = dz[:, 0].reshape(-1, 1)
-        dz1 = dz[:, 1].reshape(-1, 1)
+            # Scheme
+            if scheme in ('LogEuler', 'LogAndersen'):
+                avolc = alpha * np.minimum(spot**(beta - 1.0), 500.0 * scale**(beta - 1.0))
+                vols = vol * avolc
+            else:
+                vols = vol
 
-        # Scheme
-        if scheme in ('LogEuler', 'LogAndersen'):
-            avolc = alpha * np.minimum(spot**(beta - 1.0), 500.0 * scale**(beta - 1.0))
-            vols = vol * avolc
-        else:
-            vols = vol
+            # Evolve vol
+            vol *= np.exp(-0.5 * nu2 * dt + nu * dz1)
 
-        # Evolve vol
-        vol *= np.exp(-0.5 * nu2 * dt + nu * dz1)
+            # Evolve spot
+            if scheme == 'LogEuler':
+                ito = 0.5 * np.power(vols, 2) * dt
+                dw = rho * dz1 + sqrtmrho2 * dz0
+                spot *= np.exp(-ito + vols * dw)
+            elif scheme == 'LogAndersen':
+                vole = vol * avolc
+                intvol2 = 0.5 * (np.power(vols, 2) + np.power(vole, 2)) * dt
+                ito = 0.5 * intvol2
+                linear1 = (vole - vols) / nu
+                linear2 = np.sqrt(intvol2 / dt)
+                spot *= np.exp(-ito + linear1 * rho + linear2 * sqrtmrho2 * dz0)
+            elif scheme == 'Andersen': # Does not work well
+                vole = vol
+                spot += alpha * np.abs(spot)**beta * (sqrtmrho2 * vols * dz0 + rho / nu * (vole - vols))
+            else:
+                raise ValueError("Unknown scheme in MCSABR: " + scheme)
 
-        # Evolve spot
-        if scheme == 'LogEuler':
-            ito = 0.5 * np.power(vols, 2) * dt
-            dw = rho * dz1 + sqrtmrho2 * dz0
-            spot *= np.exp(-ito + vols * dw)
-        elif scheme == 'LogAndersen':
-            vole = vol * avolc
-            intvol2 = 0.5 * (np.power(vols, 2) + np.power(vole, 2)) * dt
-            ito = 0.5 * intvol2
-            linear1 = (vole - vols) / nu
-            linear2 = np.sqrt(intvol2 / dt)
-            spot *= np.exp(-ito + linear1 * rho + linear2 * sqrtmrho2 * dz0)
-        elif scheme == 'Andersen': # Does not work well
-            vole = vol
-            spot += alpha * np.abs(spot)**beta * (sqrtmrho2 * vols * dz0 + rho / nu * (vole - vols))
-        else:
-            raise ValueError("Unknown scheme in MCSABR: " + scheme)
-
-        # Calculate payoff
-        if is_payoff[i]:
-            w = [1.0 if is_call else -1.0 for is_call in are_calls[payoff_count]]
-            w = np.asarray(w).reshape(1, -1)
-            k = np.asarray(strikes[payoff_count]).reshape(1, -1)
-            payoff = np.maximum(w * (spot - k), 0.0)
-            rpayoff = np.mean(payoff, axis=0)
-            mc_prices.append(rpayoff)
-            payoff_count += 1
-
-    np.seterr(divide='warn')
+            # Calculate payoff
+            if is_payoff[i]:
+                w = [1.0 if is_call else -1.0 for is_call in are_calls[payoff_count]]
+                w = np.asarray(w).reshape(1, -1)
+                k = np.asarray(strikes[payoff_count]).reshape(1, -1)
+                payoff = np.maximum(w * (spot - k), 0.0)
+                rpayoff = np.mean(payoff, axis=0)
+                mc_prices.append(rpayoff)
+                payoff_count += 1
 
     return np.asarray(mc_prices)
 
