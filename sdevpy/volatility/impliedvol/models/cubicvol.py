@@ -1,10 +1,16 @@
+""" Implied volatility model based on stiching together two cubic functions at ATM.
+    Continuity and smoothness are ensured at ATM. Flat extrapolation on both low and
+    high strike regions, with smoothing junctions between interpolation and 
+    extrapolation domains. """
 import numpy as np
+import numpy.typing as npt
 import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.impliedvol import ParamSection
 from sdevpy.maths.constants import DEATH_PENALTY
 
 
-def create_section(time, param_config=None, fill_sample=True):
+def create_section(time: float, param_config: dict=None, fill_sample: bool=True):
+    """ Create section of the CubicVol model """
     section = CubicVolSection(time)
     if param_config is None and fill_sample:
         params = sample_params(time) # Fill with sample
@@ -53,19 +59,19 @@ class CubicVolSection(ParamSection):
         return data
 
     def constraints(self):
-        # atm, skew, kurt, vl, vr
+        """ Recommended bounds for the CubicVol model on parameters atm, skew, kurt, vl, vr """
         lw_bounds = [0.01, 0.0, -0.5, 0.01, 0.01]
         up_bounds = [1.5, 1.0, 3.0, 2.0, 2.0]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
         return bounds
 
 
-def cubicvoleps_formula(t, x, params):
+def cubicvoleps_formula(t: npt.ArrayLike, x: npt.ArrayLike, params: list[float]):
     """ Wrapper on CubicVol formula to take parameter vector as input """
     return cubicvoleps(t, x, *params)
 
 
-def cubicvol_check_params(params):
+def cubicvol_check_params(params: list[float]):
     is_ok = False
     epsl = epsr = None
     if len(params) == 5:
@@ -88,13 +94,16 @@ def cubicvol_check_params(params):
     return is_ok, penalty, epsl, epsr
 
 
-def cubicvol(t, x, atm, skew, kurt, vl, vr):
+def cubicvol(t: npt.ArrayLike, x: npt.ArrayLike, atm: float, skew: float, kurt: float,
+             vl: float, vr: float) -> npt.ArrayLike:
+    """ Implied volatility of the CubicVol model."""
     epsl = calculate_epsilon(atm, skew, kurt, vl, False)
     epsr = calculate_epsilon(atm, skew, kurt, vr, True)
     return cubicvoleps(t, x, atm, skew, kurt, epsl, epsr)
 
 
 def cubicvoleps(t, x, atm, skew, kurt, epsl, epsr):
+    """ Calculate implied volatility starting from epsilon parameters """
     time_threshold = 0.000001
     x_threshold = 0.000001
     # x_ = -x
@@ -124,6 +133,7 @@ def cubicvoleps(t, x, atm, skew, kurt, epsl, epsr):
 
 
 def calculate_epsilon(atm, skew, kurt, v, is_right):
+    """ Calculate the epsilon parameters """
     if not is_right and not is_valid_left(atm, skew, kurt, v):
         raise RuntimeError("Invalid CubicVol left parameters")
 
@@ -153,6 +163,7 @@ def calculate_epsilon(atm, skew, kurt, v, is_right):
 
 
 def is_valid_left(atm, skew, kurt, vl):
+    """ Check validity of the parameters on the left side """
     result = True
     eps = 0.0000001
     if skew < 0.0 and kurt < 0.0 and vl < 0.0:
@@ -165,6 +176,7 @@ def is_valid_left(atm, skew, kurt, vl):
 
 
 def is_valid_right(atm, skew, kurt, vr):
+    """ Check validity of the parameters on the right side """
     result = True
     eps = 0.0000001
     if skew < 0.0 or kurt < 0.0 or vr < 0.0:
@@ -179,7 +191,7 @@ def is_valid_right(atm, skew, kurt, vr):
     return result
 
 
-def sample_params(t, vol=0.25):
+def sample_params(t: float, vol: float=0.25) -> npt.ArrayLike:
     """ Guess parameters for display or optimization initial point """
     atm = vol
     skew = 0.1
@@ -190,17 +202,4 @@ def sample_params(t, vol=0.25):
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    t = 1.5
-    atm = 0.25
-    skew = 0.1
-    kurt = 0.25
-    vl = 0.30
-    vr = 0.27
-
-    ms = np.linspace(0.2, 4.0, 100)
-    lms = np.log(ms)
-    vols = cubicvol(t, lms, atm, skew, kurt, vl, vr)
-
-    plt.plot(ms, vols)
-    plt.show()
+    print("Hello")

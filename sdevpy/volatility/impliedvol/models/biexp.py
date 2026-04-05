@@ -17,6 +17,7 @@ from scipy.stats import norm
 from sdevpy.volatility.impliedvol.impliedvol import ParamSection
 
 
+DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
 DEATH_PENALTY = 1e6
 
 
@@ -44,15 +45,17 @@ class BiExpSection(ParamSection):
         self.model = 'BiExp'
 
     def check_params(self):
+        """ Check consistency of the model parameters """
         return biexp_check_params(self.params)
 
-    def dump_params(self):
+    def dump_params(self) -> dict:
+        """ Dump model to dictionary"""
         data = {'f0': self.params[0], 'fl': self.params[1], 'fr': self.params[2],
                 'taul': self.params[3], 'taur': self.params[4], 'fp': self.params[5]}
         return data
 
     def constraints(self):
-        # f0, fl, fr, taul, taur, fp
+        """ Recommended lower and upper bounds for model parameters: f0, fl, fr, taul, taur, fp """
         lw_bounds = [0.01, 0.01, 0.01, 0.01, 0.01, -2.0]
         up_bounds = [1.0, 1.0, 1.0, 2.0, 2.0, 2.0]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
@@ -135,8 +138,6 @@ def sample_params(t: float, vol: float=0.25):
     fp = 0.0
     return np.array([f0, fl, fr, taul, taur, fp])
 
-DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
-
 
 def generate_sample_data(valdate: dt.datetime, terms: list[str], base_vol: float=0.25,
                          percents: list[float]=DFLT_PERCENTS):
@@ -164,31 +165,4 @@ def generate_sample_data(valdate: dt.datetime, terms: list[str], base_vol: float
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    valdate = dt.datetime(2025, 12, 15)
-    terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
-    base_vol = 0.25
-    percents = [0.10, 0.25, 0.50, 0.75, 0.90]
-
-    params = [0.25, 0.30, 0.28, 1.0, 1.5, 0.0]
-    x = np.linspace(-5, 5, 100)
-    v = biexp(x, *params)
-    plt.plot(x, v)
-    plt.show()
-
-    expiries, fwds, strikes, vols = generate_sample_data(valdate, terms, base_vol, percents)
-    n_rows, n_cols = 3, 2
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
-    for i in range(n_rows):
-        for j in range(n_cols):
-            ax = axes[i, j]
-            exp_idx = n_cols * i + j
-            ax.plot(strikes[exp_idx], vols[exp_idx], color='red')
-            ax.set_title(expiries[exp_idx])
-            ax.set_xlabel('strike')
-            ax.set_ylabel('vol')
-            # ax.legend()
-
-    fig.suptitle('Vols', fontsize=16, fontweight='bold')
-    plt.tight_layout()
-    plt.show()
+    print("Hello")

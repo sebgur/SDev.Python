@@ -1,7 +1,7 @@
 import os, json
 from pathlib import Path
 import datetime as dt
-from sdevpy.volatility.impliedvol.models import biexp, svivol, cubicvol
+from sdevpy.volatility.impliedvol.models import biexp, vsvi, cubicvol
 from sdevpy.volatility.localvol import localvol
 from sdevpy.tools import dates
 from sdevpy.maths import interpolation as itp
@@ -39,8 +39,8 @@ def create_section(config):
             section = biexp.create_section(time, param_config)
         case 'cubicvol':
             section = cubicvol.create_section(time, param_config)
-        case 'svivol':
-            section = svivol.create_section(time, param_config)
+        case 'vsvi':
+            section = vsvi.create_section(time, param_config)
         case _:
             section = None
             raise TypeError(f"Unknown section type: {model}")

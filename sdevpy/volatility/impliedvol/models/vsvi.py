@@ -1,16 +1,22 @@
+""" VSVI stands for 'Vol SVI'. It is purely a parametric model, without strong financial
+    inspiration, as opposed to its original SVI. This model simply gives an SVI-like
+    parametric shape to the volatility, as opposed to the variance in the original paper
+    by J. Gatheral. """
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
-import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from scipy.stats import norm
 from sdevpy.volatility.impliedvol.impliedvol import ParamSection
 from sdevpy.maths import constants
 
 
-def create_section(time, param_config=None, fill_sample=True):
-    """ Create an SviVol section """
-    section = SviVolSection(time)
+DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
+
+
+def create_section(time: float, param_config: dict=None, fill_sample: bool=True):
+    """ Create a vSVI section """
+    section = VSviSection(time)
     if param_config is None and fill_sample:
         params = sample_params(time) # Fill with sample
     else:
@@ -25,13 +31,13 @@ def create_section(time, param_config=None, fill_sample=True):
     return section
 
 
-class SviVolSection(ParamSection):
+class VSviSection(ParamSection):
     def __init__(self, time):
-        super().__init__(time, svivol_formula)
-        self.model = 'SviVol'
+        super().__init__(time, vsvi_formula)
+        self.model = 'vSVI'
 
     def check_params(self):
-        return svivol_check_params(self.params)
+        return vsvi_check_params(self.params)
 
     def dump_params(self):
         data = {'a': self.params[0], 'b': self.params[1], 'rho': self.params[2],
@@ -45,14 +51,14 @@ class SviVolSection(ParamSection):
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
         return bounds
 
-def svivol(x, *params):
+def vsvi(x, *params):
     """ SVI-like formula but applied to the vol directly. This no longer has
         the original features of no-arbitrage and the interpretation as a limit
         of Heston. It is purely used for its parametric shape here.
     """
     # Retrieve parameters
     if len(params) != 5:
-        raise ValueError(f"Incorrect parameter size in SviVol: {len(params)}")
+        raise ValueError(f"Incorrect parameter size in vSVI: {len(params)}")
 
     a = params[0]
     b = params[1]
@@ -61,21 +67,21 @@ def svivol(x, *params):
     sigma = params[4]
 
     # Check constraints
-    is_ok, _ = svivol_check_params(params)
+    is_ok, _ = vsvi_check_params(params)
     if not is_ok:
-        raise ValueError("Invalid SviVol parameters")
+        raise ValueError("Invalid vSVI parameters")
 
     # Calculate
     xm = x - m # x is the log-moneyness
     vol = a + b * (rho * xm + np.sqrt(xm**2 + sigma**2))
     if np.any(vol < 0.0):
-        raise ValueError("Negative variance in SVI formula")
+        raise ValueError("Negative variance in vSVI formula")
 
     return vol
 
 
-def svivol_check_params(params):
-    """ Check parameters of the SviVol model """
+def vsvi_check_params(params: list[float]):
+    """ Check parameters of the vSVI model """
     a = params[0]
     b = params[1]
     rho = params[2]
@@ -97,9 +103,9 @@ def svivol_check_params(params):
     return is_ok, penalty
 
 
-def svivol_formula(t: float, x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
-    """ Wrapper on SVI formula to take parameter vector as input """
-    return svivol(x, *params)
+def vsvi_formula(t: float, x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
+    """ Wrapper on vSVI formula to take parameter vector as input """
+    return vsvi(x, *params)
 
 
 def sample_params(t: float, vol: float=0.25) -> npt.ArrayLike:
@@ -112,10 +118,9 @@ def sample_params(t: float, vol: float=0.25) -> npt.ArrayLike:
     return np.array([a, b, rho, m, sigma])
 
 
-DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
-
-def generate_sample_data(valdate: dt.datetime, terms, base_vol=0.25, percents=DFLT_PERCENTS):
-    """ Generate sample data for the SviVol model """
+def generate_sample_data(valdate: dt.datetime, terms, base_vol: float=0.25,
+                         percents: list[float]=DFLT_PERCENTS):
+    """ Generate sample data for the vSVI model """
     spot, r, q = 100.0, 0.04, 0.02
 
     expiries, fwds, strike_surface, vol_surface = [], [], [], []
@@ -129,7 +134,7 @@ def generate_sample_data(valdate: dt.datetime, terms, base_vol=0.25, percents=DF
             logm = -0.5 * base_std**2 + base_std * norm.ppf(p)
             strikes.append(fwd * np.exp(logm))
             # a, b, rho, m, sigma = 0.179, 5.3, -0.40, -0.019, 0.025
-            vols.append(svivol(logm, a, b, rho, m, sigma))
+            vols.append(vsvi(logm, a, b, rho, m, sigma))
 
         expiries.append(expiry)
         fwds.append(fwd)
@@ -140,24 +145,4 @@ def generate_sample_data(valdate: dt.datetime, terms, base_vol=0.25, percents=DF
 
 
 if __name__ == "__main__":
-    valdate = dt.datetime(2025, 12, 15)
-    terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
-    base_vol = 0.25
-    percents = [0.10, 0.25, 0.50, 0.75, 0.90]
-
-    expiries, fwds, strikes, vols = generate_sample_data(valdate, terms, base_vol, percents)
-    n_rows, n_cols = 3, 2
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
-    for i in range(n_rows):
-        for j in range(n_cols):
-            ax = axes[i, j]
-            exp_idx = n_cols * i + j
-            ax.plot(strikes[exp_idx], vols[exp_idx], color='red')
-            ax.set_title(expiries[exp_idx])
-            ax.set_xlabel('strike')
-            ax.set_ylabel('vol')
-            # ax.legend()
-
-    fig.suptitle('Vols', fontsize=16, fontweight='bold')
-    plt.tight_layout()
-    plt.show()
+    print("Hello")

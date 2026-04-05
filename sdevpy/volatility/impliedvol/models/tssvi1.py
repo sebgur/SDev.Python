@@ -8,41 +8,13 @@ import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.zerosurface import TermStructureParametricZeroSurface
+from sdevpy.volatility.impliedvol.models import gsvi
 # from sdevpy.models.svi import svi_formula, svi_check_params
 from sdevpy.market import eqvolsurface as vsurf
 # from sdevpy.models.surfaces.optionsurface import calibration_targets
 from sdevpy.tools import timegrids
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths.optimization import create_optimizer
-
-
-def gsvi_formula(t: float, x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
-    """ gSVI formula as in [Gurrieri2010] """
-    # Retrieve parameters
-    if len(params) != 5:
-        raise ValueError(f"Incorrect parameter size in SVI: {len(params)}")
-
-    a = params[0]
-    b = params[1]
-    rho = params[2]
-    m = params[3]
-    sigma = params[4]
-
-    # Calculate
-    print(f"x-shape: {x.shape}")
-    print(f"m-shape: {m.shape}")
-    xm = x - m # x is the log-moneyness
-    var = a + b * (rho * xm + np.sqrt(xm**2 + sigma**2))
-    if np.any(var < 0.0):
-        raise ValueError("Negative variance in SVI formula")
-
-    vol = np.sqrt(var)
-    return vol
-
-
-def gsvi_check_params(params: list[float], check_butterfly: bool=False) -> None:
-    """ Check consistency of gSVI parameters """
-    return True, 0.0
 
 
 class TsSvi1(TermStructureParametricZeroSurface):
@@ -59,7 +31,7 @@ class TsSvi1(TermStructureParametricZeroSurface):
         # print(f"time: {t}")
         # print(f"x: {log_m}")
         # print(f"params: {params}")
-        vol = gsvi_formula(t, log_m, params)
+        vol = gsvi.gsvi_formula(log_m, params)
         return vol
 
     def formula_parameters(self, t: npt.ArrayLike, params: list[float]) -> list[float]:
@@ -112,7 +84,7 @@ class TsSvi1(TermStructureParametricZeroSurface):
         """ Check validity of the parameters """
         sample_times = np.asarray([1 / 365, 7 / 365, 30 / 365, 0.5, 1, 5, 10, 40])
         sample_params = self.formula_parameters(sample_times, self.params)
-        is_ok, penalty = gsvi_check_params(sample_params)
+        is_ok, penalty = gsvi.gsvi_check_params(sample_params)
         return is_ok, penalty
 
     def bounds(self, keep_feasible: bool=False):

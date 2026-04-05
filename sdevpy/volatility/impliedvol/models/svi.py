@@ -93,28 +93,4 @@ def sample_params(t: float) -> list[float]:
 
 
 if __name__ == "__main__":
-    # One chart example
-    t = 1/365
-    alnv = 0.25
-    a = alnv**2 * t # a > 0
-    b = 0.0 # a / np.log(2) # b > 0
-    rho = 0.0 # -1 < rho < 1
-    m = 0.0 # No constraints
-    sigma = 0.0 # 0.5 / np.sqrt(t) # > 0
-    params = [a, b, rho, m, sigma]
-
-    k = np.linspace(0.2, 3.0, 100)
-    x = np.log(k)
-
-    vol = svi_formula(t, x, params)
-    plt.plot(x, vol)
-    plt.show()
-
-    # Vectorization
-    times = np.asarray([t])
-    times = np.full_like(k, times)
-    print(f"times: {times.shape}")
-    params = [np.full_like(k, np.asarray([a])), np.full_like(k, np.asarray([b])), np.full_like(k, np.asarray([rho])),
-              np.full_like(k, np.asarray([m])), np.full_like(k, np.asarray([sigma]))]
-    vols = svi_formula(times, x, params)
-    print(f"shape: {vols.shape}")
+    print("Hello")
