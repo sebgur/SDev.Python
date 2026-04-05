@@ -10,7 +10,7 @@ def prepare_sets(inputs, outputs, train_percent):
         according to specified percentage to put in the training set """
     data_size = inputs.shape[0]
     if outputs.shape[0] != data_size:
-        raise RuntimeError("Incompatible sizes between inputs and outputs")
+        raise ValueError("Incompatible sizes between inputs and outputs")
 
     train_size = int(data_size * train_percent)
 
@@ -31,7 +31,7 @@ def retrieve_data(folder, num_samples, shuffle=True, sep='\t', export_file=""):
     elif sep == ',':
         extension = ".csv"
     else:
-        raise RuntimeError("Unknown text file separation")
+        raise ValueError("Unknown text file separation")
 
     # Merge content of folder in single dataframe
     files = filemanager.list_files(folder, [extension])

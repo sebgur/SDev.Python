@@ -148,8 +148,8 @@ if __name__ == "__main__":
     # print(MC_PRICES)
 
     # Convert to IV and compare against approximate closed-form
-    # import black
-    import bachelier
+    # import sdevpy.analytics.black as black
+    import sdevpy.analytics.bachelier as bachelier
     mc_ivs = []
     for a, expiry in enumerate(EXPIRIES):
         mc_iv = []

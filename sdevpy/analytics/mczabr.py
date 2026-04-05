@@ -158,7 +158,7 @@ if __name__ == "__main__":
     mc_timer.print()
 
     # Convert to IV and compare against approximate closed-form
-    import black
+    import sdevpy.analytics.black as black
     # import bachelier
     mc_ivs1 = []
     mc_ivs2 = []

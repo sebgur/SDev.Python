@@ -20,7 +20,7 @@ def make_vanilla_option_payoff(payoff, strike, optiontype):
         case VanillaOptionType.STRADDLE:
             option_payoff = Abs(payoff - strike)
         case _:
-            raise RuntimeError(f"Invalid option type: {optiontype}")
+            raise ValueError(f"Invalid option type: {optiontype}")
 
     return option_payoff
 
@@ -35,7 +35,7 @@ def make_vanilla_option(name, strike, optiontype, expiry):
         case VanillaOptionType.STRADDLE:
             payoff = Abs(Terminal(name, expiry) - strike)
         case _:
-            raise RuntimeError(f"Invalid option type: {optiontype}")
+            raise ValueError(f"Invalid option type: {optiontype}")
 
     return payoff
 
@@ -49,7 +49,7 @@ def vanilla_option(spot, strike, optiontype):
         case VanillaOptionType.STRADDLE:
             payoff = np.abs(spot - strike)
         case _:
-            raise RuntimeError("Invalid option type")
+            raise ValueError("Invalid option type")
 
     return payoff
 
@@ -63,7 +63,7 @@ def string_to_optiontype(s):
         case 'straddle':
             return VanillaOptionType.STRADDLE
         case _:
-            raise RuntimeError(f"Invalid option type: {s}")
+            raise ValueError(f"Invalid option type: {s}")
 
 
 if __name__ == "__main__":

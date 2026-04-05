@@ -377,7 +377,7 @@ class Basket(Payoff):
         self.names = list_payoff_names(self.subpayoffs)
         self.weights = np.asarray(weights)
         if len(self.subpayoffs) != len(self.weights):
-            raise RuntimeError("Incompatible sizes between sub-payoffs and weights")
+            raise ValueError("Incompatible sizes between sub-payoffs and weights")
 
     def evaluate(self, mkt_state):
         sub_paths = np.asarray([p.evaluate(mkt_state) for p in self.subpayoffs])
