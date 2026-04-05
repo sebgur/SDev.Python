@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum
-# import numpy as np
 import logging
 from sdevpy.analytics import black, bachelier
 from sdevpy.maths import metrics

@@ -78,3 +78,8 @@ def test_path_interpolation():
         [[100., 10.], [110., 11.], [150., 15.], [170., 17.], [200., 20.], [225., 22.5]],
         [[100., 10.], [94., 9.4], [70., 7.], [66., 6.6], [60., 6.], [55., 5.5]]])
     assert np.allclose(test, ref, 1e-8)
+
+
+if __name__ == "__main__":
+    test_mc()
+    test_path_interpolation()

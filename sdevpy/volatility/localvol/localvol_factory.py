@@ -1,7 +1,8 @@
 import os, json
 from pathlib import Path
 import datetime as dt
-from sdevpy.models import biexp, svivol, cubicvol, localvol
+from sdevpy.volatility.impliedvol.models import biexp, svivol, cubicvol
+from sdevpy.volatility.localvol import localvol
 from sdevpy.tools import dates
 from sdevpy.maths import interpolation as itp
 
@@ -151,7 +152,7 @@ def write_example(date, name, folder):
 
 
 def test_data_folder():
-    folder = Path(__file__).parent.parent.parent.resolve()
+    folder = Path(__file__).parent.parent.parent.parent.resolve()
     folder = os.path.join(os.path.join(folder, "datasets"), "localvol")
     os.makedirs(folder, exist_ok=True)
     return folder

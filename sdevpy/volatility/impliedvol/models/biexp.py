@@ -14,7 +14,7 @@ import datetime as dt
 import numpy as np
 import scipy.optimize as opt
 from scipy.stats import norm
-from sdevpy.models.impliedvol import ParamSection
+from sdevpy.volatility.impliedvol.impliedvol import ParamSection
 
 
 DEATH_PENALTY = 1e6

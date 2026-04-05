@@ -1,6 +1,6 @@
 import numpy as np
-from sdevpy.models import svi
-from sdevpy.models.surfaces.tssvi1 import TsSvi1
+from sdevpy.volatility.impliedvol.models import svi
+from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 
 
 def test_tssvi1():
@@ -34,4 +34,5 @@ def test_svi_formula():
 
 
 if __name__ == "__main__":
+    test_svi_formula()
     test_tssvi1()

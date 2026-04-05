@@ -2,7 +2,7 @@ import json
 import datetime as dt
 import numpy as np
 from abc import ABC, abstractmethod
-from sdevpy.models.svi import SviSection
+from sdevpy.volatility.impliedvol.models.svi import SviSection
 from sdevpy.tools import algos, dates
 
 

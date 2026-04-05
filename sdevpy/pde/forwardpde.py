@@ -112,6 +112,7 @@ def shift_to_match_forward(s0, x, p, target_forward):
 
 
 class PdeConfig:
+    """ ToDo: should we make this a dataclass? Recommended by Claude. """
     def __init__(self, **kwargs):
         self.n_timesteps = kwargs.get('n_timesteps', 25)
         self.n_meshes = kwargs.get('n_meshes', 100)

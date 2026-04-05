@@ -4,7 +4,7 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from scipy.stats import norm
-from sdevpy.models.impliedvol import ParamSection
+from sdevpy.volatility.impliedvol.impliedvol import ParamSection
 from sdevpy.maths import constants
 
 

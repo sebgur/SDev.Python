@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
-from sdevpy.models.surfaces.zerosurface import TermStructureParametricZeroSurface
+from sdevpy.volatility.impliedvol.zerosurface import TermStructureParametricZeroSurface
 # from sdevpy.models.svi import svi_formula, svi_check_params
 from sdevpy.market import eqvolsurface as vsurf
 # from sdevpy.models.surfaces.optionsurface import calibration_targets

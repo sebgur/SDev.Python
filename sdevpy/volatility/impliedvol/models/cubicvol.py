@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.optimize as opt
-from sdevpy.models.impliedvol import ParamSection
+from sdevpy.volatility.impliedvol.impliedvol import ParamSection
 from sdevpy.maths.constants import DEATH_PENALTY
 
 

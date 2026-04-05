@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
-from sdevpy.models.impliedvol import ParamSection
+from sdevpy.volatility.impliedvol.impliedvol import ParamSection
 from sdevpy.maths import constants
 
 

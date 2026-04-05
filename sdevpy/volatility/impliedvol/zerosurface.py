@@ -5,7 +5,7 @@ from scipy.stats import norm
 from scipy.optimize import brentq
 from sdevpy.maths import constants
 from sdevpy.analytics import black, bachelier
-from sdevpy.models.surfaces.optionsurface import (OptionQuoteType, OptionTarget, keep_positive,
+from sdevpy.volatility.impliedvol.optionsurface import (OptionQuoteType, OptionTarget, keep_positive,
     check_expiries_and_forwards, convert_to_target_values)
 
 
