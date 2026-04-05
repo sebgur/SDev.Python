@@ -123,19 +123,10 @@ if __name__ == "__main__":
     k = np.asarray(k)
     f = np.asarray(f)
     is_call = True
-    z = []
-    for t_, k_, f_ in zip(t, k, f, strict=True):
-        try:
-            print(f"t:{t_}, k:{k_}, f:{f_}")
-            mv = surface.calculate(t_, k_, is_call, f_)
-            z.append(mv)
-        except Exception as e:
-            print(f"Error: {str(e)}")
 
-    # z = surface.calculate(t, k, is_call, f)
-    z = np.asarray(z)
+    # Estimate model
+    z = surface.calculate(t, k, is_call, f)
     print(f"Result shape: {z.shape}")
-    # print(f"Result {z}")
 
     # Reshape results per maturity
     model_vols = []

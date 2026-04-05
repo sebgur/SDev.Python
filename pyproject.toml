@@ -15,7 +15,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = ["pandas", "numpy", "scipy", "matplotlib", "holidays",
-                "pandas_market_calendars", "openpyxl"
+                "pandas_market_calendars", "openpyxl", "colorlog"
 ]
 #dependencies = ["pyperclip", "tensorflow", "scikit-learn",
 # "tensorflow_probability", "silence_tensorflow"]
