@@ -25,7 +25,7 @@ def create_optimizer(method: str, **kwargs):
     if method in SCIPY_OPTIMIZERS:
         optimizer = SciPyOptimizer(method, **kwargs)
     else:
-        raise RuntimeError("Optimizer type not supported: " + method)
+        raise ValueError(f"Optimizer type not supported: {method}")
 
     return optimizer
 
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     x = result.x
     fun = result.fun
 
-    # Pring results
+    # Printing results
     print("Sol Point", x)
     print("Sol Value", fun)
     for key in result.keys():

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 # from scipy.stats import norm
 # import utils as ut
-import data_io as myio
+from sdevpy.cointegration import data_io as myio
 
 
 # Compute historical corelation with time series in XXX_USD

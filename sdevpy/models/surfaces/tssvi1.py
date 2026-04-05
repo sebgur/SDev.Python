@@ -8,12 +8,41 @@ import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
 from sdevpy.models.surfaces.zerosurface import TermStructureParametricZeroSurface
-from sdevpy.models.svi import svi_formula
+# from sdevpy.models.svi import svi_formula, svi_check_params
 from sdevpy.market import eqvolsurface as vsurf
 # from sdevpy.models.surfaces.optionsurface import calibration_targets
 from sdevpy.tools import timegrids
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths.optimization import create_optimizer
+
+
+def gsvi_formula(t: float, x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
+    """ gSVI formula as in [Gurrieri2010] """
+    # Retrieve parameters
+    if len(params) != 5:
+        raise ValueError(f"Incorrect parameter size in SVI: {len(params)}")
+
+    a = params[0]
+    b = params[1]
+    rho = params[2]
+    m = params[3]
+    sigma = params[4]
+
+    # Calculate
+    print(f"x-shape: {x.shape}")
+    print(f"m-shape: {m.shape}")
+    xm = x - m # x is the log-moneyness
+    var = a + b * (rho * xm + np.sqrt(xm**2 + sigma**2))
+    if np.any(var < 0.0):
+        raise ValueError("Negative variance in SVI formula")
+
+    vol = np.sqrt(var)
+    return vol
+
+
+def gsvi_check_params(params: list[float], check_butterfly: bool=False) -> None:
+    """ Check consistency of gSVI parameters """
+    return True, 0.0
 
 
 class TsSvi1(TermStructureParametricZeroSurface):
@@ -30,7 +59,7 @@ class TsSvi1(TermStructureParametricZeroSurface):
         # print(f"time: {t}")
         # print(f"x: {log_m}")
         # print(f"params: {params}")
-        vol = svi_formula(t, log_m, params)
+        vol = gsvi_formula(t, log_m, params)
         return vol
 
     def formula_parameters(self, t: npt.ArrayLike, params: list[float]) -> list[float]:
@@ -79,13 +108,22 @@ class TsSvi1(TermStructureParametricZeroSurface):
 
         return x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10]
 
+    def check_params(self):
+        """ Check validity of the parameters """
+        sample_times = np.asarray([1 / 365, 7 / 365, 30 / 365, 0.5, 1, 5, 10, 40])
+        sample_params = self.formula_parameters(sample_times, self.params)
+        is_ok, penalty = gsvi_check_params(sample_params)
+        return is_ok, penalty
+
     def bounds(self, keep_feasible: bool=False):
+        """ Recommended bounds """
         lw_bounds = [0.0, 0.00001, -1.0,  0.1, 0.0000, 0.0001, -0.99, -0.50, 0.0, 0.0, -0.999]
         up_bounds = [1.0, 1.00000,  1.0, 50.0, 5.0000, 0.9990,  0.20,  2.00, 2.0, 5.0,  5.000]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=keep_feasible)
         return bounds
 
     def initial_point(self):
+        """ Recommended initial point """
         init_point = [0.1, 0.10000, -0.1,  1.0, 0.1000, 0.1000, -0.30,  0.10, 0.1, 1.0,  1.000]
         return np.asarray(init_point)
 
@@ -172,7 +210,8 @@ if __name__ == "__main__":
 
     # Initialize model
     surface = TsSvi1()
-    params_init = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.9, 0.1, 0.1, 0.1, 0.1]
+    # params_init = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.9, 0.1, 0.1, 0.1, 0.1]
+    params_init = surface.initial_point()
     surface.update_params(params_init)
 
     # Optimizer settings
@@ -188,12 +227,13 @@ if __name__ == "__main__":
 
     # Optimize
     optimizer = create_optimizer(method, tol=tol)
-    # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
-    result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
-    sol = result.x # Optimum parameters
+    # result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+    # sol = result.x # Optimum parameters
 
     # Calculate model vols and reshape results per maturity
+    sol = params_init
     surface.update_params(sol)
+    surface.check_params()
     z = surface.calculate(t, k, is_call, f)
     print(f"Result shape: {z.shape}")
     model_vols = []

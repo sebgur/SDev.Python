@@ -7,14 +7,14 @@ def test_tssvi1():
     surface = TsSvi1()
     params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     surface.update_params(params)
-    print(len(params))
 
     t = np.asarray([0.5, 1.5, 2.5])
     k = np.asarray([90, 100, 110])
     f = np.asarray([95, 105, 115])
     is_call = True
     test = surface.calculate(t, k, is_call, f)
-    ref = np.asarray([0.40565045, 0.26784152, 0.22368161])
+    ref = np.asarray([0.28683819, 0.32803753, 0.35367168]) # gSVI
+    # ref = np.asarray([0.40565045, 0.26784152, 0.22368161]) # Original SVI
     assert np.allclose(test, ref, 1e-10)
 
 

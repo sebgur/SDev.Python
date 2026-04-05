@@ -467,10 +467,6 @@ class Variance(Payoff):
         # Add forward variance
         log_returns = np.diff(np.log(np.asarray(spot_paths)))
         log_returns2 = np.power(log_returns, 2)
-        # print(f"spot paths: {spot_paths.shape}")
-        # print(f"var_sum: {var_sum.shape}")
-        # print(f"log_returns2: {log_returns2.shape}")
-        # print(f"new_var_sum: {log_returns2.sum(axis=1).shape}")
         var_sum = var_sum + log_returns2.sum(axis=1)
         return self.scaling * var_sum / self.n_returns
 
