@@ -1,4 +1,3 @@
-import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.impliedvol.zerosurface import TermStructureParametricZeroSurface

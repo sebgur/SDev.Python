@@ -1,3 +1,4 @@
+import torch
 import torch.nn
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator

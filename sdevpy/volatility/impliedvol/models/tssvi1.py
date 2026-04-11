@@ -12,7 +12,6 @@ from sdevpy.volatility.impliedvol.models import gsvi
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.tools import timegrids
 from sdevpy.maths.metrics import rmse
-from sdevpy.maths.optimization import create_optimizer
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 
 
@@ -96,19 +95,8 @@ class TsSvi1(TermStructureParametricZeroSurface):
         return np.asarray(init_point)
 
 
-# def calibrate_tssvi1(valdate, name, config, **kwargs):
-#     # Arguments
-#     # verbose = kwargs.get('verbose', False)
-#     # disp_opt = kwargs.get('disp_opt', False)
-#     # calc_pde_vols = kwargs.get('calc_pde_vols', False)
-
-#     # return {'lv': lv, 'iv_data': surface_data, 'pde_vols': pde_vols}
-#     raise NotImplementedError("Not implemented yet: calibrate_tssvi1")
-
-
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
     name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
 
@@ -120,68 +108,16 @@ if __name__ == "__main__":
     strike_surface = surface_data.get_strikes('absolute')
     vol_surface = surface_data.vols
 
-    # Set calibration time grid
-    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
-
-    # Reformat inputs to flat vectors
-    t, k, f, s = [], [], [], []
-    for i in range(len(expiries)):
-        expiry = expiry_grid[i]
-        fwd = fwds[i]
-        strikes = strike_surface[i]
-        vols = vol_surface[i]
-        for strike, vol in zip(strikes, vols, strict=True):
-            t.append(expiry)
-            f.append(fwd)
-            k.append(strike)
-            s.append(vol)
-
-    t = np.asarray(t)
-    k = np.asarray(k)
-    f = np.asarray(f)
-    s = np.asarray(s)
-    is_call = True
-
     # Initialize model
     model = TsSvi1()
 
+    # Calibrate model
     calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-6})
     calibrator.calibrate(surface_data)
 
-    # params_init = model.initial_point()
-    # model.update_params(params_init)
-
-    # # Optimizer settings
-    # method = 'SLSQP' # L-BFGS-B, SLSQP, DE
-    # tol = 1e-6
-
-    # # Constraints
-    # bounds = model.bounds()
-
-    # # Objective
-    # obj_builder = TsIvObjectiveBuilder(model, t, k, f, s)
-    # objective = obj_builder.objective
-
-    # # Optimize
-    # optimizer = create_optimizer(method, tol=tol)
-    # result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
-    # sol = result.x # Optimum parameters
-    # model.update_params(sol)
-
-    # Calculate model vols and reshape results per maturity
-    model.check_params()
-    z = model.calculate(t, k, is_call, f)
-    print(f"Result shape: {z.shape}")
-    model_vols = []
-    counter = 0
-    for _ in expiries:
-        vols = []
-        for _ in strikes:
-            vols.append(z[counter])
-            counter += 1
-        model_vols.append(vols)
-
     # Estimate model on points and calculate RMSE, plot comparison
+    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
+    is_call = True
     n_rows, n_cols = 3, 2
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
     for i in range(n_rows):
@@ -196,7 +132,8 @@ if __name__ == "__main__":
             m_vols = model.calculate(expiry, m_strikes, is_call, fwd)
             ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
             ax.plot(m_strikes, m_vols, label="model", color='green')
-            vol_rmse = rmse(vol_surface[exp_idx], model_vols[exp_idx])
+            model_vols = model.calculate(expiry, strikes, is_call, fwd)
+            vol_rmse = rmse(vol_surface[exp_idx], model_vols)
             ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
             ax.set_xlabel('strike')
             ax.set_ylabel('vol')

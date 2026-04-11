@@ -32,7 +32,7 @@ def gsvi_formula(x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
     return vol
 
 
-def gsvi_check_params(params: list[float], check_butterfly: bool=False) -> None:
+def gsvi_check_params(params: list[float], check_butterfly: bool=False) -> (bool, float):
     """ Check consistency of gSVI parameters """
     a = params[0]
     b = params[1]

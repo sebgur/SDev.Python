@@ -1,5 +1,5 @@
 """ Smile generator for classic and shifted Hagan SABR models """
-import os
+import os, logging
 import numpy as np
 import pandas as pd
 import scipy.stats as sp
@@ -12,6 +12,7 @@ from sdevpy.tools import filemanager
 from sdevpy.tools import constants
 from sdevpy.maths import metrics
 from sdevpy.maths import optimization as opt
+log = logging.getLogger(__name__)
 
 
 class SabrGenerator(SmileGenerator):
@@ -23,14 +24,14 @@ class SabrGenerator(SmileGenerator):
     def generate_samples(self, num_samples, rg):
         shift = self.shift
 
-        print(f"Number of strikes: {self.num_strikes:,}")
-        print(f"Number of expiries: {self.num_expiries:,}")
-        print(f"Surface size: {self.surface_size:,}")
-        print(f"Number of samples: {num_samples:,}")
+        log.info(f"Number of strikes: {self.num_strikes:,}")
+        log.info(f"Number of expiries: {self.num_expiries:,}")
+        log.info(f"Surface size: {self.surface_size:,}")
+        log.info(f"Number of samples: {num_samples:,}")
 
         # Derive number of surfaces to generate
         num_surfaces = int(num_samples / self.surface_size)# + 1)
-        print(f"Number of surfaces/parameter samples: {num_surfaces:,}")
+        log.info(f"Number of surfaces/parameter samples: {num_surfaces:,}")
 
         # Draw parameters
         lnvol = self.rng.uniform(rg['LnVol'][0], rg['LnVol'][1], num_surfaces)
@@ -48,7 +49,7 @@ class SabrGenerator(SmileGenerator):
         rhos = []
         prices = []
         for j in range(num_surfaces):
-            print(f"Surface generation number {j+1:,}/{num_surfaces:,}")
+            log.info(f"Surface generation number {j+1:,}/{num_surfaces:,}")
             expiries = self.rng.uniform(rg['Ttm'][0], rg['Ttm'][1], self.num_expiries)
             # Need to sort these expiries
             expiries = np.unique(expiries)
@@ -106,20 +107,20 @@ class SabrGenerator(SmileGenerator):
         min_fwd = max(min_fwd, rg['F'][0])
 
         n_spreads = np.asarray(spreads).reshape(-1, 1) / 10000.0
-        print(spreads)
-        print(n_spreads.shape)
+        log.info(spreads)
+        log.info(n_spreads.shape)
 
         num_strikes = len(spreads)
         surface_size = num_strikes * self.num_expiries
-        print(f"Number of strikes: {num_strikes:,}")
-        print(f"Number of expiries: {self.num_expiries:,}")
-        print(f"Surface size: {surface_size:,}")
-        print(f"Number of samples: {num_samples:,}")
-        print(f"Minimum forward: {min_fwd * 100:,.2f}%")
+        log.info(f"Number of strikes: {num_strikes:,}")
+        log.info(f"Number of expiries: {self.num_expiries:,}")
+        log.info(f"Surface size: {surface_size:,}")
+        log.info(f"Number of samples: {num_samples:,}")
+        log.info(f"Minimum forward: {min_fwd * 100:,.2f}%")
 
         # Derive number of surfaces to generate
         num_surfaces = int(num_samples / self.num_expiries)# + 1)
-        print(f"Number of surfaces/parameter samples: {num_surfaces:,}")
+        log.info(f"Number of surfaces/parameter samples: {num_surfaces:,}")
 
         # Draw parameters
         lnvol = self.rng.uniform(rg['LnVol'][0], rg['LnVol'][1], num_surfaces)
@@ -137,7 +138,7 @@ class SabrGenerator(SmileGenerator):
         rhos = []
         prices = []
         for j in range(num_surfaces):
-            print(f"Surface generation number {j+1:,}/{num_surfaces:,}")
+            log.info(f"Surface generation number {j+1:,}/{num_surfaces:,}")
             expiries = self.rng.uniform(rg['Ttm'][0], rg['Ttm'][1], self.num_expiries)
             # Need to sort these expiries
             expiries = np.unique(expiries)
@@ -382,7 +383,7 @@ class SabrGenerator(SmileGenerator):
         num_expiries = expiries.shape[0]
         nfevs = 0
         for i in range(num_expiries):
-            print(f"Optimizing at T = {expiries[i]}...")
+            log.info(f"Optimizing at T = {expiries[i]}...")
             args = (self, expiries[i], strikes[i], fwd, mkt_prices[i], weights)
             result, nfev = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)
             x = result.x
@@ -396,7 +397,7 @@ class SabrGenerator(SmileGenerator):
 
         # Calculate model prices at calibrated parameters
         cal_prices = []
-        print("Calculing calibrated prices")
+        log.info("Calculing calibrated prices")
         for i in range(num_expiries):
             expiries_ = np.asarray([expiries[i]])
             strikes_ = np.asarray([strikes[i]])
@@ -404,17 +405,6 @@ class SabrGenerator(SmileGenerator):
             cal_prices.append(cal_prices_[0])
 
         return cal_params, cal_prices, nfevs
-
-
-    # def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
-    #     if input_method == 'Percentiles':
-    #         lnvol = parameters['LnVol']
-    #         stdev = lnvol * np.sqrt(expiries)
-    #         sfwd = fwd + self.shift
-    #         return sfwd * np.exp(-0.5 * stdev**2 + stdev * sp.norm.ppf(strike_inputs)) - self.shift
-    #     else:
-    #         return SmileGenerator.convert_strikes(expiries, strike_inputs, fwd, parameters,
-    #                                               input_method)
 
 
 # Objective function

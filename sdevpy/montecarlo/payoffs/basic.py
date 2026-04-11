@@ -2,7 +2,7 @@ import numpy as np
 import datetime as dt
 from abc import ABC, abstractmethod
 from sdevpy.tools.scalendar import make_schedule
-from sdevpy.tools.utils import hash
+from sdevpy.tools.utils import rand_str
 from sdevpy.market import fixings as fxgs
 
 
@@ -58,7 +58,7 @@ def list_instrument_names(instruments):
 class Instrument:
     def __init__(self, cashflow_legs, **kwargs):
         self.cashflow_legs = cashflow_legs
-        self.id = kwargs.get('id', hash())
+        self.id = kwargs.get('id', rand_str())
 
     def names(self):
         payoffs = []
@@ -96,7 +96,7 @@ class Trade:
     def __init__(self, instrument, **kwargs):
         self.instrument = instrument
         self.notional = kwargs.get('notional', 1.0)
-        self.id = kwargs.get('id', hash())
+        self.id = kwargs.get('id', rand_str())
 
 
 class Payoff(ABC):

@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 import numpy as np
+import numpy.typing as npt
 import datetime as dt
 from scipy.stats import norm
 from scipy.optimize import brentq
 from sdevpy.maths import constants
 from sdevpy.analytics import black, bachelier
-from sdevpy.volatility.impliedvol.optionsurface import (OptionQuoteType, OptionTarget, keep_positive,
-    check_expiries_and_forwards, convert_to_target_values)
+from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType, OptionTarget
 
 
 class ZeroSurface(ABC):
@@ -190,39 +190,39 @@ class ZeroSurface(ABC):
 
     ############### Calibration ###################################################################
 
-    def calibrate(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
-        """ Calibrate surface """
-        self.base_date = date
+    # def calibrate(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
+    #     """ Calibrate surface """
+    #     self.base_date = date
 
-        # Check consistency of input data, convert to modelled type
-        target_options = self.check_consistency(options)
+    #     # Check consistency of input data, convert to modelled type
+    #     target_options = self.check_consistency(options)
 
-        # Get expiry times
-        self.expiry_times = [x[0].expiry for x in target_options]
+    #     # Get expiry times
+    #     self.expiry_times = [x[0].expiry for x in target_options]
 
-        # Model-dependent calibration of inherited types
-        self.calibrate_modelled_type(date, target_options)
+    #     # Model-dependent calibration of inherited types
+    #     self.calibrate_modelled_type(date, target_options)
 
-    def check_consistency(self, options: list[list[OptionTarget]]) -> list[list[OptionTarget]]:
-        """ Take out negative rate options depending on model features.
-            Check consistency of expiries, forwards, etc. """
-        # Strip out negative rate options if needed
-        t_options = (options if self.allow_negative_variables else keep_positive(options))
+    # def check_consistency(self, options: list[list[OptionTarget]]) -> list[list[OptionTarget]]:
+    #     """ Take out negative rate options depending on model features.
+    #         Check consistency of expiries, forwards, etc. """
+    #     # Strip out negative rate options if needed
+    #     t_options = (options if self.allow_negative_variables else keep_positive(options))
 
-        # Check consistency of expiries and forwards
-        check_expiries_and_forwards(t_options)
+    #     # Check consistency of expiries and forwards
+    #     check_expiries_and_forwards(t_options)
 
-        # Convert from quoted type to targetType required for model calibration.
-        c_options = convert_to_target_values(t_options, self.modelled_type, self.shift)
+    #     # Convert from quoted type to targetType required for model calibration.
+    #     c_options = convert_to_target_values(t_options, self.modelled_type, self.shift)
 
-        # Check degrees of freedom
-        if self.check_dof:
-            self.check_degrees_of_freedom(c_options)
+    #     # Check degrees of freedom
+    #     if self.check_dof:
+    #         self.check_degrees_of_freedom(c_options)
 
-        return c_options
+    #     return c_options
 
-    def check_degrees_of_freedom(self, options: list[list[OptionTarget]]) -> None: # noqa: B027
-        pass
+    # def check_degrees_of_freedom(self, options: list[list[OptionTarget]]) -> None: # noqa: B027
+    #     pass
 
 
     def number_parameters(self) -> int|None:
@@ -234,9 +234,9 @@ class ZeroSurface(ABC):
     def calculate(self, t: float, k: float, is_call: bool, f: float) -> float:
         pass
 
-    @abstractmethod
-    def calibrate_modelled_type(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
-        pass
+    # @abstractmethod
+    # def calibrate_modelled_type(self, date: dt.datetime, options: list[list[OptionTarget]]) -> None:
+    #     pass
 
 
 class ParametricZeroSurface(ZeroSurface):
@@ -258,7 +258,7 @@ class ParametricZeroSurface(ZeroSurface):
         pass
 
     @abstractmethod
-    def formula(self, t: float, k: float, is_call: bool, f: float, params: list[float]) -> float:
+    def formula(self, t: float, k: float, is_call: bool, f: float, params: list[float]) -> npt.ArrayLike:
         """ Abtract method for calculation of the core formula """
         pass
 

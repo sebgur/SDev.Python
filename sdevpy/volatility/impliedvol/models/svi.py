@@ -50,7 +50,7 @@ def svi(t: float, x: npt.ArrayLike, *params) -> npt.ArrayLike:
     return vol
 
 
-def svi_check_params(params: list[float], check_butterfly: bool=False) -> None:
+def svi_check_params(params: list[float], check_butterfly: bool=False) -> (bool, float):
     """ Check consistency of SVI parameters """
     a = params[0]
     b = params[1]

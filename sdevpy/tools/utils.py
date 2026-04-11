@@ -32,16 +32,16 @@ def pd_read_xls(xls_file, col_name, index_col):
     return xls.parse(col_name, index_col=index_col)
 
 
-def print_python_bit_version():
+def print_python_bit_version() -> str:
     """ Prints number of bits of the installed python version (32 or 64) """
     print(struct.calcsize("P") * 8)
 
 
-def hash():
+def rand_str() -> str:
     return str(rand_n_digits(10))
 
 
-def rand_n_digits(n):
+def rand_n_digits(n: int) -> int:
     """ Random integer with n digits """
     start = 10**(n - 1)
     end = 10**n

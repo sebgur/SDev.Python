@@ -1,7 +1,8 @@
 import numpy as np
+import numpy.typing as npt
 
 
-def unique_sorted(arr, atol=1e-11):
+def unique_sorted(arr: npt.ArrayLike, atol: float=1e-11) -> npt.ArrayLike:
     """ Fast sorting and removal of duplicates """
     if len(arr) == 0:
         return arr
@@ -19,7 +20,8 @@ def unique_sorted(arr, atol=1e-11):
     return sorted_arr[keep]
 
 
-def upper_bound(arr_sorted, value, atol=1e-11):
+def upper_bound(arr_sorted: npt.ArrayLike, value: float, atol: float=1e-11) -> int:
+    """ Upper bound index """
     idx = np.searchsorted(arr_sorted, value)
 
     # The problem is that due to the float precision issue, we might answer the next
@@ -27,7 +29,7 @@ def upper_bound(arr_sorted, value, atol=1e-11):
     # So we check closeness with the previous pillar, and if we're within tolerance,
     # we answer that pillar instead.
     if idx > 0: # No issue on first pillar as we can't be closer to the previous pillar
-        if np.isclose(arr_sorted[idx - 1], value, atol):
+        if np.isclose(arr_sorted[idx - 1], value, rtol=0.0, atol=atol):
             idx = idx - 1
 
     return idx

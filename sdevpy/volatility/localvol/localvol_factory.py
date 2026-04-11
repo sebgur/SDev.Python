@@ -31,7 +31,7 @@ def create_section(config):
     model = config.get('model', None)
     param_config = config.get('params', None)
     if time is None or model is None: # or param_config is None:
-        raise TypeError("Invalid section input in local vol file")
+        raise ValueError("Invalid section input in local vol file")
 
     match model.lower():
         case 'biexp':
@@ -42,7 +42,7 @@ def create_section(config):
             section = vsvi.create_section(time, param_config)
         case _:
             section = None
-            raise TypeError(f"Unknown section type: {model}")
+            raise ValueError(f"Unknown section type: {model}")
 
     return section
 
