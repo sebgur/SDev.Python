@@ -16,7 +16,6 @@ def get_local_vols(names, valdate, **kwargs):
     return lvs
 
 
-
 def create_sections(t_grid, model):
     sections = []
     for t in t_grid:
@@ -31,7 +30,7 @@ def create_section(config):
     time = config.get('time', None)
     model = config.get('model', None)
     param_config = config.get('params', None)
-    if time is None or model is None:# or param_config is None:
+    if time is None or model is None: # or param_config is None:
         raise TypeError("Invalid section input in local vol file")
 
     match model.lower():

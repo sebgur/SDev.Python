@@ -9,9 +9,7 @@ import datetime as dt
 import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.zerosurface import TermStructureParametricZeroSurface
 from sdevpy.volatility.impliedvol.models import gsvi
-# from sdevpy.models.svi import svi_formula, svi_check_params
 from sdevpy.market import eqvolsurface as vsurf
-# from sdevpy.models.surfaces.optionsurface import calibration_targets
 from sdevpy.tools import timegrids
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths.optimization import create_optimizer
@@ -28,9 +26,6 @@ class TsSvi1(TermStructureParametricZeroSurface):
                 params: list[float]) -> npt.ArrayLike:
         # Calculate log-moneyness
         log_m = np.log(k / f)
-        # print(f"time: {t}")
-        # print(f"x: {log_m}")
-        # print(f"params: {params}")
         vol = gsvi.gsvi_formula(log_m, params)
         return vol
 
@@ -188,22 +183,22 @@ if __name__ == "__main__":
 
     # Optimizer settings
     method = 'SLSQP' # L-BFGS-B, SLSQP, DE
-    tol = 1e-4
+    tol = 1e-6
 
     # Constraints
     bounds = surface.bounds()
 
     # Objective
-    obj_builder = TsSvi1ObjectiveBuilder(surface, expiry_grid, k, f, s, config={})
+    obj_builder = TsSvi1ObjectiveBuilder(surface, t, k, f, s, config={})
     objective = obj_builder.objective
 
     # Optimize
     optimizer = create_optimizer(method, tol=tol)
-    # result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
-    # sol = result.x # Optimum parameters
+    result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+    sol = result.x # Optimum parameters
 
     # Calculate model vols and reshape results per maturity
-    sol = params_init
+    # sol = params_init
     surface.update_params(sol)
     surface.check_params()
     z = surface.calculate(t, k, is_call, f)

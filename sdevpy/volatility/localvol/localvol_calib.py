@@ -3,13 +3,13 @@ import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
 from sdevpy.tools import timegrids, dates
-from sdevpy.models import localvol_factory as lvf
+from sdevpy.volatility.localvol import localvol_factory as lvf
+from sdevpy.volatility.impliedvol.optionsurface import calibration_targets, IS_CALL
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.models.surfaces.optionsurface import calibration_targets, IS_CALL
 
 
 ########## ToDo ########################################################################

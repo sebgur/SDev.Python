@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.typing as npt
-import matplotlib.pyplot as plt
 from sdevpy.volatility.impliedvol.impliedvol import ParamSection
 from sdevpy.maths import constants
 
@@ -61,7 +60,7 @@ def svi_check_params(params: list[float], check_butterfly: bool=False) -> None:
 
     is_ok = True
     # Check constraints
-    if np.any(a < 0.0) or np.any(b < 0.0) or np.any(np.abs(rho) >= 1) or np.any(sigma < 0.0):
+    if np.any(b < 0.0) or np.any(np.abs(rho) >= 1) or np.any(sigma < 0.0):
         is_ok = False
 
     if is_ok:

@@ -7,11 +7,7 @@
     """
 import numpy as np
 import numpy.typing as npt
-
-
-############## TODO ##########################################################
-# * What about imposing the variance positivity constraint? Didn't we have it
-#   in C#?
+from sdevpy.maths import constants
 
 
 def gsvi_formula(x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
@@ -27,8 +23,6 @@ def gsvi_formula(x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
     sigma = params[4]
 
     # Calculate
-    # print(f"x-shape: {x.shape}")
-    # print(f"m-shape: {m.shape}")
     xm = x - m # x is the log-moneyness
     var = a + b * (rho * xm + np.sqrt(xm**2 + sigma**2))
     if np.any(var < 0.0):
@@ -40,7 +34,29 @@ def gsvi_formula(x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
 
 def gsvi_check_params(params: list[float], check_butterfly: bool=False) -> None:
     """ Check consistency of gSVI parameters """
-    return True, 0.0
+    a = params[0]
+    b = params[1]
+    rho = params[2]
+    # m = params[3] # No particular conditions on m
+    sigma = params[4]
+
+    is_ok = True
+    # Check constraints
+    if np.any(b < 0.0) or np.any(np.abs(rho) >= 1) or np.any(sigma < 0.0):
+        is_ok = False
+
+    if is_ok:
+        if np.any(a + b * sigma * np.sqrt(1.0 - rho**2) < 0.0):
+            is_ok = False
+
+    if is_ok and check_butterfly:
+        if b * (1.0 + np.abs(rho)) >= 4.0: # This one we may choose to only enforce during calibration
+            is_ok = False
+
+    # Sudden death for now
+    penalty = 0.0 if is_ok else constants.FLOAT_INFTY
+
+    return is_ok, penalty
 
 
 if __name__ == "__main__":

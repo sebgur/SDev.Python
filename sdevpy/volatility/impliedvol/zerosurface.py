@@ -225,8 +225,8 @@ class ZeroSurface(ABC):
         pass
 
 
-    def number_parameters(self) -> int:
-        """ Number of parameters. Return None in the base. """
+    def number_parameters(self) -> int|None:
+        """ Number of parameters. Return None in the base """
         return None
 
     ############ Abstract Methods #################################################################

@@ -65,7 +65,7 @@ class SciPyOptimizer(Optimizer):
             self.options['gtol'] = gtol
 
         if self.method_ not in self.std_minimizers and self.method_ not in self.other_minimizers:
-            raise ValueError("Method " + self.method_ + " not found in SciPy")
+            raise ValueError(f"Method {self.method_} not found in SciPy")
 
     def minimize(self, func, x0=None, args=(), bounds=None):
         result = None
@@ -83,7 +83,7 @@ class SciPyOptimizer(Optimizer):
                                                 popsize=popsize, strategy=strategy,
                                                 recombination=recombination)
         else:
-            raise ValueError("Method " + self.method_ + " not recognized")
+            raise ValueError(f"Method {self.method_} not recognized")
 
         return result
 
@@ -134,7 +134,7 @@ def record_history(enabled: bool=True, verbose: bool=False):
             history.append(record)
 
             if verbose:
-                print(f"Eval {record['eval']}, Point = {x}, Value = {record['f']}")
+                log.info(f"Eval {record['eval']}, Point = {x}, Value = {record['f']}")
 
             return result
 
