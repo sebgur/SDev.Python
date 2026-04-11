@@ -77,7 +77,8 @@ class EqVolSurfaceData:
         print(sep)
 
 
-def eqvolsurfacedata_from_file(file):
+def eqvolsurfacedata_from_file(file: str) -> EqVolSurfaceData:
+    """ Retrieve EqVolSurfaceData from file """
     with open(file) as f:
         data = json.load(f)
 
@@ -99,14 +100,16 @@ def eqvolsurfacedata_from_file(file):
     return data
 
 
-def data_file(folder, name, date):
+def data_file(folder: str, name: str, date: dt.datetime) -> str:
+    """ Data file path for EQ vol surfaces """
     name_folder = os.path.join(folder, name)
     os.makedirs(name_folder, exist_ok=True)
     file = os.path.join(name_folder, date.strftime(dates.DATE_FILE_FORMAT) + ".json")
     return file
 
 
-def test_data_folder():
+def test_data_folder() -> str:
+    """ Test data folder for EQ vol surfaces """
     folder = Path(__file__).parent.parent.parent.resolve()
     dataset_folder = os.path.join(folder, "datasets")
     folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "eqoptions")

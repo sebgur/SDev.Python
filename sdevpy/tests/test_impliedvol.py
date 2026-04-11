@@ -1,7 +1,8 @@
 import numpy as np
 from sdevpy.tools.utils import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi, gsvi
-from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1, TsSvi1ObjectiveBuilder
+from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
+from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 
 
 def test_tssvi1_objective_positive():
@@ -11,7 +12,7 @@ def test_tssvi1_objective_positive():
     f = np.asarray([95., 105., 115.])
     mkt = np.asarray([0.30, 0.25, 0.20])
     params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    builder = TsSvi1ObjectiveBuilder(surface, t, k, f, mkt, config={})
+    builder = TsIvObjectiveBuilder(surface, t, k, f, mkt)
     test = builder.objective(params)
     assert isequal(test, 0.0997965850768)
 

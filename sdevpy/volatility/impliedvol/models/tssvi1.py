@@ -13,6 +13,7 @@ from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.tools import timegrids
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths.optimization import create_optimizer
+from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 
 
 class TsSvi1(TermStructureParametricZeroSurface):
@@ -95,50 +96,19 @@ class TsSvi1(TermStructureParametricZeroSurface):
         return np.asarray(init_point)
 
 
-def calibrate_tssvi1(valdate, name, config, **kwargs):
-    # Arguments
-    # verbose = kwargs.get('verbose', False)
-    # disp_opt = kwargs.get('disp_opt', False)
-    # calc_pde_vols = kwargs.get('calc_pde_vols', False)
+# def calibrate_tssvi1(valdate, name, config, **kwargs):
+#     # Arguments
+#     # verbose = kwargs.get('verbose', False)
+#     # disp_opt = kwargs.get('disp_opt', False)
+#     # calc_pde_vols = kwargs.get('calc_pde_vols', False)
 
-    # return {'lv': lv, 'iv_data': surface_data, 'pde_vols': pde_vols}
-    raise NotImplementedError("Not implemented yet: calibrate_tssvi1")
-
-
-class TsSvi1ObjectiveBuilder:
-    def __init__(self, model: TermStructureParametricZeroSurface, expiries: npt.ArrayLike,
-                 strikes: npt.ArrayLike, fwds: npt.ArrayLike, market_vols: npt.ArrayLike, config: dict):
-        self.model = model
-        self.expiries = expiries
-        self.strikes = strikes
-        self.fwds = fwds
-        self.market_vols = market_vols
-        self.config = config
-        self.is_call = True
-
-    def objective(self, params):
-        # Update params
-        self.model.update_params(params)
-        is_ok, penalty = self.model.check_params()
-
-        if is_ok:
-            # Calculate model vols
-            model_vols = self.model.calculate(self.expiries, self.strikes, self.is_call, self.fwds)
-
-            # Calculate the objective function
-            obj = rmse(model_vols, self.market_vols)
-            return obj
-        else:
-            # In principle we should return a penalty number. However, it is not clear at the moment if
-            # that penalty should come from the model (where we know the parameters) or the
-            # objective function (where we know the problem). It might need to come from both.
-            # For now we are using a problem-specific penalty, i.e. the value if all the model prices
-            # were 0, assuming that should be much bigger than at any reasonable solution.
-            return 100.0 * self.market_vols.sum()
+#     # return {'lv': lv, 'iv_data': surface_data, 'pde_vols': pde_vols}
+#     raise NotImplementedError("Not implemented yet: calibrate_tssvi1")
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
     name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
 
@@ -152,9 +122,6 @@ if __name__ == "__main__":
 
     # Set calibration time grid
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
-
-    # Set calibration targets
-    # cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
 
     # Reformat inputs to flat vectors
     t, k, f, s = [], [], [], []
@@ -176,32 +143,34 @@ if __name__ == "__main__":
     is_call = True
 
     # Initialize model
-    surface = TsSvi1()
-    # params_init = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.9, 0.1, 0.1, 0.1, 0.1]
-    params_init = surface.initial_point()
-    surface.update_params(params_init)
+    model = TsSvi1()
 
-    # Optimizer settings
-    method = 'SLSQP' # L-BFGS-B, SLSQP, DE
-    tol = 1e-6
+    calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-6})
+    calibrator.calibrate(surface_data)
 
-    # Constraints
-    bounds = surface.bounds()
+    # params_init = model.initial_point()
+    # model.update_params(params_init)
 
-    # Objective
-    obj_builder = TsSvi1ObjectiveBuilder(surface, t, k, f, s, config={})
-    objective = obj_builder.objective
+    # # Optimizer settings
+    # method = 'SLSQP' # L-BFGS-B, SLSQP, DE
+    # tol = 1e-6
 
-    # Optimize
-    optimizer = create_optimizer(method, tol=tol)
-    result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
-    sol = result.x # Optimum parameters
+    # # Constraints
+    # bounds = model.bounds()
+
+    # # Objective
+    # obj_builder = TsIvObjectiveBuilder(model, t, k, f, s)
+    # objective = obj_builder.objective
+
+    # # Optimize
+    # optimizer = create_optimizer(method, tol=tol)
+    # result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+    # sol = result.x # Optimum parameters
+    # model.update_params(sol)
 
     # Calculate model vols and reshape results per maturity
-    # sol = params_init
-    surface.update_params(sol)
-    surface.check_params()
-    z = surface.calculate(t, k, is_call, f)
+    model.check_params()
+    z = model.calculate(t, k, is_call, f)
     print(f"Result shape: {z.shape}")
     model_vols = []
     counter = 0
@@ -224,7 +193,7 @@ if __name__ == "__main__":
             strikes = strike_surface[exp_idx]
             min_k, max_k = strikes[0], strikes[-1]
             m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
-            m_vols = surface.calculate(expiry, m_strikes, is_call, fwd)
+            m_vols = model.calculate(expiry, m_strikes, is_call, fwd)
             ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
             ax.plot(m_strikes, m_vols, label="model", color='green')
             vol_rmse = rmse(vol_surface[exp_idx], model_vols[exp_idx])
