@@ -1,8 +1,9 @@
-import os, json
+import os, json, logging
 import datetime as dt
 import numpy as np
 from pathlib import Path
 from sdevpy.tools import dates
+log = logging.getLogger(__name__)
 
 
 class EqVolSurfaceData:
@@ -18,16 +19,29 @@ class EqVolSurfaceData:
         # Extract
         self.expiries = np.asarray([s['expiry'] for s in sections])
         self.forwards = np.asarray([s['forward'] for s in sections])
-        self.input_strikes = np.asarray([s['strikes'] for s in sections])
-        self.vols = np.asarray([s['vols'] for s in sections])
+        self.input_strikes = [np.asarray(s['strikes']) for s in sections]
+        self.vols = [np.asarray(s['vols']) for s in sections]
+        # self.input_strikes = np.asarray([s['strikes'] for s in sections])
+        # self.vols = np.asarray([s['vols'] for s in sections])
+
+        # Size checks
+        n_times = len(self.expiries)
+        if any(len(x) != n_times for x in (self.forwards, self.input_strikes, self.vols)):
+            raise ValueError("Incompatible size along time direction between expiries, forwards, strikes and vols")
 
         # Calculate missing strike type
         if self.strike_input_type == 'absolute':
             self.abs_strikes = self.input_strikes
         elif self.strike_input_type == 'relative':
-            self.abs_strikes = self.forwards * self.input_strikes
+            # self.abs_strikes = self.forwards * self.input_strikes # Old way assuming numpy matrix
+            # The code below is a quick non-tested implementation to cater for the non-matrix case.
+            # To be tested if/when case presents itself.
+            log.warning("Relative strike conversion should be tested")
+            self.abs_strikes = []
+            for i in range(n_times):
+                self.abs_strikes.append(self.forwards[i] * self.input_strikes[i])
         else:
-            raise RuntimeError(f"Strike input type not supported yet: {self.strike_input_type}")
+            raise ValueError(f"Strike input type not supported yet: {self.strike_input_type}")
 
     def get_strikes(self, type: str='absolute'):
         req_type = type.lower()

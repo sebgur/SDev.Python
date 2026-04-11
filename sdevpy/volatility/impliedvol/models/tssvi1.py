@@ -116,23 +116,22 @@ if __name__ == "__main__":
     calibrator.calibrate(surface_data)
 
     # Estimate model on points and calculate RMSE, plot comparison
-    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
-    is_call = True
     n_rows, n_cols = 3, 2
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
     for i in range(n_rows):
         for j in range(n_cols):
             ax = axes[i, j]
             exp_idx = n_cols * i + j
-            expiry = expiry_grid[exp_idx]
+            # expiry = expiry_grid[exp_idx]
+            expiry = timegrids.model_time(valdate, expiries[exp_idx])
             fwd = fwds[exp_idx]
             strikes = strike_surface[exp_idx]
             min_k, max_k = strikes[0], strikes[-1]
             m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
-            m_vols = model.calculate(expiry, m_strikes, is_call, fwd)
+            m_vols = model.calculate(expiry, m_strikes, True, fwd)
             ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
             ax.plot(m_strikes, m_vols, label="model", color='green')
-            model_vols = model.calculate(expiry, strikes, is_call, fwd)
+            model_vols = model.calculate(expiry, strikes, True, fwd)
             vol_rmse = rmse(vol_surface[exp_idx], model_vols)
             ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
             ax.set_xlabel('strike')

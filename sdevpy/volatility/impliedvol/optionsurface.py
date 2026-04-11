@@ -6,6 +6,7 @@ from sdevpy.maths import metrics
 from sdevpy.tools.utils import isequal
 log = logging.getLogger(__name__)
 
+
 IS_CALL = True
 
 

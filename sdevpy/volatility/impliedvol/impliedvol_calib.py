@@ -5,6 +5,8 @@ from sdevpy.maths.metrics import rmse
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.tools import timegrids
+from sdevpy.volatility.impliedvol.optionsurface import (OptionTarget, keep_positive,
+    check_expiries_and_forwards, convert_to_target_values)
 
 
 class TsIvObjectiveBuilder:
@@ -101,3 +103,23 @@ class TsIvCalibrator:
         self.strikes = np.asarray(self.strikes)
         self.fwds = np.asarray(self.fwds)
         self.mkt_vols = np.asarray(self.mkt_vols)
+
+    def check_consistency(self, options: list[list[OptionTarget]]) -> list[list[OptionTarget]]:
+        """ Take out negative rate options depending on model features.
+            Check consistency of expiries, forwards, etc.
+            ToDo: this function is not used yet, but will be in a later phase if/when
+            we want to introduce negative rates. """
+        # Strip out negative rate options if needed
+        t_options = (options if self.model.allow_negative_variables else keep_positive(options))
+
+        # Check consistency of expiries and forwards
+        check_expiries_and_forwards(t_options)
+
+        # Convert from quoted type to targetType required for model calibration.
+        c_options = convert_to_target_values(t_options, self.model.modelled_type, self.model.shift)
+
+        # Check degrees of freedom
+        if self.model.check_dof:
+            self.model.check_degrees_of_freedom(c_options)
+
+        return c_options
