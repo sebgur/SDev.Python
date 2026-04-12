@@ -1,6 +1,6 @@
 """ Implied volatility model based on stiching together two cubic functions at ATM.
     Continuity and smoothness are ensured at ATM. Flat extrapolation on both low and
-    high strike regions, with smoothing junctions between interpolation and 
+    high strike regions, with smoothing junctions between interpolation and
     extrapolation domains. """
 import numpy as np
 import numpy.typing as npt

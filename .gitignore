@@ -1,4 +1,5 @@
 *__pycache__
+*.ipynb_checkpoints
 /python/.idea
 /sdevpy/.idea
 /sdevpy.egg-info

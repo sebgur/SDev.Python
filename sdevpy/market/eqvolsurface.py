@@ -114,8 +114,9 @@ def eqvolsurfacedata_from_file(file: str) -> EqVolSurfaceData:
     return data
 
 
-def data_file(folder: str, name: str, date: dt.datetime) -> str:
+def data_file(name: str, date: dt.datetime, **kwargs) -> str:
     """ Data file path for EQ vol surfaces """
+    folder = kwargs.get('folder', test_data_folder())
     name_folder = os.path.join(folder, name)
     os.makedirs(name_folder, exist_ok=True)
     file = os.path.join(name_folder, date.strftime(dates.DATE_FILE_FORMAT) + ".json")

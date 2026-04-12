@@ -101,19 +101,19 @@ if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
 
     # Retrieve target market option data
-    file = vsurf.data_file(vsurf.test_data_folder(), name, valdate)
-    surface_data = vsurf.eqvolsurfacedata_from_file(file)
-    expiries = surface_data.expiries
-    fwds = surface_data.forwards
-    strike_surface = surface_data.get_strikes('absolute')
-    vol_surface = surface_data.vols
+    file = vsurf.data_file(name, valdate)
+    mkt_data = vsurf.eqvolsurfacedata_from_file(file)
+    expiries = mkt_data.expiries
+    fwds = mkt_data.forwards
+    strike_surface = mkt_data.get_strikes('absolute')
+    vol_surface = mkt_data.vols
 
     # Initialize model
     model = TsSvi1()
 
     # Calibrate model
     calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-6})
-    calibrator.calibrate(surface_data)
+    calibrator.calibrate(mkt_data)
 
     # Estimate model on points and calculate RMSE, plot comparison
     n_rows, n_cols = 3, 2
