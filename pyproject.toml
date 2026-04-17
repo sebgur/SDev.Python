@@ -15,15 +15,19 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = ["pandas", "numpy", "scipy", "matplotlib", "holidays",
-                "pandas_market_calendars", "openpyxl", "colorlog"
+                "pandas_market_calendars", "openpyxl", "colorlog",
+                "scikit-learn"
 ]
 #dependencies = ["pyperclip", "tensorflow", "scikit-learn",
 # "tensorflow_probability", "silence_tensorflow"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["sdevpy*", "notebooks*"]  # Only include these
-#exclude = ["notebooks*", "spreadsheets*"]      # Exclude these
+include = ["sdevpy*"]  # Only include these
+#exclude = ["notebooks*", "spreadsheets*"] # Exclude these
+
+[tool.setuptools.package-data]
+"sdevpy" = ["datasets/**/*", "notebooks/**/*.ipynb"]
 
 [tool.ruff]
 line-length = 120

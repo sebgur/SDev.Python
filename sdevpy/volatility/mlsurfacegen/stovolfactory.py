@@ -1,9 +1,9 @@
 """ Select stovol generator based on type and other required information """
-from sdevpy.volsurfacegen.sabrgenerator import SabrGenerator
-from sdevpy.volsurfacegen.mcsabrgenerator import McSabrGenerator
-from sdevpy.volsurfacegen.fbsabrgenerator import FbSabrGenerator
-from sdevpy.volsurfacegen.mczabrgenerator import McZabrGenerator
-from sdevpy.volsurfacegen.mchestongenerator import McHestonGenerator
+from sdevpy.volatility.mlsurfacegen.sabrgenerator import SabrGenerator
+from sdevpy.volatility.mlsurfacegen.mcsabrgenerator import McSabrGenerator
+from sdevpy.volatility.mlsurfacegen.fbsabrgenerator import FbSabrGenerator
+from sdevpy.volatility.mlsurfacegen.mczabrgenerator import McZabrGenerator
+from sdevpy.volatility.mlsurfacegen.mchestongenerator import McHestonGenerator
 
 
 def set_generator(type_, shift=0.03, num_expiries=10, num_strikes=5, num_mc=100000,

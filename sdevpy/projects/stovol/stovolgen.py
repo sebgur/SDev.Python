@@ -3,7 +3,7 @@
     a network that learns the so-called 'direct' calculation, i.e. prices from parameter. """
 import os
 from datetime import datetime
-from sdevpy.volsurfacegen import stovolfactory
+from sdevpy.volatility.mlsurfacegen import stovolfactory
 from sdevpy import settings
 from sdevpy.tools import filemanager
 from sdevpy.tools.timer import Stopwatch

@@ -6,7 +6,7 @@ import scipy.stats as sp
 from sdevpy import settings
 from sdevpy.analytics import mcheston
 from sdevpy.analytics import bachelier
-from sdevpy.volsurfacegen.smilegenerator import SmileGenerator
+from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
 from sdevpy.tools import filemanager
 from sdevpy.tools import timer
 

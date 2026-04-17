@@ -18,7 +18,7 @@ from sdevpy.machinelearning import datasets
 from sdevpy.tools import filemanager
 from sdevpy.tools.timer import Stopwatch
 from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
-from sdevpy.volsurfacegen.stovolfactory import set_generator
+from sdevpy.volatility.mlsurfacegen.stovolfactory import set_generator
 # from sdevpy.projects.stovol import stovolplot as xplt
 from sdevpy.analytics import bachelier
 

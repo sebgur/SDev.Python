@@ -2,7 +2,7 @@
 import os
 from sdevpy import settings
 from sdevpy.analytics import fbsabr
-from sdevpy.volsurfacegen.mcsabrgenerator import McSabrGenerator
+from sdevpy.volatility.mlsurfacegen.mcsabrgenerator import McSabrGenerator
 from sdevpy.tools import filemanager
 from sdevpy.tools import timer
 

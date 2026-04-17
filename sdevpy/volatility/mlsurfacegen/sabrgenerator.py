@@ -7,7 +7,7 @@ from sdevpy import settings
 from sdevpy.analytics import sabr
 from sdevpy.analytics import black
 from sdevpy.analytics import bachelier
-from sdevpy.volsurfacegen.smilegenerator import SmileGenerator
+from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
 from sdevpy.tools import filemanager
 from sdevpy.tools import constants
 from sdevpy.maths import metrics
