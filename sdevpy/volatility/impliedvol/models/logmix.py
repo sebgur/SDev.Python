@@ -388,6 +388,10 @@ def get_logmix_parameters(n_mix: int, params: npt.ArrayLike) -> dict:
         tmp_n -= w_ * n_
 
     w[0] = tmp_w
+    # ToDo: Guard against division by 0. But how? We don't have any real solution.
+    #       This case will be avoided by the calibration, so we can do as Claude suggests i.e.
+    #       to return early if caught, but add a log warning.
+    #       Or maybe we go back to returning a state bool and use it in check_params.
     shift[0] = tmp_n / tmp_w
 
     param_dic = {'w': w, 'shift': shift, 'beta': beta, 'a': a, 'b': b, 'c': c, 'd': d}
