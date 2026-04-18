@@ -18,13 +18,7 @@ from sdevpy.tools.utils import isequal
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
-from sdevpy.analytics import black
-
-
-###################### TODO ##################################
-# * View results in implied vol terms by simple function
-# * Try to get the same thing to work through the design by calling the model
-#   with its lognormal vol function
+# from sdevpy.analytics import black
 
 
 class TimeParam(ABC):
@@ -178,6 +172,9 @@ class LogMix(ParametricZeroSurface):
 
     def price(self, t: float, strike: float, is_call: bool, fwd: float) -> float:
         """ Option price: weighted sum of Black-Scholes price in each component """
+        if self.params is None:
+            raise RuntimeError("Call update_params() before evaluating the LogMix model")
+
         price = 0.0
         for i in range(self.n_mix):
             w = self.weight[i].value(t)
@@ -191,6 +188,9 @@ class LogMix(ParametricZeroSurface):
 
     def pdf(self, t: float, strike: float, fwd: float) -> float:
         """ Probability density: weighted sum of lognormal densities """
+        if self.params is None:
+            raise RuntimeError("Call update_params() before evaluating the LogMix model")
+
         if t < 0.0 or isequal(t, 0.0):
             raise ValueError("LogMix model cannot calculate PDF at t=0")
 
@@ -208,6 +208,9 @@ class LogMix(ParametricZeroSurface):
 
     def cdf(self, t: float, strike: float, fwd: float) -> float:
         """ Cumulative probability density: weighted sum of lognormal densities """
+        if self.params is None:
+            raise RuntimeError("Call update_params() before evaluating the LogMix model")
+
         if t < 0.0 or isequal(t, 0.0):
             raise ValueError("LogMix model cannot calculate PDF at t=0")
 
@@ -324,7 +327,6 @@ class LogMix(ParametricZeroSurface):
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=keep_feasible)
         return bounds
 
-
     def initial_point(self) -> list[float]:
         """ Recommended initial point """
         w0, shift0, beta0 = 0.0, 0.0, 0.2
@@ -344,6 +346,7 @@ class LogMix(ParametricZeroSurface):
 
         return init_params
 
+
 def get_logmix_parameters(n_mix: int, params: npt.ArrayLike) -> dict:
     """ Given the parameters as a list and knowing n_mix (i.e. number of lognormal components),
         strip the LogMix parameters out """
@@ -357,8 +360,12 @@ def get_logmix_parameters(n_mix: int, params: npt.ArrayLike) -> dict:
     c = np.empty(n_mix)
     d = np.empty(n_mix)
 
-    if len(params) % 7 != 5 or n_mix < 1:
-        raise ValueError("Inconsistent parameter sizes in LogMix parameters")
+    expected = 5 + 7 * (n_mix - 1)
+    if len(params) != expected or n_mix < 1:
+        raise ValueError(f"Expected {expected} params, got {len(params)}")
+
+    # if len(params) % 7 != 5 or n_mix < 1:
+    #     raise ValueError("Inconsistent parameter sizes in LogMix parameters")
 
     beta[0] = params[0]
     a[0] = params[1]
