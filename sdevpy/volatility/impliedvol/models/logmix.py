@@ -11,13 +11,20 @@ import datetime as dt
 from scipy.stats import norm
 import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
-from sdevpy.volatility.impliedvol.optionsurface import calibration_targets, IS_CALL
+from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.tools import timegrids
 from sdevpy.tools.utils import isequal
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
+from sdevpy.analytics import black
+
+
+###################### TODO ##################################
+# * View results in implied vol terms by simple function
+# * Try to get the same thing to work through the design by calling the model
+#   with its lognormal vol function
 
 
 class TimeParam(ABC):
@@ -82,19 +89,25 @@ class LogMixVar(TimeParam):
     """ Variance parameter of the LogMix model """
     def __init__(self, a: float, b: float, c: float, d: float):
         super().__init__()
+        # a = s0, b = sinf, c = b, d = tau
         self.a, self.b, self.c, self.d = a, b, c, d
 
     def value(self, t: float) -> float:
         """ Value of the LogMixVar parameter """
-        s = self.a * np.exp(-self.c * t) + self.d * logmix_f(t, self.b)
+        # Rebonato
+        s = self.b + (self.c * t + self.a - self.b) * np.exp(-t / self.d)
+        # Old formula
+        # s = self.a * np.exp(-self.c * t) + self.d * logmix_f(t, self.b)
         return s * s * t
 
     def diff(self, t: float) -> float:
         """ Differential of the LogMixVar parameter """
-        tmp = self.a * np.exp(-self.c * t)
-        s = tmp + self.d * logmix_f(t, self.b)
-        ds = -self.c * tmp + self.d * logmix_df(t, self.b)
-        return s * (2.0 * ds * t + s)
+        raise NotImplementedError('LogMixVar.diff')
+        # Old formula differential
+        # tmp = self.a * np.exp(-self.c * t)
+        # s = tmp + self.d * logmix_f(t, self.b)
+        # ds = -self.c * tmp + self.d * logmix_df(t, self.b)
+        # return s * (2.0 * ds * t + s)
 
 
 class LogMixWeight(TimeParam):
@@ -152,7 +165,8 @@ class LogMixNorm(TimeParam):
 class LogMix(ParametricZeroSurface):
     def __init__(self, n_mix=2, **kwargs):
         super().__init__()
-        self.n_mix = kwargs.get('n_mix', 2)
+        self.n_mix = n_mix
+        self.calculate_type = OptionQuoteType.ForwardPremium
         self.check_fwd_var = kwargs.get('check_fwd_var', False)
         self.shift_mean = kwargs.get('shift_mean', True)
         self.calculable_at_zero = False
@@ -170,8 +184,7 @@ class LogMix(ParametricZeroSurface):
             f = fwd * (1.0 + self.mean[i].value(t))
             k = strike * (1.0 + self.strike[i].value(t))
             stdev = np.sqrt(self.var[i].value(t))
-            vol = stdev / np.sqrt(t)
-            print(vol)
+            # print(f"Vol({i}): {stdev / np.sqrt(t)}")
             price += w * self.black(k, is_call, f, stdev)
 
         return price
@@ -218,14 +231,16 @@ class LogMix(ParametricZeroSurface):
 
     def update_params(self, x: list[float]) -> None:
         """ Update the current parameters """
+        # print(f"Shape: {len(x)}")
+        # print(f"Params: {x}")
         self.params = x
         self.set_param_functions(self.params)
 
     def set_param_functions(self, params: list[float]) -> None:
         """ Given the parameters as a list, set the parameter functions """
-        is_valid, param_dic = get_logmix_parameters(self.n_mix, params)
-        if not is_valid:
-            raise ValueError("Invalid parameter list for LogMix model")
+        param_dic = get_logmix_parameters(self.n_mix, params)
+        # if not is_valid:
+        #     raise ValueError("Invalid parameter list for LogMix model")
 
         # Get parameter vectors
         w, shift, beta = param_dic['w'], param_dic['shift'], param_dic['beta']
@@ -244,48 +259,78 @@ class LogMix(ParametricZeroSurface):
 
     def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters """
-        is_ok, param_dic = get_logmix_parameters(self.n_mix, self.params)
+        param_dic = get_logmix_parameters(self.n_mix, self.params)
 
-        if is_ok: # Check further constraints on the params
-            w, shift, _ = param_dic['w'], param_dic['shift'], param_dic['beta']
-            a, b, c, d = param_dic['a'], param_dic['b'], param_dic['c'], param_dic['d']
+        is_ok = True
+        # Check further constraints on the params
+        w, shift, _ = param_dic['w'], param_dic['shift'], param_dic['beta']
+        a, b, c, d = param_dic['a'], param_dic['b'], param_dic['c'], param_dic['d']
 
-            eps = 0.00000001
-            # Positivity of the first weight
-            if is_ok and w[0] < eps:
-                is_ok = False
+        eps = 0.00000001
+        # Positivity of the first weight
+        if is_ok and w[0] < eps:
+            is_ok = False
 
-            # Positivity of the first shift
-            if is_ok and shift[0] < -1.0 + eps:
-                is_ok = False
+        # Positivity of the first shift
+        if is_ok and shift[0] < -1.0 + eps:
+            is_ok = False
 
-            # Positivity of the forward variances
-            if is_ok and self.check_fwd_var:
-                n_points = 40
-                n_ = float(n_points)
-                max_t = 20.0
-                for i in range(self.n_mix):
+        # Positivity of the forward variances
+        if is_ok and self.check_fwd_var:
+            n_points = 40
+            n_ = float(n_points)
+            max_t = 20.0
+            for i in range(self.n_mix):
+                if not is_ok:
+                    break
+
+                var_param = LogMixVar(a[i], b[i], c[i], d[i])
+                for j in range(n_points):
                     if not is_ok:
                         break
 
-                    var_param = LogMixVar(a[i], b[i], c[i], d[i])
-                    for j in range(n_points):
-                        if not is_ok:
-                            break
-
-                        fwd_v = var_param.diff(max_t * float(j) / n_)
-                        is_ok = (fwd_v > 0.0)
+                    fwd_v = var_param.diff(max_t * float(j) / n_)
+                    is_ok = (fwd_v > 0.0)
 
         return is_ok, (0.0 if is_ok else constants.FLOAT_INFTY)
 
     def bounds(self, keep_feasible: bool=False):
         """ Recommended bounds """
-        raise NotImplementedError("bounds")
+        lw_w0, lw_shift0, lw_beta0 = 0.0, -1.0, 0.01
+        lw_a0, lw_b0, lw_c0, lw_d0 = 0.0, 0.0, -1.0, 0.01
+        # lw_a0, lw_b0, lw_c0, lw_d0 = 0.0, 0.01, 0.0001, 0.01
+        up_w0, up_shift0, up_beta0 = 1.0, 2.0, 10.0
+        up_a0, up_b0, up_c0, up_d0 = 2.5, 2.5, 1.0, 10.0
+        # up_a0, up_b0, up_c0, up_d0 = 2.5, 10.0, 1.0, 2.5
+
+        lw_bounds = [lw_beta0, lw_a0, lw_b0, lw_c0, lw_d0]
+        up_bounds = [up_beta0, up_a0, up_b0, up_c0, up_d0]
+        for _ in range(1, self.n_mix):
+            lw_bounds.append(lw_w0)
+            up_bounds.append(up_w0)
+            lw_bounds.append(lw_shift0)
+            up_bounds.append(up_shift0)
+            lw_bounds.append(lw_beta0)
+            up_bounds.append(up_beta0)
+            lw_bounds.append(lw_a0)
+            up_bounds.append(up_a0)
+            lw_bounds.append(lw_b0)
+            up_bounds.append(up_b0)
+            lw_bounds.append(lw_c0)
+            up_bounds.append(up_c0)
+            lw_bounds.append(lw_d0)
+            up_bounds.append(up_d0)
+
+        bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=keep_feasible)
+        return bounds
+
 
     def initial_point(self) -> list[float]:
         """ Recommended initial point """
         w0, shift0, beta0 = 0.0, 0.0, 0.2
-        a0, b0, c0, d0 = 0.2, 0.2, 1.0, 1.0
+        a0, b0, c0, d0 = 0.2, 0.2, 0.0, 1.0
+        # a0, b0, c0, d0 = 0.2, 0.2, 0.0, 0.0
+        # # a0, b0, c0, d0 = 0.2, 0.2, 1.0, 1.0
 
         init_params = [beta0, a0, b0, c0, d0]
         for _ in range(1, self.n_mix):
@@ -299,10 +344,10 @@ class LogMix(ParametricZeroSurface):
 
         return init_params
 
-def get_logmix_parameters(n_mix: int, params: npt.ArrayLike):
+def get_logmix_parameters(n_mix: int, params: npt.ArrayLike) -> dict:
     """ Given the parameters as a list and knowing n_mix (i.e. number of lognormal components),
         strip the LogMix parameters out """
-    loc0_thresh = 0.00000001
+    # loc0_thresh = 0.00000001
     # Initialize parameters vectors
     w = np.empty(n_mix)
     shift = np.empty(n_mix)
@@ -339,8 +384,7 @@ def get_logmix_parameters(n_mix: int, params: npt.ArrayLike):
     shift[0] = tmp_n / tmp_w
 
     param_dic = {'w': w, 'shift': shift, 'beta': beta, 'a': a, 'b': b, 'c': c, 'd': d}
-    is_valid = (tmp_w >= loc0_thresh)
-    return is_valid, param_dic
+    return param_dic
 
 
 if __name__ == "__main__":
@@ -355,21 +399,16 @@ if __name__ == "__main__":
     fwds = mkt_data.forwards
     strike_surface = mkt_data.get_strikes('absolute')
     vol_surface = mkt_data.vols
-
-    # Set calibration time grid
-    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
-
-    # Set calibration targets
-    cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
+    call_surface = mkt_data.call_prices
 
     # Initialize model
-    model = LogMix(n_mix=2)
-    model.update_params(model.initial_point())
-    print(model.check_params())
+    model = LogMix(n_mix=3)
+    # model.update_params(model.initial_point())
+    # model.check_params()
 
-    # # Calibrate model
-    # calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
-    # calibrator.calibrate(mkt_data)
+    # Calibrate model
+    calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
+    calibrator.calibrate(mkt_data)
 
     # Estimate model on points and calculate RMSE, plot comparison
     n_rows, n_cols = 3, 2
@@ -378,18 +417,19 @@ if __name__ == "__main__":
         for j in range(n_cols):
             ax = axes[i, j]
             exp_idx = n_cols * i + j
-            # expiry = expiry_grid[exp_idx]
             expiry = timegrids.model_time(valdate, expiries[exp_idx])
             fwd = fwds[exp_idx]
             strikes = strike_surface[exp_idx]
             min_k, max_k = strikes[0], strikes[-1]
             m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
-            m_vols = model.calculate(expiry, m_strikes, True, fwd)
-            ax.scatter(strikes, cf_price_surface[exp_idx], label="market", color='black')
-            # ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
+            # m_prices = model.calculate(expiry, m_strikes, True, fwd)
+            m_vols = model.black_volatility(expiry, m_strikes, fwd)
+            ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
             ax.plot(m_strikes, m_vols, label="model", color='green')
+            # ax.scatter(strikes, call_surface[exp_idx], label="market", color='black')
+            # ax.plot(m_strikes, m_prices, label="model", color='green')
             model_vols = model.calculate(expiry, strikes, True, fwd)
-            vol_rmse = rmse(vol_surface[exp_idx], model_vols)
+            vol_rmse = rmse(call_surface[exp_idx], model_vols)
             ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
             ax.set_xlabel('strike')
             ax.set_ylabel('vol')

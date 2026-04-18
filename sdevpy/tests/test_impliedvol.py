@@ -11,10 +11,11 @@ def test_tssvi2_objective_positive():
     t = np.asarray([0.5, 1.5, 2.5])
     k = np.asarray([90., 100., 110.])
     f = np.asarray([95., 105., 115.])
-    mkt = np.asarray([0.30, 0.25, 0.20])
+    mkt_vols = np.asarray([0.30, 0.25, 0.20])
+    mkt_prices = None
     params = surface.initial_point()
     # params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    builder = TsIvObjectiveBuilder(surface, t, k, f, mkt)
+    builder = TsIvObjectiveBuilder(surface, t, k, f, mkt_vols, mkt_prices)
     test = builder.objective(params)
     assert isequal(test, 0.065354183239)
 
@@ -39,9 +40,10 @@ def test_tssvi1_objective_positive():
     t = np.asarray([0.5, 1.5, 2.5])
     k = np.asarray([90., 100., 110.])
     f = np.asarray([95., 105., 115.])
-    mkt = np.asarray([0.30, 0.25, 0.20])
+    mkt_vols = np.asarray([0.30, 0.25, 0.20])
+    mkt_prices = None
     params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    builder = TsIvObjectiveBuilder(surface, t, k, f, mkt)
+    builder = TsIvObjectiveBuilder(surface, t, k, f, mkt_vols, mkt_prices)
     test = builder.objective(params)
     assert isequal(test, 0.0997965850768)
 

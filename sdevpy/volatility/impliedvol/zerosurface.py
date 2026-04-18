@@ -10,7 +10,7 @@ from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 
 class ZeroSurface(ABC):
     def __init__(self):
-        self.modelled_type = OptionQuoteType.LogNormalVol
+        self.calculate_type = OptionQuoteType.LogNormalVol
         self.shift = 0.0 # In Math format, i.e. 0.01 for 1%
         self.allow_negative_variables = False
         self.calculable_at_zero = True
@@ -122,7 +122,7 @@ class ZeroSurface(ABC):
     def forward_price(self, t: float, k: float, f: float, is_call: bool) -> float:
         """ Forward price """
         value = self.calculate(t, k, is_call, f)
-        match self.modelled_type:
+        match self.calculate_type:
             case OptionQuoteType.ForwardPremium:
                 return value
             case OptionQuoteType.LogNormalVol:
@@ -132,16 +132,16 @@ class ZeroSurface(ABC):
             case OptionQuoteType.ShiftedLogNormalVol:
                 return black.price(t, k + self.shift, is_call, f + self.shift, value)
             case _:
-                raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
+                raise TypeError(f"Invalid modelled type in zero-surface: {self.calculate_type}")
 
     def black_volatility(self, t: float, k: float, f: float) -> float:
         """ Black implied volatility """
         is_call = True
         value = self.calculate(t, k, is_call, f)
-        if self.modelled_type == OptionQuoteType.LogNormalVol:
+        if self.calculate_type == OptionQuoteType.LogNormalVol:
             return value
         else:
-            match self.modelled_type:
+            match self.calculate_type:
                 case OptionQuoteType.ForwardPremium:
                     price = value
                 case OptionQuoteType.NormalVol:
@@ -149,18 +149,18 @@ class ZeroSurface(ABC):
                 case OptionQuoteType.ShiftedLogNormalVol:
                     price = black.price(t, k + self.shift, is_call, f + self.shift, value)
                 case _:
-                    raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
+                    raise TypeError(f"Invalid modelled type in zero-surface: {self.calculate_type}")
 
-            return black.implied_vol(t, k, is_call, f, price)
+            return black.implied_vols(t, k, is_call, f, price)
 
     def bachelier_volatility(self, t: float, k: float, f: float):
         """ Bachelier implied volatility """
         is_call = True
         value = self.calculate(t, k, is_call, f)
-        if self.modelled_type == OptionQuoteType.NormalVol:
+        if self.calculate_type == OptionQuoteType.NormalVol:
             return value
         else:
-            match self.modelled_type:
+            match self.calculate_type:
                 case OptionQuoteType.ForwardPremium:
                     price = value
                 case OptionQuoteType.LogNormalVol:
@@ -168,7 +168,7 @@ class ZeroSurface(ABC):
                 case OptionQuoteType.ShiftedLogNormalVol:
                     price = black.price(t, k + self.shift, is_call, f + self.shift, value)
                 case _:
-                    raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
+                    raise TypeError(f"Invalid modelled type in zero-surface: {self.calculate_type}")
 
             return bachelier.implied_vol(t, k, is_call, f, price)
 
@@ -176,10 +176,10 @@ class ZeroSurface(ABC):
         """ Shifted Black implied volatility """
         is_call = True
         value = self.calculate(t, k, is_call, f)
-        if self.modelled_type == OptionQuoteType.ShiftedLogNormalVol:
+        if self.calculate_type == OptionQuoteType.ShiftedLogNormalVol:
             return value
         else:
-            match self.modelled_type:
+            match self.calculate_type:
                 case OptionQuoteType.ForwardPremium:
                     price = value
                 case OptionQuoteType.LogNormalVol:
@@ -187,7 +187,7 @@ class ZeroSurface(ABC):
                 case OptionQuoteType.NormalVol:
                     price = bachelier.price(t, k, is_call, f, value)
                 case _:
-                    raise TypeError(f"Invalid modelled type in zero-surface: {self.modelled_type}")
+                    raise TypeError(f"Invalid modelled type in zero-surface: {self.calculate_type}")
 
             return black.implied_vol(t, k + self.shift, is_call, f + self.shift, price)
 

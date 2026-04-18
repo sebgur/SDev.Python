@@ -6,32 +6,41 @@ from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.tools import timegrids
 from sdevpy.volatility.impliedvol.optionsurface import (OptionTarget, keep_positive,
-    check_expiries_and_forwards, convert_to_target_values)
+    check_expiries_and_forwards, convert_to_target_values, OptionQuoteType)
 
 
 class TsIvObjectiveBuilder:
     def __init__(self, model: ParametricZeroSurface, expiries: npt.ArrayLike,
-                 strikes: npt.ArrayLike, fwds: npt.ArrayLike, market_vols: npt.ArrayLike):
+                 strikes: npt.ArrayLike, fwds: npt.ArrayLike, mkt_vols: npt.ArrayLike,
+                 mkt_prices: npt.ArrayLike):
         self.model = model
         self.expiries = expiries
         self.strikes = strikes
         self.fwds = fwds
-        self.market_vols = market_vols
+        self.market_vols = mkt_vols
+        self.market_prices = mkt_prices
         self.is_call = True
+
+        # Get target values
+        self.target_values = None
+        match self.model.calculate_type:
+            case OptionQuoteType.ForwardPremium:
+                self.target_values = self.market_prices
+            case OptionQuoteType.LogNormalVol:
+                self.target_values = self.market_vols
+            case _:
+                raise ValueError(f"Calculation type not supported: {self.model.calculate_type}")
 
     def objective(self, params):
         # Update params
         self.model.update_params(params)
         is_ok, penalty = self.model.check_params()
-
         if is_ok:
             # Calculate model vols
-            # ToDo: need to check what type of quantity the model outputs in its calculate() method
-            #       and that should drive what the target of the calibration is.
-            model_vols = self.model.calculate(self.expiries, self.strikes, self.is_call, self.fwds)
+            model_values = self.model.calculate(self.expiries, self.strikes, self.is_call, self.fwds)
 
             # Calculate the objective function
-            obj = rmse(model_vols, self.market_vols)
+            obj = rmse(model_values, self.target_values)
             return obj
         else:
             # In principle we should return a penalty number. However, it is not clear at the moment if
@@ -39,7 +48,7 @@ class TsIvObjectiveBuilder:
             # objective function (where we know the problem). It might need to come from both.
             # For now we are using a problem-specific penalty, i.e. the value if all the model prices
             # were 0, assuming that should be much bigger than at any reasonable solution.
-            return 100.0 * self.market_vols.sum()
+            return 100.0 * self.target_values.sum()
 
 
 class TsIvCalibrator:
@@ -47,6 +56,8 @@ class TsIvCalibrator:
     def __init__(self, model: ParametricZeroSurface, config: dict):
         self.model = model
         self.config = config
+        self.times, self.strikes, self.fwds = None, None, None
+        self.mkt_vols, self.mkt_prices = None, None
         self.result = None
         self.sol = None
 
@@ -66,7 +77,8 @@ class TsIvCalibrator:
         bounds = self.model.bounds()
 
         # Objective
-        builder = TsIvObjectiveBuilder(self.model, self.times, self.strikes, self.fwds, self.mkt_vols)
+        builder = TsIvObjectiveBuilder(self.model, self.times, self.strikes, self.fwds,
+                                       self.mkt_vols, self.mkt_prices)
         objective = builder.objective
 
         # Optimize
@@ -83,28 +95,30 @@ class TsIvCalibrator:
         fwds = mkt_data.forwards
         strike_surface = mkt_data.get_strikes('absolute')
         vol_surface = mkt_data.vols
-
-        # Set calibration time grid
-        # expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
+        price_surface = mkt_data.call_prices # Just calls for now
 
         # Reformat inputs to flat vectors
         valdate = mkt_data.valdate
-        self.times, self.strikes, self.fwds, self.mkt_vols = [], [], [], []
+        self.times, self.strikes, self.fwds = [], [], []
+        self.mkt_vols, self.mkt_prices = [], []
         for i in range(len(expiries)):
             expiry = timegrids.model_time(valdate, expiries[i])
             fwd = fwds[i]
             strikes = strike_surface[i]
             vols = vol_surface[i]
-            for strike, vol in zip(strikes, vols, strict=True):
+            prices = price_surface[i]
+            for strike, vol, price in zip(strikes, vols, prices, strict=True):
                 self.times.append(expiry)
                 self.fwds.append(fwd)
                 self.strikes.append(strike)
                 self.mkt_vols.append(vol)
+                self.mkt_prices.append(price)
 
         self.times = np.asarray(self.times)
         self.strikes = np.asarray(self.strikes)
         self.fwds = np.asarray(self.fwds)
         self.mkt_vols = np.asarray(self.mkt_vols)
+        self.mkt_prices = np.asarray(self.mkt_prices)
 
     def check_consistency(self, options: list[list[OptionTarget]]) -> list[list[OptionTarget]]:
         """ Take out negative rate options depending on model features.
@@ -118,7 +132,7 @@ class TsIvCalibrator:
         check_expiries_and_forwards(t_options)
 
         # Convert from quoted type to targetType required for model calibration.
-        c_options = convert_to_target_values(t_options, self.model.modelled_type, self.model.shift)
+        c_options = convert_to_target_values(t_options, self.model.calculate_type, self.model.shift)
 
         # Check degrees of freedom
         if self.model.check_dof:

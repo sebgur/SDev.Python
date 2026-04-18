@@ -3,6 +3,8 @@ import datetime as dt
 import numpy as np
 from pathlib import Path
 from sdevpy.tools import dates
+from sdevpy.tools import timegrids
+from sdevpy.analytics import black
 log = logging.getLogger(__name__)
 
 
@@ -21,8 +23,6 @@ class EqVolSurfaceData:
         self.forwards = np.asarray([s['forward'] for s in sections])
         self.input_strikes = [np.asarray(s['strikes']) for s in sections]
         self.vols = [np.asarray(s['vols']) for s in sections]
-        # self.input_strikes = np.asarray([s['strikes'] for s in sections])
-        # self.vols = np.asarray([s['vols'] for s in sections])
 
         # Size checks
         n_times = len(self.expiries)
@@ -43,12 +43,23 @@ class EqVolSurfaceData:
         else:
             raise ValueError(f"Strike input type not supported yet: {self.strike_input_type}")
 
+        # Calculate prices
+        self.call_prices = []
+        for exp_idx, expiry in enumerate(self.expiries):
+            t = timegrids.model_time(self.valdate, expiry)
+            fwd = self.forwards[exp_idx]
+            strikes = self.abs_strikes[exp_idx]
+            vols = self.vols[exp_idx]
+            self.call_prices.append(black.price(t, strikes, True, fwd, vols))
+
     def get_strikes(self, type: str='absolute'):
         req_type = type.lower()
         if req_type == 'absolute':
             return self.abs_strikes
         elif req_type == 'relative':
             return self.abs_strikes / self.forwards.reshape(-1, 1)
+        else:
+            raise ValueError(f"Unknown strike type {req_type}: expected absolute or relative")
 
     def dump(self, file, indent=2):
         data = self.dump_data()

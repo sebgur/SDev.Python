@@ -1,9 +1,10 @@
 """ Utilities for Black-Scholes model """
 import numpy as np
-# import numpy.typing as npt
+import numpy.typing as npt
 import scipy.stats
 from scipy.optimize import minimize_scalar
 from sdevpy.thirdparty.py_vollib.black import implied_volatility as jaeckel
+from sdevpy.tools.utils import isiterable
 
 N = scipy.stats.norm.cdf
 
@@ -40,6 +41,18 @@ def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_pri
 
     res = minimize_scalar(fun=error, bracket=(xmin, xmax), options=options, method='brent')
     return res.x
+
+
+def implied_vols(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float,
+                 fwd_price: npt.ArrayLike) -> npt.ArrayLike:
+    """ Black implied volatility for vector of strikes/prices """
+    if isiterable(strike) and isiterable(fwd_price):
+        ivs = [implied_vol(expiry, k, is_call, fwd, p) for k, p in zip(strike, fwd_price, strict=True)]
+        return np.asarray(ivs)
+    elif not isiterable(strike) and not isiterable(fwd_price):
+        return implied_vol(expiry, strike, is_call, fwd, fwd_price)
+    else:
+        raise ValueError("Incompatible shapes between strikes and prices")
 
 
 if __name__ == "__main__":
