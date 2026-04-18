@@ -25,18 +25,18 @@ class TsSvi2(ParametricZeroSurface):
         self.tmax = kwargs.get('tmax', 42)
 
     def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
-        params = self.parameters(t)
-        return self.formula(t, k, is_call, f, params)
+        """ Calculate the smile parameters at given time and then calculate the Black implied vol
+            using the gSVI formula """
+        # Get smile parameters
+        smile_params = self.smile_parameters(t, self.params)
 
-    def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
-                params: list[float]) -> npt.ArrayLike:
-        """ Calculate Black implied volatility """
+        # Calculate implied vol
         log_m = np.log(k / f) # log-moneyness
-        vol = gsvi.gsvi_formula(log_m, params)
+        vol = gsvi.gsvi_formula(log_m, smile_params)
         return vol
 
-    def formula_parameters(self, t: npt.ArrayLike, params: list[float]) -> list[float]:
-        """ Calculate parameters according to the TsSvi2 formulas """
+    def smile_parameters(self, t: npt.ArrayLike, params: list[float]) -> list[float]:
+        """ Calculate smile parameters according to the TsSvi2 formulas """
         if np.any(t < self.eps):
             raise ValueError("TsSvi2 is not calculable at t = 0")
 
@@ -70,7 +70,7 @@ class TsSvi2(ParametricZeroSurface):
 
         return x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11], x[12], x[13], x[14]
 
-    def check_params(self):
+    def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters """
         # Check global parameters
         is_ok, penalty = self.check_global_params()
@@ -79,12 +79,12 @@ class TsSvi2(ParametricZeroSurface):
         # Check local parameters over sampled expiries
         if is_ok:
             sample_times = np.asarray([1 / 365, 7 / 365, 30 / 365, 0.5, 1, 5, 10, 40])
-            sample_params = self.formula_parameters(sample_times, self.params)
+            sample_params = self.smile_parameters(sample_times, self.params)
             is_ok, penalty = gsvi.gsvi_check_params(sample_params)
 
         return is_ok, penalty
 
-    def check_global_params(self):
+    def check_global_params(self) -> tuple[bool, float]:
         """ Check validity of the global parameters """
         # Get parameters
         (v0, vinf, b_, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
@@ -127,7 +127,7 @@ class TsSvi2(ParametricZeroSurface):
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=keep_feasible)
         return bounds
 
-    def initial_point(self):
+    def initial_point(self) -> list[float]:
         """ Recommended initial point """
         # v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma
         init_point = [0.10, 0.20, -0.05,  1.0, 0.1, 0.1000, -0.30, -0.30,  1.0,  1.00,  0.50,  0.5, 0.1, 0.1,  1.0]
