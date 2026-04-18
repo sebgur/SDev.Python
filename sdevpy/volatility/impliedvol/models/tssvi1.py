@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.zerosurface import TermStructureParametricZeroSurface
+from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
 from sdevpy.volatility.impliedvol.models import gsvi
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.tools import timegrids
@@ -17,12 +17,16 @@ from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 
 
-class TsSvi1(TermStructureParametricZeroSurface):
+class TsSvi1(ParametricZeroSurface):
     def __init__(self, **kwargs):
         super().__init__()
         self.n_params = 11
         self.calculable_at_zero = False
         self.tmax = kwargs.get('tmax', 42)
+
+    def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
+        params = self.parameters(t)
+        return self.formula(t, k, is_call, f, params)
 
     def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
                 params: list[float]) -> npt.ArrayLike:

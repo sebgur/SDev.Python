@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.typing as npt
-from sdevpy.volatility.impliedvol.zerosurface import TermStructureParametricZeroSurface
+from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
 from sdevpy.maths.metrics import rmse
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.maths.optimization import create_optimizer
@@ -10,7 +10,7 @@ from sdevpy.volatility.impliedvol.optionsurface import (OptionTarget, keep_posit
 
 
 class TsIvObjectiveBuilder:
-    def __init__(self, model: TermStructureParametricZeroSurface, expiries: npt.ArrayLike,
+    def __init__(self, model: ParametricZeroSurface, expiries: npt.ArrayLike,
                  strikes: npt.ArrayLike, fwds: npt.ArrayLike, market_vols: npt.ArrayLike):
         self.model = model
         self.expiries = expiries
@@ -43,8 +43,8 @@ class TsIvObjectiveBuilder:
 
 
 class TsIvCalibrator:
-    """ Calibrates a TermStructureParametricZeroSurface with a global optimizer """
-    def __init__(self, model: TermStructureParametricZeroSurface, config: dict):
+    """ Calibrates a ParametricZeroSurface with a global optimizer """
+    def __init__(self, model: ParametricZeroSurface, config: dict):
         self.model = model
         self.config = config
         self.result = None

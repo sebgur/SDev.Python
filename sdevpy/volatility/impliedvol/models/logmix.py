@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 import datetime as dt
 from scipy.stats import norm
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.zerosurface import TermStructureParametricZeroSurface
+from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.tools import timegrids
 from sdevpy.tools.utils import isequal
@@ -148,13 +148,14 @@ class LogMixNorm(TimeParam):
         return dnorm
 
 
-class LogMix(TermStructureParametricZeroSurface):
+class LogMix(ParametricZeroSurface):
     def __init__(self, n_mix=2, **kwargs):
         super().__init__()
         self.n_mix = kwargs.get('n_mix', 2)
         self.check_fwd_var = kwargs.get('check_fwd_var', False)
         self.shift_mean = kwargs.get('shift_mean', True)
         self.calculable_at_zero = False
+        self.n_params = 5 + 7 * (self.n_mix - 1)
 
     def price(self, t: float, strike: float, is_call: bool, fwd: float) -> float:
         """ Option price: weighted sum of Black-Scholes price in each component """
@@ -291,14 +292,6 @@ class LogMix(TermStructureParametricZeroSurface):
         pass
 
 
-class LogMix2D(LogMix):
-    pass
-
-
-class LogMix3D(LogMix):
-    pass
-
-
 def get_logmix_parameters(n_mix: int, params: npt.ArrayLike):
     """ Given the parameters as a list and knowing n_mix (i.e. number of lognormal components),
         strip the LogMix parameters out """
@@ -357,7 +350,7 @@ if __name__ == "__main__":
     vol_surface = mkt_data.vols
 
     # Initialize model
-    model = LogMix2D()
+    model = LogMix(n_mix=2)
     # model.update_params(model.initial_point())
     # print(model.check_params())
 

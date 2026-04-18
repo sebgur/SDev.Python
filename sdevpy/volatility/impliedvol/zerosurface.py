@@ -188,9 +188,9 @@ class ZeroSurface(ABC):
 
             return black.implied_vol(t, k + self.shift, is_call, f + self.shift, price)
 
-    def number_parameters(self) -> int|None:
-        """ Number of parameters. Return None in the base """
-        return None
+    # def number_parameters(self) -> int|None:
+    #     """ Number of parameters. Return None in the base """
+    #     return None
 
     ############ Abstract Methods #################################################################
     @abstractmethod
@@ -202,30 +202,14 @@ class ParametricZeroSurface(ZeroSurface):
     def __init__(self):
         super().__init__()
         self.n_params = None
-        # self.formula = None
-
-    def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
-        params = self.parameters(t)
-        # if self.formula is None:
-        #     raise RuntimeError("Formula not set")
-
-        return self.formula(t, k, is_call, f, params)
-
-    @abstractmethod
-    def parameters(self, t: float) -> list[float]:
-        """ Abtract method for retrieval of parameters """
-        pass
-
-    @abstractmethod
-    def formula(self, t: float, k: float, is_call: bool, f: float, params: list[float]) -> npt.ArrayLike:
-        """ Abtract method for calculation of the core formula """
-        pass
-
-
-class TermStructureParametricZeroSurface(ParametricZeroSurface):
-    def __init__(self):
-        super().__init__()
         self.params = None
+
+    # def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
+    #     params = self.parameters(t)
+    #     # if self.formula is None:
+    #     #     raise RuntimeError("Formula not set")
+
+    #     return self.formula(t, k, is_call, f, params)
 
     def parameters(self, t: float) -> list[float]:
         """ Retrieve formula parameters """
@@ -235,6 +219,15 @@ class TermStructureParametricZeroSurface(ParametricZeroSurface):
         """ Update the current parameters """
         self.params = x
 
+    def check_params(self):
+        """ Check validity of the parameters, return is_ok state and penalty value (0.0 if is_ok) """
+        return True, 0.0
+
+    @abstractmethod
+    def formula(self, t: float, k: float, is_call: bool, f: float, params: list[float]) -> npt.ArrayLike:
+        """ Abtract method for calculation of the core formula """
+        pass
+
     @abstractmethod
     def formula_parameters(self, t: float, params: list[float]) -> list[float]:
         """ Convert from the surface parameters to the formula parameters """
@@ -242,10 +235,39 @@ class TermStructureParametricZeroSurface(ParametricZeroSurface):
 
     @abstractmethod
     def bounds(self, keep_feasible: bool=False):
-        """ Recommended bounds for optimization """
+        """ Recommended bounds for optimization on parameters """
         pass
 
     @abstractmethod
     def initial_point(self):
-        """ Recommended initial point for optimization """
+        """ Recommended initial point for optimization on parameters """
         pass
+
+
+# class TermStructureParametricZeroSurface(ParametricZeroSurface):
+#     def __init__(self):
+#         super().__init__()
+#         # self.params = None
+
+    # def parameters(self, t: float) -> list[float]:
+    #     """ Retrieve formula parameters """
+    #     return self.formula_parameters(t, self.params)
+
+    # def update_params(self, x: list[float]) -> None:
+    #     """ Update the current parameters """
+    #     self.params = x
+
+    # @abstractmethod
+    # def formula_parameters(self, t: float, params: list[float]) -> list[float]:
+    #     """ Convert from the surface parameters to the formula parameters """
+    #     pass
+
+    # @abstractmethod
+    # def bounds(self, keep_feasible: bool=False):
+    #     """ Recommended bounds for optimization """
+    #     pass
+
+    # @abstractmethod
+    # def initial_point(self):
+    #     """ Recommended initial point for optimization """
+    #     pass
