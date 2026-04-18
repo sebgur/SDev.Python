@@ -39,7 +39,6 @@ def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_pri
         return (premium - fwd_price) ** 2
 
     res = minimize_scalar(fun=error, bracket=(xmin, xmax), options=options, method='brent')
-
     return res.x
 
 
