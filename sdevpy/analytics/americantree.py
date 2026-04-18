@@ -7,15 +7,15 @@ from sdevpy.tree import trees
 from sdevpy.tree.trees import Payoff
 
 
-def option_price(ttm, strike, is_call, is_american, spot, vol, rf_rate, div_rate, disc_rate,
-                 method='trinomial', n_steps = 30):
+def option_price(ttm: float, strike: float, is_call: bool, is_american: bool, spot: float, vol: float,
+                 rf_rate: float, div_rate: float, disc_rate: float, method: str='trinomial', n_steps: int=30):
     """ Price of an American option using binomial or trinomial trees under Black-Scholes model """
     payoff = Payoff(ttm, strike, is_call, is_american)
     return price(payoff, spot, vol, rf_rate, div_rate, disc_rate, method, n_steps)
 
 
-def price(payoff, spot, vol, rf_rate, div_rate, disc_rate,
-          method='trinomial', n_steps = 30):
+def price(payoff, spot: float, vol: float, rf_rate: float, div_rate: float, disc_rate: float,
+          method: str='trinomial', n_steps: int=30):
     """ Price of a payoff using binomial or trinomial trees under Black-Scholes model """
     if method == 'binomial':
         tree = trees.BinomialTree(n_steps)
@@ -85,7 +85,6 @@ if __name__ == "__main__":
         # Reframe as relative errors
         bin_p = [100.0 * (x / cf - 1.0) for x in bin_p]
         tri_p = [100.0 * (x / cf - 1.0) for x in tri_p]
-
 
     # Plot the results
     plt.figure(figsize=(10, 6))

@@ -26,8 +26,8 @@ class TsSvi2(TermStructureParametricZeroSurface):
 
     def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
                 params: list[float]) -> npt.ArrayLike:
-        # Calculate log-moneyness
-        log_m = np.log(k / f)
+        """ Calculate Black implied volatility """
+        log_m = np.log(k / f) # log-moneyness
         vol = gsvi.gsvi_formula(log_m, params)
         return vol
 
@@ -37,21 +37,22 @@ class TsSvi2(TermStructureParametricZeroSurface):
             raise ValueError("TsSvi2 is not calculable at t = 0")
 
         # Get parameters
-        v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma = self.get_parameters(params)
+        (v0, vinf, b_, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
+         tau_m, s0, sinf, tau_s) = self.get_parameters(params)
         if rho0 < -1.0 or rho0 > 1.0:
             raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
 
-        if rhoInf < -1.0 or rhoInf > 1.0:
-            raise ValueError("rhoInf should be between -1 and 1 in TsSvi2")
+        if rhoinf < -1.0 or rhoinf > 1.0:
+            raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
 
         # Calculate new variables
-        F0 = v0 * v0
-        Finf = vInf * vInf
-        vstar = -B * tauV + Finf + tauV / t * (B * (t + tauV) + F0 - Finf) * (1.0 - np.exp(-t / tauV))
+        f0 = v0 * v0
+        finf = vinf * vinf
+        vstar = -b_ * tau_v + finf + tau_v / t * (b_ * (t + tau_v) + f0 - finf) * (1.0 - np.exp(-t / tau_v))
         b = alpha * np.power(t, beta - 1.0)
-        r = rho0 + (rhoInf - rho0) * (1.0 - np.exp(-t / tauRho))
-        m = m0 + (mInf - m0) * (1.0 - np.exp(-t / tauM))
-        s = sigma0 + (sigmaInf - sigma0) * (1.0 - np.exp(-t / tauSigma))
+        r = rho0 + (rhoinf - rho0) * (1.0 - np.exp(-t / tau_rho))
+        m = m0 + (minf - m0) * (1.0 - np.exp(-t / tau_m))
+        s = s0 + (sinf - s0) * (1.0 - np.exp(-t / tau_s))
 
         # Go back to standard parameters
         a = vstar - b * s * np.sqrt(1.0 - r * r)
@@ -82,31 +83,32 @@ class TsSvi2(TermStructureParametricZeroSurface):
     def check_global_params(self):
         """ Check validity of the global parameters """
         # Get parameters
-        v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma = self.get_parameters(self.params)
+        (v0, vinf, b_, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
+         tau_m, s0, sinf, tau_s) = self.get_parameters(self.params)
         if rho0 < -1.0 or rho0 > 1.0:
             raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
 
-        if rhoInf < -1.0 or rhoInf > 1.0:
-            raise ValueError("rhoInf should be between -1 and 1 in TsSvi2")
+        if rhoinf < -1.0 or rhoinf > 1.0:
+            raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
 
         is_ok = True
         # Check necessary no-arbitrage
         no_arb1 = alpha * np.power(self.tmax, beta)
-        no_arb2 = 4.0 / (1.0 + np.maximum(np.abs(rho0), np.abs(rhoInf)))
+        no_arb2 = 4.0 / (1.0 + np.maximum(np.abs(rho0), np.abs(rhoinf)))
         if no_arb1 > no_arb2:
             is_ok = False
 
         # Check bound for extremum of vstar
         tol = 1e-6
-        if is_ok and not isequal(B, tol):
-            if tauV < tol:
+        if is_ok and not isequal(b_, tol):
+            if tau_v < tol:
                 is_ok = False
             else:
-                prod = B * tauV
+                prod = b_ * tau_v
                 f0 = v0 * v0
-                finf = vInf * vInf
+                finf = vinf * vinf
                 small_b = f0 - finf
-                if B < 0.0:
+                if b_ < 0.0:
                     fext = finf + prod * np.exp(-1.0 + small_b / prod)
                     if fext < tol:
                         is_ok = False

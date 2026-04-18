@@ -109,7 +109,7 @@ class LogMixWeight(TimeParam):
     def diff(self, t: float) -> float:
         """ Differential of the LogMixWeight parameter """
         tmp1 = logmix_f(t, self.beta[self.component])
-        tmp2 = norm.value(t)
+        tmp2 = self.norm.value(t)
         tmp3 = tmp1 * tmp2
         w = self.w0[self.component]
         return -w / (tmp3 * tmp3) * (tmp1 * self.norm.diff(t) + logmix_df(t, self.beta[self.component]) * tmp2)
@@ -125,11 +125,11 @@ class LogMixNorm(TimeParam):
 
     def value(self, t: float) -> float:
         """ Value of the LogMixNorm parameter """
-        norm = 0.0
+        norm_ = 0.0
         for i in range(self.n_components):
-            norm += self.w0[i] / logmix_f(t, self.beta[i])
+            norm_ += self.w0[i] / logmix_f(t, self.beta[i])
 
-        return norm
+        return norm_
 
     def diff(self, t: float) -> float:
         """ Differential of the LogMixNorm parameter """
@@ -243,48 +243,48 @@ class LogMix3D(LogMix):
     pass
 
 
-def get_logmix_parameters(dim: int, params: npt.ArrayLike):
-    """ Given the parameters as the list params and knowing the dimension (i.e. number of lognormal components),
+def get_logmix_parameters(n_mix: int, params: npt.ArrayLike):
+    """ Given the parameters as the list params and knowing n_mix (i.e. number of lognormal components),
         strip the LogMix parameters out """
-    double loc0_thresh = 0.00000001;
-    w.resize(n);
-    shift.resize(n);
-    beta.resize(n);
-    a.resize(n);
-    b.resize(n);
-    c.resize(n);
-    d.resize(n);
+    loc0_thresh = 0.00000001
+    w.resize(n_mix)
+    shift.resize(n_mix)
+    beta.resize(n_mix)
+    a.resize(n_mix)
+    b.resize(n_mix)
+    c.resize(n_mix)
+    d.resize(n_mix)
 
-    if (x.size() % 7 != 5 || n < 1)
-        throw invalid_argument("ERROR! Size do not match: get_lnm2_parameters");
+    if x.size() % 7 != 5 or n_mix < 1:
+        raise ValueError("Inconsistent parameter sizes in LogMix parameters")
 
-    beta[0] = x[0];
-    a[0] = x[1];
-    b[0] = x[2];
-    c[0] = x[3];
-    d[0] = x[4];
-    double tmp_w = 1.;
-    double tmp_n = 0.;
-    for (size_t i = 1; i < n; i++)
-    {
-        double w_ = x[7*i-2];
-        double n_ = x[7*i-1];
-        w[i] = w_;
-        shift[i] = n_;
-        beta[i] = x[7*i];
-        a[i] = x[7*i+1];
-        b[i] = x[7*i+2];
-        c[i] = x[7*i+3];
-        d[i] = x[7*i+4];
-        tmp_w -= w_;
-        tmp_n -= w_ * n_;
-    }
-    w[0] = tmp_w;
-    shift[0] = tmp_n / tmp_w;
-    if (tmp_w < loc0_thresh)
-        return false;
-    else
-        return true;
+    beta[0] = x[0]
+    a[0] = x[1]
+    b[0] = x[2]
+    c[0] = x[3]
+    d[0] = x[4]
+    tmp_w = 1.0
+    tmp_n = 0.0
+    for i in range(1, n_mix):
+        w_ = x[7*i-2]
+        n_ = x[7*i-1]
+        w[i] = w_
+        shift[i] = n_
+        beta[i] = x[7*i]
+        a[i] = x[7*i+1]
+        b[i] = x[7*i+2]
+        c[i] = x[7*i+3]
+        d[i] = x[7*i+4]
+        tmp_w -= w_
+        tmp_n -= w_ * n_
+
+    w[0] = tmp_w
+    shift[0] = tmp_n / tmp_w
+
+    if tmp_w < loc0_thresh:
+        return False
+    else:
+        return True
 
 
 if __name__ == "__main__":

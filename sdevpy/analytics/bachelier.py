@@ -4,7 +4,7 @@ from scipy.stats import norm
 from scipy.optimize import minimize_scalar
 
 
-def price(expiry, strike, is_call, fwd, vol):
+def price(expiry: float, strike: float, is_call: bool, fwd: float, vol: float) -> float:
     """ Option price under the Bachelier model """
     stdev = vol * expiry**0.5
     d = (fwd - strike) / stdev
@@ -28,7 +28,7 @@ def price_straddles(expiries, strikes, fwd, vols):
     return np.asarray(prices)
 
 
-def implied_vol(expiry, strike, is_call, fwd, fwd_price):
+def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
     """ P. Jaeckel's method in "Implied Normal Volatility", 6th Jun. 2017 """
     m = fwd - strike
     abs_m = np.abs(m)
@@ -67,7 +67,7 @@ def implied_vol(expiry, strike, is_call, fwd, fwd_price):
     return sigma
 
 
-def implied_vol_solve(expiry, strike, is_call, fwd, fwd_price):
+def implied_vol_solve(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
     """ Direct method by numerical inversion using Brent """
     options = {'xtol': 1e-4, 'maxiter': 100, 'disp': False}
     xmin = 1e-6

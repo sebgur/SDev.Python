@@ -60,7 +60,7 @@ def make_asian_option(name: str, strike: float, optiontype: str, start: dt.datet
     return payoff
 
 
-def make_basket_option(names: list[str], weights: list[float], strike: float, optiontype: str, expiry: dt.dateime):
+def make_basket_option(names: list[str], weights: list[float], strike: float, optiontype: str, expiry: dt.datetime):
     """ Create Basket option payoff """
     spots = [Terminal(name, expiry) for name in names]
     basket = Basket(spots, weights)

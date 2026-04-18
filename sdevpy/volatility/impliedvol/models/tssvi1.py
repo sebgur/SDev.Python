@@ -26,8 +26,8 @@ class TsSvi1(TermStructureParametricZeroSurface):
 
     def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
                 params: list[float]) -> npt.ArrayLike:
-        # Calculate log-moneyness
-        log_m = np.log(k / f)
+        """ Calculate Black implied volatility """
+        log_m = np.log(k / f) # log-moneyness
         vol = gsvi.gsvi_formula(log_m, params)
         return vol
 

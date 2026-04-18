@@ -59,5 +59,5 @@ def gsvi_check_params(params: list[float], check_butterfly: bool=False) -> tuple
     return is_ok, penalty
 
 
-if __name__ == "__main__":
-    print("Hello")
+# if __name__ == "__main__":
+#     print("Hello")
