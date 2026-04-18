@@ -26,6 +26,8 @@ class TsIvObjectiveBuilder:
 
         if is_ok:
             # Calculate model vols
+            # ToDo: need to check what type of quantity the model outputs in its calculate() method
+            #       and that should drive what the target of the calibration is.
             model_vols = self.model.calculate(self.expiries, self.strikes, self.is_call, self.fwds)
 
             # Calculate the objective function

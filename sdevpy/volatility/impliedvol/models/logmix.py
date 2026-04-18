@@ -33,10 +33,12 @@ class TimeParam(ABC):
         """ Differential of the parameter function along time """
         pass
 
+
 def logmix_f(t: float, beta: float) -> float:
     """ LogMix's intermediate function """
     tmp = 1.0 + t / beta
     return 1.0 - 2.0 / (1.0 + tmp * tmp)
+
 
 def logmix_df(t: float, beta: float) -> float:
     """ LogMix's intermediate function differential """
@@ -46,6 +48,7 @@ def logmix_df(t: float, beta: float) -> float:
 
 
 class LogMixMean(TimeParam):
+    """ Mean (shift) parameter of the LogMix model """
     def __init__(self, mu0: float, beta: float):
         super().__init__()
         self.mu0, self.beta = mu0, beta
@@ -60,6 +63,7 @@ class LogMixMean(TimeParam):
 
 
 class LogMixStrike(TimeParam):
+    """ Strike (shift) parameter of the LogMix model """
     def __init__(self, nu0: float, beta: float):
         super().__init__()
         self.nu0, self.beta = nu0, beta
@@ -74,6 +78,7 @@ class LogMixStrike(TimeParam):
 
 
 class LogMixVar(TimeParam):
+    """ Variance parameter of the LogMix model """
     def __init__(self, a: float, b: float, c: float, d: float):
         super().__init__()
         self.a, self.b, self.c, self.d = a, b, c, d
@@ -92,6 +97,7 @@ class LogMixVar(TimeParam):
 
 
 class LogMixWeight(TimeParam):
+    """ Weight parameter of the LogMix model """
     def __init__(self, component: int, w0: list[float], beta: list[float]):
         super().__init__()
         self.component, self.w0, self.beta = component, w0, beta
@@ -116,6 +122,7 @@ class LogMixWeight(TimeParam):
 
 
 class LogMixNorm(TimeParam):
+    """ Normalization parameter of the LogMix model """
     def __init__(self, w0: list[float], beta: list[float]):
         super().__init__()
         self.w0, self.beta = w0, beta
@@ -142,15 +149,12 @@ class LogMixNorm(TimeParam):
 
 
 class LogMix(TermStructureParametricZeroSurface):
-    def __init__(self, weight: list[TimeParam], mean: list[TimeParam], strike: list[TimeParam],
-                 var: list[TimeParam]):
+    def __init__(self, n_mix=2, **kwargs):
         super().__init__()
-        self.n_params = 11
+        self.n_mix = kwargs.get('n_mix', 2)
+        self.check_fwd_var = kwargs.get('check_fwd_var', False)
+        self.shift_mean = kwargs.get('shift_mean', True)
         self.calculable_at_zero = False
-        self.weight, self.mean, self.strike, self.var = weight, mean, strike, var
-        self.n_components = len(self.weight)
-        if any(len(x) != self.n_components for x in (self.mean, self.strike, self.var)):
-            raise ValueError("Incompatible sizes in LogMix parameter functions")
 
     def price(self, t: float, strike: float, is_call: bool, fwd: float) -> float:
         """ Option price: weighted sum of Black-Scholes price in each component """
@@ -214,15 +218,67 @@ class LogMix(TermStructureParametricZeroSurface):
         """ Calculate parameters according to the LogMix formulas """
         pass
 
-    @abstractmethod
-    def get_parameters(self, x: list[float]) -> tuple[float, ...]:
-        """ Return named parameters from input list """
-        pass
+    def update_params(self, x: list[float]) -> None:
+        """ Update the current parameters """
+        self.params = x
+        self.set_param_functions(self.params)
 
-    @abstractmethod
-    def check_global_params(self):
-        """ Check validity of the global parameters """
-        pass
+    def set_param_functions(self, params: list[float]) -> None:
+        """ Given the parameters as a list, set the parameter functions """
+        is_valid, param_dic = get_logmix_parameters(self.n_mix, params)
+        if not is_valid:
+            raise ValueError("Invalid parameter list for LogMix model")
+
+        # Get parameter vectors
+        w, shift, beta = param_dic['w'], param_dic['shift'], param_dic['beta']
+        a, b, c, d = param_dic['a'], param_dic['b'], param_dic['c'], param_dic['d']
+
+        self.weight, self.mean, self.strike, self.var = [], [], [], []
+        for i in range(self.n_mix):
+            self.weight.append(LogMixWeight(i, w, beta))
+            self.var.append(LogMixVar(a[i], b[i], c[i], d[i]))
+            if self.shift_mean:
+                self.mean.append(LogMixMean(shift[i], beta[i]))
+                self.strike.append(LogMixStrike(0.0, 1.0))
+            else:
+                self.mean.append(LogMixMean(0.0, 1.0))
+                self.strike.append(LogMixStrike(shift[i], beta[i]))
+
+    def check_params(self):
+        """ Check validity of the parameters """
+        is_ok, param_dic = get_logmix_parameters(self.n_mix, self.params)
+
+        if is_ok: # Check further constraints on the params
+            w, shift, _ = param_dic['w'], param_dic['shift'], param_dic['beta']
+            a, b, c, d = param_dic['a'], param_dic['b'], param_dic['c'], param_dic['d']
+
+            eps = 0.00000001
+            # Positivity of the first weight
+            if is_ok and w[0] < eps:
+                is_ok = False
+
+            # Positivity of the first shift
+            if is_ok and shift[0] < -1.0 + eps:
+                is_ok = False
+
+            # Positivity of the forward variances
+            if is_ok and self.check_fwd_var:
+                n_points = 40
+                n_ = float(n_points)
+                max_t = 20.0
+                for i in range(self.n_mix):
+                    if not is_ok:
+                        break
+
+                    var_param = LogMixVar(a[i], b[i], c[i], d[i])
+                    for j in range(n_points):
+                        if not is_ok:
+                            break
+
+                        fwd_v = var_param.diff(max_t * float(j) / n_)
+                        is_ok = (fwd_v > 0.0)
+
+        return is_ok, (0.0 if is_ok else constants.FLOAT_INFTY)
 
     @abstractmethod
     def bounds(self, keep_feasible: bool=False):
@@ -244,47 +300,47 @@ class LogMix3D(LogMix):
 
 
 def get_logmix_parameters(n_mix: int, params: npt.ArrayLike):
-    """ Given the parameters as the list params and knowing n_mix (i.e. number of lognormal components),
+    """ Given the parameters as a list and knowing n_mix (i.e. number of lognormal components),
         strip the LogMix parameters out """
     loc0_thresh = 0.00000001
-    w.resize(n_mix)
-    shift.resize(n_mix)
-    beta.resize(n_mix)
-    a.resize(n_mix)
-    b.resize(n_mix)
-    c.resize(n_mix)
-    d.resize(n_mix)
+    # Initialize parameters vectors
+    w = np.empty(n_mix)
+    shift = np.empty(n_mix)
+    beta = np.empty(n_mix)
+    a = np.empty(n_mix)
+    b = np.empty(n_mix)
+    c = np.empty(n_mix)
+    d = np.empty(n_mix)
 
-    if x.size() % 7 != 5 or n_mix < 1:
+    if len(params) % 7 != 5 or n_mix < 1:
         raise ValueError("Inconsistent parameter sizes in LogMix parameters")
 
-    beta[0] = x[0]
-    a[0] = x[1]
-    b[0] = x[2]
-    c[0] = x[3]
-    d[0] = x[4]
+    beta[0] = params[0]
+    a[0] = params[1]
+    b[0] = params[2]
+    c[0] = params[3]
+    d[0] = params[4]
     tmp_w = 1.0
     tmp_n = 0.0
     for i in range(1, n_mix):
-        w_ = x[7*i-2]
-        n_ = x[7*i-1]
+        w_ = params[7 * i - 2]
+        n_ = params[7 * i - 1]
         w[i] = w_
         shift[i] = n_
-        beta[i] = x[7*i]
-        a[i] = x[7*i+1]
-        b[i] = x[7*i+2]
-        c[i] = x[7*i+3]
-        d[i] = x[7*i+4]
+        beta[i] = params[7 * i]
+        a[i] = params[7 * i + 1]
+        b[i] = params[7 * i + 2]
+        c[i] = params[7 * i + 3]
+        d[i] = params[7 * i + 4]
         tmp_w -= w_
         tmp_n -= w_ * n_
 
     w[0] = tmp_w
     shift[0] = tmp_n / tmp_w
 
-    if tmp_w < loc0_thresh:
-        return False
-    else:
-        return True
+    param_dic = {'w': w, 'shift': shift, 'beta': beta, 'a': a, 'b': b, 'c': c, 'd': d}
+    is_valid = (tmp_w >= loc0_thresh)
+    return is_valid, param_dic
 
 
 if __name__ == "__main__":
