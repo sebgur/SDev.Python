@@ -11,7 +11,9 @@ from sdevpy.volatility.impliedvol.zerosurface import TermStructureParametricZero
 from sdevpy.volatility.impliedvol.models import gsvi
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.tools import timegrids
+from sdevpy.tools.utils import isequal
 from sdevpy.maths.metrics import rmse
+from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 
 
@@ -65,21 +67,64 @@ class TsSvi2(TermStructureParametricZeroSurface):
 
     def check_params(self):
         """ Check validity of the parameters """
-        sample_times = np.asarray([1 / 365, 7 / 365, 30 / 365, 0.5, 1, 5, 10, 40])
-        sample_params = self.formula_parameters(sample_times, self.params)
-        is_ok, penalty = gsvi.gsvi_check_params(sample_params)
+        # Check global parameters
+        is_ok, penalty = self.check_global_params()
+        # is_ok, penalty = True, 0.0 # Skip global parameter check
+
+        # Check local parameters over sampled expiries
+        if is_ok:
+            sample_times = np.asarray([1 / 365, 7 / 365, 30 / 365, 0.5, 1, 5, 10, 40])
+            sample_params = self.formula_parameters(sample_times, self.params)
+            is_ok, penalty = gsvi.gsvi_check_params(sample_params)
+
         return is_ok, penalty
+
+    def check_global_params(self):
+        """ Check validity of the global parameters """
+        # Get parameters
+        v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma = self.get_parameters(self.params)
+        if rho0 < -1.0 or rho0 > 1.0:
+            raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
+
+        if rhoInf < -1.0 or rhoInf > 1.0:
+            raise ValueError("rhoInf should be between -1 and 1 in TsSvi2")
+
+        is_ok = True
+        # Check necessary no-arbitrage
+        no_arb1 = alpha * np.power(self.tmax, beta)
+        no_arb2 = 4.0 / (1.0 + np.maximum(np.abs(rho0), np.abs(rhoInf)))
+        if no_arb1 > no_arb2:
+            is_ok = False
+
+        # Check bound for extremum of vstar
+        tol = 1e-6
+        if is_ok and not isequal(B, tol):
+            if tauV < tol:
+                is_ok = False
+            else:
+                prod = B * tauV
+                f0 = v0 * v0
+                finf = vInf * vInf
+                small_b = f0 - finf
+                if B < 0.0:
+                    fext = finf + prod * np.exp(-1.0 + small_b / prod)
+                    if fext < tol:
+                        is_ok = False
+
+        return is_ok, (0.0 if is_ok else constants.FLOAT_INFTY)
 
     def bounds(self, keep_feasible: bool=False):
         """ Recommended bounds """
+        # v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma
         lw_bounds = [0.0, 0.00001, -1.0,  0.1, 0.0, 0.0001, -0.99, -0.99,  0.1, -0.99, -0.99,  0.1, 0.0, 0.0,  0.1]
-        up_bounds = [1.0, 1.00000,  1.0, 50.0, 5.0, 0.9990,  0.20,  0.30, 50.0,  1.00,  1.00, 50.0, 2.0, 2.0, 50.0]
+        up_bounds = [1.0, 1.00000,  1.0, 50.0, 5.0, 0.9990,  0.99,  0.99, 50.0,  1.00,  1.00, 50.0, 2.0, 2.0, 50.0]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=keep_feasible)
         return bounds
 
     def initial_point(self):
         """ Recommended initial point """
-        init_point = [0.1, 0.10000, -0.1,  1.0, 0.1, 0.1000, -0.30, -0.30,  1.0,  1.00,  0.50,  0.5, 0.1, 0.1,  1.0]
+        # v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma
+        init_point = [0.10, 0.20, -0.05,  1.0, 0.1, 0.1000, -0.30, -0.30,  1.0,  1.00,  0.50,  0.5, 0.1, 0.1,  1.0]
         return np.asarray(init_point)
 
 
@@ -98,11 +143,12 @@ if __name__ == "__main__":
 
     # Initialize model
     model = TsSvi2()
-    model.update_params(model.initial_point())
+    # model.update_params(model.initial_point())
+    # model.check_params()
 
     # Calibrate model
     calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-6})
-    # calibrator.calibrate(mkt_data)
+    calibrator.calibrate(mkt_data)
 
     # Estimate model on points and calculate RMSE, plot comparison
     n_rows, n_cols = 3, 2
@@ -111,7 +157,6 @@ if __name__ == "__main__":
         for j in range(n_cols):
             ax = axes[i, j]
             exp_idx = n_cols * i + j
-            # expiry = expiry_grid[exp_idx]
             expiry = timegrids.model_time(valdate, expiries[exp_idx])
             fwd = fwds[exp_idx]
             strikes = strike_surface[exp_idx]

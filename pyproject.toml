@@ -23,7 +23,8 @@ dependencies = ["pandas", "numpy", "scipy", "matplotlib", "holidays",
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["sdevpy*"]  # Only include these
+include = ["sdevpy*"] # Only include these
+exclude = ["sdevpy/volatility/impliedvol/models/tssvi2*"]
 #exclude = ["notebooks*", "spreadsheets*"] # Exclude these
 
 [tool.setuptools.package-data]
