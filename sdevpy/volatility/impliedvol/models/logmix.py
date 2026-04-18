@@ -11,6 +11,7 @@ import datetime as dt
 from scipy.stats import norm
 import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
+from sdevpy.volatility.impliedvol.optionsurface import calibration_targets, IS_CALL
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.tools import timegrids
 from sdevpy.tools.utils import isequal
@@ -157,14 +158,20 @@ class LogMix(ParametricZeroSurface):
         self.calculable_at_zero = False
         self.n_params = 5 + 7 * (self.n_mix - 1)
 
+    def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
+        """ Calculate Black price (forward) """
+        return self.price(t, k, is_call, f)
+
     def price(self, t: float, strike: float, is_call: bool, fwd: float) -> float:
         """ Option price: weighted sum of Black-Scholes price in each component """
         price = 0.0
-        for i in range(self.n_components):
+        for i in range(self.n_mix):
             w = self.weight[i].value(t)
             f = fwd * (1.0 + self.mean[i].value(t))
             k = strike * (1.0 + self.strike[i].value(t))
             stdev = np.sqrt(self.var[i].value(t))
+            vol = stdev / np.sqrt(t)
+            print(vol)
             price += w * self.black(k, is_call, f, stdev)
 
         return price
@@ -175,7 +182,7 @@ class LogMix(ParametricZeroSurface):
             raise ValueError("LogMix model cannot calculate PDF at t=0")
 
         prob = 0.0
-        for i in range(self.n_components):
+        for i in range(self.n_mix):
             w = self.weight[i].value(t)
             stdev = np.sqrt(self.var[i].value(t))
             mu = 1.0 + self.mean[i].value(t)
@@ -192,7 +199,7 @@ class LogMix(ParametricZeroSurface):
             raise ValueError("LogMix model cannot calculate PDF at t=0")
 
         prob = 0.0
-        for i in range(self.n_components):
+        for i in range(self.n_mix):
             w = self.weight[i].value(t)
             stdev = np.sqrt(self.var[i].value(t))
             mu = 1.0 + self.mean[i].value(t)
@@ -208,16 +215,6 @@ class LogMix(ParametricZeroSurface):
         d1 = np.log(fwd / strike) / stdev + 0.5 * stdev
         d2 = d1 - stdev
         return w * (fwd * norm.cdf(w * d1) - strike * norm.cdf(w * d2))
-
-    @abstractmethod
-    def formula(self, t: float, k: npt.ArrayLike, is_call: bool, f: npt.ArrayLike,
-                params: list[float]) -> npt.ArrayLike:
-                pass
-
-    @abstractmethod
-    def formula_parameters(self, t: npt.ArrayLike, params: list[float]) -> list[float]:
-        """ Calculate parameters according to the LogMix formulas """
-        pass
 
     def update_params(self, x: list[float]) -> None:
         """ Update the current parameters """
@@ -245,7 +242,7 @@ class LogMix(ParametricZeroSurface):
                 self.mean.append(LogMixMean(0.0, 1.0))
                 self.strike.append(LogMixStrike(shift[i], beta[i]))
 
-    def check_params(self):
+    def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters """
         is_ok, param_dic = get_logmix_parameters(self.n_mix, self.params)
 
@@ -281,16 +278,26 @@ class LogMix(ParametricZeroSurface):
 
         return is_ok, (0.0 if is_ok else constants.FLOAT_INFTY)
 
-    @abstractmethod
     def bounds(self, keep_feasible: bool=False):
         """ Recommended bounds """
-        pass
+        raise NotImplementedError("bounds")
 
-    @abstractmethod
-    def initial_point(self):
+    def initial_point(self) -> list[float]:
         """ Recommended initial point """
-        pass
+        w0, shift0, beta0 = 0.0, 0.0, 0.2
+        a0, b0, c0, d0 = 0.2, 0.2, 1.0, 1.0
 
+        init_params = [beta0, a0, b0, c0, d0]
+        for _ in range(1, self.n_mix):
+            init_params.append(w0)
+            init_params.append(shift0)
+            init_params.append(beta0)
+            init_params.append(a0)
+            init_params.append(b0)
+            init_params.append(c0)
+            init_params.append(d0)
+
+        return init_params
 
 def get_logmix_parameters(n_mix: int, params: npt.ArrayLike):
     """ Given the parameters as a list and knowing n_mix (i.e. number of lognormal components),
@@ -349,14 +356,20 @@ if __name__ == "__main__":
     strike_surface = mkt_data.get_strikes('absolute')
     vol_surface = mkt_data.vols
 
+    # Set calibration time grid
+    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
+
+    # Set calibration targets
+    cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
+
     # Initialize model
     model = LogMix(n_mix=2)
-    # model.update_params(model.initial_point())
-    # print(model.check_params())
+    model.update_params(model.initial_point())
+    print(model.check_params())
 
-    # Calibrate model
-    calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
-    calibrator.calibrate(mkt_data)
+    # # Calibrate model
+    # calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
+    # calibrator.calibrate(mkt_data)
 
     # Estimate model on points and calculate RMSE, plot comparison
     n_rows, n_cols = 3, 2
@@ -372,7 +385,8 @@ if __name__ == "__main__":
             min_k, max_k = strikes[0], strikes[-1]
             m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
             m_vols = model.calculate(expiry, m_strikes, True, fwd)
-            ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
+            ax.scatter(strikes, cf_price_surface[exp_idx], label="market", color='black')
+            # ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
             ax.plot(m_strikes, m_vols, label="model", color='green')
             model_vols = model.calculate(expiry, strikes, True, fwd)
             vol_rmse = rmse(vol_surface[exp_idx], model_vols)
