@@ -194,7 +194,6 @@ class LogMix(ParametricZeroSurface):
             f = fwd * (1.0 + self.mean[i].value(t))
             k = strike * (1.0 + self.strike[i].value(t))
             stdev = np.sqrt(self.var[i].value(t))
-            # print(f"Vol({i}): {stdev / np.sqrt(t)}")
             price += w * self.black(k, is_call, f, stdev)
 
         return price
@@ -225,7 +224,7 @@ class LogMix(ParametricZeroSurface):
             raise RuntimeError("Call update_params() before evaluating the LogMix model")
 
         if t < 0.0 or isequal(t, 0.0):
-            raise ValueError("LogMix model cannot calculate PDF at t=0")
+            raise ValueError("LogMix model cannot calculate CDF at t=0")
 
         prob = 0.0
         for i in range(self.n_mix):
@@ -247,14 +246,14 @@ class LogMix(ParametricZeroSurface):
 
     def update_params(self, x: list[float]) -> None:
         """ Update the current parameters """
-        # print(f"Shape: {len(x)}")
-        # print(f"Params: {x}")
         self.params = x
         self.set_param_functions(self.params)
 
     def set_param_functions(self, params: list[float]) -> None:
         """ Given the parameters as a list, set the parameter functions """
-        param_dic, _ = get_logmix_parameters(self.n_mix, params, self.verbose)
+        param_dic, is_ok = get_logmix_parameters(self.n_mix, params, self.verbose)
+        if not is_ok:
+            log.debug("set_param_functions called with invalid params: first weight floored")
 
         # Get parameter vectors
         w, shift, beta = param_dic['w'], param_dic['shift'], param_dic['beta']
@@ -314,10 +313,8 @@ class LogMix(ParametricZeroSurface):
         """ Recommended bounds """
         lw_w0, lw_shift0, lw_beta0 = 0.0, -1.0, 0.01
         lw_a0, lw_b0, lw_c0, lw_d0 = 0.0, 0.0, -1.0, 0.01
-        # lw_a0, lw_b0, lw_c0, lw_d0 = 0.0, 0.01, 0.0001, 0.01
         up_w0, up_shift0, up_beta0 = 1.0, 2.0, 10.0
         up_a0, up_b0, up_c0, up_d0 = 2.5, 2.5, 1.0, 10.0
-        # up_a0, up_b0, up_c0, up_d0 = 2.5, 10.0, 1.0, 2.5
 
         lw_bounds = [lw_beta0, lw_a0, lw_b0, lw_c0, lw_d0]
         up_bounds = [up_beta0, up_a0, up_b0, up_c0, up_d0]
@@ -344,8 +341,6 @@ class LogMix(ParametricZeroSurface):
         """ Recommended initial point """
         w0, shift0, beta0 = 0.0, 0.0, 0.2
         a0, b0, c0, d0 = 0.2, 0.2, 0.0, 1.0
-        # a0, b0, c0, d0 = 0.2, 0.2, 0.0, 0.0
-        # # a0, b0, c0, d0 = 0.2, 0.2, 1.0, 1.0
 
         init_params = [beta0, a0, b0, c0, d0]
         for _ in range(1, self.n_mix):
@@ -400,7 +395,7 @@ def get_logmix_parameters(n_mix: int, params: npt.ArrayLike, verbose: bool=True)
     w[0] = tmp_w
 
     # Check positivity of first weight
-    weight_floor = 1e-10
+    weight_floor = 1e-8
     is_ok = True
     if tmp_w < weight_floor:
         if verbose:
@@ -449,12 +444,9 @@ if __name__ == "__main__":
             strikes = strike_surface[exp_idx]
             min_k, max_k = strikes[0], strikes[-1]
             m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
-            # m_prices = model.calculate(expiry, m_strikes, True, fwd)
             m_vols = model.black_volatility(expiry, m_strikes, fwd)
             ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
             ax.plot(m_strikes, m_vols, label="model", color='green')
-            # ax.scatter(strikes, call_surface[exp_idx], label="market", color='black')
-            # ax.plot(m_strikes, m_prices, label="model", color='green')
             model_vols = model.black_volatility(expiry, strikes, fwd)
             vol_rmse = rmse(vol_surface[exp_idx], model_vols)
             ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")

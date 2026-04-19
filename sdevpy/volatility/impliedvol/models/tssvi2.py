@@ -20,7 +20,7 @@ from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 class TsSvi2(ParametricZeroSurface):
     def __init__(self, **kwargs):
         super().__init__()
-        self.n_params = 11
+        self.n_params = 15
         self.calculable_at_zero = False
         self.tmax = kwargs.get('tmax', 42)
 
