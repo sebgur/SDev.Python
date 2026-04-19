@@ -4,9 +4,37 @@ from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi, gsvi
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
+from sdevpy.volatility.impliedvol.models.logmix import LogMix
 
 
-def test_tssvi2_objective_positive():
+def test_logmix_objective():
+    surface = LogMix(2)
+    t = np.asarray([0.5, 1.5, 2.5])
+    k = np.asarray([90., 100., 110.])
+    f = np.asarray([95., 105., 115.])
+    mkt_vols = np.asarray([0.30, 0.25, 0.20])
+    mkt_prices = np.asarray([10.30, 8.25, 5.20])
+    params = surface.initial_point()
+    builder = TsIvObjectiveBuilder(surface, t, k, f, mkt_vols, mkt_prices)
+    test = builder.objective(params)
+    assert isequal(test, 7.268371270480672)
+
+
+def test_logmix():
+    surface = LogMix(3)
+    params = surface.initial_point()
+    surface.update_params(params)
+
+    t = np.asarray([0.5, 1.5, 2.5])
+    k = np.asarray([90, 100, 110])
+    f = np.asarray([95, 105, 115])
+    is_call = True
+    test = surface.calculate(t, k, is_call, f)
+    ref = np.asarray([8.09016928, 12.68788175, 16.77192795])
+    assert np.allclose(test, ref, 1e-10)
+
+
+def test_tssvi2_objective():
     surface = TsSvi2()
     t = np.asarray([0.5, 1.5, 2.5])
     k = np.asarray([90., 100., 110.])
@@ -35,7 +63,7 @@ def test_tssvi2():
     assert np.allclose(test, ref, 1e-10)
 
 
-def test_tssvi1_objective_positive():
+def test_tssvi1_objective():
     surface = TsSvi1()
     t = np.asarray([0.5, 1.5, 2.5])
     k = np.asarray([90., 100., 110.])

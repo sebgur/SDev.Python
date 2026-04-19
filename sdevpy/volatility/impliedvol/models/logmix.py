@@ -4,10 +4,12 @@
     See D. Bloch, 'A Practical Guide to Implied and Local Volatility', 2010
     https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1538808
 """
+from pathlib import Path
 import numpy as np
 import numpy.typing as npt
 from abc import ABC, abstractmethod
 import datetime as dt
+import logging
 from scipy.stats import norm
 import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
@@ -18,7 +20,7 @@ from sdevpy.tools.utils import isequal
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
-# from sdevpy.analytics import black
+log = logging.getLogger(Path(__file__).stem)
 
 
 class TimeParam(ABC):
@@ -165,6 +167,7 @@ class LogMix(ParametricZeroSurface):
         self.shift_mean = kwargs.get('shift_mean', True)
         self.calculable_at_zero = False
         self.n_params = 5 + 7 * (self.n_mix - 1)
+        self.verbose = kwargs.get('verbose', False)
 
     def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
         """ Calculate Black price (forward) """
@@ -241,9 +244,7 @@ class LogMix(ParametricZeroSurface):
 
     def set_param_functions(self, params: list[float]) -> None:
         """ Given the parameters as a list, set the parameter functions """
-        param_dic = get_logmix_parameters(self.n_mix, params)
-        # if not is_valid:
-        #     raise ValueError("Invalid parameter list for LogMix model")
+        param_dic, _ = get_logmix_parameters(self.n_mix, params, self.verbose)
 
         # Get parameter vectors
         w, shift, beta = param_dic['w'], param_dic['shift'], param_dic['beta']
@@ -262,9 +263,8 @@ class LogMix(ParametricZeroSurface):
 
     def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters """
-        param_dic = get_logmix_parameters(self.n_mix, self.params)
+        param_dic, is_ok = get_logmix_parameters(self.n_mix, self.params, self.verbose)
 
-        is_ok = True
         # Check further constraints on the params
         w, shift, _ = param_dic['w'], param_dic['shift'], param_dic['beta']
         a, b, c, d = param_dic['a'], param_dic['b'], param_dic['c'], param_dic['d']
@@ -347,10 +347,9 @@ class LogMix(ParametricZeroSurface):
         return init_params
 
 
-def get_logmix_parameters(n_mix: int, params: npt.ArrayLike) -> dict:
+def get_logmix_parameters(n_mix: int, params: npt.ArrayLike, verbose: bool=True) -> tuple[dict, bool]:
     """ Given the parameters as a list and knowing n_mix (i.e. number of lognormal components),
         strip the LogMix parameters out """
-    # loc0_thresh = 0.00000001
     # Initialize parameters vectors
     w = np.empty(n_mix)
     shift = np.empty(n_mix)
@@ -360,12 +359,10 @@ def get_logmix_parameters(n_mix: int, params: npt.ArrayLike) -> dict:
     c = np.empty(n_mix)
     d = np.empty(n_mix)
 
+    # Check size
     expected = 5 + 7 * (n_mix - 1)
     if len(params) != expected or n_mix < 1:
         raise ValueError(f"Expected {expected} params, got {len(params)}")
-
-    # if len(params) % 7 != 5 or n_mix < 1:
-    #     raise ValueError("Inconsistent parameter sizes in LogMix parameters")
 
     beta[0] = params[0]
     a[0] = params[1]
@@ -388,14 +385,20 @@ def get_logmix_parameters(n_mix: int, params: npt.ArrayLike) -> dict:
         tmp_n -= w_ * n_
 
     w[0] = tmp_w
-    # ToDo: Guard against division by 0. But how? We don't have any real solution.
-    #       This case will be avoided by the calibration, so we can do as Claude suggests i.e.
-    #       to return early if caught, but add a log warning.
-    #       Or maybe we go back to returning a state bool and use it in check_params.
-    shift[0] = tmp_n / tmp_w
+
+    # Check positivity of first weight
+    weight_floor = 1e-10
+    is_ok = True
+    if tmp_w < weight_floor:
+        if verbose:
+            log.warning("First weight is too small in LogMix: flooring")
+        is_ok = False
+        shift[0] = tmp_n / weight_floor
+    else:
+        shift[0] = tmp_n / tmp_w
 
     param_dic = {'w': w, 'shift': shift, 'beta': beta, 'a': a, 'b': b, 'c': c, 'd': d}
-    return param_dic
+    return param_dic, is_ok
 
 
 if __name__ == "__main__":
