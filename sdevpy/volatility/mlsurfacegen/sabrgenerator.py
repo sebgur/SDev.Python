@@ -226,7 +226,7 @@ class SabrGenerator(SmileGenerator):
                     is_call = True
                     price = black.price(expiry, sk, is_call, shifted_f, iv)
                     try:
-                        n_vol = bachelier.implied_vol(expiry, k, is_call, fwd, price)[0]
+                        n_vol = bachelier.implied_vol_jaeckel(expiry, k, is_call, fwd, price)[0]
                         # Include noise or not
                         rand = np.random.rand()
                         use_noise = (rand < noise_prob)

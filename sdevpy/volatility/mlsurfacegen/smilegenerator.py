@@ -120,7 +120,7 @@ class SmileGenerator(ABC):
                 batch_id = batch_id + 1
                 print(f"Converting to normal vol, batch {batch_id:,} out of {num_batches:,}")
             try:
-                nvol.append(bachelier.implied_vol(t[i], strike[i], self.is_call, fwd[i], price[i]))
+                nvol.append(bachelier.implied_vol_jaeckel(t[i], strike[i], self.is_call, fwd[i], price[i]))
             except Exception:
                 nvol.append(-9999)
 

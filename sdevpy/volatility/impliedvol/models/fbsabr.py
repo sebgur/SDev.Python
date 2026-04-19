@@ -156,7 +156,7 @@ if __name__ == "__main__":
         mc_iv = []
         for j, _ in enumerate(SSTRIKES[a]):
             # mc_iv.append(black.implied_vol(expiry, sstrike, IS_CALL, SFWD, MC_PRICES[a, j]))
-            mc_iv.append(bachelier.implied_vol(expiry, STRIKES[a, j], IS_CALL, FWD,
+            mc_iv.append(bachelier.implied_vol_jaeckel(expiry, STRIKES[a, j], IS_CALL, FWD,
                                                MC_PRICES[a, j]))
         mc_ivs.append(mc_iv)
 

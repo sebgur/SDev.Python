@@ -139,7 +139,7 @@ def convert_option(expiry: float, strike: float, is_call: bool, fwd: float, from
                 case OptionQuoteType.LogNormalVol:
                     to_input = black.implied_vol(expiry, strike, is_call, fwd, fwd_premium)
                 case OptionQuoteType.NormalVol:
-                    to_input = bachelier.implied_vol(expiry, strike, is_call, fwd, fwd_premium)
+                    to_input = bachelier.implied_vol_jaeckel(expiry, strike, is_call, fwd, fwd_premium)
                 case OptionQuoteType.ShiftedLogNormalVol:
                     to_input = black.implied_vol(expiry, strike + to_shift, is_call, fwd + to_shift, fwd_premium)
                 case _:

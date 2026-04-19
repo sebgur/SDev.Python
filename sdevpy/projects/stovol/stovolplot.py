@@ -69,7 +69,7 @@ def transform_surface(expiries, strikes, are_calls, fwd, prices, transform='Shif
             are_calls_ = are_calls[i]
             # trans_prices_ = []
             for j, strike in enumerate(strikes_):
-                trans_prices[i, j] = bachelier.implied_vol(expiry, strike, are_calls_[j], fwd,
+                trans_prices[i, j] = bachelier.implied_vol_jaeckel(expiry, strike, are_calls_[j], fwd,
                                                            prices[i, j])
             #     trans_prices_.append(bachelier.implied_vol(expiry, strike, are_calls_[j], fwd,
             #                                                prices[i, j]))

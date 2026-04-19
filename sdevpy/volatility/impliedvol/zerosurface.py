@@ -169,7 +169,7 @@ class ZeroSurface(ABC):
                 case _:
                     raise TypeError(f"Invalid modelled type in zero-surface: {self.calculate_type}")
 
-            return bachelier.implied_vol(t, k, is_call, f, price)
+            return bachelier.implied_vol_jaeckel(t, k, is_call, f, price)
 
     def shifted_black_volatility(self, t: float, k: float, f: float) -> float:
         """ Shifted Black implied volatility """
