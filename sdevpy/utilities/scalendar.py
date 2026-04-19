@@ -4,7 +4,7 @@ from datetime import timedelta
 from enum import Enum
 import pandas_market_calendars as mcal
 import holidays
-from sdevpy.utilities.utils import isiterable
+from sdevpy.utilities.tools import isiterable
 from sdevpy.utilities import speriods
 
 

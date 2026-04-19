@@ -1,7 +1,7 @@
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 from openpyxl.utils.datetime import to_excel
-from sdevpy.utilities.utils import isiterable
+from sdevpy.utilities.tools import isiterable
 
 
 DATE_FORMAT = '%d-%b-%Y'

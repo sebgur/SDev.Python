@@ -3,7 +3,7 @@ import datetime as dt
 import pandas as pd
 from pathlib import Path
 from sdevpy.utilities import dates as dts
-from sdevpy.utilities.utils import isiterable
+from sdevpy.utilities.tools import isiterable
 from sdevpy.maths import interpolation as itp
 
 

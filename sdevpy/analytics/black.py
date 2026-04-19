@@ -4,7 +4,7 @@ import numpy.typing as npt
 import scipy.stats
 from scipy.optimize import minimize_scalar
 from sdevpy.thirdparty.py_vollib.black import implied_volatility as jaeckel
-from sdevpy.utilities.utils import isiterable
+from sdevpy.utilities.tools import isiterable
 
 N = scipy.stats.norm.cdf
 

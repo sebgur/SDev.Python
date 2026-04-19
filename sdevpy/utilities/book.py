@@ -1,6 +1,6 @@
 import numpy as np
 from sdevpy.montecarlo.payoffs.basic import list_instrument_names, list_instrument_eventdates
-from sdevpy.utilities.utils import isiterable
+from sdevpy.utilities.tools import isiterable
 
 
 class Book:

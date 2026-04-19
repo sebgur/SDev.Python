@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from datetime import date
 import numpy as np
-from sdevpy.utilities import algos, utils
+from sdevpy.utilities import algos, tools
 
 
 
@@ -88,7 +88,7 @@ class SimpleTimeGridBuilder(TimeGridBuilder):
 def model_time(date1, date2):
     """ Yearfraction (time) between two dates for models, using simply (date2 - date1) / 365."""
     spans = np.asarray(date2) - np.asarray(date1)
-    if utils.isiterable(spans):
+    if tools.isiterable(spans):
         span = [s.days / 365.0 for s in spans]
         return np.asarray(span)
     else:
