@@ -5,6 +5,18 @@ from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
+from sdevpy.volatility.impliedvol.models import sabr
+
+
+def test_sabr():
+    # Test near ATM
+    expiry = 0.5
+    fwd = 0.04
+    params = {'LnVol': 0.25, 'Beta': 0.4, 'Nu': 0.50, 'Rho': -0.25}
+    strikes = np.asarray([0.01, 0.04, 0.06])
+    test = sabr.sabr_from_dict(expiry, strikes, fwd, params)
+    ref = np.asarray([0.54225604, 0.25208659, 0.22711695])
+    np.allclose(test, ref, 1e-10)
 
 
 def test_logmix_objective():
@@ -150,10 +162,11 @@ def test_gsvi_formula():
 
 
 if __name__ == "__main__":
-    test_tssvi1_objective_positive()
-    test_tssvi1()
-    test_svi_formula()
-    test_biexp_formula()
-    test_cubicvol_formula()
-    test_vsvi_formula()
-    test_gsvi_formula()
+    test_sabr()
+    # test_tssvi1_objective()
+    # test_tssvi1()
+    # test_svi_formula()
+    # test_biexp_formula()
+    # test_cubicvol_formula()
+    # test_vsvi_formula()
+    # test_gsvi_formula()

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as sp
 from sdevpy import settings
-from sdevpy.analytics import sabr
+from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.analytics import black
 from sdevpy.analytics import bachelier
 from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
@@ -205,7 +205,7 @@ class SabrGenerator(SmileGenerator):
         for i, expiry in enumerate(expiries_):
             k_prices = []
             for j, sk in enumerate(shifted_k[i]):
-                iv = sabr.implied_vol_vec(expiry, sk, shifted_f, parameters)
+                iv = sabr.sabr_from_dict(expiry, sk, shifted_f, parameters)
                 price = black.price(expiry, sk, are_calls[i][j], shifted_f, iv)
                 k_prices.append(price[0])
             prices.append(k_prices)
@@ -222,7 +222,7 @@ class SabrGenerator(SmileGenerator):
             k_prices = []
             if output_nvol:
                 for (k, sk) in zip(strikes[i], shifted_k[i], strict=True):  # Normal vols
-                    iv = sabr.implied_vol_vec(expiry, sk, shifted_f, parameters)
+                    iv = sabr.sabr_from_dict(expiry, sk, shifted_f, parameters)
                     is_call = True
                     price = black.price(expiry, sk, is_call, shifted_f, iv)
                     try:
@@ -239,7 +239,7 @@ class SabrGenerator(SmileGenerator):
                     k_prices.append(n_vol)
             else:
                 for sk in shifted_k[i]:  # Straddle prices
-                    iv = sabr.implied_vol_vec(expiry, sk, shifted_f, parameters)
+                    iv = sabr.sabr_from_dict(expiry, sk, shifted_f, parameters)
                     call_price = black.price(expiry, sk, True, shifted_f, iv)
                     put_price = black.price(expiry, sk, False, shifted_f, iv)
                     k_prices.append(call_price[0] + put_price[0])

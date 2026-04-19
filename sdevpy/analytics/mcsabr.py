@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as sp
-from sdevpy.analytics.sabr import calculate_alpha
+from sdevpy.volatility.impliedvol.models.sabr import calculate_alpha
 from sdevpy.utilities.timegrids import SimpleTimeGridBuilder
 from sdevpy.utilities import timer
 
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     # Convert to IV and compare against approximate closed-form
     import sdevpy.analytics.black as black
     import sdevpy.analytics.bachelier as bachelier
-    import sdevpy.analytics.sabr as sabr
+    import sdevpy.volatility.impliedvol.models.sabr as sabr
     mc_ivs = []
     cf_ivs = []
     n_ivs = []
@@ -164,7 +164,7 @@ if __name__ == "__main__":
         n_iv = []
         for j, sstrike in enumerate(SSTRIKES[a]):
             mc_iv.append(black.implied_vol(expiry, sstrike, IS_CALL, SFWD, MC_PRICES[a, j]))
-            cf_iv.append(sabr.implied_vol_vec(expiry, sstrike, SFWD, PARAMETERS))
+            cf_iv.append(sabr.sabr_from_dict(expiry, sstrike, SFWD, PARAMETERS))
             n_iv.append(bachelier.implied_vol_solve(expiry, STRIKES[a, j], IS_CALL, FWD,
                                                     MC_PRICES[a, j]))
         mc_ivs.append(mc_iv)

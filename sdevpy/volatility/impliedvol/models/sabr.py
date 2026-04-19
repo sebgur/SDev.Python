@@ -1,10 +1,12 @@
 """ Utilities for SABR model, in its original formulation by Hagan in 'Managing Smile Risk',
     Wilmott Magazine """
 import numpy as np
+import numpy.typing as npt
 import matplotlib.pyplot as plt
 
 
-def implied_vol(t, k, f, alpha, beta, nu, rho):
+def implied_vol(t: float, k: npt.ArrayLike, f: float, alpha: float, beta: float, nu: float,
+                rho: float) -> npt.ArrayLike:
     """ Hagan's original formula (2.17a) in 'Managing Smile risk', Wilmott Magazine. We introduce
         a Taylor expansion around ATM to take care of the singularity. """
     v = np.power(f * k, (1.0 - beta) / 2.0)
@@ -35,7 +37,7 @@ def implied_vol(t, k, f, alpha, beta, nu, rho):
     return tmp1 / tmp2 * correction
 
 
-def implied_vol_vec(t, k, f, parameters):
+def sabr_from_dict(t: float, k: npt.ArrayLike, f: float, parameters: dict) -> npt.ArrayLike:
     """ Hagan's original formula (2.17a) in 'Managing Smile risk', Wilmott Magazine. We introduce
         a Taylor expansion around ATM to take care of the singularity. The parameters are passed
         as the vector [ln_vol, beta, nu, rho] where ln_vol is a more intuitive parameter than
@@ -49,7 +51,7 @@ def implied_vol_vec(t, k, f, parameters):
     return implied_vol(t, k, f, alpha, beta, nu, rho)
 
 
-def calculate_alpha(ln_vol, fwd, beta):
+def calculate_alpha(ln_vol: float, fwd: float, beta: float) -> float:
     """ Calculate original parameter alpha with our definition in terms of ln_vol, i.e.
         alpha = ln_vol * fwd ^ (1.0 - beta) """
     return ln_vol * fwd ** (1.0 - beta)
@@ -57,15 +59,16 @@ def calculate_alpha(ln_vol, fwd, beta):
 
 if __name__ == "__main__":
     # Test near ATM
-    EXPIRY = 0.5
-    FWD = 0.04
-    PARAMS = [0.25, 0.4, 0.50, -0.25]
+    expiry = 0.5
+    fwd = 0.04
+    params = {'LnVol': 0.25, 'Beta': 0.4, 'Nu': 0.50, 'Rho': -0.25}
 
-    MIN_STRIKE = FWD - 0.03
-    MAX_STRIKE = FWD + 0.06
-    NUM_POINTS = 100
-    strikes = np.linspace(MIN_STRIKE, MAX_STRIKE, NUM_POINTS)
-    vol = implied_vol_vec(EXPIRY, strikes, FWD, PARAMS)
+    min_k = fwd - 0.03
+    max_k = fwd + 0.06
+    n_points = 100
+    strikes = np.linspace(min_k, max_k, n_points)
+    vol = sabr_from_dict(expiry, strikes, fwd, params)
+    print(vol)
 
     plt.plot(strikes, vol, color='blue', label='sabr_iv')
     plt.legend(loc='upper right')
