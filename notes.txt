@@ -7,15 +7,7 @@ xlwings
 Fine-tune existing open source model on transforming term sheets into FpML. Then implement a deterministic model to translate FpML into your own db. This way the TermSheet->FpML model can be open source/usable by anyway and marketed. Would it make sense to implement the reverse, i.e. an FpML-> TermSheet model?
 
 #### Claude's recommendations on Architecture ####
-The architecture is penalized mainly in four areas.
-
-1. Separate calibration from model definition (biggest gain)
-
-ZeroSurface is simultaneously a pricing model, a vol-conversion engine, and a calibrator.
-The calibration concern — optimizer, stopping criteria, degrees-of-freedom check — belongs in a
-dedicated Calibrator class that wraps a surface. The surface should just define calculate().
-This pattern is common in quant libraries and makes it possible to swap optimizers without
-touching the model.
+At 7/10 the architecture is already solid. The three things most likely to move it to 8+:
 
 2. Use the existing MC framework consistently
 
@@ -25,13 +17,6 @@ PathGenerator. The architecture has the right abstractions — Payoff, PathGener
 but the analytics modules bypass them entirely. Unifying them would eliminate the duplication and
 make the analytics modules benefit from improvements to the MC engine.
 
-3. Move __main__ demo scripts out of library modules
-
-Having if __name__ == "__main__": blocks inside fbsabr.py, mcheston.py, black.py, etc. conflates
-library code with runnable examples. A standard approach is an examples/ folder with standalone
-scripts. It also removes the bare import black / import bachelier bugs (issue #5 in the review)
-as a side effect.
-
 4. Define protocols for market data boundaries
 
 eqvolsurface.eqvolsurfacedata_from_file() returns an object whose shape is implicit — consumers
@@ -40,11 +25,22 @@ must know that it has .expiries, .forwards, .vols, .get_strikes(). A typing.Prot
 The same applies to the parameters dictionaries passed to the MC pricers
 ({'LnVol': ..., 'Beta': ..., 'Rho': ...}) — these should be typed dataclasses, not plain dicts.
 
-5. Dependency injection for the calibration solver
 
-The optimizer used in calibration is currently hardcoded inside each subclass. Passing the solver
-in (e.g. calibrate(date, options, optimizer=LevenbergMarquardt())) would make the calibration
-testable, swappable, and independent of the surface definition.
+Realistically, item 2 above is the most impactful and the hardest.
 
-Realistically, items 1 and 2 are the most impactful and the hardest. Items 3–5 are straightforward
-cleanups. Completing all five would justify an 8.5 or 9.
+More recent run below.
+
+1. Extract price_straddles() out of bachelier.py
+It is a matrix-level utility, not an atomic pricing function. It breaks the module's single responsibility and has a completely different interface from everything else in the file. It belongs in a higher-level utility module (e.g., sdevpy/analytics/utils.py or alongside the straddle-specific project code).
+
+2. Introduce a shared protocol for analytics modules
+black.py and bachelier.py expose the same logical interface — price, implied_vol — but there's no formal contract. A Protocol class would let calibration code, zerosurface.py, and tests reference a model type rather than a concrete module:
+
+
+class AnalyticsModel(Protocol):
+    def price(self, expiry, strike, is_call, fwd, vol): ...
+    def implied_vol(self, expiry, strike, is_call, fwd, fwd_price): ...
+3. Replace the repeated match calculate_type blocks in zerosurface.py
+forward_price(), black_volatility(), bachelier_volatility(), and shifted_black_volatility() all contain the same four-case match on self.calculate_type. Every time a new OptionQuoteType is added, all four methods must be updated. A dispatch dict defined once would eliminate the duplication and make the open/closed principle hold.
+
+The inconsistent return type of implied_vol_newton() (issue #1 from the last review) also counts against Architecture — a function that returns either a scalar or an array depending on input size is not a well-defined contract.
