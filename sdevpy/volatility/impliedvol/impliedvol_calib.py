@@ -4,7 +4,7 @@ from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
 from sdevpy.maths.metrics import rmse
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.maths.optimization import create_optimizer
-from sdevpy.tools import timegrids
+from sdevpy.utilities import timegrids
 from sdevpy.volatility.impliedvol.optionsurface import (OptionTarget, keep_positive,
     check_expiries_and_forwards, convert_to_target_values, OptionQuoteType)
 

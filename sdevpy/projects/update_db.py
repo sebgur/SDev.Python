@@ -1,10 +1,6 @@
-# Import packages
 import os
 import datetime as dt
-# import pandas as pd
-# from dateutil.relativedelta import relativedelta
-# from sdevpy.tools import utils
-from sdevpy.tools import filemanager
+from sdevpy.utilities import filemanager
 from openbb import obb
 obb.user.preferences.output_type = "dataframe"
 
@@ -28,4 +24,3 @@ df = df[['close']]
 print(df.head())
 file = os.path.join(db_path, name + ".tsv")
 df.to_csv(file, index=False, sep='\t')
-

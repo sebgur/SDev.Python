@@ -10,8 +10,8 @@ import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
 from sdevpy.volatility.impliedvol.models import gsvi
 from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.tools import timegrids
-from sdevpy.tools.utils import isequal
+from sdevpy.utilities import timegrids
+from sdevpy.utilities.utils import isequal
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator

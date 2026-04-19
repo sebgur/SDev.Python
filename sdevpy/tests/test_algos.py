@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from sdevpy.tools.algos import unique_sorted, upper_bound
+from sdevpy.utilities.algos import unique_sorted, upper_bound
 
 
 ########## unique_sorted ##########################################################################

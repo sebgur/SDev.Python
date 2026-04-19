@@ -8,8 +8,8 @@ from sdevpy.analytics import sabr
 from sdevpy.analytics import black
 from sdevpy.analytics import bachelier
 from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
-from sdevpy.tools import filemanager
-from sdevpy.tools import constants
+from sdevpy.utilities import filemanager
+from sdevpy.utilities import constants
 from sdevpy.maths import metrics
 from sdevpy.maths import optimization as opt
 log = logging.getLogger(__name__)

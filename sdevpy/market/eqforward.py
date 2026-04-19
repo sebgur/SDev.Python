@@ -2,7 +2,7 @@ import os, json
 import datetime as dt
 import numpy as np
 from pathlib import Path
-from sdevpy.tools import dates, timegrids
+from sdevpy.utilities import dates, timegrids
 from sdevpy.maths import interpolation as itp
 from sdevpy.market import yieldcurve as ycrv
 from sdevpy.market.spot import get_spots

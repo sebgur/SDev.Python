@@ -2,11 +2,10 @@ import datetime as dt
 from datetime import timedelta
 # from dateutil.relativedelta import relativedelta
 from enum import Enum
-# from functools import lru_cache
 import pandas_market_calendars as mcal
 import holidays
-from sdevpy.tools.utils import isiterable
-from sdevpy.tools import speriods
+from sdevpy.utilities.utils import isiterable
+from sdevpy.utilities import speriods
 
 
 class BDC(Enum):

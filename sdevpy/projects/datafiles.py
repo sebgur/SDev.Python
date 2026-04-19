@@ -1,7 +1,7 @@
 """ Operations on data files e.g. merging, etc. """
 import os
 import pandas as pd
-from sdevpy.tools import filemanager
+from sdevpy.utilities import filemanager
 from sdevpy import settings
 
 

@@ -1,5 +1,5 @@
 import numpy as np
-from sdevpy.tools.utils import isequal
+from sdevpy.utilities.utils import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi, gsvi
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1

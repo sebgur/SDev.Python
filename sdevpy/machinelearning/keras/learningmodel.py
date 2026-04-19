@@ -5,8 +5,8 @@ from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 import joblib
 import absl.logging
-from sdevpy.tools import jsonmanager
-from sdevpy.tools import filemanager
+from sdevpy.utilities import jsonmanager
+from sdevpy.utilities import filemanager
 
 class LearningModel:
     """ Wrapper class for machine learning models, including scalers, and simplifying

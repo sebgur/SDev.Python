@@ -6,9 +6,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as sp
 from sdevpy.analytics import mcsabr
-from sdevpy.tools.timegrids import SimpleTimeGridBuilder
-from sdevpy.tools import timer
-from sdevpy.tools import clipboard
+from sdevpy.utilities.timegrids import SimpleTimeGridBuilder
+from sdevpy.utilities import timer
+from sdevpy.utilities import clipboard
 
 
 def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_per_year=10):

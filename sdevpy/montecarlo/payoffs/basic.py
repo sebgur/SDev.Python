@@ -1,8 +1,8 @@
 import numpy as np
 import datetime as dt
 from abc import ABC, abstractmethod
-from sdevpy.tools.scalendar import make_schedule
-from sdevpy.tools.utils import rand_str
+from sdevpy.utilities.scalendar import make_schedule
+from sdevpy.utilities.utils import rand_str
 from sdevpy.market import fixings as fxgs
 
 

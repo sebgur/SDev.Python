@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 from sdevpy.pde.forwardpde import PdeConfig, build_spotgrid, lognormal_density, density_step, density
-from sdevpy.tools import timegrids
+from sdevpy.utilities import timegrids
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
 

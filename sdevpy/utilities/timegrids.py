@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from datetime import date
 import numpy as np
-from sdevpy.tools import algos, utils
+from sdevpy.utilities import algos, utils
 
 
 

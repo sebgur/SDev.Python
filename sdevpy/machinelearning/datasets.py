@@ -3,7 +3,7 @@ import os
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-from sdevpy.tools import filemanager
+from sdevpy.utilities import filemanager
 
 
 def prepare_sets(inputs: npt.ArrayLike, outputs: npt.ArrayLike, train_percent: float) -> npt.ArrayLike:

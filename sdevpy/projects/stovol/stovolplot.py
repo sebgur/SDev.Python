@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from sdevpy.analytics import bachelier
 from sdevpy.analytics import black
-# from sdevpy.tools import clipboard
 
 
 def plot_transform_surface(expiries, strikes, are_calls, fwd, ref_prices, mod_prices, title_,

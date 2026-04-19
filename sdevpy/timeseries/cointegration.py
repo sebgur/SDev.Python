@@ -1,15 +1,12 @@
 import os
-# import datetime as dt
 import pandas as pd
 import numpy as np
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
 from ta.momentum import RSIIndicator
 from sdevpy.timeseries import meanreversion as mr
 from sdevpy.timeseries import timeseriestools as tst
+from sdevpy.utilities import clipboard as clipboard
 
-# from sdevpy.cointegration import data_io as myio
-# from sdevpy.cointegration import coint_trading as ct
-from sdevpy.tools import clipboard as clipboard
 
 # [johansen_test_diag]
 # Looks like we're going to compute the time series of the linear product and then fit

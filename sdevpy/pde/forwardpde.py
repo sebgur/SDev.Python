@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
 from sdevpy.pde import pdeschemes
-from sdevpy.tools import timegrids
+from sdevpy.utilities import timegrids
 
 
 def density_step(old_p, old_x, old_dx, t_grid, local_vol, config):

@@ -6,7 +6,7 @@ from scipy.stats import norm
 import matplotlib.pyplot as plt
 from sdevpy.analytics import black
 from sdevpy.montecarlo import smoothers
-from sdevpy.tools.timer import Stopwatch
+from sdevpy.utilities.timer import Stopwatch
 
 # In this script we calculate PV, Delta and Gamma for a hypothetical product
 # (an option on the multiplicated spots) using Monte-Carlo with bumps, closed-form

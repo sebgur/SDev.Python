@@ -2,7 +2,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import datetime as dt
-from sdevpy.tools import dates as dts
+from sdevpy.utilities import dates as dts
 
 
 def get_correlations(names: list[str], date: dt.datetime, **kwargs):

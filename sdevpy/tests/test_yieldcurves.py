@@ -1,7 +1,7 @@
 import datetime as dt
 import numpy as np
 from sdevpy.market import yieldcurve as ycrv
-from sdevpy.tools import timegrids as tg
+from sdevpy.utilities import timegrids as tg
 
 
 def test_yieldcurve_creation():

@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from sdevpy.montecarlo import smoothers
 from sdevpy import settings
 from sdevpy.analytics import black
-from sdevpy.tools.timer import Stopwatch
+from sdevpy.utilities.timer import Stopwatch
+
 
 # ################ Runtime configuration ##########################################################
 # Parameters

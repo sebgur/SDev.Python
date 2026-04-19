@@ -131,7 +131,7 @@ if __name__ == "__main__":
     # Sobol with scrambling in incremental construction thatn Sobol without scrambling
     # in the Brownian bridge construction.
     # from sdevpy.maths.rand import rng
-    # from sdevpy.tools import timer
+    # from sdevpy.utilities import timer
 
     # Make time grid
     n_steps = 5

@@ -3,9 +3,9 @@ import datetime as dt
 import pandas as pd
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.mcpricer import price_book
-from sdevpy.tools import book as bk
+from sdevpy.utilities import book as bk
 from sdevpy.montecarlo.payoffs import cashflows as cfl
-from sdevpy.tools.scalendar import make_schedule
+from sdevpy.utilities.scalendar import make_schedule
 from sdevpy.market import fixings as fxgs
 from sdevpy.market.yieldcurve import get_yieldcurve
 

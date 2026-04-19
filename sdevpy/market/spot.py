@@ -2,7 +2,7 @@ import os, json
 import datetime as dt
 import numpy as np
 from pathlib import Path
-from sdevpy.tools import dates
+from sdevpy.utilities import dates
 
 
 def get_spots(names: list[str], valdate: dt.datetime, **kwargs):

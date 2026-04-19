@@ -4,7 +4,7 @@ import datetime as dt
 import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum
-from sdevpy.tools import timegrids, dates
+from sdevpy.utilities import timegrids, dates
 from sdevpy.maths import interpolation as itp
 
 
@@ -201,7 +201,7 @@ def test_data_folder():
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from sdevpy.tools import dates
+    from sdevpy.utilities import dates
 
     valdate = dt.datetime(2026, 2, 15)
 

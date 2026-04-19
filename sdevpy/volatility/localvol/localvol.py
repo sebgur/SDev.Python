@@ -3,7 +3,7 @@ import datetime as dt
 import numpy as np
 from abc import ABC, abstractmethod
 from sdevpy.volatility.impliedvol.models.svi import SviSection
-from sdevpy.tools import algos, dates
+from sdevpy.utilities import algos, dates
 
 
 class LocalVol(ABC):

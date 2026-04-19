@@ -2,8 +2,8 @@ import os
 import datetime as dt
 import pandas as pd
 from pathlib import Path
-from sdevpy.tools import dates as dts
-from sdevpy.tools.utils import isiterable
+from sdevpy.utilities import dates as dts
+from sdevpy.utilities.utils import isiterable
 from sdevpy.maths import interpolation as itp
 
 
@@ -131,8 +131,8 @@ def test_data_folder():
 
 if __name__ == "__main__":
     # import numpy as np
-    # from sdevpy.tools.scalendar import make_schedule
-    # from sdevpy.tools.timegrids import model_time
+    # from sdevpy.utilities.scalendar import make_schedule
+    # from sdevpy.utilities.timegrids import model_time
     # from sdevpy.maths.rand.rng import get_rng
     name = "ABC"
 

@@ -14,8 +14,8 @@ from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_mo
 from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay
 from sdevpy.machinelearning.callbacks import RefCallback
 from sdevpy.machinelearning import datasets
-from sdevpy.tools import filemanager
-from sdevpy.tools.timer import Stopwatch
+from sdevpy.utilities import filemanager
+from sdevpy.utilities.timer import Stopwatch
 from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
 from sdevpy.volatility.mlsurfacegen.stovolfactory import set_generator
 from sdevpy.projects.stovol import stovolplot as xplt

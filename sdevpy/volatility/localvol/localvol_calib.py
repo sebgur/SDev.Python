@@ -2,7 +2,7 @@ import os
 import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
-from sdevpy.tools import timegrids, dates
+from sdevpy.utilities import timegrids, dates
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.impliedvol.optionsurface import calibration_targets, IS_CALL
 from sdevpy.pde import forwardpde as fpde

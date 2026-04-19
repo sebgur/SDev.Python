@@ -7,8 +7,8 @@ from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option
 from sdevpy.montecarlo.mcpricer import price_book
 from sdevpy.models.localvol_factory import get_local_vols
 from sdevpy.analytics import black
-from sdevpy.tools import timegrids
-from sdevpy.tools import book as bk
+from sdevpy.utilities import timegrids
+from sdevpy.utilities import book as bk
 from sdevpy.market.yieldcurve import get_yieldcurve
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.montecarlo.payoffs import cashflows as cfl

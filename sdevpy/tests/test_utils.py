@@ -1,5 +1,5 @@
 import numpy as np
-from sdevpy.tools import utils
+from sdevpy.utilities import utils
 
 
 ######## isequal ##################################################################################

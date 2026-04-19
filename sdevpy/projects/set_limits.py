@@ -1,10 +1,8 @@
-# Import packages
 import datetime as dt
-# import pandas as pd
-# from dateutil.relativedelta import relativedelta
-from sdevpy.tools import dates
+from sdevpy.utilities import dates
 from openbb import obb
 obb.user.preferences.output_type = "dataframe"
+
 
 names = ['SPY', 'VTV', 'VUG', 'VBR', 'VBK', 'VGK', 'VPL']
 colors = ['blue', 'red', 'green', 'brown', 'orange', 'yellow']

@@ -3,7 +3,7 @@ import datetime as dt
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option, make_asian_option
-from sdevpy.tools import book as bk
+from sdevpy.utilities import book as bk
 from sdevpy.montecarlo.mcpricer import price_book, path_interp_coeffs, interp_paths
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 

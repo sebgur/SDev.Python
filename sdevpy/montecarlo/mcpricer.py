@@ -2,7 +2,7 @@
     multi-d vector. This way we can get those paths from an independent engine. """
 import numpy as np
 import datetime as dt
-from sdevpy.tools import timegrids, timer
+from sdevpy.utilities import timegrids, timer
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.models.assetmodels import MultiAssetGBM
 from sdevpy.montecarlo.pathgenerator import PathGenerator

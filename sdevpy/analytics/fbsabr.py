@@ -3,8 +3,8 @@ import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
 import scipy.stats as sp
-from sdevpy.tools.timegrids import SimpleTimeGridBuilder
-from sdevpy.tools import timer
+from sdevpy.utilities.timegrids import SimpleTimeGridBuilder
+from sdevpy.utilities import timer
 
 
 def price(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_calls: npt.ArrayLike, fwd: float,

@@ -2,8 +2,8 @@ import os, json, logging
 import datetime as dt
 import numpy as np
 from pathlib import Path
-from sdevpy.tools import dates
-from sdevpy.tools import timegrids
+from sdevpy.utilities import dates
+from sdevpy.utilities import timegrids
 from sdevpy.analytics import black
 log = logging.getLogger(__name__)
 

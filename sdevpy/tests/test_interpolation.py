@@ -46,7 +46,6 @@ def test_bspline_interpolation():
 
 
 if __name__ == "__main__":
-    # from sdevpy.tools import clipboard as clp
     type = 'bspline'
     interp = itp.create_interpolation(interp=type, l_extrap='builtin', r_extrap='linear')
     interp.set_data(X_GRID, Y_GRID)

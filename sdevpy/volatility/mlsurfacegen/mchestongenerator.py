@@ -7,8 +7,8 @@ from sdevpy import settings
 from sdevpy.analytics import mcheston
 from sdevpy.analytics import bachelier
 from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
-from sdevpy.tools import filemanager
-from sdevpy.tools import timer
+from sdevpy.utilities import filemanager
+from sdevpy.utilities import timer
 
 
 class McHestonGenerator(SmileGenerator):

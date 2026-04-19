@@ -3,7 +3,7 @@ from enum import Enum
 import logging
 from sdevpy.analytics import black, bachelier
 from sdevpy.maths import metrics
-from sdevpy.tools.utils import isequal
+from sdevpy.utilities.utils import isequal
 log = logging.getLogger(__name__)
 
 

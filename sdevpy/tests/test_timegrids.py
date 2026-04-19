@@ -1,6 +1,6 @@
 import numpy as np
 import datetime as dt
-from sdevpy.tools import timegrids as tmg
+from sdevpy.utilities import timegrids as tmg
 
 
 def test_timegridbuilder_dates():
