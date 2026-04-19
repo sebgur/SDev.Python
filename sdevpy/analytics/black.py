@@ -30,7 +30,8 @@ def implied_vol_jaeckel(expiry: float, strike: float, is_call: bool, fwd: float,
 
 
 def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
-    """ Direct method by numerical inversion using Brent """
+    """ Direct method by numerical inversion using Brent.
+        Non-vectorized due to solver. """
     options = {'xtol': 1e-4, 'maxiter': 100, 'disp': False}
     xmin = 1e-6
     xmax = 1.0
