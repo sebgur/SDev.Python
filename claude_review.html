@@ -47,7 +47,7 @@
     .grade-letter {
       font-size: 4.2rem;
       font-weight: 800;
-      color: var(--yellow);
+      color: var(--green);
       line-height: 1;
       min-width: 3.8rem;
       text-align: center;
@@ -113,6 +113,7 @@
     .issue.critical { border-left-color: var(--red);    }
     .issue.high     { border-left-color: var(--orange); }
     .issue.medium   { border-left-color: var(--yellow); }
+    .issue.low      { border-left-color: var(--muted);  }
 
     .issue-header {
       display: flex;
@@ -136,6 +137,7 @@
     .badge.critical { background: #3d1515; color: var(--red);    }
     .badge.high     { background: #2d1e0f; color: var(--orange); }
     .badge.medium   { background: #2c2005; color: var(--yellow); }
+    .badge.low      { background: #1c2128; color: var(--muted);  }
 
     .loc {
       display: inline-block;
@@ -186,36 +188,38 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-04-12 (full scan, 9th review)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-04-19 (full scan, 13th review)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter">B−</div>
+    <div class="grade-letter">B+</div>
     <div class="grade-details">
-      <h2>Calibrator pattern landed cleanly — two new runtime bugs introduced in <code>eqvolsurface.py</code></h2>
+      <h2>No remaining critical or high issues — grade breaks through B for the first time</h2>
       <p>
-        Solid progress: the <code>upper_bound</code> atol/rtol bug is fixed, <code>hash()</code> is
-        correctly renamed to <code>rand_str()</code>, debug <code>print()</code> calls are gone
-        from <code>tssvi1.py</code>, and the new <code>TsIvCalibrator</code> /
-        <code>TsIvObjectiveBuilder</code> in <code>impliedvol_calib.py</code> is a clean
-        architectural upgrade. The Jupyter notebook now runs end-to-end and is well documented.
-        However, the same session that improved <code>eqvolsurface.py</code> introduced two new
-        runtime bugs: <code>get_strikes()</code> silently returns <code>None</code> for an
-        unrecognised type, and <code>dump_data()</code> will raise <code>TypeError</code> on every
-        save under NumPy 2.x (confirmed: 2.3.5) because <code>np.float64</code> is no longer
-        JSON-serialisable.
+        Six more issues resolved this cycle: the debug <code>print()</code> is gone,
+        <code>implied_vol_newton()</code> no longer crashes on scalar inputs,
+        <code>gsvi_formula()</code> logs and floors instead of raising,
+        <code>check_global_params()</code> returns a penalty instead of raising,
+        the loop-variable shadow in <code>price_straddles()</code> is fixed, and
+        <code>LogMix.check_params()</code> now uses <code>self.eps</code>.
+        All remaining open issues are medium or low severity.
+        The main things holding the score back are the
+        <code>npt.ArrayLike</code> return-type annotation drift,
+        the scale-dependent calibration penalty,
+        an inconsistent return type in <code>implied_vol_newton()</code>,
+        and the absence of a test for <code>price_straddles()</code>.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
     <strong>Fixed since last review (6 of 10):</strong>
-    <code>upper_bound()</code> now passes <code>rtol=0.0, atol=atol</code> as keyword args &nbsp;·&nbsp;
-    <code>hash()</code> renamed to <code>rand_str()</code> (no longer shadows built-in) &nbsp;·&nbsp;
-    Debug <code>print()</code> calls removed from <code>tssvi1.py</code> &nbsp;·&nbsp;
-    <code>svi_check_params</code> / <code>gsvi_check_params</code> now correctly annotated <code>-&gt; tuple[bool, float]</code> &nbsp;·&nbsp;
-    <code>TsIvCalibrator</code> + <code>TsIvObjectiveBuilder</code> implement the calibrator-as-class pattern &nbsp;·&nbsp;
-    <code>data_file(name, date, **kwargs)</code> API simplified and used consistently
+    <code>print(test)</code> removed from test &nbsp;·&nbsp;
+    <code>implied_vol_newton()</code> scalar crash resolved (<code>vol.ndim / vol.size</code>) &nbsp;·&nbsp;
+    <code>gsvi_formula()</code> logs warning and floors instead of raising &nbsp;·&nbsp;
+    <code>check_global_params()</code> in TsSvi1 returns penalty instead of raising &nbsp;·&nbsp;
+    Loop variable <code>expiry</code> → <code>exp_row</code> in <code>price_straddles()</code> &nbsp;·&nbsp;
+    <code>LogMix.check_params()</code> magic literal replaced with <code>self.eps</code>
   </div>
 
   <div class="scorecard">
@@ -227,44 +231,44 @@
       </thead>
       <tbody>
         <tr>
-          <td>Architecture</td><td>7.5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:75%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Calibrator-as-class pattern is clean; <code>check_consistency()</code> exists but is never wired into <code>calibrate()</code></td>
+          <td>Architecture</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Clean surface hierarchy and calibration pipeline; <code>price_straddles()</code> still misplaced in atomic pricing module; no shared analytics protocol</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">New bugs: silent <code>None</code> from <code>get_strikes()</code> and <code>dump_data()</code> JSON crash on NumPy 2.x</td>
+          <td>Correctness</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Analytics math verified by round-trip tests; calibration path no longer raises; residual raises in <code>smile_parameters()</code> are now largely guarded</td>
         </tr>
         <tr>
-          <td>Error Handling</td><td>5.5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:55%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>get_strikes()</code> falls through without raising; good <code>ValueError</code>s elsewhere</td>
+          <td>Error Handling</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Calibration penalty is scale-dependent; <code>smile_parameters()</code> raises are guarded but still live; <code>price_straddles()</code> crashes on wrong input shape with no message</td>
         </tr>
         <tr>
-          <td>Testing</td><td>5.5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:55%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good <code>algos</code> test suite added; <code>TsIvCalibrator</code>, <code>eqvolsurface</code>, and PDE still untested</td>
+          <td>Testing</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Strong analytics coverage; <code>price_straddles()</code> has no test despite complex 2-D indexing logic</td>
         </tr>
         <tr>
-          <td>Code Quality</td><td>6.5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:65%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Dead commented blocks in <code>eqvolsurface.py</code> and <code>impliedvol_calib.py</code>; parameter named <code>type</code> shadows built-in</td>
+          <td>Code Quality</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">No debug prints; consistent use of <code>self.eps</code>; <code>implied_vols</code> function shadowed by list in <code>__main__</code> block</td>
         </tr>
         <tr>
           <td>Maintainability</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Calibrator separation makes the vol surface code much more maintainable; notebook is well-documented</td>
+          <td style="color:var(--muted);font-size:.83rem">Vectorized analytics API is now stable and consistent; calibration infrastructure is clean; repeated <code>match</code> blocks in <code>zerosurface.py</code> remain</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Tuple annotations corrected; abstract <code>formula(k: float)</code> vs concrete <code>k: npt.ArrayLike</code> mismatch remains</td>
+          <td>Type Safety</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>npt.ArrayLike</code> still used as a return type in several functions; <code>implied_vol_newton()</code> return type is ambiguous (scalar or array)</td>
         </tr>
         <tr>
           <td>Documentation</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good notebook narrative and calibrator docstrings; <code>check_consistency()</code> ToDo marks an unfinished contract</td>
+          <td style="color:var(--muted);font-size:.83rem">Good docstrings on analytics functions; <code>price_straddles()</code> doesn't document its required 2-D input structure; TsSvi model papers cited consistently</td>
         </tr>
       </tbody>
     </table>
@@ -273,259 +277,252 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>get_strikes()</code> silently returns <code>None</code> for any unrecognised type</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Calibration infeasibility penalty <code>100.0 * target_values.sum()</code> is scale-dependent</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/market/eqvolsurface.py · lines 46–51</span>
+    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · line 51</span>
     <p>
-      <strong>Why it's bad:</strong> The method has two branches (<code>'absolute'</code> and
-      <code>'relative'</code>) but no <code>else</code> clause. A typo such as
-      <code>get_strikes('Absolute')</code> (note: the <code>.lower()</code> normalises case, so
-      this particular typo is handled) or a genuinely unknown type like
-      <code>get_strikes('moneyness')</code> falls off the end and returns <code>None</code>
-      silently. The caller receives <code>None</code> where a list of arrays is expected, and the
-      failure manifests several frames later as an unhelpful
-      <code>AttributeError: 'NoneType' object has no attribute '__len__'</code> with no indication
-      that a bad type string was passed.
+      <strong>Why it's bad:</strong> The penalty scales with the number of options and
+      the magnitude of target values. For a dense surface with large prices the penalty
+      can exceed any feasible RMSE by orders of magnitude, creating a near-vertical
+      gradient at the boundary that prevents the optimizer recovering into the feasible
+      region. The inline comment acknowledges this uncertainty but leaves it open across
+      multiple reviews.
     </p>
-    <pre><span class="kw">def</span> <span class="fn">get_strikes</span>(self, type: str=<span class="st">'absolute'</span>):
-    req_type = type.lower()
-    <span class="kw">if</span> req_type == <span class="st">'absolute'</span>:
-        <span class="kw">return</span> self.abs_strikes
-    <span class="kw">elif</span> req_type == <span class="st">'relative'</span>:
-        <span class="kw">return</span> self.abs_strikes / self.forwards.reshape(-1, 1)
-    <span class="c rm"># ← falls off the end: returns None silently</span>
-<span class="ok">    else:
-        raise ValueError(f"Unknown strike type: {type!r}. Expected 'absolute' or 'relative'")</span></pre>
+    <p><strong>Fix:</strong> Use the penalty already returned by <code>check_params()</code>:</p>
+    <pre><span class="rm">return 100.0 * self.target_values.sum()</span>
+<span class="ok">return penalty  <span class="c"># constants.FLOAT_INFTY from model.check_params()</span></span></pre>
   </div>
 
   <!-- 2 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>dump_data()</code> embeds <code>np.float64</code> directly in a JSON dict — crashes on NumPy 2.x</span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>npt.ArrayLike</code> used as return type — it is an input-only protocol</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/market/eqvolsurface.py · line 62</span>
+    <span class="loc">sdevpy/analytics/black.py · lines 11, 37, 49 &nbsp;·&nbsp; sdevpy/analytics/bachelier.py · lines 9, 19</span>
     <p>
-      <strong>Why it's bad:</strong> <code>self.forwards[i]</code> is <code>np.float64</code>.
-      In NumPy 1.x, <code>np.float64</code> subclassed Python <code>float</code> and was
-      transparently JSON-serialisable. In NumPy 2.x (confirmed: 2.3.5 in this project),
-      that inheritance was removed. Calling <code>json.dump(data, f)</code> now raises
-      <code>TypeError: Object of type float64 is not JSON serializable</code> on every call to
-      <code>dump()</code>, making the surface persistence feature completely broken at runtime.
+      <strong>Why it's bad:</strong> <code>npt.ArrayLike</code> is defined as a union of things
+      that <em>can be converted to</em> an ndarray — lists, tuples, scalars, arrays. Using it
+      as a return type tells mypy and IDEs the function might return a list or a tuple, which
+      is wrong. Every function here returns a concrete ndarray. Callers that do
+      <code>.shape</code> or <code>.dtype</code> on the return value will see no static error
+      even if the value is a list.
     </p>
-    <pre><span class="c"># Current — crashes on NumPy 2.x:</span>
-section = {<span class="st">'expiry'</span>: expiry_str, <span class="rm"><span class="st">'forward'</span>: self.forwards[i]</span>, ...}
-
-<span class="c"># Fix — explicit cast to native float:</span>
-section = {<span class="st">'expiry'</span>: expiry_str, <span class="ok"><span class="st">'forward'</span>: float(self.forwards[i])</span>, ...}</pre>
-    <p>
-      Note: <code>self.input_strikes[i].tolist()</code> and <code>self.vols[i].tolist()</code>
-      are already correct — <code>ndarray.tolist()</code> converts to native Python types.
-      Only the scalar forward needs the explicit <code>float()</code> cast.
-    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">def price(...) -> npt.ArrayLike:</span>
+<span class="ok">def price(...) -> npt.NDArray[np.float64]:</span></pre>
+    <p>Applies to <code>black.price()</code>, <code>black.implied_vols()</code>,
+    <code>black.implied_vol_newton()</code>, <code>bachelier.price()</code>,
+    <code>bachelier.price_straddles()</code>.</p>
   </div>
 
   <!-- 3 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title">Abstract <code>formula()</code> declares <code>k: float</code> but all concrete implementations require <code>k: npt.ArrayLike</code></span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>implied_vol_newton()</code> returns a scalar or an array depending on input size</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/zerosurface.py · line 220</span>
+    <span class="loc">sdevpy/analytics/black.py · line 73</span>
     <p>
-      <strong>Why it's bad:</strong> The abstract method in <code>ParametricZeroSurface</code>
-      declares <code>k: float</code>, but <code>TsSvi1.formula()</code> overrides it with
-      <code>k: npt.ArrayLike</code> and passes it vectorially to <code>gsvi_formula()</code>.
-      Additionally, <code>TsIvObjectiveBuilder.objective()</code> calls
-      <code>self.model.calculate(self.expiries, self.strikes, …)</code> passing NumPy arrays for
-      both <code>t</code> and <code>f</code>, while the abstract <code>calculate()</code>
-      declares both as scalar <code>float</code>. The code works for
-      <code>TsSvi1</code> because <code>formula_parameters()</code> explicitly vectorises
-      <code>t</code>, but a future model that trusts the declared interface will receive arrays
-      silently and may produce wrong results.
+      <strong>Why it's bad:</strong>
+      <code>return (vol.item() if vol.ndim == 0 or vol.size == 1 else vol)</code>
+      means the return type changes shape depending on what was passed in.
+      A 1-element array input returns a Python float; a 2-element input returns an ndarray.
+      Callers cannot write generic code that works uniformly — any code that calls
+      <code>.shape</code> on the result will crash for the scalar case,
+      and code expecting a scalar will get an array for the 2-element case.
+      The annotation <code>-> npt.ArrayLike</code> does not document this split.
     </p>
-    <pre><span class="c"># zerosurface.py line 220 — fix the abstract signature to match actual usage:</span>
-<span class="rm">def formula(self, t: float, k: float, is_call: bool, f: float,
-            params: list[float]) -> npt.ArrayLike:</span>
-<span class="ok">def formula(self, t: npt.ArrayLike, k: npt.ArrayLike, is_call: bool,
-            f: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:</span></pre>
+    <p>
+      <strong>Fix:</strong> Always return <code>npt.NDArray[np.float64]</code>.
+      Drop the special-case entirely. Callers that need a Python scalar can call
+      <code>.item()</code> themselves.
+    </p>
+    <pre><span class="rm">return (vol.item() if vol.ndim == 0 or vol.size == 1 else vol)</span>
+<span class="ok">return vol</span></pre>
   </div>
 
   <!-- 4 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title"><code>TsIvCalibrator.check_consistency()</code> is implemented but never called — pre-calibration validation is silently skipped</span>
+      <span class="issue-title"><code>bachelier.price_straddles()</code> has no test despite complex 2-D indexing</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · lines 51–76, 107–125</span>
+    <span class="loc">sdevpy/analytics/bachelier.py · lines 18–34 &nbsp;·&nbsp; sdevpy/tests/test_analytics.py</span>
     <p>
-      <strong>Why it's bad:</strong> <code>check_consistency()</code> (lines 107–125) filters
-      negative-rate options, validates expiry/forward consistency, converts to the model's target
-      quote type, and checks degrees of freedom. The docstring explicitly states it "is not used
-      yet". The <code>calibrate()</code> method calls <code>prepare_target_data()</code> directly
-      and goes straight to the optimizer, bypassing all of these guards. This means:
-      (a) options with non-positive forwards or strikes are passed silently to the model;
-      (b) the DOF check (<code>self.model.check_dof</code>) never fires;
-      (c) the quote-type conversion logic in <code>convert_to_target_values()</code> is dead code
-      from the calibrator's perspective.
+      <strong>Why it's bad:</strong> <code>price_straddles()</code> has a double loop,
+      2-D <code>vol[i, j]</code> indexing, a <code>reshape(-1, 1)</code>, and relies on
+      <code>call_price[0]</code> index access — more moving parts than any other function in
+      the analytics module. Every other Bachelier function has a round-trip test;
+      this one has none. A silent regression (e.g. wrong axis, off-by-one index) would go
+      undetected.
     </p>
-    <p>
-      <strong>Fix:</strong> Either wire <code>check_consistency()</code> into <code>calibrate()</code>
-      for the <code>OptionTarget</code>-based path (when quote-type conversion is needed), or add
-      the relevant guards (positive-forward filter, DOF check) inline in <code>calibrate()</code>
-      and remove the unused method.
-    </p>
+    <p><strong>Suggested test:</strong></p>
+    <pre><span class="kw">def</span> <span class="fn">test_bachelier_price_straddles</span>():
+    fwd = 0.04
+    expiries = np.array([0.5, 1.0])
+    strikes  = [np.array([0.03, 0.04, 0.05]),
+                np.array([0.03, 0.04, 0.05])]
+    vols = np.full((2, 3), 0.05)
+    result = bachelier.price_straddles(expiries, strikes, fwd, vols)
+    <span class="c"># straddle == call + put; verify against price() directly</span>
+    call = bachelier.price(0.5, 0.03, True,  fwd, 0.05)
+    put  = bachelier.price(0.5, 0.03, False, fwd, 0.05)
+    assert np.isclose(result[0, 0], call + put)</pre>
   </div>
 
   <!-- 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title">No tests for <code>TsIvCalibrator</code> or <code>EqVolSurfaceData</code></span>
+      <span class="issue-title"><code>price_straddles()</code> crashes on malformed input with no helpful error message</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/ · impliedvol_calib.py, eqvolsurface.py</span>
+    <span class="loc">sdevpy/analytics/bachelier.py · lines 27–28</span>
     <p>
-      <strong>Why it's bad:</strong> The new calibrator class and the market data container are
-      the two most critical components in the implied vol pipeline — yet neither has a single
-      test. Issues #1 and #2 above (<code>get_strikes()</code> silent <code>None</code> and
-      <code>dump_data()</code> JSON crash) would both have been caught by a two-line unit test.
-      <code>TsIvCalibrator</code> has no smoke test verifying that calibration converges and
-      leaves the model at the solution point.
+      <strong>Why it's bad:</strong> <code>strike[i]</code> assumes <code>strike</code> is a
+      jagged list of arrays (one per expiry), and <code>vol[i, j]</code> assumes a 2-D numpy
+      array. Passing a flat 1-D array for either produces an <code>IndexError</code> or
+      <code>TypeError</code> with a traceback pointing into the loop — not at the caller's
+      input. The <code>npt.ArrayLike</code> annotation gives no indication of these constraints.
     </p>
-    <p>
-      <strong>Fix:</strong> Add at minimum: (1) <code>test_eqvolsurface.py</code> with a
-      round-trip <code>dump()</code> / reload test and a
-      <code>get_strikes('unknown')</code> assertion that expects <code>ValueError</code>;
-      (2) a calibration smoke test in <code>test_impliedvol_calib.py</code> that loads the sample
-      ABC surface, runs <code>TsIvCalibrator.calibrate()</code>, and asserts RMSE is below a
-      threshold.
-    </p>
+    <p><strong>Fix:</strong> Add an early guard and document the expected shapes in the docstring:</p>
+    <pre><span class="ok">vol = np.atleast_2d(np.asarray(vol, dtype=float))
+n_exp = len(expiries_)
+if vol.shape[0] != n_exp:
+    raise ValueError(f"vol must have {n_exp} rows, got {vol.shape[0]}")</span></pre>
   </div>
 
   <!-- 6 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">Hardcoded infeasibility penalty <code>100.0 * market_vols.sum()</code> ignores the model's own penalty value</span>
+      <span class="issue-title"><code>TsSvi1.smile_parameters()</code> still raises <code>ValueError</code> on invalid parameters</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · line 40</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/tssvi1.py · lines 45–54</span>
     <p>
-      <strong>Why it's bad:</strong> When <code>check_params()</code> returns
-      <code>is_ok=False</code>, the objective returns a magic number
-      (<code>100.0 * self.market_vols.sum()</code>) that is unrelated to the model's own penalty
-      (second element of the tuple, currently <code>constants.FLOAT_INFTY</code> in
-      <code>TsSvi1</code>). If the sum of market vols is small — for example, near-zero vols in
-      a normalised dataset — the infeasibility penalty could be <em>smaller</em> than the
-      objective at any valid solution, causing the optimizer to converge into an infeasible
-      region with no warning.
+      <strong>Why it's bad:</strong> <code>check_global_params()</code> now correctly returns a
+      penalty for invalid <code>r</code> and <code>delta</code>, so these raises are no longer
+      reachable through the calibration path. However, they remain in
+      <code>smile_parameters()</code>, which is a public method. Anyone calling
+      <code>calculate()</code> directly (bypassing <code>check_params()</code>), or using
+      <code>smile_parameters()</code> standalone, will get an unhandled <code>ValueError</code>
+      with no recovery path. The commented-out raises in <code>check_global_params()</code>
+      also suggest this was a partial fix, leaving the intent unclear.
     </p>
-    <pre><span class="rm">return 100.0 * self.market_vols.sum()</span>
-<span class="c"># is_ok is already False; use the model's own penalty instead:</span>
-<span class="ok">_, penalty = self.model.check_params()
-return penalty  <span class="c"># constants.FLOAT_INFTY for TsSvi1 — guaranteed larger than any valid objective</span></span></pre>
+    <p>
+      <strong>Fix:</strong> Remove the redundant raises from <code>smile_parameters()</code>
+      and clean up the commented-out lines in <code>check_global_params()</code>.
+    </p>
   </div>
 
   <!-- 7 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title">Parameter named <code>type</code> shadows the Python built-in</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>implied_vols</code> function is shadowed by a list in the <code>__main__</code> block</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/market/eqvolsurface.py · line 46</span>
+    <span class="loc">sdevpy/analytics/black.py · lines 36, 101</span>
     <p>
-      <strong>Why it's bad:</strong> <code>def get_strikes(self, type: str='absolute')</code>
-      shadows <code>type()</code> for the duration of the call. Any future use of
-      <code>type(x)</code> inside the method body would silently call the string argument instead
-      of the built-in. Pylance and mypy both report this as a warning. It also makes the
-      signature harder to parse at a glance since <code>type</code> is a well-known Python keyword
-      in most developers' mental models.
+      <strong>Why it's bad:</strong> <code>implied_vols</code> is defined as a function at
+      line 36. In the <code>__main__</code> block, line 101 rebinds the name to a plain list:
+      <code>implied_vols = []</code>. After that line, <code>implied_vols</code> in the same
+      scope refers to the list, not the function. While harmless at runtime (the
+      <code>__main__</code> block doesn't call the function afterwards), it is confusing and
+      would break if anyone added a call to <code>implied_vols()</code> later in the block.
     </p>
-    <pre><span class="rm">def get_strikes(self, type: str='absolute'):</span>
-<span class="ok">def get_strikes(self, strike_type: str='absolute'):</span></pre>
+    <p><strong>Fix:</strong> Rename the list variable:</p>
+    <pre><span class="rm">implied_vols = []</span>
+<span class="ok">iv_list = []</span></pre>
   </div>
 
   <!-- 8 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title">Dead commented-out code committed in <code>eqvolsurface.py</code></span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>bachelier.implied_vol()</code> converts <code>strike</code>, <code>fwd_price</code>, <code>is_call</code> but not <code>expiry</code> or <code>fwd</code></span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/market/eqvolsurface.py · lines 24–25, 36–37, 141–148</span>
+    <span class="loc">sdevpy/analytics/bachelier.py · lines 81–83</span>
     <p>
-      <strong>Why it's bad:</strong> Three blocks of commented-out code are checked in.
-      Lines 24–25 are a stale matrix-based implementation of the strikes list;
-      lines 36–37 are a stale "old way" comment for relative-strike conversion;
-      lines 141–148 are a sample-generation scaffold used during initial development.
-      Committed dead code forces every reader to decide whether it represents intentional
-      documentation, an abandoned approach, or a pending TODO — all three interpretations
-      require investigation. Git history preserves deleted code; inline comments do not
-      preserve intent better than a commit message.
+      <strong>Why it's bad:</strong> Three inputs are explicitly converted with
+      <code>np.asarray()</code> at the top of the function, but <code>expiry</code> and
+      <code>fwd</code> are used raw. This is inconsistent: callers passing a Python list for
+      <code>expiry</code> will get unexpected behaviour, and the asymmetry makes the function's
+      contract harder to reason about. Since the annotation already says
+      <code>npt.ArrayLike</code> for both, the conversion should follow.
     </p>
-    <p>
-      <strong>Fix:</strong> Delete all three blocks. If the sample-generation logic
-      (lines 141–148) is worth preserving, move it to a dedicated script or notebook.
-    </p>
+    <p><strong>Fix:</strong> Add the two missing conversions at the top of the function body:</p>
+    <pre><span class="ok">expiry = np.asarray(expiry, dtype=float)
+fwd    = np.asarray(fwd,    dtype=float)</span></pre>
   </div>
 
   <!-- 9 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title">Dead commented-out code in <code>impliedvol_calib.py</code> and <code>zerosurface.py</code></span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Repeated <code>match calculate_type</code> blocks across four methods in <code>zerosurface.py</code></span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · line 86 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/zerosurface.py · lines 4, 205–211</span>
+    <span class="loc">sdevpy/volatility/impliedvol/zerosurface.py · lines 121–191</span>
     <p>
-      <strong>Why it's bad:</strong> <code>impliedvol_calib.py</code> line 86 has a
-      commented-out <code>expiry_grid</code> calculation superseded by the inline loop below it.
-      <code>zerosurface.py</code> retains an unused <code># import datetime as dt</code> (line 4)
-      and a commented-out <code>self.formula = None</code> / guard block inside
-      <code>calculate()</code> (lines 205–211). These are development artefacts that have been
-      committed to the main branch; see issue #8 for rationale on why this matters.
+      <strong>Why it's bad:</strong> <code>forward_price()</code>, <code>black_volatility()</code>,
+      <code>bachelier_volatility()</code>, and <code>shifted_black_volatility()</code> each
+      contain a nearly identical four-case <code>match self.calculate_type</code> block.
+      Adding a new <code>OptionQuoteType</code> requires editing all four methods, violating
+      the open/closed principle and creating a recurring source of inconsistencies.
     </p>
-    <pre><span class="rm">    <span class="c"># expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])</span></span>
-<span class="rm"><span class="c"># import datetime as dt</span></span></pre>
+    <p>
+      <strong>Fix:</strong> Extract the type→price conversion into one helper and call it
+      from all four methods. Alternatively, use a dispatch dict keyed on
+      <code>OptionQuoteType</code>.
+    </p>
   </div>
 
   <!-- 10 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>WorstOfBarrier</code> and <code>WorstOf</code> payoffs remain incomplete — silently produce wrong prices</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">No test for <code>LogMix.pdf()</code> or <code>LogMix.cdf()</code></span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 9–51 &nbsp;·&nbsp; sdevpy/montecarlo/payoffs/basic.py · line 403</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/logmix.py · lines 201–238 &nbsp;·&nbsp; sdevpy/tests/test_impliedvol.py</span>
     <p>
-      <strong>Why it's bad:</strong> <code>WorstOfBarrier</code> has no
-      <code>set_valuation_date()</code> or <code>set_eventindexes()</code> — the base-class
-      no-ops fire and <code>self.eventdates</code> is never populated. <code>WorstOf.evaluate()</code>
-      still hardcodes <code>spot_all[:, -1, :]</code> (the last path step), which only coincides
-      with the correct expiry when the trade is the longest-dated in the portfolio. In a
-      multi-trade book, any shorter-dated <code>WorstOf</code> is evaluated at the wrong date,
-      silently producing incorrect PVs. This has been noted in prior reviews and remains
-      unresolved.
+      <strong>Why it's bad:</strong> <code>pdf()</code> and <code>cdf()</code> implement
+      non-trivial weighted sums of log-normal densities with shift and scale corrections.
+      They are untested. A basic sanity check — that the PDF integrates to approximately 1
+      and the CDF is monotone — would catch any regression in the weight/normalization logic.
     </p>
-    <p>
-      <strong>Fix:</strong> Implement <code>set_valuation_date()</code> and
-      <code>set_eventindexes()</code> in both payoffs following the <code>Terminal</code> pattern,
-      store the resolved index, and replace <code>-1</code> with it in <code>evaluate()</code>.
-      Alternatively, guard with <code>raise NotImplementedError</code> to make failures explicit.
-    </p>
+    <p><strong>Suggested tests:</strong></p>
+    <pre><span class="kw">def</span> <span class="fn">test_logmix_pdf_integrates_to_one</span>():
+    model = LogMix(2)
+    model.update_params(model.initial_point())
+    t, fwd = 1.0, 100.0
+    strikes = np.linspace(50, 200, 500)
+    pdf_vals = np.array([model.pdf(t, k, fwd) for k in strikes])
+    integral = np.trapz(pdf_vals, strikes)
+    assert np.isclose(integral, 1.0, atol=0.01)
+
+<span class="kw">def</span> <span class="fn">test_logmix_cdf_monotone</span>():
+    model = LogMix(2)
+    model.update_params(model.initial_point())
+    t, fwd = 1.0, 100.0
+    strikes = np.linspace(60, 160, 50)
+    cdf_vals = np.array([model.cdf(t, k, fwd) for k in strikes])
+    assert np.all(np.diff(cdf_vals) >= 0)</pre>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-04-12 (9th review)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-04-19 (13th review)
   </footer>
 </div>
 </body>
