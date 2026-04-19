@@ -20,7 +20,6 @@ class ZeroSurface(ABC):
         self.eps = constants.EPS
         self.time_epsilon = 0.000001
         self.base_date = None
-        self.check_dof = True # Check degrees of freedom
 
     @abstractmethod
     def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:

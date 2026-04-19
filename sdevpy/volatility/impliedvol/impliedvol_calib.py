@@ -123,7 +123,7 @@ class TsIvCalibrator:
     def check_consistency(self, options: list[list[OptionTarget]]) -> list[list[OptionTarget]]:
         """ Take out negative rate options depending on model features.
             Check consistency of expiries, forwards, etc.
-            ToDo: this function is not used yet, but will be in a later phase if/when
+            Note: this function is not used yet, but will be in a later phase if/when
             we want to introduce negative rates. """
         # Strip out negative rate options if needed
         t_options = (options if self.model.allow_negative_variables else keep_positive(options))
@@ -133,9 +133,5 @@ class TsIvCalibrator:
 
         # Convert from quoted type to targetType required for model calibration.
         c_options = convert_to_target_values(t_options, self.model.calculate_type, self.model.shift)
-
-        # Check degrees of freedom
-        if self.model.check_dof:
-            self.model.check_degrees_of_freedom(c_options)
 
         return c_options

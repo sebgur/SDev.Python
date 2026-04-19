@@ -40,12 +40,18 @@ class TimeParam(ABC):
 
 def logmix_f(t: float, beta: float) -> float:
     """ LogMix's intermediate function """
+    if abs(beta) < 1e-10:
+        raise ValueError(f"beta must be non-zero in logmix_f, got {beta}")
+
     tmp = 1.0 + t / beta
     return 1.0 - 2.0 / (1.0 + tmp * tmp)
 
 
 def logmix_df(t: float, beta: float) -> float:
     """ LogMix's intermediate function differential """
+    if abs(beta) < 1e-10:
+        raise ValueError(f"beta must be non-zero in logmix_f, got {beta}")
+
     tmp1 = 1.0 + t / beta
     tmp2 = 1.0 + tmp1 * tmp1
     return (4.0 * tmp1 / beta) / (tmp2 * tmp2)
@@ -84,19 +90,16 @@ class LogMixStrike(TimeParam):
 class LogMixVar(TimeParam):
     """ Variance parameter of the LogMix model """
     def __init__(self, a: float, b: float, c: float, d: float):
+        """ Rebonato formula: a = s0, b = sinf, c = b, d = tau """
         super().__init__()
-        # a = s0, b = sinf, c = b, d = tau
         self.a, self.b, self.c, self.d = a, b, c, d
         self.d_floor = 1e-8
 
     def value(self, t: float) -> float:
-        """ Value of the LogMixVar parameter """
-        # Rebonato
+        """ Value of the LogMixVar parameter: Rebonato forumula """
         # Guard against division by 0
-        d = max(self.d, self.d_floor)
-        s = self.b + (self.c * t + self.a - self.b) * np.exp(-t / d)
-        # Old formula
-        # s = self.a * np.exp(-self.c * t) + self.d * logmix_f(t, self.b)
+        d_floored = max(self.d, self.d_floor)
+        s = self.b + (self.c * t + self.a - self.b) * np.exp(-t / d_floored)
         return s * s * t
 
     def diff(self, t: float) -> float:
@@ -108,11 +111,6 @@ class LogMixVar(TimeParam):
         ds = (self.c - tmp / d) * exp_term
         s = self.b + tmp * exp_term
         return s * (2.0 * ds * t + s)
-        # Old formula differential
-        # tmp = self.a * np.exp(-self.c * t)
-        # s = tmp + self.d * logmix_f(t, self.b)
-        # ds = -self.c * tmp + self.d * logmix_df(t, self.b)
-        # return s * (2.0 * ds * t + s)
 
 
 class LogMixWeight(TimeParam):
@@ -133,6 +131,9 @@ class LogMixWeight(TimeParam):
 
     def diff(self, t: float) -> float:
         """ Differential of the LogMixWeight parameter """
+        if t <= 0.0:
+            raise ValueError("LogMixWeight.diff not defined at t <= 0")
+
         tmp1 = logmix_f(t, self.beta[self.component])
         tmp2 = self.norm.value(t)
         tmp3 = tmp1 * tmp2
@@ -272,6 +273,9 @@ class LogMix(ParametricZeroSurface):
 
     def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters """
+        if self.params is None:
+            raise RuntimeError("Call update_params() before check_params()")
+
         param_dic, is_ok = get_logmix_parameters(self.n_mix, self.params, self.verbose)
 
         # Check further constraints on the params
@@ -451,8 +455,8 @@ if __name__ == "__main__":
             ax.plot(m_strikes, m_vols, label="model", color='green')
             # ax.scatter(strikes, call_surface[exp_idx], label="market", color='black')
             # ax.plot(m_strikes, m_prices, label="model", color='green')
-            model_vols = model.calculate(expiry, strikes, True, fwd)
-            vol_rmse = rmse(call_surface[exp_idx], model_vols)
+            model_vols = model.black_volatility(expiry, strikes, fwd)
+            vol_rmse = rmse(vol_surface[exp_idx], model_vols)
             ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
             ax.set_xlabel('strike')
             ax.set_ylabel('vol')
