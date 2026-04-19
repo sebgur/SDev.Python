@@ -1,32 +1,21 @@
 """ Utilities for Black-Scholes model """
 import numpy as np
 import numpy.typing as npt
-import scipy.stats
+from scipy.stats import norm
 from scipy.optimize import minimize_scalar
 from sdevpy.thirdparty.py_vollib.black import implied_volatility as jaeckel
 from sdevpy.utilities.tools import isiterable
 
-N = scipy.stats.norm.cdf
 
-
-def price(expiry: float, strike: float, is_call: bool, fwd: float, vol: float) -> float:
+def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
+          vol: npt.ArrayLike) -> npt.ArrayLike:
     """ Option price under the Black-Scholes model """
-    w = 1.0 if is_call else -1.0
+    # w = 1.0 if is_call else -1.0
+    w = np.where(is_call, 1.0, -1.0)
     s = vol * np.sqrt(expiry)
     d1 = np.log(fwd / strike) / s + 0.5 * s
     d2 = d1 - s
-    return w * (fwd * N(w * d1) - strike * N(w * d2))
-
-
-def implied_vol_jaeckel(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
-    """ Black-Scholes implied volatility using P. Jaeckel's 'Let's be rational' method,
-        from package py_vollib. Install with pip install py_vollib or at
-        https://pypi.org/project/py_vollib/. Unfortunately we found it has instabilities
-        near ATM. """
-    flag = 'c' if is_call else 'p'
-    p = fwd_price
-    iv = jaeckel.implied_volatility_of_undiscounted_option_price(p, fwd, strike, expiry, flag)
-    return iv
+    return w * (fwd * norm.cdf(w * d1) - strike * norm.cdf(w * d2))
 
 
 def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
@@ -54,6 +43,45 @@ def implied_vols(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float
         return implied_vol(expiry, strike, is_call, fwd, fwd_price)
     else:
         raise ValueError("Incompatible shapes between strikes and prices")
+
+
+def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float,
+                       fwd_price: npt.ArrayLike, tol: float=1e-8, max_iter: int=50) -> npt.ArrayLike:
+    """ Using vectorized Newton-Raphson, recommended by Claude because it is
+        vectorized and has faster convergence than Brent.
+        However, Claude explains that this method can struggle for very small vegas,
+        so recommends switching to another method (maybe Brent above) below a certain
+        vega threshold. Or to switch to Halley's method.
+        To be investigated if speed becomes a bottleneck or Brent's method has issues. """
+    strike = np.asarray(strike, dtype=float)
+    fwd_price = np.asarray(fwd_price, dtype=float)
+    vol = np.full_like(fwd_price, 0.25) # Initial guess: flat 25%
+    sqrt_t = np.sqrt(expiry)
+    for _ in range(max_iter):
+        s = vol * sqrt_t
+        d1 = np.log(fwd / strike) / s + 0.5 * s
+        vega = fwd * norm.pdf(d1) * sqrt_t
+        diff = price(expiry, strike, is_call, fwd, vol) - fwd_price
+        vol -= diff / vega
+        vol = np.maximum(vol, 1e-8) # Keep vol positive
+        if np.all(np.abs(diff) < tol):
+            break
+
+    if len(strike) == 1 and len(fwd_price) == 1 and len(vol) == 1: # Return a scalar if inputs are scalar
+        return vol[0]
+    else:
+        return vol
+
+
+def implied_vol_jaeckel(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
+    """ Black-Scholes implied volatility using P. Jaeckel's 'Let's be rational' method,
+        from package py_vollib. Install with pip install py_vollib or at
+        https://pypi.org/project/py_vollib/. Unfortunately we found it has instabilities
+        near ATM. """
+    flag = 'c' if is_call else 'p'
+    p = fwd_price
+    iv = jaeckel.implied_volatility_of_undiscounted_option_price(p, fwd, strike, expiry, flag)
+    return iv
 
 
 if __name__ == "__main__":
