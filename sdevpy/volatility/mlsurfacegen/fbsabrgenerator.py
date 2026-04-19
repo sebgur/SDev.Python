@@ -1,7 +1,7 @@
 """ Smile generator for Free-Boundary SABR (FBSABR) using Monte-Carlo for option prices """
 import os
 from sdevpy import settings
-from sdevpy.analytics import fbsabr
+from sdevpy.volatility.impliedvol.models import fbsabr
 from sdevpy.volatility.mlsurfacegen.mcsabrgenerator import McSabrGenerator
 from sdevpy.utilities import filemanager
 from sdevpy.utilities import timer

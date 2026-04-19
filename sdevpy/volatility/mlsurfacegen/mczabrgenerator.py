@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats as sp
 from sdevpy import settings
-from sdevpy.analytics import mczabr
+from sdevpy.volatility.impliedvol.models import mczabr
 from sdevpy.analytics import bachelier
 from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
 from sdevpy.utilities import filemanager

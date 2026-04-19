@@ -1,7 +1,7 @@
 """ Smile generator for SABR model using Monte-Carlo to calculate option prices """
 import os
 from sdevpy import settings
-from sdevpy.analytics import mcsabr
+from sdevpy.volatility.impliedvol.models import mcsabr
 from sdevpy.volatility.mlsurfacegen.sabrgenerator import SabrGenerator
 from sdevpy.utilities import filemanager
 from sdevpy.utilities import timer
