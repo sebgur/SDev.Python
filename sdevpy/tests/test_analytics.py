@@ -71,7 +71,6 @@ def test_bachelier_price_atm():
     """ Check things are ok at ATM """
     expiry, fwd, strike, vol = 1.0, 0.04, 0.04, 0.05
     test = bachelier.price(expiry, strike, True, fwd, vol)
-    print(test)
     ref = 0.019947114020071637
     assert isequal(test, ref)
 

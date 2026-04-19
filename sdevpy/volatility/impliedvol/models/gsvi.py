@@ -31,7 +31,6 @@ def gsvi_formula(x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
     if np.any(var < 0.0):
         log.warning("Negative variance in gSVI formula: flooring to 0")
         var = np.maximum(var, 0.0)
-        # raise ValueError("Negative variance in gSVI formula")
 
     vol = np.sqrt(var)
     return vol

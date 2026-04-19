@@ -22,12 +22,12 @@ def price_straddles(expiry: npt.ArrayLike, strike: npt.ArrayLike, fwd: npt.Array
               calling the price() function twice """
     expiries_ = np.asarray(expiry).reshape(-1, 1)
     prices = []
-    for i, expiry in enumerate(expiries_):
+    for i, exp_row in enumerate(expiries_):
         k_prices = []
         for j, k in enumerate(strike[i]):
             iv = vol[i, j]
-            call_price = price(expiry, k, True, fwd, iv)
-            put_price = price(expiry, k, False, fwd, iv)
+            call_price = price(exp_row, k, True, fwd, iv)
+            put_price = price(exp_row, k, False, fwd, iv)
             k_prices.append(call_price[0] + put_price[0])
         prices.append(k_prices)
 

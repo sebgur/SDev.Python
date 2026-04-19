@@ -8,7 +8,7 @@ from sdevpy.utilities.tools import isiterable
 
 
 def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
-          vol: npt.ArrayLike) -> npt.ArrayLike:
+          vol: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """ Option price under the Black-Scholes model """
     # w = 1.0 if is_call else -1.0
     w = np.where(is_call, 1.0, -1.0)
@@ -66,10 +66,11 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
         if np.all(np.abs(diff) < tol):
             break
 
-    if len(strike) == 1 and len(fwd_price) == 1 and len(vol) == 1: # Return a scalar if inputs are scalar
-        return vol[0]
-    else:
-        return vol
+    # if len(strike) == 1 and len(fwd_price) == 1 and len(vol) == 1: # Return a scalar if inputs are scalar
+    #     return vol[0]
+    # else:
+    #     return vol
+    return (vol.item() if vol.ndim == 0 or vol.size ==1 else vol)
 
 
 def implied_vol_jaeckel(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
