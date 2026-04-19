@@ -87,18 +87,27 @@ class LogMixVar(TimeParam):
         super().__init__()
         # a = s0, b = sinf, c = b, d = tau
         self.a, self.b, self.c, self.d = a, b, c, d
+        self.d_floor = 1e-8
 
     def value(self, t: float) -> float:
         """ Value of the LogMixVar parameter """
         # Rebonato
-        s = self.b + (self.c * t + self.a - self.b) * np.exp(-t / self.d)
+        # Guard against division by 0
+        d = max(self.d, self.d_floor)
+        s = self.b + (self.c * t + self.a - self.b) * np.exp(-t / d)
         # Old formula
         # s = self.a * np.exp(-self.c * t) + self.d * logmix_f(t, self.b)
         return s * s * t
 
     def diff(self, t: float) -> float:
         """ Differential of the LogMixVar parameter """
-        raise NotImplementedError('LogMixVar.diff')
+        # ds: guard against division by 0
+        d = max(self.d, self.d_floor)
+        tmp = (self.c * t + self.a - self.b)
+        exp_term = np.exp(-t / d)
+        ds = (self.c - tmp / d) * exp_term
+        s = self.b + tmp * exp_term
+        return s * (2.0 * ds * t + s)
         # Old formula differential
         # tmp = self.a * np.exp(-self.c * t)
         # s = tmp + self.d * logmix_f(t, self.b)
