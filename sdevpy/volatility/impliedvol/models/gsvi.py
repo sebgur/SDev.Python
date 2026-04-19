@@ -5,9 +5,12 @@
     See Gurrieri, 'A Class of Term Structures for SVI Implied Volatility', 2010
     https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1779463
     """
+from pathlib import Path
 import numpy as np
 import numpy.typing as npt
+import logging
 from sdevpy.maths import constants
+log = logging.getLogger(Path(__file__).stem)
 
 
 def gsvi_formula(x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
@@ -26,7 +29,9 @@ def gsvi_formula(x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
     xm = x - m # x is the log-moneyness
     var = a + b * (rho * xm + np.sqrt(xm**2 + sigma**2))
     if np.any(var < 0.0):
-        raise ValueError("Negative variance in gSVI formula")
+        log.warning("Negative variance in gSVI formula: flooring to 0")
+        var = np.maximum(var, 0.0)
+        # raise ValueError("Negative variance in gSVI formula")
 
     vol = np.sqrt(var)
     return vol

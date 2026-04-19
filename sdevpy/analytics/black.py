@@ -47,11 +47,10 @@ def implied_vols(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float
 
 def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float,
                        fwd_price: npt.ArrayLike, tol: float=1e-8, max_iter: int=50) -> npt.ArrayLike:
-    """ Using vectorized Newton-Raphson, recommended by Claude because it is
-        vectorized and has faster convergence than Brent.
-        However, Claude explains that this method can struggle for very small vegas,
-        so recommends switching to another method (maybe Brent above) below a certain
-        vega threshold. Or to switch to Halley's method.
+    """ Using vectorized Newton-Raphson, with faster convergence than Brent.
+        However, this method can struggle for very small vegas, so we may want to switch
+        to another method (maybe Brent above) below a certain vega threshold.
+        Or to switch to Halley's method.
         To be investigated if speed becomes a bottleneck or Brent's method has issues. """
     strike = np.asarray(strike, dtype=float)
     fwd_price = np.asarray(fwd_price, dtype=float)

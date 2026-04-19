@@ -1,7 +1,5 @@
 """ Term-structure model for SVI. Give each SVI parameter a parametric formula along time and
-    enforce no-arbitrage (approximately). This model has 11 parameters.
-    See Gurrieri, 'A Class of Term Structures for SVI Implied Volatility', 2010
-    https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1779463
+    enforce no-arbitrage (approximately). This model has 15 parameters.
 """
 import numpy as np
 import numpy.typing as npt
@@ -90,10 +88,12 @@ class TsSvi2(ParametricZeroSurface):
         (v0, vinf, b_, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
          tau_m, s0, sinf, tau_s) = self.get_parameters(self.params)
         if rho0 < -1.0 or rho0 > 1.0:
-            raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
+            return False, constants.FLOAT_INFTY
+            # raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
 
         if rhoinf < -1.0 or rhoinf > 1.0:
-            raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
+            return False, constants.FLOAT_INFTY
+            # raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
 
         is_ok = True
         # Check necessary no-arbitrage

@@ -183,7 +183,7 @@ class LogMix(ParametricZeroSurface):
         """ Calculate Black price (forward) """
         return self.price(t, k, is_call, f)
 
-    def price(self, t: float, strike: float, is_call: bool, fwd: float) -> float:
+    def price(self, t: float, strike: npt.ArrayLike, is_call: bool, fwd: npt.ArrayLike) -> npt.ArrayLike:
         """ Option price: weighted sum of Black-Scholes price in each component """
         if self.params is None:
             raise RuntimeError("Call update_params() before evaluating the LogMix model")
@@ -237,7 +237,8 @@ class LogMix(ParametricZeroSurface):
 
         return prob
 
-    def black(self, strike: float, is_call: bool, fwd: float, stdev: float) -> float:
+    def black(self, strike: npt.ArrayLike, is_call: bool, fwd: npt.ArrayLike,
+              stdev: npt.ArrayLike) -> npt.ArrayLike:
         """ Quick version to avoid calculating the vol for nothing """
         w = 1.0 if is_call else -1.0
         d1 = np.log(fwd / strike) / stdev + 0.5 * stdev
@@ -281,13 +282,12 @@ class LogMix(ParametricZeroSurface):
         w, shift, _ = param_dic['w'], param_dic['shift'], param_dic['beta']
         a, b, c, d = param_dic['a'], param_dic['b'], param_dic['c'], param_dic['d']
 
-        eps = 0.00000001
         # Positivity of the first weight
-        if is_ok and w[0] < eps:
+        if is_ok and w[0] < self.eps:
             is_ok = False
 
         # Positivity of the first shift
-        if is_ok and shift[0] < -1.0 + eps:
+        if is_ok and shift[0] < -1.0 + self.eps:
             is_ok = False
 
         # Positivity of the forward variances

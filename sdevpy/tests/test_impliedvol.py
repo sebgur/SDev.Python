@@ -16,7 +16,7 @@ def test_sabr():
     strikes = np.asarray([0.01, 0.04, 0.06])
     test = sabr.sabr_from_dict(expiry, strikes, fwd, params)
     ref = np.asarray([0.54225604, 0.25208659, 0.22711695])
-    np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, 1e-10)
 
 
 def test_logmix_objective():

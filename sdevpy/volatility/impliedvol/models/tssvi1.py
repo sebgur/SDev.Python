@@ -100,10 +100,12 @@ class TsSvi1(ParametricZeroSurface):
         # Get parameters
         v0, vinf, b_, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(self.params)
         if r < -1.0 or r > 1.0:
-            raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
+            return False, constants.FLOAT_INFTY
+            # raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
 
         if delta + 1.0 < self.eps:
-            raise ValueError("Delta should be strictly higher than -1 in TsSvi1")
+            return False, constants.FLOAT_INFTY
+            # raise ValueError("Delta should be strictly higher than -1 in TsSvi1")
 
         is_ok = True
         # Check necessary no-arbitrage
