@@ -151,7 +151,6 @@ def check_johansen_stats_fast(res_jo):
     return bool_trace_5pct, bool_trace_10pct, bool_eigen_5pct, bool_eigen_10pct
 
 
-# ToCheck
 def trace_stats(res_jo):
     """ Retrieve the trace test statistics from the result of Johansen test in a pretty format """
     # Find out the size of the vector. This is the number of assets.
@@ -173,7 +172,7 @@ def trace_stats(res_jo):
     res_df = pd.DataFrame(data, columns = ['trace', '10%', '5%', '1%'], index = index_list)
     return res_df
 
-# ToCheck
+
 def eigen_stats(res_jo):
     """ Retrieve the eigen test statistics from the result of Johansen test in a pretty format """
     # Find out the size of the vector. This is the number of assets.
@@ -207,35 +206,6 @@ def norm_1st_eigvec(res_jo) -> npt.ArrayLike:
 
     # Normalized with respect to the first element
     return np.array(first_eigvec) / res_jo.evec[0][0]
-
-
-# ToCheck
-def convert_to_currency(df, target_ccy):
-    """ Convert FX spot data to target currency """
-    converted_df = df
-    converted_df.set_index('Dates')
-    for col in converted_df.columns[1:]:
-        is_usd_for, inverse_ticker = is_fx_for_ticker(col, target_ccy)
-        if is_usd_for:
-            converted_df[col] = 1.0 / converted_df[col]
-            converted_df = converted_df.rename(columns={col: inverse_ticker})
-
-    return converted_df
-
-
-# ToCheck
-def is_fx_for_ticker(ticker, for_ccy='USD'):
-    """ If ticker is for FX spot and for_ccy is the foreign currency, answer True and
-        the inverted ticker. Otherwise answer false and empty string """
-    splits = str.split(ticker, " ")
-    pair = splits[0]
-    is_fx_for = False
-    inverse_ticker = ""
-    if len(pair) == 6 and pair[0:3].upper() == for_ccy:
-        is_fx_for = True
-        inverse_ticker = pair[3:6].upper() + pair[0:3].upper() + ticker[6:]
-
-    return is_fx_for, inverse_ticker
 
 
 if __name__ == "__main__":
