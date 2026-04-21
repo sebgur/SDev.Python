@@ -3,7 +3,6 @@ import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
 from scipy.optimize import minimize_scalar
-from sdevpy.thirdparty.py_vollib.black import implied_volatility as jaeckel
 from sdevpy.utilities.tools import isiterable
 
 
@@ -71,17 +70,6 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
     # else:
     #     return vol
     return (vol.item() if vol.ndim == 0 or vol.size ==1 else vol)
-
-
-def implied_vol_jaeckel(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
-    """ Black-Scholes implied volatility using P. Jaeckel's 'Let's be rational' method,
-        from package py_vollib. Install with pip install py_vollib or at
-        https://pypi.org/project/py_vollib/. Unfortunately we found it has instabilities
-        near ATM. """
-    flag = 'c' if is_call else 'p'
-    p = fwd_price
-    iv = jaeckel.implied_volatility_of_undiscounted_option_price(p, fwd, strike, expiry, flag)
-    return iv
 
 
 if __name__ == "__main__":
