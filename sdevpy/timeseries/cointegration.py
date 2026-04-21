@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+import numpy.typing as npt
 from statsmodels.tsa.vector_ar.vecm import coint_johansen
 from ta.momentum import RSIIndicator
 from sdevpy.timeseries import meanreversion as mr
@@ -8,13 +9,14 @@ from sdevpy.timeseries import timeseriestools as tst
 from sdevpy.utilities import clipboard as clipboard
 
 
-# [johansen_test_diag]
-# Looks like we're going to compute the time series of the linear product and then fit
-# a mean reversion to it. Then this no longer has any relation to the Johansen test.
-# So wouldn't it be better to make this function more generic and focused on/named after
-# what it does with the mean reversion?
-def johansen_diagnostics(test, df_data, verbose=True, det_order=0, k_ar_diff=1):
-    """ Compute the diagnostics of a basket fom Johansen's test results """
+def johansen_diagnostics(test: dict, df_data: pd.DataFrame, verbose: bool=True, det_order: int=0,
+                         k_ar_diff: int=1) -> dict:
+    """ Compute the diagnostics of a basket fom Johansen's test results.
+        Looks like we're going to compute the time series of the linear product and then fit
+        a mean reversion to it. Then this no longer has any relation to the Johansen test.
+        So wouldn't it be better to make this function more generic and focused on/named after
+        what it does with the mean reversion?
+     """
     bool_trace_5pct = test['trace (5%)']
     bool_trace_10pct = test['trace (10%)']
     bool_eigen_5pct = test['eigen (5%)']
@@ -100,8 +102,8 @@ def johansen_diagnostics(test, df_data, verbose=True, det_order=0, k_ar_diff=1):
             'PX_LAST' : px_last, 'Series stdev': series_stdev, 'MR level': mr_level,
             'Half life Sharpe Ratio': sharpe_ratio_half_life, 'RSI 14': rsi_14}
 
-# [johansen_test_estimation]
-def johansen_test(df_data, det_order = 0, k_ar_diff = 1):
+
+def johansen_test(df_data: pd.DataFrame, det_order: int=0, k_ar_diff: int=1) -> dict:
     """ Estimate the weights and test statistics """
     # Run Johansen test
     res_jo = coint_johansen(df_data, det_order, k_ar_diff)
@@ -115,10 +117,9 @@ def johansen_test(df_data, det_order = 0, k_ar_diff = 1):
     return {'weights': weights, 'trace (5%)': trace_5pct, 'eigen (5%)': eigen_5pct,
             'trace (10%)': trace_10pct, 'eigen (10%)': eigen_10pct}
 
-# [check_johansen_test_stats_fast]
+
 def check_johansen_stats_fast(res_jo):
     """ Extract test stats for trace/eigen at 5% and 10% confident intervals """
-
     # Trace_stats
     trace_test_stats = res_jo.lr1[0]
     trace_10_pct = res_jo.cvt[0][0]
@@ -150,6 +151,7 @@ def check_johansen_stats_fast(res_jo):
     return bool_trace_5pct, bool_trace_10pct, bool_eigen_5pct, bool_eigen_10pct
 
 
+# ToCheck
 def trace_stats(res_jo):
     """ Retrieve the trace test statistics from the result of Johansen test in a pretty format """
     # Find out the size of the vector. This is the number of assets.
@@ -171,7 +173,7 @@ def trace_stats(res_jo):
     res_df = pd.DataFrame(data, columns = ['trace', '10%', '5%', '1%'], index = index_list)
     return res_df
 
-
+# ToCheck
 def eigen_stats(res_jo):
     """ Retrieve the eigen test statistics from the result of Johansen test in a pretty format """
     # Find out the size of the vector. This is the number of assets.
@@ -194,7 +196,7 @@ def eigen_stats(res_jo):
     return res_df
 
 
-def norm_1st_eigvec(res_jo):
+def norm_1st_eigvec(res_jo) -> npt.ArrayLike:
     """ Retrieve the normalized first eigen vector from the result of Johansen test.
         The normalized vector are the weights of the cointegrated basket """
     # Size of the eigenvector
@@ -207,6 +209,7 @@ def norm_1st_eigvec(res_jo):
     return np.array(first_eigvec) / res_jo.evec[0][0]
 
 
+# ToCheck
 def convert_to_currency(df, target_ccy):
     """ Convert FX spot data to target currency """
     converted_df = df
@@ -220,6 +223,7 @@ def convert_to_currency(df, target_ccy):
     return converted_df
 
 
+# ToCheck
 def is_fx_for_ticker(ticker, for_ccy='USD'):
     """ If ticker is for FX spot and for_ccy is the foreign currency, answer True and
         the inverted ticker. Otherwise answer false and empty string """

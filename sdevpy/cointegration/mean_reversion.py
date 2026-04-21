@@ -61,14 +61,14 @@ class MeanRevTimeSeries:
     # End of the class MeanRevTimeSeries
 
 
-# dX(t) = lam * (mu - X(t))*dt + BM
-# mean_rev_level - mu
-# mean_rev_rate_in_days - mean rev rate (assume is -ve) in days
-# time in days - because we estimate using daily data
-# current_level - current level of basket, i.e. X(0)
-# daily_hist_normal_vol - daily standard dev of the basket
 def mean_rev_expected_and_variance_change(mean_rev_level, mean_rev_rate_in_days, time_in_days, current_level,
                                           daily_hist_normal_vol):
+    # dX(t) = lam * (mu - X(t))*dt + BM
+    # mean_rev_level - mu
+    # mean_rev_rate_in_days - mean rev rate (assume is -ve) in days
+    # time in days - because we estimate using daily data
+    # current_level - current level of basket, i.e. X(0)
+    # daily_hist_normal_vol - daily standard dev of the basket
     """ Compute expected mean reversion and variance change """
     exp_lam_t = np.exp(mean_rev_rate_in_days * time_in_days)
     exp_2lam_t = np.exp(2.0 * mean_rev_rate_in_days * time_in_days)

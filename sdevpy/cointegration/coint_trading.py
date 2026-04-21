@@ -231,9 +231,9 @@ def check_johansen_test_stats_fast(res_jo):
     return bool_trace_5pct, bool_trace_10pct, bool_eigen_5pct, bool_eigen_10pct
 
 
-# This is the main routine in co-integration search jupyter notebook
 def johansen_compute_all_baskets(start_list, today, all_name_list, df_fx_spot):
-    """ Given a list of start dates, today, list of currency pairs and the fx spot data,
+    """ Main routine in co-integration search.
+        Given a list of start dates, today, list of currency pairs and the fx spot data,
         compute the Johansen test for all baskets
         start_list - e.g. ['2010-08-23', '2011-01-23']
         today - e.g. '2020-05-25'
@@ -339,7 +339,6 @@ def johansen_compute_all_baskets(start_list, today, all_name_list, df_fx_spot):
 
     return res_df
 
-# The functions below are all diagnostics for the Excel report for cointegration search
 
 def filter_cointegration_basket_using_trace_10(res_df):
     """ Select the cointegrated baskets, we use trace 10% as the minimum requirement
@@ -348,7 +347,6 @@ def filter_cointegration_basket_using_trace_10(res_df):
     res_df_filtered = res_df[trace_condition]
 
     return res_df_filtered
-
 
 
 def compute_johansen_test_diag_for_all_coint_baskets(res_df_filtered, df_fx_spot):
@@ -383,12 +381,13 @@ def compute_johansen_test_diag_for_all_coint_baskets(res_df_filtered, df_fx_spot
 
     return res_df_filtered
 
-#----------------------------------------------------------------------------------------
-# Choose the basket such that the current absolute of stdev is above SD_threshold and it is cointegrated
-# res_df - output from the function, johansen_compute_all_baskets
-# SD_threshold - we filter out basket with SD less than abs(SD_threshold). If SD_threshold = 2,
-# we only show baskets with abs(SD) > 2
+
 def filter_cointegration_basket_using_sd_threshold(res_df, sd_threshold):
+    #----------------------------------------------------------------------------------------
+    # Choose the basket such that the current absolute of stdev is above SD_threshold and it is cointegrated
+    # res_df - output from the function, johansen_compute_all_baskets
+    # SD_threshold - we filter out basket with SD less than abs(SD_threshold). If SD_threshold = 2,
+    # we only show baskets with abs(SD) > 2
     # select using SD criteria
     upper_distance_condition = res_df['SD Current'] > sd_threshold
     lower_distance_condition = res_df['SD Current'] < -sd_threshold
@@ -399,33 +398,37 @@ def filter_cointegration_basket_using_sd_threshold(res_df, sd_threshold):
 
     return res_df_filtered
 
-# Choose the basket such that '1mio 1SD in usd' < 100000
+
 def filter_cointegration_basket_using_1m_1sd_in_usd(res_df):
+    # Choose the basket such that '1mio 1SD in usd' < 100000
     one_mio_1sd_condition = res_df['1mio 1SD in usd'] < 100000
     res_df_filtered = res_df[one_mio_1sd_condition]
     return res_df_filtered
 
-# Choose the basket using Sharpe Ratio
+
 def filter_cointegration_basket_using_sharpe_ratio(res_df, sharpe_threshold):
+    # Choose the basket using Sharpe Ratio
     sr_condition = res_df['half life Sharpe Ratio'] > sharpe_threshold
     res_df_filtered = res_df[sr_condition]
     return res_df_filtered
 
-# Choose the basket using half life
+
 def filter_cointegration_basket_using_half_life_in_days(res_df, half_life_threshold):
+    # Choose the basket using half life
     hl_condition = res_df['half life in days'] < half_life_threshold
     res_df_filtered = res_df[hl_condition]
     return res_df_filtered
 
-#--- Compute historical SD for the filtered basket
-#
-# df_fx_spot - fx spot data to be used to compute diagnostics
-#
-# This function modifies the input dataframe - res_df_filtered of the following columns
-# (1) 'Stop Loss in SD'
-# (2) 'Top 3 SD Min'
-# (3) 'Top 3 SD Max'
+
 def compute_historical_min_max_sd_diagnostics(res_df_filtered, df_fx_spot):
+    #--- Compute historical SD for the filtered basket
+    #
+    # df_fx_spot - fx spot data to be used to compute diagnostics
+    #
+    # This function modifies the input dataframe - res_df_filtered of the following columns
+    # (1) 'Stop Loss in SD'
+    # (2) 'Top 3 SD Min'
+    # (3) 'Top 3 SD Max'
     for ind in tqdm(res_df_filtered.index):
 
         from_ = res_df_filtered['From'][ind]
@@ -474,9 +477,8 @@ def compute_historical_min_max_sd_diagnostics(res_df_filtered, df_fx_spot):
     return res_df_filtered
 
 
-# --------------------------------------------------------------
-# helper function to remove the most recent x days of in the time series
 def remove_data_within_x_days(df, today):
+    # helper function to remove the most recent x days of in the time series
     ts_today = pd.Timestamp(today)
     bd = pd.tseries.offsets.BusinessDay(n = settings.HOLDING_PERIOD_IN_DAYS-1)
     x_minus_1_days_ago = ts_today - bd
@@ -485,13 +487,12 @@ def remove_data_within_x_days(df, today):
     return df[filter_condition]
 
 
-# -- Given an array data and buy sell signal, extract the following arrays
-# (1) dates_to_buy - dates that we long the basket
-# (2) retns_to_buy - time series corresponds to dates_to_buy
-# (3) dates_to_sell - dates that we short the basket
-# (4) retns_to_sell - time series corresponds to dates_to_sell
 def extract_data_conditions_on_buy_sell_signal(time_series, df_buy_sell_signal, today):
-
+    # -- Given an array data and buy sell signal, extract the following arrays
+    # (1) dates_to_buy - dates that we long the basket
+    # (2) retns_to_buy - time series corresponds to dates_to_buy
+    # (3) dates_to_sell - dates that we short the basket
+    # (4) retns_to_sell - time series corresponds to dates_to_sell
     df_for_plot = pd.concat([time_series, df_buy_sell_signal], axis=1)
     df_for_plot = df_for_plot.fillna(0)
 
@@ -521,7 +522,6 @@ def date_formatter(date, datafreq):
     return date_formatted
 
 
-# ---------------------------------------------------------
 def range_start_range_end_for_stability_test(from_, today_, name_list, jvd, datafreq):
     if datafreq == settings.DataFreq.DAILY:
         if jvd == settings.JohansenVaringDate.END:
@@ -540,9 +540,9 @@ def range_start_range_end_for_stability_test(from_, today_, name_list, jvd, data
     return range_start, range_end
 
 
-# ----- Compute the z_score_stability by changing the data start date in 2 months window
-#       We check the stability by rerun Johansen test using different data.
 def compute_johansen_params_stability(df_fx_spot, from_, today_, name_list, jvd, datafreq):
+    # ----- Compute the z_score_stability by changing the data start date in 2 months window
+    #       We check the stability by rerun Johansen test using different data.
     output = []
 
     range_start, range_end = range_start_range_end_for_stability_test(from_, today_, name_list, jvd, datafreq)
@@ -604,16 +604,16 @@ def compute_johansen_params_stability(df_fx_spot, from_, today_, name_list, jvd,
     return res_df
 
 
-#--- Compute stability test by changing the start date of the dataset.
-# diagnostics l - current SD (by compute the range of SD, max(SD) - min(SD)
-# diagnostics 2 - trace and eigne tests (return if all the them are true)
-# res_df_filtered - output from the function, filter_cointegration_basket
-# (1) 'Range in SD current'
-# (2) '+/1 month trace (5%)'
-# (3) '+/1 month trace (10%)'
-# (4) '+/1 eigen trace (5%)'
-# (5) '+/1 eigen trace (10%)'
 def compute_johansen_stability_diagnostics(res_df_filtered, df_fx_spot, datafreq):
+    #--- Compute stability test by changing the start date of the dataset.
+    # diagnostics l - current SD (by compute the range of SD, max(SD) - min(SD)
+    # diagnostics 2 - trace and eigne tests (return if all the them are true)
+    # res_df_filtered - output from the function, filter_cointegration_basket
+    # (1) 'Range in SD current'
+    # (2) '+/1 month trace (5%)'
+    # (3) '+/1 month trace (10%)'
+    # (4) '+/1 eigen trace (5%)'
+    # (5) '+/1 eigen trace (10%)'
     for ind in tqdm(res_df_filtered.index):
         from_ = res_df_filtered['From'][ind]
         today_ = res_df_filtered['Today'][ind]
@@ -651,9 +651,9 @@ def compute_johansen_stability_diagnostics(res_df_filtered, df_fx_spot, datafreq
     return res_df_filtered
 
 
-# count the number of True, divided by the total number of elements.
-# if higher than percentage then we return True
 def is_true_by_percentage(list_of_booleans, percentage):
+    # count the number of True, divided by the total number of elements.
+    # if higher than percentage then we return True
     num_true = list_of_booleans.count(True)
     total_num = len(list_of_booleans)
 
@@ -663,15 +663,15 @@ def is_true_by_percentage(list_of_booleans, percentage):
         return False
 
 
-# Choose the basket such that the cointegration condition, 'trace (10%)' = True are satisfied for +/- 1 month
 def filter_cointegration_basket_using_trace_10_stability(res_df):
+    # Choose the basket such that the cointegration condition, 'trace (10%)' = True are satisfied for +/- 1 month
     trace_condition = res_df['+/- 1 month trace (10%)']
     res_df_filtered = res_df[trace_condition]
     return res_df_filtered
 
 
-# Choose the basket such that 'Range in SD current' < 0.5. Bigger the range, more the instability.
 def filter_cointegration_basket_using_range_in_sd_current(res_df):
+    # Choose the basket such that 'Range in SD current' < 0.5. Bigger the range, more the instability.
     range_in_sd_current_condition = res_df['Range in SD current'] < 0.5
     res_df_filtered = res_df[range_in_sd_current_condition]
     return res_df_filtered

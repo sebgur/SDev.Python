@@ -8,8 +8,8 @@ class ToShiftOrNot(Enum):
     NOT_SHIFT = 0
 
 
-# [compute_diff]
-def compute_diff(time_series, num_of_days, to_shift):
+def compute_diff(time_series: pd.Series, num_of_days: int, to_shift: ToShiftOrNot) -> pd.DataFrame:
+    """ Compute difference of time series """
     name_tag = time_series.name + ' diff'
 
     # Initialize the dataframe
@@ -32,7 +32,7 @@ def compute_diff(time_series, num_of_days, to_shift):
     return df
 
 
-def min_max_return_x_days(basket, time_in_days):
+def min_max_return_x_days(basket: pd.Series, time_in_days: int):
     """ Compute the min and max loss over x days of a basket over a period of trade dates """
     # Initialize the dataframe
     df = compute_diff(basket, time_in_days, ToShiftOrNot.TO_SHIFT)
@@ -51,19 +51,20 @@ def min_max_return_x_days(basket, time_in_days):
     return df
 
 
-def min_max_return_x_days_in_sd(basket, time_in_days, basket_stdev):
+def min_max_return_x_days_in_sd(basket: pd.Series, time_in_days: int, basket_stdev: float):
+    " Calculate min/max of returns "
     res = min_max_return_x_days(basket, time_in_days)
     return res / basket_stdev
 
 
-def x_day_historical_returns_in_sd(basket, time, basket_stdev):
+def x_day_historical_returns_in_sd(basket: pd.Series, time: int, basket_stdev: float):
     """ Note that the mean cancels out if we take diff. So we don't need the mean """
     res = x_day_historical_returns(basket, time)
     return res / basket_stdev
 
 
-def x_day_historical_returns(basket, time_in_days=5):
-    # Compute realized x day basket return
+def x_day_historical_returns(basket: pd.Series, time_in_days: int=5):
+    """ Compute realized x day basket return """
     basket_x_day_return = basket.diff(time_in_days)
 
     # Shift the index backward to align with the predcition date
@@ -83,14 +84,14 @@ def is_inverted_quote(key):
     is_inverted = bbg_dict.get(key)
     return is_inverted
 
-# [compute_basket]
-def weighted_series(df_data, weights):
+
+def weighted_series(df_data: pd.DataFrame, weights: list[float]) -> pd.Series:
     """ Given time series of fx spots and the weights, compute the dot product time series """
     series = pd.Series(np.dot(df_data, weights), name='Series')
     series.index = df_data.index
     return series
 
-# [create_position_df]
+
 def create_position(df_data, weights):
     name_list = list(df_data.keys())
     xxxusd_last = df_data.iloc[-1].values

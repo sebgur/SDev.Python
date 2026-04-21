@@ -5,7 +5,8 @@ import math
 from sdevpy.timeseries import timeseriestools as tst
 
 
-def backtest_one_trade(from_date, trade_date, now_date, df_data, weights, zscore_trade_date):
+def backtest_one_trade(from_date: str, trade_date: str, now_date: str, df_data: pd.DataFrame,
+                       weights: list[float], zscore_trade_date: float) -> dict:
     """ Given a fixed basket, from date, trade date, now date, compute the sharpe ratio, z_score,
         5D realized return and 10D realized return from trade date """
     # Compute the basket up to NOW, because we need the realized 5D and 10D returns

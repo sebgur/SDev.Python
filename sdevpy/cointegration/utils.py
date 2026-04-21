@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-# import datetime
 from sdevpy.cointegration import data_io as myio
 from sdevpy.cointegration import model_settings as settings
 
