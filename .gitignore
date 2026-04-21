@@ -5,3 +5,4 @@
 /sdevpy.egg-info
 /dist
 /claude
+/.coverage

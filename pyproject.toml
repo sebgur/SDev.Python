@@ -38,6 +38,17 @@ target-version = "py313"
 select = ["E", "F", "N", "W", "UP", "B"]
 ignore = ["E401", "I001"]
 
+[tool.coverage.run]
+omit = [
+    "sdevpy/**/__init__.py",
+    "sdevpy/projects/raschka/*"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "if __name__ == '__main__':",
+]
+
 [project.urls]
 "Git page" = "https://github.com/sebgur/SDev.Python"
 "SDev Finance" = "http://sdev-finance.com/"
