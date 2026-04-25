@@ -5,15 +5,16 @@ from sdevpy.timeseries.cointegration import johansen_test, check_johansen_stats_
 
 
 # Fixed seed — strong cointegration so results are deterministic
-_RNG = np.random.default_rng(42)
+# _RNG = np.random.default_rng(42)
 
 
-def make_cointegrated(n=1000, a=2.0, noise_scale=0.005, rng=None):
+def make_cointegrated(n=1000, a=2.0, noise_scale=0.005, seed=42):
     """Two cointegrated series: y2 = a * y1 + small_noise.
     Cointegrating vector (normalised): [1, -1/a].
     """
-    if rng is None:
-        rng = _RNG
+    rng = np.random.default_rng(seed)
+    # if rng is None:
+    #     rng = _RNG
     y1 = np.cumsum(rng.normal(0, 1, n))
     y2 = a * y1 + rng.normal(0, noise_scale, n)
     dates = pd.date_range("2000-01-01", periods=n, freq="B")
@@ -37,8 +38,8 @@ def test_cointegration_johansen_test_weight_ratio_close_to_minus_1_over_a():
     """For y2 = a*y1 + noise the ratio w[1]/w[0] must be ≈ -1/a."""
     a = 2.0
     # Extra-strong cointegration and long series for a tight numerical check
-    rng = np.random.default_rng(0)
-    df = make_cointegrated(n=2000, a=a, noise_scale=0.001, rng=rng)
+    # rng = np.random.default_rng(0)
+    df = make_cointegrated(n=2000, a=a, noise_scale=0.001)#, rng=rng)
     w = johansen_test(df)["weights"]
     assert abs(w[1] / w[0] - (-1.0 / a)) < 0.05
 
@@ -73,8 +74,8 @@ def test_cointegration_johansen_test_10pct_at_least_as_liberal_as_5pct():
 
 def test_cointegration_johansen_stats_fast_cointegrated_passes():
     """Clearly cointegrated series must pass all four thresholds."""
-    rng = np.random.default_rng(1)
-    df = make_cointegrated(n=2000, noise_scale=0.001, rng=rng)
+    # rng = np.random.default_rng(1)
+    df = make_cointegrated(n=2000, noise_scale=0.001)
     res_jo = coint_johansen(df, 0, 1)
     trace_5, trace_10, eigen_5, eigen_10 = check_johansen_stats_fast(res_jo)
     assert trace_10, "trace test at 10% should pass for a clearly cointegrated pair"

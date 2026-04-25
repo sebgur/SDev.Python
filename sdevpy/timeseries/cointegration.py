@@ -9,14 +9,9 @@ from sdevpy.timeseries import timeseriestools as tst
 from sdevpy.utilities import clipboard as clipboard
 
 
-def johansen_diagnostics(test: dict, df_data: pd.DataFrame, verbose: bool=True, det_order: int=0,
+def coint_diagnostics(test: dict, df_data: pd.DataFrame, verbose: bool=True, det_order: int=0,
                          k_ar_diff: int=1) -> dict:
-    """ Compute the diagnostics of a basket fom Johansen's test results.
-        Looks like we're going to compute the time series of the linear product and then fit
-        a mean reversion to it. Then this no longer has any relation to the Johansen test.
-        So wouldn't it be better to make this function more generic and focused on/named after
-        what it does with the mean reversion?
-     """
+    """ Compute the diagnostics of a basket fom Johansen's test results """
     bool_trace_5pct = test['trace (5%)']
     bool_trace_10pct = test['trace (10%)']
     bool_eigen_5pct = test['eigen (5%)']
@@ -221,5 +216,5 @@ if __name__ == "__main__":
     df_fx_spots = df_raw.loc[FROM:TODAY]
     df_data = df_fx_spots[tickers]
     test = johansen_test(df_data, 0, 1)
-    diagnostic = johansen_diagnostics(test, df_data, True, 0, 1)
+    diagnostic = coint_diagnostics(test, df_data, True, 0, 1)
     print(diagnostic)

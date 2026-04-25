@@ -63,7 +63,7 @@ def test_bachelier_straddle_function():
     strike = np.array([[0.03, 0.04, 0.05],
                        [0.035, 0.045, 0.055]])
     fwd = 0.04
-    vol = np.full((2, 5), 0.05)
+    vol = np.full((2, 3), 0.05)
 
     test = bachelier.price_straddles(expiry, strike, fwd, vol)
     ref = np.asarray([[0.0293304, 0.02820948, 0.0293304], [0.04009353, 0.04009353, 0.04167612]])

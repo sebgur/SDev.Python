@@ -198,7 +198,7 @@ class LogMix(ParametricZeroSurface):
 
         return price
 
-    def pdf(self, t: float, strike: float, fwd: float) -> float:
+    def pdf(self, t: float, strike: npt.ArrayLike, fwd: float) -> float:
         """ Probability density: weighted sum of lognormal densities """
         if self.params is None:
             raise RuntimeError("Call update_params() before evaluating the LogMix model")
@@ -218,7 +218,7 @@ class LogMix(ParametricZeroSurface):
 
         return prob / strike
 
-    def cdf(self, t: float, strike: float, fwd: float) -> float:
+    def cdf(self, t: float, strike: npt.ArrayLike, fwd: float) -> float:
         """ Cumulative probability density: weighted sum of lognormal densities """
         if self.params is None:
             raise RuntimeError("Call update_params() before evaluating the LogMix model")
