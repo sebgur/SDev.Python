@@ -27,6 +27,11 @@ class TsSvi1(ParametricZeroSurface):
     def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
         """ Calculate the smile parameters at given time and then calculate the Black implied vol
             using the gSVI formula """
+        # Check parameters
+        is_ok, _ = self.check_global_params()
+        if not is_ok:
+            return np.full_like(k, np.nan)
+
         # Get smile parameters
         smile_params = self.smile_parameters(t, self.params)
 
