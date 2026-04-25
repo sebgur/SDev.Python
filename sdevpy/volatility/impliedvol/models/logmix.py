@@ -12,7 +12,7 @@ import datetime as dt
 import logging
 from scipy.stats import norm
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
+from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface, LvMethod
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.utilities import timegrids
@@ -173,6 +173,7 @@ class LogMix(ParametricZeroSurface):
         super().__init__()
         self.n_mix = n_mix
         self.calculate_type = OptionQuoteType.ForwardPremium
+        self.lv_method = LvMethod.PDF
         self.check_fwd_var = kwargs.get('check_fwd_var', False)
         self.shift_mean = kwargs.get('shift_mean', True)
         self.calculable_at_zero = False

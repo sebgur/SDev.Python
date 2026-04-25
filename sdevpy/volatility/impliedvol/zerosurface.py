@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
@@ -8,13 +9,18 @@ from sdevpy.analytics import black, bachelier
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 
 
+class LvMethod(Enum):
+    ImpliedVol = 0
+    PDF = 1
+
+
 class ZeroSurface(ABC):
     def __init__(self):
         self.calculate_type = OptionQuoteType.LogNormalVol
         self.shift = 0.0 # In Math format, i.e. 0.01 for 1%
         self.allow_negative_variables = False
         self.calculable_at_zero = True
-        self.localvol_method = 0
+        self.lv_method = LvMethod.ImpliedVol
         self.daycount = None
         self.expiry_times = []
         self.eps = constants.EPS
@@ -27,45 +33,81 @@ class ZeroSurface(ABC):
 
     ############### Dupire Logic ##################################################################
 
-    def volatility(self, t: float, x: float) -> float:
-        """ Black volatility """
+    def volatility(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ Black volatility for time t and moneyness x """
         return self.black_volatility(t, x, 1.0)
 
     def dvariance_dt(self, ts: float, te: float, x: float) -> float:
-        """ Differential of variance against time """
+        """ Differential of variance against time between times ts and te, at moneyness x """
         tmpe = self.volatility(te, x)
         tmps = self.volatility(ts, x)
         return (tmpe * tmpe * te - tmps * tmps * ts) / (te - ts)
 
+    def taylor_dx(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ Differential of volatility against moneyness, order 1 and 2 """
+        hr = 0.05 # Relative bump
+        # print(f"x-shape: {x.shape}")
+        dx = hr * x
+        # print(f"dx-shape: {dx.shape}")
+
+        vol = self.volatility(t, x)
+        vol_up = self.volatility(t, x + dx)
+        vol_dn = self.volatility(t, x - dx)
+        dvol_dx = (vol_up - vol_dn) / (2.0 * dx)
+        d2vol_dx2 = (vol_up + vol_dn - 2.0 * vol) / np.power(dx, 2)
+        return vol, dvol_dx, d2vol_dx2
+
     def dvolatility_dx(self, t: float, x: float) -> float:
         """ Differential of volatility against moneyness """
-        h = 0.001
-        if x - h < 0.0:
-            raise ValueError("Negative strike in numerical 1st differential of implied volatility")
+        hr = 0.05 # Relative bump
+        dx = hr * x
 
-        tmp1 = self.volatility(t, x + h)
-        tmp2 = self.volatility(t, x - h)
-        return (tmp1 - tmp2) / (2.0 * h)
+        vol_up = self.volatility(t, x + dx)
+        vol_dn = self.volatility(t, x - dx)
+        dvol_dx = (vol_up - vol_dn) / (2.0 * dx)
+        return dvol_dx
+
+        ## Old formula with absolute bumps
+        # h = 0.001
+        # if x - h < 0.0:
+        #     raise ValueError("Negative strike in numerical 1st differential of implied volatility")
+
+        # tmp1 = self.volatility(t, x + h)
+        # tmp2 = self.volatility(t, x - h)
+        # return (tmp1 - tmp2) / (2.0 * h)
 
     def d2volatility_dx2(self, t: float, x: float) -> float:
         """ Second differential of the volatility against the moneyness """
-        h = 0.001
-        two_h = 2.0 * h
-        if x - two_h < 0.0:
-            raise ValueError("Negative strike in numerical 2nd differential of implied volatility")
+        hr = 0.05 # Relative bump
+        # print(f"x-shape: {x.shape}")
+        dx = hr * x
+        # print(f"dx-shape: {dx.shape}")
 
-        tmp = self.volatility(t, x)
-        dxp = (self.volatility(t, x + two_h) - tmp) / two_h
-        dxm = (tmp - self.volatility(t, x - two_h)) / two_h
-        return (dxp - dxm) / two_h
+        vol = self.volatility(t, x)
+        vol_up = self.volatility(t, x + dx)
+        vol_dn = self.volatility(t, x - dx)
+        # dvol_dx = (vol_up - vol_dn) / (2.0 * dx)
+        d2vol_dx2 = (vol_up + vol_dn - 2.0 * vol) / np.power(dx, 2)
+        return d2vol_dx2
 
-    def differentiate(self, ts: float, te: float, x: float) -> float:
-        """ Retrieve all the quantities needed for Dupire's formula """
-        theta = self.volatility(ts, x)
-        dvar_dt = self.dvariance_dt(ts, te, x)
-        dtheta_dx = self.dvolatility_dx(ts, x)
-        d2theta_dx2 = self.d2volatility_dx2(ts, x)
-        return theta, dvar_dt, dtheta_dx, d2theta_dx2
+        ## Old formula with absolute bumps
+        # h = 0.001
+        # two_h = 2.0 * h
+        # if x - two_h < 0.0:
+        #     raise ValueError("Negative strike in numerical 2nd differential of implied volatility")
+
+        # tmp = self.volatility(t, x)
+        # dxp = (self.volatility(t, x + two_h) - tmp) / two_h
+        # dxm = (tmp - self.volatility(t, x - two_h)) / two_h
+        # return (dxp - dxm) / two_h
+
+    # def differentiate(self, ts: float, te: float, x: float) -> float:
+    #     """ Retrieve all the quantities needed for Dupire's formula """
+    #     theta = self.volatility(ts, x)
+    #     dvar_dt = self.dvariance_dt(ts, te, x)
+    #     dtheta_dx = self.dvolatility_dx(ts, x)
+    #     d2theta_dx2 = self.d2volatility_dx2(ts, x)
+    #     return theta, dvar_dt, dtheta_dx, d2theta_dx2
 
     def density(self, t: float, fwd: float, strike: float) -> float:
         """ Probability density corresponding to the surface """
@@ -145,16 +187,6 @@ class ZeroSurface(ABC):
             return value
         else:
             price = self.to_price(t, k, f, is_call, value)
-            # match self.calculate_type:
-            #     case OptionQuoteType.ForwardPremium:
-            #         price = value
-            #     case OptionQuoteType.NormalVol:
-            #         price = bachelier.price(t, k, is_call, f, value)
-            #     case OptionQuoteType.ShiftedLogNormalVol:
-            #         price = black.price(t, k + self.shift, is_call, f + self.shift, value)
-            #     case _:
-            #         raise TypeError(f"Invalid modelled type in zero-surface: {self.calculate_type}")
-
             return black.implied_vols(t, k, is_call, f, price)
 
     def bachelier_volatility(self, t: float, k: float, f: float):
@@ -165,16 +197,6 @@ class ZeroSurface(ABC):
             return value
         else:
             price = self.to_price(t, k, f, is_call, value)
-            # match self.calculate_type:
-            #     case OptionQuoteType.ForwardPremium:
-            #         price = value
-            #     case OptionQuoteType.LogNormalVol:
-            #         price = black.price(t, k, is_call, f, value)
-            #     case OptionQuoteType.ShiftedLogNormalVol:
-            #         price = black.price(t, k + self.shift, is_call, f + self.shift, value)
-            #     case _:
-            #         raise TypeError(f"Invalid modelled type in zero-surface: {self.calculate_type}")
-
             return bachelier.implied_vol_jaeckel(t, k, is_call, f, price)
 
     def shifted_black_volatility(self, t: float, k: float, f: float) -> float:
@@ -185,16 +207,6 @@ class ZeroSurface(ABC):
             return value
         else:
             price = self.to_price(t, k, f, is_call, value)
-            # match self.calculate_type:
-            #     case OptionQuoteType.ForwardPremium:
-            #         price = value
-            #     case OptionQuoteType.LogNormalVol:
-            #         price = black.price(t, k, is_call, f, value)
-            #     case OptionQuoteType.NormalVol:
-            #         price = bachelier.price(t, k, is_call, f, value)
-            #     case _:
-            #         raise TypeError(f"Invalid modelled type in zero-surface: {self.calculate_type}")
-
             return black.implied_vol(t, k + self.shift, is_call, f + self.shift, price)
 
 
