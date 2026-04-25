@@ -57,6 +57,20 @@ def test_black_roundtrip_newton():
 
 ############ Bachelier ############################################################################
 
+def test_bachelier_straddle_function():
+    """ Straddle prices through straddle function """
+    expiry = np.array([0.5, 1.0])
+    strike = np.array([[0.03, 0.04, 0.05],
+                       [0.035, 0.045, 0.055]])
+    fwd = 0.04
+    vol = np.full((2, 5), 0.05)
+
+    test = bachelier.price_straddles(expiry, strike, fwd, vol)
+    ref = np.asarray([[0.0293304, 0.02820948, 0.0293304], [0.04009353, 0.04009353, 0.04167612]])
+    # print(test)
+    assert np.allclose(test, ref, 1e-10)
+
+
 def test_bachelier_price_straddle():
     """ Straddle = Call + Put """
     expiry, fwd, strike, vol = 1.0, 0.04, 0.045, 0.05
@@ -129,4 +143,4 @@ def test_bachelier_roundtrip_brent():
 
 
 if __name__ == "__main__":
-    test_bachelier_roundtrip()
+    test_bachelier_straddle_function()
