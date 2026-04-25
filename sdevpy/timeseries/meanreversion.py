@@ -25,33 +25,43 @@ class MeanRevertingTimeSeries:
         self.z_score_ts = self.z_score_ts.rename('z score')
 
     def get_half_life(self):
+        """ Get half-life """
         return self.half_life
 
     def get_mr_rate(self):
+        """ Get mean reversion rate """
         return self.mr_rate
 
     def get_mr_level(self):
+        """ Get mean reversion level """
         return self.mr_level
 
     def get_const_pvalue(self):
+        """ Get const p-value """
         return self.const_pvalue
 
     def get_series_pvalue(self):
+        """ Get series p-value """
         return self.series_pvalue
 
     def get_level_at_t(self, date):
+        """ Get level at t """
         return self.time_series.loc[date]
 
     def get_current_level(self):
+        """ Get current level """
         return self.time_series.iloc[-1]
 
     def get_stdev(self):
+        """ Get standard deviation """
         return self.stdev
 
     def get_zscores_time_series(self):
+        """ Get time series z-scores """
         return self.z_score_ts
 
     def get_current_zscore(self):
+        """ Get current z-score """
         return self.z_score_ts.iloc[-1]
 
 
@@ -130,6 +140,7 @@ def mr_expected_and_variance_change(mr_level, mr_rate, time, current_level, norm
 
 
 def compute_sharpe_ratio(mr_level, mr_rate, time, current_level, normal_vol, current_zscore):
+    """ Calculate Sharpe ratio """
     mean_s, var_s = mr_expected_and_variance_change(mr_level, mr_rate, time, current_level, normal_vol)
     expectation_over_t = 0
     vol_over_t = np.sqrt(var_s)

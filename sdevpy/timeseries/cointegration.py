@@ -191,7 +191,7 @@ def eigen_stats(res_jo):
     return res_df
 
 
-def norm_1st_eigvec(res_jo) -> npt.ArrayLike:
+def norm_1st_eigvec(res_jo) -> npt.NDArray[np.float64]:
     """ Retrieve the normalized first eigen vector from the result of Johansen test.
         The normalized vector are the weights of the cointegrated basket """
     # Size of the eigenvector

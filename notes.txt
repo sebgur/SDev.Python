@@ -6,6 +6,13 @@ xlwings
 
 Fine-tune existing open source model on transforming term sheets into FpML. Then implement a deterministic model to translate FpML into your own db. This way the TermSheet->FpML model can be open source/usable by anyway and marketed. Would it make sense to implement the reverse, i.e. an FpML-> TermSheet model?
 
+#### Run pytest coverage ####
+>pip install pytest-cov
+
+To run:
+
+>pytest --cov=sdevpy --cov-report=html
+
 #### Claude's recommendations on Architecture ####
 At 7/10 the architecture is already solid. The three things most likely to move it to 8+:
 
