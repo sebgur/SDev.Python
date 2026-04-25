@@ -108,6 +108,8 @@ def cubicvoleps(t, x, atm, skew, kurt, epsl, epsr):
     x_threshold = 0.000001
     # x_ = -x
     t_ = (time_threshold if np.abs(t) < time_threshold else t)
+    # Note: not really clear that we really HAVE TO divide here. We could also not divide and
+    # have that scaling reflected in the values of the optimum parameters.
     x_ = -x / np.sqrt(t_)
     # # x_ = -np.log(x) / np.sqrt(t_) # Original model assumed input is moneyness, not log-moneyness
 

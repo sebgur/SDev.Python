@@ -1,33 +1,37 @@
 import json
 import datetime as dt
 import numpy as np
+import numpy.typing as npt
 from abc import ABC, abstractmethod
 from sdevpy.volatility.impliedvol.models.svi import SviSection
 from sdevpy.utilities import algos, dates
 
 
 class LocalVol(ABC):
-    """ Base class for local vols """
+    """ Base class for Local Vol """
     def __init__(self, **kwargs):
         self.valdate = kwargs.get('valdate', dt.datetime.now())
         self.name = kwargs.get('name', 'MyIndex')
         self.snapdate = kwargs.get('snapdate', self.valdate)
 
     @abstractmethod
-    def value(self, t, logm):
+    def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
+        """ Values of the LV along array of log-moneynesses at given time """
         pass
 
     @abstractmethod
-    def section(self, t):
-        """ Get a section at time t, i.e. a function of the log-moneyness log_m"""
+    def section(self, t: float):
+        """ Retrieve LV section at given time t, i.e. a function of the log-moneyness log_m """
         pass
 
     @abstractmethod
-    def dump_data(self):
+    def dump_data(self) -> dict:
+        """ Dump LV object into dictionary """
         pass
 
 
 class InterpolatedParamLocalVol(LocalVol):
+    """ Local Vol subtype defined as a series spot-parametric functions along the time direction """
     def __init__(self, sections, **kwargs):
         super().__init__(**kwargs)
 
@@ -37,28 +41,35 @@ class InterpolatedParamLocalVol(LocalVol):
         self.sections = sections
         self.t_grid = [section.time for section in self.sections]
 
-    def value(self, t, logm):
+    def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
+        """ Values of the LV along array of log-moneynesses at given time """
         t_idx = algos.upper_bound(self.t_grid, t)
         return self.sections[t_idx].value(t, logm)
 
-    def section(self, t_idx):
+    def section(self, t_idx: int):
+        """ Retrieve local vol section at given time index """
         return self.sections[t_idx]
 
-    def check_params(self, t_idx):
+    def check_params(self, t_idx: int):
+        """ Check validity of parameters at given time index """
         return self.sections[t_idx].check_params()
 
-    def update_params(self, t_idx, new_params):
+    def update_params(self, t_idx: int, new_params: npt.ArrayLike) -> None:
+        """ Update parameters at given time index """
         self.sections[t_idx].update_params(new_params)
 
-    def params(self, t_idx):
+    def params(self, t_idx: int) -> npt.ArrayLike:
+        """ Retrieve parameters at given time index """
         return self.sections[t_idx].params
 
-    def dump(self, file, indent=2):
+    def dump(self, file: str, indent: int=2) -> None:
+        """ Dump LV object into json file """
         data = self.dump_data()
         with open(file, 'w') as f:
             json.dump(data, f, indent=indent)
 
-    def dump_data(self):
+    def dump_data(self) -> dict:
+        """ Dump LV object into dictionary """
         sections = []
         for section in self.sections:
             sections.append(section.dump())
