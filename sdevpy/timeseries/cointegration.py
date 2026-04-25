@@ -69,7 +69,8 @@ def johansen_diagnostics(test: dict, df_data: pd.DataFrame, verbose: bool=True, 
         print('Pass eigen test (5%) = ' + str(bool_eigen_5pct))
         print('Pass trace test (10%) = ' + str(bool_trace_10pct))
         print('Pass eigen test (10%) = ' + str(bool_eigen_10pct))
-        series_johansen = coint_johansen(df_data, det_order, k_ar_diff)
+        # series_johansen = coint_johansen(df_data, det_order, k_ar_diff)
+        series_johansen = test['_raw'] # Retrieve directly instead of re-running as previous code above
         print(trace_stats(series_johansen))
         print(eigen_stats(series_johansen))
         print(' -------------------------------------------------------')
@@ -115,7 +116,7 @@ def johansen_test(df_data: pd.DataFrame, det_order: int=0, k_ar_diff: int=1) -> 
     weights = norm_1st_eigvec(res_jo)
 
     return {'weights': weights, 'trace (5%)': trace_5pct, 'eigen (5%)': eigen_5pct,
-            'trace (10%)': trace_10pct, 'eigen (10%)': eigen_10pct}
+            'trace (10%)': trace_10pct, 'eigen (10%)': eigen_10pct, '_raw': res_jo}
 
 
 def check_johansen_stats_fast(res_jo):

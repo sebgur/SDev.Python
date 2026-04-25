@@ -87,8 +87,8 @@ if __name__ == "__main__":
     k_space = np.linspace(20, 2180, NUM_POINTS)
     prices = price(EXPIRY, k_space, IS_CALL, f_space, VOL)
     # print(prices)
-    implied_vols = []
+    iv_results = []
     for i, k in enumerate(k_space):
-        implied_vols.append(implied_vol(EXPIRY, k, IS_CALL, f_space[i], prices[i]))
+        iv_results.append(implied_vol(EXPIRY, k, IS_CALL, f_space[i], prices[i]))
 
-    # print(implied_vols)
+    # print(iv_results)
