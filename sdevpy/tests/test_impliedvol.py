@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.integrate import quad
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi, gsvi
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
@@ -8,15 +9,42 @@ from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
 
 
-def test_sabr():
-    # Test near ATM
-    expiry = 0.5
+# n_mix=1, flat vol term structure: beta=1, a=b=0.2, c=0, d=1 → stdev(t=1)=0.2
+_LOGMIX_PARAMS_1 = [1.0, 0.2, 0.2, 0.0, 1.0]
+
+
+def make_logmix1():
+    """ Quick LogMix maker """
+    m = LogMix(n_mix=1)
+    m.update_params(_LOGMIX_PARAMS_1)
+    return m
+
+
+def test_logmix_pdf():
+    model = make_logmix1()
+    expiry = 1.0
     fwd = 0.04
-    params = {'LnVol': 0.25, 'Beta': 0.4, 'Nu': 0.50, 'Rho': -0.25}
-    strikes = np.asarray([0.01, 0.04, 0.06])
-    test = sabr.sabr_from_dict(expiry, strikes, fwd, params)
-    ref = np.asarray([0.54225604, 0.25208659, 0.22711695])
+    strikes = np.asarray([0.03, 0.04, 0.05])
+    test = model.pdf(expiry, strikes, fwd)
+    ref = np.asarray([27.15024656, 49.61906844, 19.05342396])
     assert np.allclose(test, ref, 1e-10)
+
+
+def test_logmix_pdf_integrates_to_one():
+    """Integral of pdf over (0, ∞) must be ≈ 1."""
+    model = make_logmix1()
+    integral, _ = quad(lambda k: model.pdf(1.0, k, 1.0), 0.2, 6.0)
+    assert abs(integral - 1.0) < 1e-8
+
+
+def test_logmix_cdf_consistent_with_pdf():
+    """CDF(b) - CDF(a) must equal ∫_a^b pdf(k) dk"""
+    model = make_logmix1()
+    t, fwd, a, b = 1.0, 1.0, 0.8, 1.2
+
+    cdf_diff = model.cdf(t, b, fwd) - model.cdf(t, a, fwd)
+    integral, _ = quad(lambda k: model.pdf(t, k, fwd), a, b)
+    assert abs(cdf_diff - integral) < 1e-5
 
 
 def test_logmix_objective():
@@ -161,8 +189,21 @@ def test_gsvi_formula():
     assert np.allclose(test, ref, 1e-10)
 
 
+def test_sabr():
+    # Test near ATM
+    expiry = 0.5
+    fwd = 0.04
+    params = {'LnVol': 0.25, 'Beta': 0.4, 'Nu': 0.50, 'Rho': -0.25}
+    strikes = np.asarray([0.01, 0.04, 0.06])
+    test = sabr.sabr_from_dict(expiry, strikes, fwd, params)
+    ref = np.asarray([0.54225604, 0.25208659, 0.22711695])
+    assert np.allclose(test, ref, 1e-10)
+
+
 if __name__ == "__main__":
-    test_sabr()
+    test_logmix_pdf_integrates_to_one()
+    # test_logmix_pdf()
+    # test_sabr()
     # test_tssvi1_objective()
     # test_tssvi1()
     # test_svi_formula()
