@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
+from sdevpy.maths import constants
 from sdevpy.maths.metrics import rmse
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.maths.optimization import create_optimizer
@@ -48,7 +49,8 @@ class TsIvObjectiveBuilder:
             # objective function (where we know the problem). It might need to come from both.
             # For now we are using a problem-specific penalty, i.e. the value if all the model prices
             # were 0, assuming that should be much bigger than at any reasonable solution.
-            return 100.0 * self.target_values.sum()
+            # return 100.0 * self.target_values.sum()
+            return constants.FLOAT_INFTY # Didn't this cause problems before?
 
 
 class TsIvCalibrator:

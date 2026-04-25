@@ -6,7 +6,7 @@ from scipy.optimize import minimize_scalar
 
 
 def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
-          vol: npt.ArrayLike) -> npt.ArrayLike:
+          vol: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """ Option price under the Bachelier model """
     stdev = vol * expiry**0.5
     d = (fwd - strike) / stdev
@@ -16,7 +16,7 @@ def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, 
 
 
 def price_straddles(expiry: npt.ArrayLike, strike: npt.ArrayLike, fwd: npt.ArrayLike,
-                    vol: npt.ArrayLike) -> npt.ArrayLike:
+                    vol: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """ Straddle price under the Bachelier model.
         Note: we could improve the speed by writing the code in-line instead of
               calling the price() function twice """

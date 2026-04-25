@@ -33,7 +33,7 @@ def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_pri
 
 
 def implied_vols(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float,
-                 fwd_price: npt.ArrayLike) -> npt.ArrayLike:
+                 fwd_price: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """ Black implied volatility for vector of strikes/prices """
     if isiterable(strike) and isiterable(fwd_price):
         ivs = [implied_vol(expiry, k, is_call, fwd, p) for k, p in zip(strike, fwd_price, strict=True)]
@@ -45,7 +45,7 @@ def implied_vols(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float
 
 
 def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float,
-                       fwd_price: npt.ArrayLike, tol: float=1e-8, max_iter: int=50) -> npt.ArrayLike:
+                       fwd_price: npt.ArrayLike, tol: float=1e-8, max_iter: int=50) -> npt.NDArray[np.float64]:
     """ Using vectorized Newton-Raphson, with faster convergence than Brent.
         However, this method can struggle for very small vegas, so we may want to switch
         to another method (maybe Brent above) below a certain vega threshold.
@@ -65,11 +65,12 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
         if np.all(np.abs(diff) < tol):
             break
 
-    # if len(strike) == 1 and len(fwd_price) == 1 and len(vol) == 1: # Return a scalar if inputs are scalar
-    #     return vol[0]
-    # else:
-    #     return vol
-    return (vol.item() if vol.ndim == 0 or vol.size ==1 else vol)
+    # # if len(strike) == 1 and len(fwd_price) == 1 and len(vol) == 1: # Return a scalar if inputs are scalar
+    # #     return vol[0]
+    # # else:
+    # #     return vol
+    # return (vol.item() if vol.ndim == 0 or vol.size ==1 else vol)
+    return vol
 
 
 if __name__ == "__main__":
