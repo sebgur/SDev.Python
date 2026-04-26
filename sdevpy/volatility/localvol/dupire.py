@@ -1,3 +1,4 @@
+import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, LvMethod
@@ -6,7 +7,8 @@ from sdevpy.utilities.tools import isequal
 
 
 ######### ToDo #############################################
-# * Prepare calibration flow with times and strikes
+# * Implement calib_lv_dupire
+# * Resolve no-arb problem on TsSvi2
 
 
 def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) -> float:
@@ -104,6 +106,13 @@ def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -
     sigma2 = np.where(zero_mask, 0.0, dvar_dt / denominator)
     sigma2 = np.where(x < x_threshold, dvar_dt, sigma2)
     return np.sqrt(np.maximum(sigma2, 0.0))
+
+
+def calib_lv_dupire(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
+    """ Calibrate MatrixLocalVol by Dupire's formula """
+    # Reject expiries that are less than 1D away
+    # Use 1D as start date if 1D not in calibration set, or 0.5D otherwise?
+    return {}
 
 
 if __name__ == "__main__":

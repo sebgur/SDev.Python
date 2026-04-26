@@ -20,7 +20,8 @@ from sdevpy.market import eqvolsurface as vsurf
 # * Calibration weights based on percentiles, with possible removal of options
 
 
-def calibrate_lv(valdate, name, config, **kwargs):
+def calibrate_lv_interp(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
+    """ Calibrate InterpolatedParamLocalVol type to market data """
     # Arguments
     verbose = kwargs.get('verbose', False)
     disp_opt = kwargs.get('disp_opt', False)
@@ -236,7 +237,7 @@ if __name__ == "__main__":
               'sol_as_init': False}
 
     # Calibrate LV
-    calib_result = calibrate_lv(valdate, name, config, verbose=True, calc_pde_vols=True)
+    calib_result = calibrate_lv_interp(valdate, name, config, verbose=True, calc_pde_vols=True)
     lv = calib_result['lv']
 
     # Dump LV result to file

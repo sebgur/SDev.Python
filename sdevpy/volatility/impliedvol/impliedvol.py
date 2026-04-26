@@ -46,9 +46,7 @@ class ImpliedVol(ABC):
     def taylor_dx(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
         """ Differential of volatility against moneyness, order 1 and 2 """
         hr = 0.05 # Relative bump
-        # print(f"x-shape: {x.shape}")
         dx = hr * x
-        # print(f"dx-shape: {dx.shape}")
 
         vol = self.volatility(t, x)
         vol_up = self.volatility(t, x + dx)
@@ -79,14 +77,11 @@ class ImpliedVol(ABC):
     def d2volatility_dx2(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
         """ Second differential of the volatility against the moneyness """
         hr = 0.05 # Relative bump
-        # print(f"x-shape: {x.shape}")
         dx = hr * x
-        # print(f"dx-shape: {dx.shape}")
 
         vol = self.volatility(t, x)
         vol_up = self.volatility(t, x + dx)
         vol_dn = self.volatility(t, x - dx)
-        # dvol_dx = (vol_up - vol_dn) / (2.0 * dx)
         d2vol_dx2 = (vol_up + vol_dn - 2.0 * vol) / np.power(dx, 2)
         return d2vol_dx2
 
@@ -101,7 +96,7 @@ class ImpliedVol(ABC):
         # dxm = (tmp - self.volatility(t, x - two_h)) / two_h
         # return (dxp - dxm) / two_h
 
-    def density(self, t: float, fwd: float, strike: npt.ArrayLike) -> npt.ArrayLike:
+    def density(self, t: float, fwd: float, strike: npt.ArrayLike) -> npt.NDArray[np.float64]:
         """ Probability density corresponding to the surface """
         if np.abs(t) < self.time_epsilon:
             raise ValueError("Probability density cannot be calculated at t = 0")
@@ -116,8 +111,6 @@ class ImpliedVol(ABC):
         safe_x = np.where(zero_x_mask, 1.0, x) # Replace by 1.0 (atm) where we won't use it
 
         # Get Taylor components
-        print(f"x.shape: {x.shape}")
-        print(f"safe_x.shape: {safe_x.shape}")
         vol, dvol_dx, d2vol_dx2 = self.taylor_dx(t, safe_x)
         stdev = vol * sqrt_t
         xdtheta_dx = safe_x * dvol_dx
@@ -128,18 +121,13 @@ class ImpliedVol(ABC):
         safe_stdev = np.where(degenerate_mask, 1.0, stdev)
         safe_strike = np.where(degenerate_mask, 1.0, strike)
 
-        # if np.abs(stdev) < self.eps:
-        #     raise ValueError("Probability density cannot be calculated at standard deviation 0")
-
-        # if x < self.eps: # 0 or negative
-        #     return 0.0
-
         d_minus = -np.log(safe_x) / safe_stdev - 0.5 * safe_stdev
         d_plus_sqrt_t = (d_minus + safe_stdev) * sqrt_t
         delta_n_minus = np.exp(-0.5 * d_minus * d_minus) / constants.C_SQRT2PI
         tmp = 1.0 + d_plus_sqrt_t * xdtheta_dx
         main = x2d2theta_dx2 - d_plus_sqrt_t * xdtheta_dx * xdtheta_dx + tmp * tmp / (safe_stdev * sqrt_t)
         result = sqrt_t * delta_n_minus * main / safe_strike
+
         return np.where(degenerate_mask, 0.0, result)
 
     def cumulative(self, t: float, fwd: float, strike: float) -> float:
@@ -160,8 +148,6 @@ class ImpliedVol(ABC):
         if np.abs(p) < 1e-10:
             return 0.0
 
-        # cumulativeFunction = CumulativeFunction(self, t)
-        # solver = new ZBrent(1e-6, 100.0, 1000000, 0.000000001)
         fwd = 1.0
         result = brentq(f=lambda x: self.cumulative(t, fwd, x) - p, a=1e-6, b=100.0, xtol=1e-9, maxiter=1000)
         return result

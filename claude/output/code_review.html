@@ -47,7 +47,6 @@
     .grade-letter {
       font-size: 4.2rem;
       font-weight: 800;
-      color: var(--green);
       line-height: 1;
       min-width: 3.8rem;
       text-align: center;
@@ -90,17 +89,29 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .progress-banner {
+    .info-banner {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-left: 4px solid var(--green);
+      border-left: 4px solid var(--muted);
       border-radius: 8px;
       padding: .9rem 1.2rem;
       margin-bottom: 1.5rem;
       font-size: .88rem;
       color: var(--muted);
     }
-    .progress-banner strong { color: var(--text); }
+    .info-banner strong { color: var(--text); }
+
+    .regression-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--orange);
+      border-radius: 8px;
+      padding: .9rem 1.2rem;
+      margin-bottom: 1.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .regression-banner strong { color: var(--text); }
 
     .issue {
       background: var(--surface);
@@ -113,7 +124,6 @@
     .issue.critical { border-left-color: var(--red);    }
     .issue.high     { border-left-color: var(--orange); }
     .issue.medium   { border-left-color: var(--yellow); }
-    .issue.low      { border-left-color: var(--muted);  }
 
     .issue-header {
       display: flex;
@@ -137,7 +147,8 @@
     .badge.critical { background: #3d1515; color: var(--red);    }
     .badge.high     { background: #2d1e0f; color: var(--orange); }
     .badge.medium   { background: #2c2005; color: var(--yellow); }
-    .badge.low      { background: #1e2128; color: var(--muted);  }
+    .badge.low      { background: #1a1f2e; color: var(--muted);  }
+    .badge.unresolved { background: #2d1e0f; color: var(--orange); }
 
     .loc {
       display: inline-block;
@@ -188,41 +199,39 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-04-05 (full scan, 7th review)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-04-26 (full scan, 20th review)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter">B−</div>
+    <div class="grade-letter" style="color:var(--yellow)">B+</div>
     <div class="grade-details">
-      <h2>Strong fix cycle — all previous critical and most high issues resolved; new interface inconsistency introduced</h2>
+      <h2>No Python changes since 19th review — all prior issues remain; full scan surfaces two additional confirmed issues</h2>
       <p>
-        All five remaining issues from the previous review are confirmed fixed:
-        <code>check_degrees_of_freedom</code> no longer shadows itself (renamed to <code>check_dof</code>),
-        <code>WorstOfBarrier</code> and <code>WorstOf</code> now correctly resolve expiry indexes via lifecycle hooks,
-        the <code>formula()</code> return type is correctly annotated as <code>npt.ArrayLike</code>,
-        and empty expiry sublists are filtered before propagation.
-        A <code>TsSvi1</code> forward-evaluation test was added, which is exactly what was asked.
-        However, <code>MultiOptimizer.minimize()</code> now returns a <code>(result, nfev)</code> tuple
-        while the <code>Optimizer</code> contract returns just <code>result</code> — a silent interface break
-        that will crash any caller that switches between optimizer types. The same
-        <code>RuntimeError</code>-for-bad-input pattern that was fixed in <code>tssvi1.py</code> is still
-        present in <code>svivol.py</code> and <code>biexp.py</code>, and the debug prints in
-        <code>tssvi1.py</code> were commented out rather than removed.
+        No Python source files were modified since the previous review (git shows only untracked HTML output).
+        The debug regression in <code>density()</code>, the scale-dependent penalty, and the other
+        medium/low issues from the 19th review are all still present.
+        A full re-scan of every <code>.py</code> file confirmed two additional issues that were always
+        present but not previously highlighted: <strong>inconsistent NaN-return behaviour in
+        <code>svi.py</code></strong> and a <strong>dead <code>check_consistency()</code> method
+        in <code>impliedvol_calib.py</code></strong>.
       </p>
     </div>
   </div>
 
-  <div class="progress-banner">
-    <strong>Fixed since last review (7 of 10):</strong>
-    <code>check_degrees_of_freedom</code> attribute/method shadow resolved (renamed flag to <code>check_dof</code>) &nbsp;·&nbsp;
-    <code>WorstOfBarrier</code> now implements <code>set_valuation_date</code> and <code>set_eventindexes</code> &nbsp;·&nbsp;
-    <code>WorstOf.evaluate()</code> now uses <code>self.expiry_idx</code> &nbsp;·&nbsp;
-    <code>formula()</code> return type corrected to <code>npt.ArrayLike</code> &nbsp;·&nbsp;
-    Empty expiry sublists filtered in <code>convert_to_target_values()</code> &nbsp;·&nbsp;
-    <code>RuntimeError</code> → <code>ValueError</code> in <code>tssvi1.py</code> &nbsp;·&nbsp;
-    <code>TsSvi1</code> forward-evaluation test added
+  <div class="regression-banner">
+    <strong>Still unresolved from 19th review:</strong>
+    Two <code>print()</code> statements in <code>density()</code> at
+    <code>impliedvol.py:119–120</code> fire on every call — flooding output during PDF-branch
+    local vol calibration.
   </div>
 
+  <div class="info-banner">
+    <strong>Full-scan scope:</strong> All <code>*.py</code> and <code>*.ipynb</code> files read.
+    <code>sdevpy/thirdparty/</code> excluded.
+    Findings below are verified against the current file contents at the reported line numbers.
+  </div>
+
+  <!-- SCORECARD -->
   <div class="scorecard">
     <table>
       <thead>
@@ -232,317 +241,304 @@
       </thead>
       <tbody>
         <tr>
-          <td>Architecture</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean payoff algebra, solid ABC hierarchy, <code>ZeroSurface</code> chain well-structured; <code>calibrate_modelled_type()</code> contract broken for <code>TermStructureParametricZeroSurface</code></td>
+          <td>Architecture</td><td>8 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy; calibration pipeline well-structured; <code>LvObjectiveBuilder</code> side-effect API is a design smell but contained</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Critical dof-shadow and WorstOf index bugs fixed; <code>MultiOptimizer</code> returns wrong type breaking the Optimizer interface</td>
+          <td>Correctness</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>density()</code> vectorisation is correct; scale-dependent LV penalty and NaN-returning <code>svi()</code> are latent accuracy bugs</td>
         </tr>
         <tr>
           <td>Error Handling</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Logging and exception narrowing consistently applied; <code>svivol.py</code> and <code>biexp.py</code> still use <code>RuntimeError</code> for bad-input validation</td>
+          <td style="color:var(--muted);font-size:.83rem">Penalty strategy differs between <code>LvObjectiveBuilder</code> and <code>TsIvObjectiveBuilder</code>; <code>svi()</code> returns NaN; <code>calib_lv_dupire()</code> returns <code>{}</code> silently</td>
         </tr>
         <tr>
-          <td>Testing</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good MC, interpolation, timegrid, PDE, utils tests; TsSvi1 forward-eval test added; still no calibration smoke test or <code>optionsurface</code> round-trip test</td>
+          <td>Testing</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good coverage for dupire and LvObjectiveBuilder; debug <code>print()</code> in two test functions; no end-to-end test for <code>calibrate_lv_interp()</code></td>
         </tr>
         <tr>
           <td>Code Quality</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Debug prints in <code>tssvi1.py</code> commented out (not removed); new debug <code>print()</code> left in <code>test_impliedvols.py</code>; <code>TEST_VOL</code> still not injectable</td>
+          <td style="color:var(--muted);font-size:.83rem">Debug prints in <code>density()</code>; variable shadowing in <code>LogMix.price()</code>; dead <code>check_consistency()</code>; commented-out blocks persist across multiple files</td>
         </tr>
         <tr>
-          <td>Maintainability</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good module layout; exception-type inconsistency now spans three files; <code>MultiOptimizer</code> return-type divergence is a maintainability hazard</td>
+          <td>Maintainability</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>dupire_formula_single()</code> and <code>calib_lv_dupire()</code> are pending-work stubs; inconsistent penalty strategy creates cognitive overhead</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>formula()</code> return type fixed; <code>Optimizer</code> base class missing <code>ABC</code> inheritance so <code>@abstractmethod</code> has no enforcement</td>
+          <td>Type Safety</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>formula</code> parameter in <code>ParamLocalVolSection</code> unannotated; <code>density()</code> return type still <code>npt.ArrayLike</code>; <code>implied_vols()</code> returns float in scalar branch but is typed <code>NDArray</code></td>
         </tr>
         <tr>
-          <td>Documentation</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good docstrings in <code>zerosurface</code> and <code>optionsurface</code>; payoff classes, <code>biexp</code>, <code>svivol</code>, optimization internals still sparse</td>
+          <td>Documentation</td><td>8 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Docstrings are clear and purposeful throughout; ToDo comments are tracked; module-level docstrings in key models</td>
         </tr>
       </tbody>
     </table>
   </div>
 
+  <!-- ISSUES -->
   <div class="section-title">Top 10 Issues</div>
 
-  <!-- 1 -->
+  <!-- ISSUE 1 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>MultiOptimizer.minimize()</code> returns <code>(result, nfev)</code> — breaks the <code>Optimizer</code> interface</span>
+      <span class="issue-title">Debug <code>print()</code> statements in <code>density()</code> — unresolved from 19th review</span>
       <span class="badge high">High</span>
+      <span class="badge unresolved">Unresolved</span>
     </div>
-    <span class="loc">sdevpy/maths/optimization.py · lines 99–114</span>
+    <span class="loc">sdevpy/volatility/impliedvol/impliedvol.py : 119–120</span>
     <p>
-      <strong>Why it's bad:</strong> <code>SciPyOptimizer.minimize()</code> returns a single
-      <code>result</code> object. <code>MultiOptimizer.minimize()</code> returns
-      <code>(result, nfev)</code> — a tuple. Any caller that treats the two implementations
-      interchangeably (which is the whole point of the <code>Optimizer</code> base class) will
-      receive a tuple instead of a result and immediately fail when accessing <code>result.x</code>
-      or <code>result.fun</code>. The abstract base method signature on line 38 also declares
-      <code>args</code> as a required positional parameter, while both concrete
-      implementations make it optional — a further contract violation.
+      Two print statements — <code>print(f"x.shape: {x.shape}")</code> and
+      <code>print(f"safe_x.shape: {safe_x.shape}")</code> — were introduced during the
+      vectorisation refactor and remain in the production code path. The PDF branch of
+      <code>dupire_formula()</code> calls <code>density()</code> at every moneyness point,
+      and calibration calls the Dupire formula thousands of times per optimizer iteration.
+      <strong>This floods stdout with hundreds of lines of noise during any PDF-branch local
+      vol calibration run</strong>, making it effectively unusable.
     </p>
-    <p><strong>Fix:</strong> Make <code>MultiOptimizer.minimize()</code> return just <code>result</code>, store <code>nfev</code> as an instance attribute if needed:</p>
-    <pre><span class="kw">def</span> <span class="fn">minimize</span>(self, f, x0=None, args=(), bounds=None):
-    result = None
-    self.total_nfev = 0
-    <span class="kw">for</span> i, optimizer <span class="kw">in</span> enumerate(self.optimizers_):
-        result = optimizer.minimize(f, x0, args, bounds)
-        <span class="ok">self.total_nfev += result.nfev</span>
-        <span class="kw">if</span> result.fun &lt; self.mtol_:
-            <span class="kw">break</span>
-    <span class="ok">return result</span>  <span class="c"># not (result, nfev)</span></pre>
+    <pre><span class="rm">-    print(f"x.shape: {x.shape}")</span>
+<span class="rm">-    print(f"safe_x.shape: {safe_x.shape}")</span>
+     vol, dvol_dx, d2vol_dx2 = self.taylor_dx(t, safe_x)</pre>
   </div>
 
-  <!-- 2 -->
+  <!-- ISSUE 2 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title">Flat-vol <code>TEST_VOL = 0.20</code> hardwired — not injectable via constructor</span>
+      <span class="issue-title">Inconsistent infeasibility penalty across objective builders</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/assetmodels.py · lines 5, 25</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol_calib.py : 189 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/impliedvol_calib.py : 52–53</span>
     <p>
-      <strong>Why it's bad:</strong> When <code>use_lv=False</code> (the default), every asset is
-      simulated at 20% flat volatility regardless of market data. The constant name
-      <code>TEST_VOL</code> signals it is for testing only — but the constructor accepts
-      <code>**kwargs</code> and ignores any <code>'sigma'</code> key, so callers have no way to
-      override it. Any production use of the flat-vol path yields wrong prices with no warning.
+      The two objective builders handle infeasible parameters differently. <code>LvObjectiveBuilder</code>
+      returns <code>self.cf_prices.sum()</code> (line 189 of <code>localvol_calib.py</code>) — a
+      value that varies with expiry and number of strikes. <code>TsIvObjectiveBuilder</code> returns
+      <code>constants.FLOAT_INFTY</code> (line 53 of <code>impliedvol_calib.py</code>), but the
+      comment above it reads <em>"Didn't this cause problems before?"</em>, indicating the approach
+      is uncertain and has not been systematically tested.
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="rm">self.sigma = np.asarray([TEST_VOL for _ in range(self.n_factors)])</span>
-<span class="ok">sigma = kwargs.get('sigma', [TEST_VOL] * self.n_factors)
-self.sigma = np.asarray(sigma)</span></pre>
+    <p>
+      <strong>Why this matters:</strong> an optimizer that receives <code>cf_prices.sum()</code> as
+      penalty will see different "wall heights" at different expiries. The optimizer may steer toward
+      expiries where the penalty happens to be smaller, rather than toward feasibility.
+      <code>FLOAT_INFTY</code> is the correct sentinel — but the uncertainty comment in
+      <code>impliedvol_calib.py</code> means neither builder is conclusively right. The two builders
+      should align on the same strategy, and the strategy should be validated.
+    </p>
+    <pre><span class="c"># localvol_calib.py:189 — scale-dependent</span>
+<span class="rm">-            return self.cf_prices.sum()</span>
+<span class="ok">+            return constants.FLOAT_INFTY</span>
+
+<span class="c"># impliedvol_calib.py:53 — uncertain comment should be resolved</span>
+<span class="rm">-            return constants.FLOAT_INFTY  <span class="c"># Didn't this cause problems before?</span></span>
+<span class="ok">+            return constants.FLOAT_INFTY  <span class="c"># Validated: works correctly with SLSQP/L-BFGS-B</span></span></pre>
   </div>
 
-  <!-- 3 -->
+  <!-- ISSUE 3 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>Optimizer</code> base class does not inherit <code>ABC</code> — <code>@abstractmethod</code> has no effect</span>
+      <span class="issue-title"><code>svi()</code> returns a NaN array on invalid parameters</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/maths/optimization.py · line 36</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/svi.py : 40–42</span>
     <p>
-      <strong>Why it's bad:</strong> <code>class Optimizer:</code> declares
-      <code>minimize()</code> as <code>@abstractmethod</code> but does not inherit from
-      <code>ABC</code>. Python only enforces abstract method contracts when the class (or a
-      parent) is an instance of <code>ABCMeta</code>. As written, you can instantiate
-      <code>Optimizer()</code> directly and call <code>minimize()</code> — it would return
-      <code>None</code> silently. New subclasses that forget to implement <code>minimize()</code>
-      will also instantiate without error.
+      When <code>svi_check_params()</code> returns infeasible, <code>svi()</code> returns
+      <code>np.full_like(x, np.nan)</code> (line 41) instead of raising an exception.
+      This is inconsistent with every other model in the codebase: <code>TsSvi1.calculate()</code>
+      returns <code>np.full_like(k, np.nan)</code>, <code>LogMix</code> raises
+      <code>RuntimeError</code> for missing params, and <code>svi_check_params</code> itself
+      returns <code>FLOAT_INFTY</code> as a penalty — signalling that infinity, not NaN, is the
+      agreed sentinel.
+      <strong>Callers that do not check for NaN (e.g. any downstream RMSE calculation) will
+      silently propagate NaN through the optimizer without signalling a problem.</strong>
+      The commented-out alternative on line 42 (<code># raise ValueError(...)</code>) suggests
+      this was a deliberate but unevaluated trade-off.
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="kw">from</span> abc <span class="kw">import</span> ABC, abstractmethod
-
-<span class="rm">class Optimizer:</span>
-<span class="ok">class Optimizer(ABC):</span>
-    @abstractmethod
-    <span class="kw">def</span> <span class="fn">minimize</span>(self, f, x0=None, args=(), bounds=None):
-        <span class="st">""" Minimization """</span></pre>
+    <pre><span class="rm">-        return np.full_like(np.asarray(x, dtype=float), np.nan)</span>
+<span class="rm">-        <span class="c"># raise ValueError("Invalid SVI parameters")</span></span>
+<span class="ok">+        raise ValueError(f"Invalid SVI parameters: check_params failed")</span></pre>
+    <p>Note: <code>svi_formula()</code> delegates directly to <code>svi()</code>, and
+       <code>SviSection.value()</code> delegates to <code>svi_formula()</code> — so NaN can reach
+       the PDE or calibration objective without any intermediate warning.</p>
   </div>
 
-  <!-- 4 -->
+  <!-- ISSUE 4 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title"><code>RuntimeError</code> used for wrong-count and invalid-parameter checks in <code>svivol.py</code> and <code>biexp.py</code></span>
+      <span class="issue-title">Variable shadowing in <code>LogMix.price()</code></span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/models/svivol.py · lines 55, 67 &nbsp;·&nbsp; sdevpy/models/biexp.py · lines 70, 83</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/logmix.py : 192–205</span>
     <p>
-      <strong>Why it's bad:</strong> The identical issue was fixed in <code>tssvi1.py</code> in the
-      previous cycle, but the same pattern persists in <code>svivol.py</code> and
-      <code>biexp.py</code>. Python convention (<a style="color:var(--accent)" href="https://docs.python.org/3/library/exceptions.html">PEP 3151</a>)
-      reserves <code>RuntimeError</code> for errors that don't fit other categories.
-      Wrong parameter count and invalid parameter values are structural input problems — both
-      should raise <code>ValueError</code>. Callers catching <code>ValueError</code> for bad-input
-      recovery will silently miss these failures.
+      Inside <code>price()</code>, three names shadow outer bindings within the loop:
+      the accumulator <code>price = 0.0</code> shadows the method name itself;
+      <code>f = fwd * (...)</code> shadows the parameter <code>fwd</code>; and
+      <code>k = strike * (...)</code> shadows the parameter <code>strike</code>.
+      Python does not error on this, but <strong>the <code>price</code> shadow makes it impossible
+      to call <code>self.price()</code> after line 197 without first leaving the method</strong>,
+      and the <code>f</code> / <code>k</code> shadows mean a reader cannot tell at a glance which
+      binding is active in the <code>self.black(k, is_call, f, stdev)</code> call on line 203.
     </p>
-    <p><strong>Fix (same pattern as tssvi1.py):</strong></p>
-    <pre><span class="c"># svivol.py line 55:</span>
-<span class="rm">raise RuntimeError(f"Incorrect parameter size in SviVol: {len(params)}")</span>
-<span class="ok">raise ValueError(f"Expected 5 parameters for SviVol, got {len(params)}")</span>
-
-<span class="c"># svivol.py line 67 and biexp.py line 83:</span>
-<span class="rm">raise RuntimeError("Invalid SviVol parameters")</span>
-<span class="ok">raise ValueError("Invalid SviVol parameters")</span></pre>
+    <pre><span class="rm">-    price = 0.0
+-        f = fwd * (1.0 + self.mean[i].value(t))
+-        k = strike * (1.0 + self.strike[i].value(t))
+-        price += w * self.black(k, is_call, f, stdev)</span>
+<span class="ok">+    total = 0.0
++        f_i = fwd * (1.0 + self.mean[i].value(t))
++        k_i = strike * (1.0 + self.strike[i].value(t))
++        total += w * self.black(k_i, is_call, f_i, stdev)</span></pre>
   </div>
 
-  <!-- 5 -->
+  <!-- ISSUE 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title"><code>TermStructureParametricZeroSurface.calibrate_modelled_type()</code> always raises — standard calibration interface unusable</span>
+      <span class="issue-title"><code>check_consistency()</code> is dead code with a "not used yet" comment</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/models/surfaces/zerosurface.py · line 282</span>
+    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py : 125–139</span>
     <p>
-      <strong>Why it's bad:</strong> The method unconditionally raises
-      <code>NotImplementedError("Not implemented yet: calibrate_modelled_type")</code>.
-      This means calling <code>surface.calibrate()</code> on any
-      <code>TsSvi1</code> object will always fail at the last step, after all the consistency
-      checks and data preparation have already run. The <code>ZeroSurface.calibrate()</code>
-      → <code>calibrate_modelled_type()</code> contract is completely broken for the entire
-      <code>TermStructure*</code> family. Calibration currently only works via the separate
-      <code>TsSvi1ObjectiveBuilder</code> path, which bypasses the standard interface entirely.
-      This is a hidden architectural gap that will bite any future developer who follows the
-      documented interface.
+      <code>TsIvCalibrator.check_consistency()</code> is a 15-line method that the docstring
+      explicitly labels <em>"not used yet, but will be used in a later phase"</em>. It is never
+      called from anywhere in the codebase. Shipping untested, dead code under a "coming soon"
+      label has two costs: <strong>(1)</strong> it creates a false impression that negative-rate
+      handling is implemented; <strong>(2)</strong> when eventually called, the method may be
+      silently out-of-date with the surrounding API (e.g. <code>OptionTarget</code> schema changes).
     </p>
     <p>
-      <strong>Fix:</strong> Either override <code>calibrate_modelled_type()</code> in
-      <code>TsSvi1</code> to run the optimizer, or make
-      <code>TermStructureParametricZeroSurface.calibrate_modelled_type()</code> call
-      <code>calibrate_tssvi1()</code>. At minimum, document the design decision so the
-      split is intentional and visible.
+      <strong>Fix:</strong> Delete the method. Implement it in a separate commit when it is
+      actually needed and testable.
     </p>
   </div>
 
-  <!-- 6 -->
+  <!-- ISSUE 6 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">Debug <code>print()</code> left in <code>test_tssvi1()</code></span>
+      <span class="issue-title">Accumulated commented-out dead code across multiple files</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/test_impliedvols.py · line 10</span>
+    <span class="loc">bachelier.py : 24–35, 85–86 &nbsp;·&nbsp; impliedvol.py : 49, 51, 131–135 &nbsp;·&nbsp; tssvi1.py : 58–61 &nbsp;·&nbsp; black.py : 68–72 &nbsp;·&nbsp; svi.py : 42</span>
     <p>
-      <strong>Why it's bad:</strong> <code>print(len(params))</code> fires every time the test suite
-      runs. Tests should be silent on success — noise in test output masks real failures and breaks
-      CI pipelines that check for clean stdout. This appears to be a debug leftover from writing the
-      test.
+      Several files carry commented-out blocks from previous iterations. Examples confirmed:
     </p>
-    <p><strong>Fix:</strong> Remove the line entirely:</p>
-    <pre><span class="kw">def</span> <span class="fn">test_tssvi1</span>():
-    surface = TsSvi1()
-    params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
-    surface.calibrated_parameters = params
-<span class="rm">    print(len(params))</span>
-    ...</pre>
+    <p>
+      <strong><code>bachelier.py:24–35</code></strong> — old per-element loop for
+      <code>price_straddles()</code>, entirely superseded by the vectorised version above it.<br/>
+      <strong><code>bachelier.py:85–86</code></strong> — dead <code># expiry = float(expiry)</code>
+      / <code># fwd = float(fwd)</code> float-cast lines.<br/>
+      <strong><code>impliedvol.py:49,51</code></strong> — debug <code># print(f"x-shape: ...")</code>
+      comment lines inside <code>taylor_dx()</code>.<br/>
+      <strong><code>impliedvol.py:131–135</code></strong> — old scalar guards in
+      <code>density()</code>, preserved as a block comment after the vectorisation refactor.<br/>
+      <strong><code>tssvi1.py:58–61</code></strong> — old <code>ValueError</code> guards replaced
+      by <code>max(1.0 - r*r, 0.0)</code>, still sitting as comments below.<br/>
+      <strong><code>black.py:68–72</code></strong> — commented-out scalar-return logic in
+      <code>implied_vol_newton()</code>.<br/>
+      <strong><code>svi.py:42</code></strong> — <code># raise ValueError("Invalid SVI parameters")</code>
+      commented out in favour of the NaN-return path.
+    </p>
+    <p><strong>Fix:</strong> Delete all of these. Git history preserves the old implementations.</p>
   </div>
 
-  <!-- 7 -->
+  <!-- ISSUE 7 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP classes exposed in the public API</span>
+      <span class="issue-title">Duplicate validation in <code>TsSvi1.smile_parameters()</code></span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 67–91</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/tssvi1.py : 50–54 vs 108–114</span>
     <p>
-      <strong>Why it's bad:</strong> Both classes are marked <em>"Warning: work in progress"</em>
-      and skip all lifecycle hooks (<code>set_nameindexes</code>,
-      <code>set_valuation_date</code>, <code>set_eventindexes</code>).
-      <code>Maximum</code> sets <code>self.eventdates</code> at construction time — the wrong
-      lifecycle phase. <code>BarrierDown</code> takes a raw integer index, bypassing the
-      name-resolution system entirely. Any caller using these classes will get wrong results
-      or an <code>AttributeError</code>/<code>IndexError</code> with no indication of why.
+      <code>check_global_params()</code> validates both <code>r</code> (lines 108–109) and
+      <code>delta + 1</code> (lines 112–113), returning <code>(False, FLOAT_INFTY)</code> on
+      failure. <code>calculate()</code> calls <code>check_global_params()</code> before
+      ever reaching <code>smile_parameters()</code>. Despite this, <code>smile_parameters()</code>
+      repeats both checks and raises <code>ValueError</code> (lines 50–54).
+      <strong>The ValueError guards in <code>smile_parameters()</code> will never fire through the
+      normal code path</strong>, but will throw exceptions when <code>smile_parameters()</code> is
+      called directly (e.g. from <code>check_params()</code> via <code>sample_times</code>), making
+      the error-handling contract inconsistent.
     </p>
-    <p>
-      <strong>Fix:</strong> Either complete the implementation following the <code>Terminal</code>
-      pattern, or guard with <code>raise NotImplementedError</code> in <code>evaluate()</code>
-      so failures are explicit and immediate.
-    </p>
+    <p><strong>Fix:</strong> Remove lines 50–54 from <code>smile_parameters()</code>.
+       <code>check_global_params()</code> is the single source of truth.</p>
   </div>
 
-  <!-- 8 -->
+  <!-- ISSUE 8 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title">Debug prints commented out rather than removed — accumulating dead code</span>
+      <span class="issue-title"><code>formula</code> parameter has no type annotation</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/models/surfaces/tssvi1.py · lines 33–35 &nbsp;·&nbsp; sdevpy/montecarlo/assetmodels.py · line 54 &nbsp;·&nbsp; sdevpy/montecarlo/payoffs/basic.py · lines 469–473</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol.py : 43</span>
     <p>
-      <strong>Why it's bad:</strong> The previous review flagged four <code>print()</code> calls
-      in <code>tssvi1.py</code> as a High issue. They are now commented out rather than deleted.
-      Commented-out code is noise: it obscures intent, clutters diffs, and often gets copied
-      forward by mistake. The same pattern appears in <code>assetmodels.py</code>
-      (<code># print(vol)</code>) and <code>basic.py</code> (four commented
-      <code>print(f"...")</code> calls). If diagnostic output is needed, use
-      <code>logging.debug()</code> — it is controlled by log level and produces no output in
-      production.
+      <code>ParamLocalVolSection.__init__(self, time: float, formula)</code> — the
+      <code>formula</code> callable is the central dependency of the section (it supplies the
+      local vol function used at every PDE step) but carries no type hint. Every subclass
+      constructor inherits this gap. Without an annotation, static type-checkers cannot verify
+      that subclass implementations pass a compatible callable, and readers must trace all call
+      sites to infer the expected signature <code>(t, x, params) -&gt; ArrayLike</code>.
     </p>
-    <p><strong>Fix:</strong> Delete all commented-out <code>print()</code> calls. If the output
-    is ever needed, replace with <code>log.debug()</code>.</p>
+    <pre><span class="kw">from</span> typing <span class="kw">import</span> Callable
+<span class="rm">-    def __init__(self, time: float, formula):</span>
+<span class="ok">+    def __init__(self, time: float, formula: Callable[[float, npt.ArrayLike, npt.ArrayLike], npt.ArrayLike]):</span></pre>
   </div>
 
-  <!-- 9 -->
-  <div class="issue medium">
+  <!-- ISSUE 9 -->
+  <div class="issue">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>TsSvi1.__main__</code> reconstructs <code>model_vols</code> using <code>strikes</code> from the last loop iteration</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>calib_lv_dupire()</code> stub returns empty dict silently</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/models/surfaces/tssvi1.py · lines 194–199</span>
+    <span class="loc">sdevpy/volatility/localvol/dupire.py : 111–115</span>
     <p>
-      <strong>Why it's bad:</strong> Lines 148–158 build flat arrays by iterating over expiries,
-      assigning <code>strikes = strike_surface[i]</code> each iteration. After the loop,
-      <code>strikes</code> refers to the last expiry's strike list. The reconstruction loop
-      at lines 194–199 then uses this stale reference:
+      The function body is <code>return {}</code> with no warning or exception. Any caller that
+      attempts to use the result (e.g. <code>result['lv']</code>) will get a silent
+      <code>KeyError</code> rather than an actionable "not implemented" message.
+      <code>calibrate_lv_interp()</code> returns a rich dict with the same key names — a developer
+      could plausibly confuse the two entry points.
     </p>
-    <pre><span class="kw">for</span> _ <span class="kw">in</span> expiries:
-    vols = []
-    <span class="kw">for</span> _ <span class="kw">in</span> strikes:  <span class="c"># always uses strike_surface[-1]</span>
-        vols.append(z[counter])
-        counter += 1
-    model_vols.append(vols)</pre>
-    <p>
-      If expiries have different numbers of strikes, the counter will be wrong for all but the
-      last expiry — producing incorrect or misaligned <code>model_vols</code> and ultimately a
-      wrong RMSE chart. The plotting loop at line 216 then computes
-      <code>rmse(vol_surface[exp_idx], model_vols[exp_idx])</code> on mis-sized arrays.
-    </p>
-    <p><strong>Fix:</strong> Track the strike count per expiry explicitly:</p>
-    <pre>counter = 0
-<span class="kw">for</span> exp_idx, _ <span class="kw">in</span> enumerate(expiries):
-    n = len(strike_surface[exp_idx])
-    model_vols.append(z[counter:counter + n].tolist())
-    counter += n</pre>
+    <pre><span class="rm">-    return {}</span>
+<span class="ok">+    raise NotImplementedError("calib_lv_dupire is not yet implemented")</span></pre>
   </div>
 
-  <!-- 10 -->
-  <div class="issue medium">
+  <!-- ISSUE 10 -->
+  <div class="issue">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title">No calibration smoke test — attribute/method naming bugs will keep reaching production undetected</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Debug <code>print()</code> calls in test functions pollute CI output</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/tests/ · codebase-wide</span>
+    <span class="loc">sdevpy/tests/test_localvol.py : 149, 157</span>
     <p>
-      <strong>Why it's bad:</strong> The <code>check_degrees_of_freedom</code> shadow (Critical,
-      previous review) would have been caught in milliseconds by a single test that calls
-      <code>ZeroSurface.check_consistency()</code> on any concrete subclass. The
-      <code>MultiOptimizer</code> interface break (issue #1 above) is only detectable by a test
-      that switches between optimizer types. Without a calibration smoke test, the same class of
-      bugs will recur on every change to the calibration path.
+      <code>test_dupire_impliedvol()</code> at line 149 and <code>test_dupire_pdf()</code> at
+      line 157 both call <code>print(test)</code> on the computed result array before the
+      assertion. Test functions should produce no output on success; these prints clutter CI logs
+      and make it harder to spot real diagnostic output from failing tests.
     </p>
-    <p>
-      <strong>Fix:</strong> Add at minimum: (1) a <code>test_optionsurface.py</code> round-trip
-      conversion test verifying that <code>convert_option()</code> is the inverse of itself;
-      (2) a smoke test that constructs a <code>TsSvi1</code> and calls
-      <code>check_consistency()</code> on a minimal option grid to verify the lifecycle;
-      (3) a <code>MultiOptimizer</code> test that checks <code>result.x</code> is accessible
-      on the returned value.
-    </p>
+    <pre><span class="rm">-    print(test)</span>
+     assert np.allclose(test, ref, 1e-10)</pre>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-04-05 (7th review)
+    <p>Full scan · all <code>*.py</code> and <code>*.ipynb</code> files read ·
+       <code>sdevpy/thirdparty/</code> excluded ·
+       All findings verified against current file contents at reported line numbers · 2026-04-26</p>
   </footer>
+
 </div>
 </body>
 </html>

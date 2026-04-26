@@ -194,15 +194,15 @@ class LogMix(ParametricImpliedVol):
         if self.params is None:
             raise RuntimeError("Call update_params() before evaluating the LogMix model")
 
-        price = 0.0
+        total = 0.0
         for i in range(self.n_mix):
             w = self.weight[i].value(t)
             f = fwd * (1.0 + self.mean[i].value(t))
             k = strike * (1.0 + self.strike[i].value(t))
             stdev = np.sqrt(self.var[i].value(t))
-            price += w * self.black(k, is_call, f, stdev)
+            total += w * self.black(k, is_call, f, stdev)
 
-        return price
+        return total
 
     def pdf(self, t: float, strike: npt.ArrayLike, fwd: float) -> npt.NDArray[np.float64]:
         """ Probability density: weighted sum of lognormal densities """

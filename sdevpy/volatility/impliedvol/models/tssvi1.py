@@ -55,9 +55,6 @@ class TsSvi1(ParametricImpliedVol):
 
         # Calculate new variables
         one_minus_rho2 = max(1.0 - r * r, 0.0)
-        # one_minus_rho2 = 1.0 - r * r
-        # if one_minus_rho2 < 0.0:
-        #     raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
 
         # Vectorize r (the other ones broadcast fine thanks to t)
         t = np.asarray(t, dtype=float)
