@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Claude's Code Review — sdevpy</title>
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --text:      #c9d1d9;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --orange:    #f0883e;
+      --red:       #f85149;
+      --purple:    #bc8cff;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+
+    header { margin-bottom: 2.5rem; padding-bottom: 1.4rem; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.75rem; color: var(--accent); letter-spacing: -.02em; }
+    header p  { color: var(--muted); margin-top: .35rem; font-size: .9rem; }
+
+    .grade-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+    .grade-letter {
+      font-size: 4.2rem;
+      font-weight: 800;
+      color: var(--green);
+      line-height: 1;
+      min-width: 3.8rem;
+      text-align: center;
+    }
+    .grade-details h2 { font-size: 1.05rem; margin-bottom: .35rem; }
+    .grade-details p  { color: var(--muted); font-size: .88rem; }
+
+    .scorecard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+    .scorecard table { width: 100%; border-collapse: collapse; }
+    .scorecard thead th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      padding: .65rem 1.2rem;
+      text-align: left;
+    }
+    .scorecard tbody tr { border-top: 1px solid var(--border); }
+    .scorecard tbody tr:hover { background: var(--surface2); }
+    .scorecard td { padding: .7rem 1.2rem; font-size: .88rem; vertical-align: middle; }
+    .scorecard td:nth-child(2) { font-weight: 700; white-space: nowrap; }
+    .bar-wrap  { display: flex; align-items: center; gap: .55rem; }
+    .bar       { height: 6px; border-radius: 3px; background: var(--border); flex: 1; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 3px; }
+    .score-lbl { font-size: .78rem; color: var(--muted); white-space: nowrap; min-width: 4.5rem; }
+
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1.1rem;
+      padding-bottom: .45rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .progress-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      padding: .9rem 1.2rem;
+      margin-bottom: 1.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .progress-banner strong { color: var(--text); }
+
+    .issue {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 8px;
+      padding: 1.15rem 1.4rem;
+      margin-bottom: 1.1rem;
+    }
+    .issue.critical { border-left-color: var(--red);    }
+    .issue.high     { border-left-color: var(--orange); }
+    .issue.medium   { border-left-color: var(--yellow); }
+    .issue.low      { border-left-color: var(--muted);  }
+
+    .issue-header {
+      display: flex;
+      align-items: flex-start;
+      gap: .7rem;
+      margin-bottom: .7rem;
+      flex-wrap: wrap;
+    }
+    .issue-num {
+      font-size: .72rem; font-weight: 700;
+      background: #21262d; border-radius: 4px;
+      padding: .18rem .5rem; color: var(--muted);
+      white-space: nowrap; margin-top: .15rem;
+    }
+    .issue-title { font-weight: 600; font-size: .98rem; flex: 1; min-width: 0; }
+    .badge {
+      font-size: .7rem; font-weight: 700; padding: .18rem .55rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: .05em;
+      white-space: nowrap; margin-top: .1rem;
+    }
+    .badge.critical { background: #3d1515; color: var(--red);    }
+    .badge.high     { background: #2d1e0f; color: var(--orange); }
+    .badge.medium   { background: #2c2005; color: var(--yellow); }
+    .badge.low      { background: #1e2128; color: var(--muted);  }
+
+    .loc {
+      display: inline-block;
+      font-size: .76rem; color: var(--accent);
+      background: #0c2a4a; border: 1px solid #1f4068;
+      border-radius: 4px; padding: .12rem .48rem;
+      margin-bottom: .55rem;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    }
+
+    .issue p { color: var(--muted); font-size: .88rem; margin-bottom: .45rem; }
+    .issue p:last-child { margin-bottom: 0; }
+    .issue strong { color: var(--text); }
+
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .83em;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1em .38em;
+      color: var(--purple);
+    }
+    pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .9rem 1.1rem;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .82em;
+      line-height: 1.65;
+      margin: .55rem 0 .2rem;
+      color: #e6edf3;
+    }
+    .c  { color: #8b949e; }
+    .kw { color: #ff7b72; }
+    .st { color: #a5d6ff; }
+    .fn { color: #d2a8ff; }
+    .ok { color: #3fb950; }
+    .rm { color: #f85149; }
+
+    footer { margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; color: var(--muted); font-size: .8rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Claude's Code Review — <code>sdevpy</code></h1>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-04-05 (full scan, 7th review)</p>
+  </header>
+
+  <div class="grade-card">
+    <div class="grade-letter">B−</div>
+    <div class="grade-details">
+      <h2>Strong fix cycle — all previous critical and most high issues resolved; new interface inconsistency introduced</h2>
+      <p>
+        All five remaining issues from the previous review are confirmed fixed:
+        <code>check_degrees_of_freedom</code> no longer shadows itself (renamed to <code>check_dof</code>),
+        <code>WorstOfBarrier</code> and <code>WorstOf</code> now correctly resolve expiry indexes via lifecycle hooks,
+        the <code>formula()</code> return type is correctly annotated as <code>npt.ArrayLike</code>,
+        and empty expiry sublists are filtered before propagation.
+        A <code>TsSvi1</code> forward-evaluation test was added, which is exactly what was asked.
+        However, <code>MultiOptimizer.minimize()</code> now returns a <code>(result, nfev)</code> tuple
+        while the <code>Optimizer</code> contract returns just <code>result</code> — a silent interface break
+        that will crash any caller that switches between optimizer types. The same
+        <code>RuntimeError</code>-for-bad-input pattern that was fixed in <code>tssvi1.py</code> is still
+        present in <code>svivol.py</code> and <code>biexp.py</code>, and the debug prints in
+        <code>tssvi1.py</code> were commented out rather than removed.
+      </p>
+    </div>
+  </div>
+
+  <div class="progress-banner">
+    <strong>Fixed since last review (7 of 10):</strong>
+    <code>check_degrees_of_freedom</code> attribute/method shadow resolved (renamed flag to <code>check_dof</code>) &nbsp;·&nbsp;
+    <code>WorstOfBarrier</code> now implements <code>set_valuation_date</code> and <code>set_eventindexes</code> &nbsp;·&nbsp;
+    <code>WorstOf.evaluate()</code> now uses <code>self.expiry_idx</code> &nbsp;·&nbsp;
+    <code>formula()</code> return type corrected to <code>npt.ArrayLike</code> &nbsp;·&nbsp;
+    Empty expiry sublists filtered in <code>convert_to_target_values()</code> &nbsp;·&nbsp;
+    <code>RuntimeError</code> → <code>ValueError</code> in <code>tssvi1.py</code> &nbsp;·&nbsp;
+    <code>TsSvi1</code> forward-evaluation test added
+  </div>
+
+  <div class="scorecard">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th><th>Score</th><th style="width:38%">Rating</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Architecture</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Clean payoff algebra, solid ABC hierarchy, <code>ZeroSurface</code> chain well-structured; <code>calibrate_modelled_type()</code> contract broken for <code>TermStructureParametricZeroSurface</code></td>
+        </tr>
+        <tr>
+          <td>Correctness</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Critical dof-shadow and WorstOf index bugs fixed; <code>MultiOptimizer</code> returns wrong type breaking the Optimizer interface</td>
+        </tr>
+        <tr>
+          <td>Error Handling</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Logging and exception narrowing consistently applied; <code>svivol.py</code> and <code>biexp.py</code> still use <code>RuntimeError</code> for bad-input validation</td>
+        </tr>
+        <tr>
+          <td>Testing</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good MC, interpolation, timegrid, PDE, utils tests; TsSvi1 forward-eval test added; still no calibration smoke test or <code>optionsurface</code> round-trip test</td>
+        </tr>
+        <tr>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Debug prints in <code>tssvi1.py</code> commented out (not removed); new debug <code>print()</code> left in <code>test_impliedvols.py</code>; <code>TEST_VOL</code> still not injectable</td>
+        </tr>
+        <tr>
+          <td>Maintainability</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good module layout; exception-type inconsistency now spans three files; <code>MultiOptimizer</code> return-type divergence is a maintainability hazard</td>
+        </tr>
+        <tr>
+          <td>Type Safety</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>formula()</code> return type fixed; <code>Optimizer</code> base class missing <code>ABC</code> inheritance so <code>@abstractmethod</code> has no enforcement</td>
+        </tr>
+        <tr>
+          <td>Documentation</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good docstrings in <code>zerosurface</code> and <code>optionsurface</code>; payoff classes, <code>biexp</code>, <code>svivol</code>, optimization internals still sparse</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Top 10 Issues</div>
+
+  <!-- 1 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#1</span>
+      <span class="issue-title"><code>MultiOptimizer.minimize()</code> returns <code>(result, nfev)</code> — breaks the <code>Optimizer</code> interface</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/maths/optimization.py · lines 99–114</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>SciPyOptimizer.minimize()</code> returns a single
+      <code>result</code> object. <code>MultiOptimizer.minimize()</code> returns
+      <code>(result, nfev)</code> — a tuple. Any caller that treats the two implementations
+      interchangeably (which is the whole point of the <code>Optimizer</code> base class) will
+      receive a tuple instead of a result and immediately fail when accessing <code>result.x</code>
+      or <code>result.fun</code>. The abstract base method signature on line 38 also declares
+      <code>args</code> as a required positional parameter, while both concrete
+      implementations make it optional — a further contract violation.
+    </p>
+    <p><strong>Fix:</strong> Make <code>MultiOptimizer.minimize()</code> return just <code>result</code>, store <code>nfev</code> as an instance attribute if needed:</p>
+    <pre><span class="kw">def</span> <span class="fn">minimize</span>(self, f, x0=None, args=(), bounds=None):
+    result = None
+    self.total_nfev = 0
+    <span class="kw">for</span> i, optimizer <span class="kw">in</span> enumerate(self.optimizers_):
+        result = optimizer.minimize(f, x0, args, bounds)
+        <span class="ok">self.total_nfev += result.nfev</span>
+        <span class="kw">if</span> result.fun &lt; self.mtol_:
+            <span class="kw">break</span>
+    <span class="ok">return result</span>  <span class="c"># not (result, nfev)</span></pre>
+  </div>
+
+  <!-- 2 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#2</span>
+      <span class="issue-title">Flat-vol <code>TEST_VOL = 0.20</code> hardwired — not injectable via constructor</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/assetmodels.py · lines 5, 25</span>
+    <p>
+      <strong>Why it's bad:</strong> When <code>use_lv=False</code> (the default), every asset is
+      simulated at 20% flat volatility regardless of market data. The constant name
+      <code>TEST_VOL</code> signals it is for testing only — but the constructor accepts
+      <code>**kwargs</code> and ignores any <code>'sigma'</code> key, so callers have no way to
+      override it. Any production use of the flat-vol path yields wrong prices with no warning.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">self.sigma = np.asarray([TEST_VOL for _ in range(self.n_factors)])</span>
+<span class="ok">sigma = kwargs.get('sigma', [TEST_VOL] * self.n_factors)
+self.sigma = np.asarray(sigma)</span></pre>
+  </div>
+
+  <!-- 3 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#3</span>
+      <span class="issue-title"><code>Optimizer</code> base class does not inherit <code>ABC</code> — <code>@abstractmethod</code> has no effect</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/maths/optimization.py · line 36</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>class Optimizer:</code> declares
+      <code>minimize()</code> as <code>@abstractmethod</code> but does not inherit from
+      <code>ABC</code>. Python only enforces abstract method contracts when the class (or a
+      parent) is an instance of <code>ABCMeta</code>. As written, you can instantiate
+      <code>Optimizer()</code> directly and call <code>minimize()</code> — it would return
+      <code>None</code> silently. New subclasses that forget to implement <code>minimize()</code>
+      will also instantiate without error.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="kw">from</span> abc <span class="kw">import</span> ABC, abstractmethod
+
+<span class="rm">class Optimizer:</span>
+<span class="ok">class Optimizer(ABC):</span>
+    @abstractmethod
+    <span class="kw">def</span> <span class="fn">minimize</span>(self, f, x0=None, args=(), bounds=None):
+        <span class="st">""" Minimization """</span></pre>
+  </div>
+
+  <!-- 4 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#4</span>
+      <span class="issue-title"><code>RuntimeError</code> used for wrong-count and invalid-parameter checks in <code>svivol.py</code> and <code>biexp.py</code></span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/models/svivol.py · lines 55, 67 &nbsp;·&nbsp; sdevpy/models/biexp.py · lines 70, 83</span>
+    <p>
+      <strong>Why it's bad:</strong> The identical issue was fixed in <code>tssvi1.py</code> in the
+      previous cycle, but the same pattern persists in <code>svivol.py</code> and
+      <code>biexp.py</code>. Python convention (<a style="color:var(--accent)" href="https://docs.python.org/3/library/exceptions.html">PEP 3151</a>)
+      reserves <code>RuntimeError</code> for errors that don't fit other categories.
+      Wrong parameter count and invalid parameter values are structural input problems — both
+      should raise <code>ValueError</code>. Callers catching <code>ValueError</code> for bad-input
+      recovery will silently miss these failures.
+    </p>
+    <p><strong>Fix (same pattern as tssvi1.py):</strong></p>
+    <pre><span class="c"># svivol.py line 55:</span>
+<span class="rm">raise RuntimeError(f"Incorrect parameter size in SviVol: {len(params)}")</span>
+<span class="ok">raise ValueError(f"Expected 5 parameters for SviVol, got {len(params)}")</span>
+
+<span class="c"># svivol.py line 67 and biexp.py line 83:</span>
+<span class="rm">raise RuntimeError("Invalid SviVol parameters")</span>
+<span class="ok">raise ValueError("Invalid SviVol parameters")</span></pre>
+  </div>
+
+  <!-- 5 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#5</span>
+      <span class="issue-title"><code>TermStructureParametricZeroSurface.calibrate_modelled_type()</code> always raises — standard calibration interface unusable</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/models/surfaces/zerosurface.py · line 282</span>
+    <p>
+      <strong>Why it's bad:</strong> The method unconditionally raises
+      <code>NotImplementedError("Not implemented yet: calibrate_modelled_type")</code>.
+      This means calling <code>surface.calibrate()</code> on any
+      <code>TsSvi1</code> object will always fail at the last step, after all the consistency
+      checks and data preparation have already run. The <code>ZeroSurface.calibrate()</code>
+      → <code>calibrate_modelled_type()</code> contract is completely broken for the entire
+      <code>TermStructure*</code> family. Calibration currently only works via the separate
+      <code>TsSvi1ObjectiveBuilder</code> path, which bypasses the standard interface entirely.
+      This is a hidden architectural gap that will bite any future developer who follows the
+      documented interface.
+    </p>
+    <p>
+      <strong>Fix:</strong> Either override <code>calibrate_modelled_type()</code> in
+      <code>TsSvi1</code> to run the optimizer, or make
+      <code>TermStructureParametricZeroSurface.calibrate_modelled_type()</code> call
+      <code>calibrate_tssvi1()</code>. At minimum, document the design decision so the
+      split is intentional and visible.
+    </p>
+  </div>
+
+  <!-- 6 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#6</span>
+      <span class="issue-title">Debug <code>print()</code> left in <code>test_tssvi1()</code></span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/tests/test_impliedvols.py · line 10</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>print(len(params))</code> fires every time the test suite
+      runs. Tests should be silent on success — noise in test output masks real failures and breaks
+      CI pipelines that check for clean stdout. This appears to be a debug leftover from writing the
+      test.
+    </p>
+    <p><strong>Fix:</strong> Remove the line entirely:</p>
+    <pre><span class="kw">def</span> <span class="fn">test_tssvi1</span>():
+    surface = TsSvi1()
+    params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+    surface.calibrated_parameters = params
+<span class="rm">    print(len(params))</span>
+    ...</pre>
+  </div>
+
+  <!-- 7 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#7</span>
+      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP classes exposed in the public API</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 67–91</span>
+    <p>
+      <strong>Why it's bad:</strong> Both classes are marked <em>"Warning: work in progress"</em>
+      and skip all lifecycle hooks (<code>set_nameindexes</code>,
+      <code>set_valuation_date</code>, <code>set_eventindexes</code>).
+      <code>Maximum</code> sets <code>self.eventdates</code> at construction time — the wrong
+      lifecycle phase. <code>BarrierDown</code> takes a raw integer index, bypassing the
+      name-resolution system entirely. Any caller using these classes will get wrong results
+      or an <code>AttributeError</code>/<code>IndexError</code> with no indication of why.
+    </p>
+    <p>
+      <strong>Fix:</strong> Either complete the implementation following the <code>Terminal</code>
+      pattern, or guard with <code>raise NotImplementedError</code> in <code>evaluate()</code>
+      so failures are explicit and immediate.
+    </p>
+  </div>
+
+  <!-- 8 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#8</span>
+      <span class="issue-title">Debug prints commented out rather than removed — accumulating dead code</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · lines 33–35 &nbsp;·&nbsp; sdevpy/montecarlo/assetmodels.py · line 54 &nbsp;·&nbsp; sdevpy/montecarlo/payoffs/basic.py · lines 469–473</span>
+    <p>
+      <strong>Why it's bad:</strong> The previous review flagged four <code>print()</code> calls
+      in <code>tssvi1.py</code> as a High issue. They are now commented out rather than deleted.
+      Commented-out code is noise: it obscures intent, clutters diffs, and often gets copied
+      forward by mistake. The same pattern appears in <code>assetmodels.py</code>
+      (<code># print(vol)</code>) and <code>basic.py</code> (four commented
+      <code>print(f"...")</code> calls). If diagnostic output is needed, use
+      <code>logging.debug()</code> — it is controlled by log level and produces no output in
+      production.
+    </p>
+    <p><strong>Fix:</strong> Delete all commented-out <code>print()</code> calls. If the output
+    is ever needed, replace with <code>log.debug()</code>.</p>
+  </div>
+
+  <!-- 9 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#9</span>
+      <span class="issue-title"><code>TsSvi1.__main__</code> reconstructs <code>model_vols</code> using <code>strikes</code> from the last loop iteration</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · lines 194–199</span>
+    <p>
+      <strong>Why it's bad:</strong> Lines 148–158 build flat arrays by iterating over expiries,
+      assigning <code>strikes = strike_surface[i]</code> each iteration. After the loop,
+      <code>strikes</code> refers to the last expiry's strike list. The reconstruction loop
+      at lines 194–199 then uses this stale reference:
+    </p>
+    <pre><span class="kw">for</span> _ <span class="kw">in</span> expiries:
+    vols = []
+    <span class="kw">for</span> _ <span class="kw">in</span> strikes:  <span class="c"># always uses strike_surface[-1]</span>
+        vols.append(z[counter])
+        counter += 1
+    model_vols.append(vols)</pre>
+    <p>
+      If expiries have different numbers of strikes, the counter will be wrong for all but the
+      last expiry — producing incorrect or misaligned <code>model_vols</code> and ultimately a
+      wrong RMSE chart. The plotting loop at line 216 then computes
+      <code>rmse(vol_surface[exp_idx], model_vols[exp_idx])</code> on mis-sized arrays.
+    </p>
+    <p><strong>Fix:</strong> Track the strike count per expiry explicitly:</p>
+    <pre>counter = 0
+<span class="kw">for</span> exp_idx, _ <span class="kw">in</span> enumerate(expiries):
+    n = len(strike_surface[exp_idx])
+    model_vols.append(z[counter:counter + n].tolist())
+    counter += n</pre>
+  </div>
+
+  <!-- 10 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#10</span>
+      <span class="issue-title">No calibration smoke test — attribute/method naming bugs will keep reaching production undetected</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/tests/ · codebase-wide</span>
+    <p>
+      <strong>Why it's bad:</strong> The <code>check_degrees_of_freedom</code> shadow (Critical,
+      previous review) would have been caught in milliseconds by a single test that calls
+      <code>ZeroSurface.check_consistency()</code> on any concrete subclass. The
+      <code>MultiOptimizer</code> interface break (issue #1 above) is only detectable by a test
+      that switches between optimizer types. Without a calibration smoke test, the same class of
+      bugs will recur on every change to the calibration path.
+    </p>
+    <p>
+      <strong>Fix:</strong> Add at minimum: (1) a <code>test_optionsurface.py</code> round-trip
+      conversion test verifying that <code>convert_option()</code> is the inverse of itself;
+      (2) a smoke test that constructs a <code>TsSvi1</code> and calls
+      <code>check_consistency()</code> on a minimal option grid to verify the lifecycle;
+      (3) a <code>MultiOptimizer</code> test that checks <code>result.x</code> is accessible
+      on the returned value.
+    </p>
+  </div>
+
+  <footer>
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-04-05 (7th review)
+  </footer>
+</div>
+</body>
+</html>
