@@ -6,8 +6,6 @@ from sdevpy.utilities.tools import isequal
 
 
 ######### ToDo #############################################
-# * Vectorize density()
-# * Then use the PDF one from LogMix
 # * Vectorize:
 #   - ts of shape(nt,), te of shape (nt,)
 #   - x of shape(nt, nx)
@@ -157,11 +155,11 @@ if __name__ == "__main__":
     surface1 = LogMix(3)
     surface1.update_params(surface1.initial_point())
 
-    surface2 = TsSvi1()
-    surface2.update_params(surface2.initial_point())
+    # surface2 = TsSvi1()
+    # surface2.update_params(surface2.initial_point())
 
-    surface3 = TsSvi2()
-    surface3.update_params(surface3.initial_point())
+    # surface3 = TsSvi2()
+    # surface3.update_params(surface3.initial_point())
 
     # Single
     print("<><><><> Single <><><><>")
@@ -173,14 +171,18 @@ if __name__ == "__main__":
         print(f"Iteration {i+1} from {t1} to {t2}")
         print(f"Moneynesses: {m}")
         for m_ in m:
-            lv1_ = dupire_formula_single(surface1, t1, t2, m_)
-            lv1.append(lv1_)
+            d1 = surface1.density(t1, 1.0, m_)
+            d2 = surface1.pdf(t1, m_, 1.0)
+            print(f"d1/d2: {d1}/{d2}")
+            lv1.append(d1)
+            # lv1_ = dupire_formula_single(surface1, t1, t2, m_)
+            # lv1.append(lv1_)
 
-            lv2_ = dupire_formula_single(surface2, t1, t2, m_)
-            lv2.append(lv2_)
+            # lv2_ = dupire_formula_single(surface2, t1, t2, m_)
+            # lv2.append(lv2_)
 
-            lv3_ = dupire_formula_single(surface3, t1, t2, m_)
-            lv3.append(lv3_)
+            # lv3_ = dupire_formula_single(surface3, t1, t2, m_)
+            # lv3.append(lv3_)
 
     print(f"Model 1: {lv1}")
     print(f"Model 2: {lv2}")
@@ -198,11 +200,11 @@ if __name__ == "__main__":
         lv1_ = dupire_formula(surface1, t1, t2, m)
         lv1_vec.append(lv1_)
 
-        lv2_ = dupire_formula(surface2, t1, t2, m)
-        lv2_vec.append(lv2_)
+        # lv2_ = dupire_formula(surface2, t1, t2, m)
+        # lv2_vec.append(lv2_)
 
-        lv3_ = dupire_formula(surface3, t1, t2, m)
-        lv3_vec.append(lv3_)
+        # lv3_ = dupire_formula(surface3, t1, t2, m)
+        # lv3_vec.append(lv3_)
 
     print(f"Model 1: {lv1_vec}")
     print(f"Model 2: {lv2_vec}")

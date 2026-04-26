@@ -37,7 +37,7 @@ class ImpliedVol(ABC):
         """ Black volatility for time t and moneyness x """
         return self.black_volatility(t, x, 1.0)
 
-    def dvariance_dt(self, ts: float, te: float, x: float) -> float:
+    def dvariance_dt(self, ts: float, te: float, x: npt.ArrayLike) -> npt.ArrayLike:
         """ Differential of variance against time between times ts and te, at moneyness x """
         tmpe = self.volatility(te, x)
         tmps = self.volatility(ts, x)
@@ -57,7 +57,7 @@ class ImpliedVol(ABC):
         d2vol_dx2 = (vol_up + vol_dn - 2.0 * vol) / np.power(dx, 2)
         return vol, dvol_dx, d2vol_dx2
 
-    def dvolatility_dx(self, t: float, x: float) -> float:
+    def dvolatility_dx(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
         """ Differential of volatility against moneyness """
         hr = 0.05 # Relative bump
         dx = hr * x
@@ -76,7 +76,7 @@ class ImpliedVol(ABC):
         # tmp2 = self.volatility(t, x - h)
         # return (tmp1 - tmp2) / (2.0 * h)
 
-    def d2volatility_dx2(self, t: float, x: float) -> float:
+    def d2volatility_dx2(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
         """ Second differential of the volatility against the moneyness """
         hr = 0.05 # Relative bump
         # print(f"x-shape: {x.shape}")
@@ -116,12 +116,17 @@ class ImpliedVol(ABC):
         safe_x = np.where(zero_x_mask, 1.0, x) # Replace by 1.0 (atm) where we won't use it
 
         # Get Taylor components
+        print(f"x.shape: {x.shape}")
+        print(f"safe_x.shape: {safe_x.shape}")
         vol, dvol_dx, d2vol_dx2 = self.taylor_dx(t, safe_x)
+        stdev = vol * sqrt_t
+        xdtheta_dx = safe_x * dvol_dx
+        x2d2theta_dx2 = safe_x * safe_x * d2vol_dx2
 
-        stdev = self.volatility(t, x) * sqrt_t
-
-        if np.abs(stdev) < self.eps:
-            raise ValueError("Probability density cannot be calculated at standard deviation 0")
+        # Low stdev case
+        degenerate_mask = (zero_x_mask | (np.abs(stdev) < self.eps))
+        safe_stdev = np.where(degenerate_mask, 1.0, stdev)
+        safe_strike = np.where(degenerate_mask, 1.0, strike)
 
         # if np.abs(stdev) < self.eps:
         #     raise ValueError("Probability density cannot be calculated at standard deviation 0")
@@ -129,14 +134,13 @@ class ImpliedVol(ABC):
         # if x < self.eps: # 0 or negative
         #     return 0.0
 
-        xdtheta_dx = x * self.dvolatility_dx(t, x)
-        x2d2theta_dx2 = x * x * self.d2volatility_dx2(t, x)
-        d_minus = -np.log(x) / stdev - 0.5 * stdev
-        d_plus_sqrt_t = (d_minus + stdev) * sqrt_t
+        d_minus = -np.log(safe_x) / safe_stdev - 0.5 * safe_stdev
+        d_plus_sqrt_t = (d_minus + safe_stdev) * sqrt_t
         delta_n_minus = np.exp(-0.5 * d_minus * d_minus) / constants.C_SQRT2PI
         tmp = 1.0 + d_plus_sqrt_t * xdtheta_dx
-        main = x2d2theta_dx2 - d_plus_sqrt_t * xdtheta_dx * xdtheta_dx + tmp * tmp / (stdev * sqrt_t)
-        return sqrt_t * delta_n_minus * main / strike
+        main = x2d2theta_dx2 - d_plus_sqrt_t * xdtheta_dx * xdtheta_dx + tmp * tmp / (safe_stdev * sqrt_t)
+        result = sqrt_t * delta_n_minus * main / safe_strike
+        return np.where(degenerate_mask, 0.0, result)
 
     def cumulative(self, t: float, fwd: float, strike: float) -> float:
         """ Cumulative function of the surface's probability density """

@@ -184,6 +184,11 @@ class LogMix(ParametricImpliedVol):
         """ Calculate Black price (forward) """
         return self.price(t, k, is_call, f)
 
+    def density(self, t: float, fwd: float, strike: npt.ArrayLike) -> npt.ArrayLike:
+        """ Probability density of the LogMix model, calculated from its definition
+            as a linear combination of lognormal densities """
+        return self.pdf(t, strike, fwd)
+
     def price(self, t: float, strike: npt.ArrayLike, is_call: bool, fwd: npt.ArrayLike) -> npt.ArrayLike:
         """ Option price: weighted sum of Black-Scholes price in each component """
         if self.params is None:

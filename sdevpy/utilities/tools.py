@@ -23,6 +23,9 @@ def isequal(a: npt.ArrayLike, b: npt.ArrayLike, tol: float=EPS) -> bool:
 
 def isiterable(x):
     """ Beware that this answers True for strings """
+    if isinstance(x, np.ndarray):
+        return x.ndim > 0
+
     return isinstance(x, Iterable)
 
 
