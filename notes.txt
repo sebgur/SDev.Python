@@ -51,36 +51,3 @@ class AnalyticsModel(Protocol):
 forward_price(), black_volatility(), bachelier_volatility(), and shifted_black_volatility() all contain the same four-case match on self.calculate_type. Every time a new OptionQuoteType is added, all four methods must be updated. A dispatch dict defined once would eliminate the duplication and make the open/closed principle hold.
 
 The inconsistent return type of implied_vol_newton() (issue #1 from the last review) also counts against Architecture — a function that returns either a scalar or an array depending on input size is not a well-defined contract.
-
-
-# DUPIRE
-def density(self, t: float, fwd: float, strike: npt.ArrayLike) -> npt.NDArray[np.float64]:
-    """ Probability density corresponding to the surface """
-    if np.abs(t) < self.time_epsilon:
-        raise ValueError("Probability density cannot be calculated at t = 0")
-
-    strike = np.asarray(strike, dtype=float)
-    x = strike / fwd
-    sqrt_t = np.sqrt(t)
-
-    # Substitute safe x before any model eval to avoid NaN at near-zero moneyness
-    zero_x_mask = (x < self.eps)
-    safe_x = np.where(zero_x_mask, 1.0, x)
-
-    vol, dvol_dx, d2vol_dx2 = self.taylor_dx(t, safe_x)
-    stdev = vol * sqrt_t
-    xdtheta_dx = safe_x * dvol_dx
-    x2d2theta_dx2 = safe_x * safe_x * d2vol_dx2
-
-    degenerate = zero_x_mask | (np.abs(stdev) < self.eps)
-    safe_stdev  = np.where(degenerate, 1.0, stdev)
-    safe_strike = np.where(degenerate, 1.0, strike)
-
-    d_minus = -np.log(safe_x) / safe_stdev - 0.5 * safe_stdev
-    d_plus_sqrt_t = (d_minus + safe_stdev) * sqrt_t
-    delta_n_minus = np.exp(-0.5 * d_minus * d_minus) / constants.C_SQRT2PI
-    tmp = 1.0 + d_plus_sqrt_t * xdtheta_dx
-    main = x2d2theta_dx2 - d_plus_sqrt_t * xdtheta_dx * xdtheta_dx + tmp * tmp / (safe_stdev * sqrt_t)
-    result = sqrt_t * delta_n_minus * main / safe_strike
-
-    return np.where(degenerate, 0.0, result)

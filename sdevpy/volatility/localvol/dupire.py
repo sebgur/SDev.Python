@@ -6,11 +6,12 @@ from sdevpy.utilities.tools import isequal
 
 
 ######### ToDo #############################################
-# * Fix vectorization
+# * Prepare calibration flow with times and strikes
 
 
 def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) -> float:
-    """ Calculate Dupire formula on the ImpliedVol """
+    """ Calculate Dupire formula on the ImpliedVol.
+        ToDo: remove when all done """
     t_threshold = 0.0001
     x_threshold = 0.00001
     iv_threshold = 0.000001
@@ -21,7 +22,6 @@ def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) ->
 
     # Edge case: moneyness = 0
     dvar_dt = ivsurf.dvariance_dt(ts, te, x)
-    # print(f"dvar_dt: {dvar_dt}")
     if x < x_threshold:
         return np.sqrt(dvar_dt)
 
@@ -38,7 +38,6 @@ def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) ->
             xdtheta_dx *= x
             x2d2theta_dx2 *= x * x
             sqrt_t_d = -np.log(x) / theta + 0.5 * theta * ts
-            # print(f"sqrt_t_d: {sqrt_t_d}")
             tmp = 1.0 + sqrt_t_d * xdtheta_dx
             tmp *= tmp
             denominator = theta * ts * (x2d2theta_dx2 - sqrt_t_d * xdtheta_dx * xdtheta_dx) + tmp
@@ -54,8 +53,6 @@ def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) ->
             denominator = stddev * x * pdf / delta_nm
         case _:
             raise ValueError(f"Invalid Dupire calculation method: {ivsurf.lv_method}")
-
-    # print(f"denominator: {denominator}")
 
     sigma2 = dvar_dt / denominator
     return (0.0 if sigma2 < 0.0 else np.sqrt(sigma2))
@@ -73,39 +70,21 @@ def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -
 
     # Calculate forward variance
     dvar_dt = ivsurf.dvariance_dt(ts, te, x)
-    print(f"dvar_dt: {dvar_dt}")
-
-    # Edge case: negative forward variance
-    # pos_fwd_var_mask = (dvar_dt > 0.0)
-    # pos_fwd_var = np.maximum(dvar_dt, 0.0)
-    # sqrt_fwd_var = np.sqrt(pos_fwd_var)
-
-    # Edge case: moneyness = 0
-    # small_m_mask = (x < x_threshold)
-        # return np.sqrt(dvar_dt)
 
     # Distinguish according to method
     match ivsurf.lv_method:
         case LvMethod.ImpliedVol:
-            # theta = ivsurf.black_volatility(ts, x, 1.0)
             theta, dtheta_dx, d2theta_dx2 = ivsurf.taylor_dx(ts, x)
 
             # IV = 0
             zero_mask = (theta < iv_threshold)
             pos_theta = np.maximum(theta, iv_threshold)
-            # numerator = np.where(neg_iv_mask, 0.0, sqrt_fwd_var)
 
             xdtheta_dx = x * dtheta_dx
             x2d2theta_dx2 = np.power(x, 2) * d2theta_dx2
             theta_ts = pos_theta * ts
-            # xdtheta_dx = ivsurf.dvolatility_dx(ts, x)
-            # x2d2theta_dx2 = ivsurf.d2volatility_dx2(ts, x)
-            # xdtheta_dx *= x
-            # x2d2theta_dx2 *= x * x
             sqrt_t_d = -np.log(x) / pos_theta + 0.5 * theta_ts
-            print(f"sqrt_t_d: {sqrt_t_d}")
             tmp = np.power(1.0 + sqrt_t_d * xdtheta_dx, 2)
-            # tmp *= tmp
             denominator = theta_ts * (x2d2theta_dx2 - sqrt_t_d * xdtheta_dx * xdtheta_dx) + tmp
         case LvMethod.PDF:
             # sdev = 0
@@ -114,7 +93,6 @@ def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -
             stdev_threshold = iv_threshold * np.sqrt(t_threshold)
             zero_mask = (stdev < stdev_threshold)
             pos_stdev = np.maximum(stdev, stdev_threshold)
-            # numerator = np.where(neg_stdev_mask, 0.0, sqrt_fwd_var)
 
             dm = -np.log(x) / pos_stdev - 0.5 * pos_stdev
             delta_nm = np.exp(-0.5 * dm * dm) / constants.C_SQRT2PI
@@ -123,14 +101,7 @@ def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -
         case _:
             raise ValueError(f"Invalid Dupire calculation method: {ivsurf.lv_method}")
 
-    # print(f"dvar_dt: {dvar_dt}")
-    # print(f"denominator: {denominator}")
-
-    # sigma2 = dvar_dt / denominator
-    # print(f"denominator: {denominator}")
     sigma2 = np.where(zero_mask, 0.0, dvar_dt / denominator)
-    # sigma2 = dvar_dt / denominator
-    # return (0.0 if sigma2 < 0.0 else np.sqrt(sigma2))
     sigma2 = np.where(x < x_threshold, dvar_dt, sigma2)
     return np.sqrt(np.maximum(sigma2, 0.0))
 
@@ -159,30 +130,27 @@ if __name__ == "__main__":
 
     # Single
     print("<><><><> Single <><><><>")
-    lv1, lv2, lv3 = [], [], []
+    lv1_sin, lv2_sin, lv3_sin = [], [], []
     for i in range(len(ts)):
         t1 = ts[i]
         t2 = te[i]
         m = x[i]
         print(f"Iteration {i+1} from {t1} to {t2}")
         print(f"Moneynesses: {m}")
+        lv1, lv2, lv3 = [], [], []
         for m_ in m:
-            # d1 = surface1.density(t1, 1.0, m_)
-            # d2 = surface1.pdf(t1, m_, 1.0)
-            # print(f"d1/d2: {d1}/{d2}")
-            # lv1.append(d1)
-            lv1_ = dupire_formula_single(surface1, t1, t2, m_)
-            lv1.append(lv1_)
+            # lv1_ = dupire_formula_single(surface1, t1, t2, m_)
+            # lv1.append(lv1_)
 
-            lv2_ = dupire_formula_single(surface2, t1, t2, m_)
-            lv2.append(lv2_)
+            # lv2_ = dupire_formula_single(surface2, t1, t2, m_)
+            # lv2.append(lv2_)
 
             lv3_ = dupire_formula_single(surface3, t1, t2, m_)
             lv3.append(lv3_)
 
-    print(f"Model 1: {lv1}")
-    print(f"Model 2: {lv2}")
-    print(f"Model 3: {lv3}")
+        lv1_sin.append(lv1)
+        lv2_sin.append(lv2)
+        lv3_sin.append(lv3)
 
     # Vectorize
     print("<><><><> Vectorize <><><><>")
@@ -191,27 +159,30 @@ if __name__ == "__main__":
         t1 = ts[i]
         t2 = te[i]
         m = np.asarray(x[i])
-        print(f"Iteration {i+1} from {t1} to {t2}")
-        print(f"Moneynesses: {m}")
-        lv1_ = dupire_formula(surface1, t1, t2, m)
-        lv1_vec.append(lv1_)
 
-        lv2_ = dupire_formula(surface2, t1, t2, m)
-        lv2_vec.append(lv2_)
+        # lv1_ = dupire_formula(surface1, t1, t2, m)
+        # lv1_vec.append(lv1_)
+
+        # lv2_ = dupire_formula(surface2, t1, t2, m)
+        # lv2_vec.append(lv2_)
 
         lv3_ = dupire_formula(surface3, t1, t2, m)
         lv3_vec.append(lv3_)
 
-    print(f"Model 1: {lv1_vec}")
-    print(f"Model 2: {lv2_vec}")
-    print(f"Model 3: {lv3_vec}")
-
     print("<><><><> Compare <><><><>")
     for i in range(len(ts)):
         print(f"Iteration {i+1}")
-        print(f"Model1: {np.asarray(lv1[i]) - np.asarray(lv1_vec[i])}")
-        print(f"Model2: {np.asarray(lv2[i]) - np.asarray(lv2_vec[i])}")
-        print(f"Model3: {np.asarray(lv3[i]) - np.asarray(lv3_vec[i])}")
+        # for j in range(len(lv1_sin[i])):
+        #     print(f"LV1(sin): {lv1_sin[i][j]}")
+        #     print(f"LV1(vec): {lv1_vec[i][j]}")
+
+        # for j in range(len(lv2_sin[i])):
+        #     print(f"LV2(sin): {lv2_sin[i][j]}")
+        #     print(f"LV2(vec): {lv2_vec[i][j]}")
+
+        for j in range(len(lv3_sin[i])):
+            print(f"LV3(sin): {lv3_sin[i][j]}")
+            print(f"LV3(vec): {lv3_vec[i][j]}")
 
     # lv12 = dupire_formula(surface1, ts, te, x)
     # print(lv12)
