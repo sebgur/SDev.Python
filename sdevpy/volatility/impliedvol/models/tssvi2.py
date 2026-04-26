@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
+from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol
 from sdevpy.volatility.impliedvol.models import gsvi
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.utilities import timegrids
@@ -15,7 +15,7 @@ from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 
 
-class TsSvi2(ParametricZeroSurface):
+class TsSvi2(ParametricImpliedVol):
     def __init__(self, **kwargs):
         super().__init__()
         self.n_params = 15

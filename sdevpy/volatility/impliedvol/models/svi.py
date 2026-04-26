@@ -1,10 +1,10 @@
 import numpy as np
 import numpy.typing as npt
-from sdevpy.volatility.impliedvol.impliedvol import ParamSection
+from sdevpy.volatility.localvol.localvol import ParamLocalVolSection
 from sdevpy.maths import constants
 
 
-class SviSection(ParamSection):
+class SviSection(ParamLocalVolSection):
     def __init__(self, time, check_butterfly=False):
         super().__init__(time, svi_formula)
         self.check_butterfly = check_butterfly
@@ -38,7 +38,8 @@ def svi(t: float, x: npt.ArrayLike, *params) -> npt.ArrayLike:
     # Check constraints
     is_ok, _ = svi_check_params(params)
     if not is_ok:
-        raise ValueError("Invalid SVI parameters")
+        return np.full_like(np.asarray(x, dtype=float), np.nan)
+        # raise ValueError("Invalid SVI parameters")
 
     # Calculate
     xm = x - m # x is the log-moneyness

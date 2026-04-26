@@ -182,6 +182,9 @@ class LvObjectiveBuilder:
             # objective function (where we know the problem). It might need to come from both.
             # For now we are using a problem-specific penalty, i.e. the value if all the model prices
             # were 0, assuming that should be much bigger than at any reasonable solution.
+            # ToDo: Claude recommends using constants.FLOAT_INFTY. But didn't we use it before and
+            #       it led to some problems and that's why we're doing this now? To be tested again.
+            # return constants.FLOAT_INFTY
             return self.cf_prices.sum()
 
     def set_expiry(self, exp_idx, old_x, old_dx, old_p):

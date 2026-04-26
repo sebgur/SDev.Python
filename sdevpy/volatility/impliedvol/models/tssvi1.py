@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface
+from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol
 from sdevpy.volatility.impliedvol.models import gsvi
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.utilities import timegrids
@@ -17,7 +17,7 @@ from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 
 
-class TsSvi1(ParametricZeroSurface):
+class TsSvi1(ParametricImpliedVol):
     def __init__(self, **kwargs):
         super().__init__()
         self.n_params = 11
@@ -54,9 +54,10 @@ class TsSvi1(ParametricZeroSurface):
             raise ValueError("Delta should be strictly higher than -1 in TsSvi1")
 
         # Calculate new variables
-        one_minus_rho2 = 1.0 - r * r
-        if one_minus_rho2 < 0.0:
-            raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
+        one_minus_rho2 = max(1.0 - r * r, 0.0)
+        # one_minus_rho2 = 1.0 - r * r
+        # if one_minus_rho2 < 0.0:
+        #     raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
 
         # Vectorize r (the other ones broadcast fine thanks to t)
         t = np.asarray(t, dtype=float)

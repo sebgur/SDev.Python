@@ -1,22 +1,22 @@
 import numpy as np
 import numpy.typing as npt
-from sdevpy.volatility.impliedvol.zerosurface import ZeroSurface, LvMethod
+from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, LvMethod
 from sdevpy.maths import constants
 from sdevpy.utilities.tools import isequal
 
 
 ######### ToDo #############################################
-# * Start by using the scalar formula with all float
-# * Use it over loops
-# * Then try vectorizing it, whereby:
+# * Vectorize density()
+# * Then use the PDF one from LogMix
+# * Vectorize:
 #   - ts of shape(nt,), te of shape (nt,)
 #   - x of shape(nt, nx)
 #   - return of shape (nt, nx)
 # * Make sure that LogMix goes through proper density = PDF
 
 
-def dupire_formula_single(ivsurf: ZeroSurface, ts: float, te: float, x: float) -> float:
-    """ Calculate Dupire formula on the ZeroSurface """
+def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) -> float:
+    """ Calculate Dupire formula on the ImpliedVol """
     t_threshold = 0.0001
     x_threshold = 0.00001
     iv_threshold = 0.000001
@@ -27,7 +27,7 @@ def dupire_formula_single(ivsurf: ZeroSurface, ts: float, te: float, x: float) -
 
     # Edge case: moneyness = 0
     dvar_dt = ivsurf.dvariance_dt(ts, te, x)
-    print(f"dvar_dt: {dvar_dt}")
+    # print(f"dvar_dt: {dvar_dt}")
     if x < x_threshold:
         return np.sqrt(dvar_dt)
 
@@ -44,7 +44,7 @@ def dupire_formula_single(ivsurf: ZeroSurface, ts: float, te: float, x: float) -
             xdtheta_dx *= x
             x2d2theta_dx2 *= x * x
             sqrt_t_d = -np.log(x) / theta + 0.5 * theta * ts
-            print(f"sqrt_t_d: {sqrt_t_d}")
+            # print(f"sqrt_t_d: {sqrt_t_d}")
             tmp = 1.0 + sqrt_t_d * xdtheta_dx
             tmp *= tmp
             denominator = theta * ts * (x2d2theta_dx2 - sqrt_t_d * xdtheta_dx * xdtheta_dx) + tmp
@@ -61,14 +61,14 @@ def dupire_formula_single(ivsurf: ZeroSurface, ts: float, te: float, x: float) -
         case _:
             raise ValueError(f"Invalid Dupire calculation method: {ivsurf.lv_method}")
 
-    print(f"denominator: {denominator}")
+    # print(f"denominator: {denominator}")
 
     sigma2 = dvar_dt / denominator
     return (0.0 if sigma2 < 0.0 else np.sqrt(sigma2))
 
 
-def dupire_formula(ivsurf: ZeroSurface, ts: float, te: float, x: npt.ArrayLike) -> npt.ArrayLike:
-    """ Calculate Dupire formula on the ZeroSurface, between times ts and te, at moneyness x """
+def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -> npt.ArrayLike:
+    """ Calculate Dupire formula on the ImpliedVol, between times ts and te, at moneyness x """
     t_threshold = 0.0001
     x_threshold = 0.00001
     iv_threshold = 0.000001
@@ -133,7 +133,7 @@ def dupire_formula(ivsurf: ZeroSurface, ts: float, te: float, x: npt.ArrayLike) 
     # print(f"denominator: {denominator}")
 
     # sigma2 = dvar_dt / denominator
-    print(f"denominator: {denominator}")
+    # print(f"denominator: {denominator}")
     sigma2 = np.where(zero_mask, 0.0, dvar_dt / denominator)
     # sigma2 = dvar_dt / denominator
     # return (0.0 if sigma2 < 0.0 else np.sqrt(sigma2))
@@ -163,6 +163,8 @@ if __name__ == "__main__":
     surface3 = TsSvi2()
     surface3.update_params(surface3.initial_point())
 
+    # Single
+    print("<><><><> Single <><><><>")
     lv1, lv2, lv3 = [], [], []
     for i in range(1):#len(ts)):
         t1 = ts[i]
@@ -171,8 +173,8 @@ if __name__ == "__main__":
         print(f"Iteration {i+1} from {t1} to {t2}")
         print(f"Moneynesses: {m}")
         for m_ in m:
-            # lv1_ = dupire_formula_single(surface1, t1, t2, m_)
-            # lv1.append(lv1_)
+            lv1_ = dupire_formula_single(surface1, t1, t2, m_)
+            lv1.append(lv1_)
 
             lv2_ = dupire_formula_single(surface2, t1, t2, m_)
             lv2.append(lv2_)
@@ -180,11 +182,12 @@ if __name__ == "__main__":
             lv3_ = dupire_formula_single(surface3, t1, t2, m_)
             lv3.append(lv3_)
 
-    # print(f"Model 1: {lv1}")
+    print(f"Model 1: {lv1}")
     print(f"Model 2: {lv2}")
     print(f"Model 3: {lv3}")
 
     # Vectorize
+    print("<><><><> Vectorize <><><><>")
     lv1_vec, lv2_vec, lv3_vec = [], [], []
     for i in range(1):#len(ts)):
         t1 = ts[i]
@@ -192,8 +195,8 @@ if __name__ == "__main__":
         m = np.asarray(x[i])
         print(f"Iteration {i+1} from {t1} to {t2}")
         print(f"Moneynesses: {m}")
-        # lv1_ = dupire_formula(surface1, t1, t2, m)
-        # lv1_vec.append(lv1_)
+        lv1_ = dupire_formula(surface1, t1, t2, m)
+        lv1_vec.append(lv1_)
 
         lv2_ = dupire_formula(surface2, t1, t2, m)
         lv2_vec.append(lv2_)
@@ -201,9 +204,11 @@ if __name__ == "__main__":
         lv3_ = dupire_formula(surface3, t1, t2, m)
         lv3_vec.append(lv3_)
 
+    print(f"Model 1: {lv1_vec}")
     print(f"Model 2: {lv2_vec}")
     print(f"Model 3: {lv3_vec}")
 
+    print(lv1 - np.asarray(lv1_vec))
     print(lv2 - np.asarray(lv2_vec))
     print(lv3 - np.asarray(lv3_vec))
 

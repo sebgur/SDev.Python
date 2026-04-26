@@ -14,14 +14,14 @@ import datetime as dt
 import numpy as np
 import scipy.optimize as opt
 from scipy.stats import norm
-from sdevpy.volatility.impliedvol.impliedvol import ParamSection
+from sdevpy.volatility.localvol.localvol import ParamLocalVolSection
 
 
 DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
 DEATH_PENALTY = 1e6
 
 
-def create_section(time: float, param_config: dict=None, fill_sample: bool=True):
+def create_section(time: float, param_config: dict=None, fill_sample: bool=True) -> ParamLocalVolSection:
     """ Create section of the BiExp model """
     section = BiExpSection(time)
     if param_config is None and fill_sample:
@@ -39,7 +39,7 @@ def create_section(time: float, param_config: dict=None, fill_sample: bool=True)
     return section
 
 
-class BiExpSection(ParamSection):
+class BiExpSection(ParamLocalVolSection):
     def __init__(self, time):
         super().__init__(time, biexp_formula)
         self.model = 'BiExp'

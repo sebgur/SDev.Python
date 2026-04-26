@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 from abc import ABC, abstractmethod
 from scipy.interpolate import RegularGridInterpolator
-from sdevpy.volatility.impliedvol.models.svi import SviSection
 from sdevpy.utilities import algos, dates
 
 
@@ -37,9 +36,46 @@ class LocalVol(ABC):
         pass
 
 
+class ParamLocalVolSection(ABC):
+    """ Wrapper class around formulas that return a local volatility at a certain
+        point in time t, for a list of log-moneynesses x. The section has parameters
+        that can be optimized on, and it is used by the LocalVol subtype InterpolatedParamLocalVol. """
+    def __init__(self, time: float, formula):
+        self.params = None
+        self.formula = formula
+        self.model = None
+        self.time = time
+
+    def value(self, t: npt.ArrayLike, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ In the base, we simply use the formula on the parameters. In inherited classes, we
+            may have a more complex behaviour such as applying the formula to a transformed
+            set of parameters. """
+        return self.formula(t, x, self.params)
+
+    def update_params(self, new_params: npt.ArrayLike) -> None:
+        """ In the base, we only copy the new parameters in. Inherited classes may do more. """
+        self.params = new_params.copy()
+
+    def check_params(self):
+        """ In the base, all parameters are allowed so we always answer True and penalty = 0.0.
+            Inherited classes may have constraints and calculate non-trivial penalties. """
+        return True, 0.0
+
+    def constraints(self):
+        return None
+
+    @abstractmethod
+    def dump_params(self):
+        pass
+
+    def dump(self):
+        data = {'time': self.time, 'model': self.model, 'params': self.dump_params()}
+        return data
+
+
 class InterpolatedParamLocalVol(LocalVol):
     """ Local Vol subtype defined as a series spot-parametric functions along the time direction """
-    def __init__(self, sections, **kwargs):
+    def __init__(self, sections: list[ParamLocalVolSection], **kwargs):
         super().__init__(**kwargs)
 
         # Sort by increasing date
@@ -51,6 +87,7 @@ class InterpolatedParamLocalVol(LocalVol):
     def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
         """ Values of the LV along array of log-moneynesses at given time """
         t_idx = algos.upper_bound(self.t_grid, t)
+        t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
         return self.sections[t_idx].value(t, logm)
 
     def section(self, t_idx: int):
@@ -131,6 +168,8 @@ class MatrixLocalVol(LocalVol):
 
 
 if __name__ == "__main__":
+    from sdevpy.volatility.impliedvol.models.svi import SviSection
+
     t_grid = np.array([0.1, 0.25, 0.5, 1.0, 2.0, 5.0])
     alnv = 0.25
     a = alnv**2 * np.sqrt(1.0) # a > 0

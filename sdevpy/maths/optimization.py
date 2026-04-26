@@ -39,8 +39,9 @@ def create_bounds(lw_bounds: list[float], up_bounds: list[float]):
 
 class Optimizer(ABC):
     @abstractmethod
-    def minimize(self, f, x0, args, bounds):
+    def minimize(self, f, x0, args=(), bounds=None):
         """ Minimization """
+        pass
 
 
 class SciPyOptimizer(Optimizer):

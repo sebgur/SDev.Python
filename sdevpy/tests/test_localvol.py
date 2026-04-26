@@ -170,4 +170,4 @@ def test_lv_bysections_dump_data_keys():
 
 
 if __name__ == "__main__":
-    test_matrix_lv_custom_method()
+    test_lv_bymatrix_pchip_def()

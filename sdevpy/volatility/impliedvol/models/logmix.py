@@ -12,7 +12,7 @@ import datetime as dt
 import logging
 from scipy.stats import norm
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.zerosurface import ParametricZeroSurface, LvMethod
+from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol, LvMethod
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.utilities import timegrids
@@ -168,7 +168,7 @@ class LogMixNorm(TimeParam):
         return dnorm
 
 
-class LogMix(ParametricZeroSurface):
+class LogMix(ParametricImpliedVol):
     def __init__(self, n_mix=2, **kwargs):
         super().__init__()
         self.n_mix = n_mix

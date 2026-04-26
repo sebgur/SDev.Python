@@ -5,11 +5,11 @@
 import numpy as np
 import numpy.typing as npt
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.impliedvol import ParamSection
+from sdevpy.volatility.localvol.localvol import ParamLocalVolSection
 from sdevpy.maths.constants import DEATH_PENALTY
 
 
-def create_section(time: float, param_config: dict=None, fill_sample: bool=True):
+def create_section(time: float, param_config: dict=None, fill_sample: bool=True) -> ParamLocalVolSection:
     """ Create section of the CubicVol model """
     section = CubicVolSection(time)
     if param_config is None and fill_sample:
@@ -26,7 +26,7 @@ def create_section(time: float, param_config: dict=None, fill_sample: bool=True)
     return section
 
 
-class CubicVolSection(ParamSection):
+class CubicVolSection(ParamLocalVolSection):
     def __init__(self, time):
         super().__init__(time, cubicvoleps_formula)
         self.model = 'CubicVol'

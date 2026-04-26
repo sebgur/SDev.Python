@@ -17,21 +17,22 @@ def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, 
 
 def price_straddles(expiry: npt.ArrayLike, strike: npt.ArrayLike, fwd: npt.ArrayLike,
                     vol: npt.ArrayLike) -> npt.NDArray[np.float64]:
-    """ Straddle price under the Bachelier model.
-        Note: we could improve the speed by writing the code in-line instead of
-              calling the price() function twice """
-    expiries_ = np.asarray(expiry).reshape(-1, 1)
-    prices = []
-    for i, exp_row in enumerate(expiries_):
-        k_prices = []
-        for j, k in enumerate(strike[i]):
-            iv = vol[i, j]
-            call_price = price(exp_row, k, True, fwd, iv)
-            put_price = price(exp_row, k, False, fwd, iv)
-            k_prices.append(call_price[0] + put_price[0])
-        prices.append(k_prices)
+    """ Straddle price under the Bachelier model """
+    call = price(expiry[:, None], strike, True, fwd, vol)
+    put = price(expiry[:, None], strike, False, fwd, vol)
+    return call + put
+    # expiries_ = np.asarray(expiry).reshape(-1, 1)
+    # prices = []
+    # for i, exp_row in enumerate(expiries_):
+    #     k_prices = []
+    #     for j, k in enumerate(strike[i]):
+    #         iv = vol[i, j]
+    #         call_price = price(exp_row, k, True, fwd, iv)
+    #         put_price = price(exp_row, k, False, fwd, iv)
+    #         k_prices.append(call_price[0] + put_price[0])
+    #     prices.append(k_prices)
 
-    return np.asarray(prices)
+    # return np.asarray(prices)
 
 
 def implied_vol_jaeckel(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
