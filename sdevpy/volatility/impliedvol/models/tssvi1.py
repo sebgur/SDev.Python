@@ -8,7 +8,7 @@ import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol
-from sdevpy.volatility.impliedvol.models import gsvi
+from sdevpy.volatility.impliedvol.models import svi
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
@@ -26,7 +26,7 @@ class TsSvi1(ParametricImpliedVol):
 
     def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
         """ Calculate the smile parameters at given time and then calculate the Black implied vol
-            using the gSVI formula """
+            using the SVI formula """
         # Check parameters
         is_ok, _ = self.check_global_params()
         if not is_ok:
@@ -37,7 +37,7 @@ class TsSvi1(ParametricImpliedVol):
 
         # Calculate implied vol
         log_m = np.log(k / f) # log-moneyness
-        vol = gsvi.gsvi_formula(log_m, smile_params)
+        vol = svi.svi_formula(t, log_m, smile_params)
         return vol
 
     def smile_parameters(self, t: npt.ArrayLike, params: list[float]) -> list[float]:
@@ -46,7 +46,7 @@ class TsSvi1(ParametricImpliedVol):
             raise ValueError("TsSvi1 is not calculable at t = 0")
 
         # Get parameters
-        v0, vinf, b_, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(params)
+        s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(params)
         if r < -1.0 or r > 1.0:
             raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
 
@@ -61,17 +61,17 @@ class TsSvi1(ParametricImpliedVol):
         r = np.full_like(t, r)
 
         pow_ = beta + delta
-        vstar = alpha * gamma * one_minus_rho2 / (pow_ + 1.0) * np.power(t, pow_)
-        f0 = v0 * v0
-        finf = vinf * vinf
-        vstar += -b_ * tau + finf + tau / t * (b_ * (t + tau) + f0 - finf) * (1.0 - np.exp(-t / tau))
-        b = alpha * np.power(t, beta - 1.0)
+        wstar = alpha * gamma * one_minus_rho2 / (pow_ + 1.0) * np.power(t, pow_ + 1.0)
+        v0 = s0 * s0
+        vinf = sinf * sinf
+        wstar += (vinf - chi * tau) * t + tau * (chi * (t + tau) + v0 - vinf) * (1.0 - np.exp(-t / tau))
 
         lambda_ = lambda0 + gamma / (delta + 1.0) * np.power(t, delta + 1.0)
         xstar = x0star - r * (lambda_ - lambda0)
 
         # Go back to standard parameters
-        a = vstar - b * lambda_ * one_minus_rho2
+        b = alpha * np.power(t, beta)
+        a = wstar - b * lambda_ * one_minus_rho2
         m = xstar + r * lambda_
         s = lambda_ * np.sqrt(one_minus_rho2)
 
@@ -94,14 +94,14 @@ class TsSvi1(ParametricImpliedVol):
         if is_ok:
             sample_times = np.asarray([1 / 365, 7 / 365, 30 / 365, 0.5, 1, 5, 10, 40])
             sample_params = self.smile_parameters(sample_times, self.params)
-            is_ok, penalty = gsvi.gsvi_check_params(sample_params)
+            is_ok, penalty = svi.svi_check_params(sample_params)
 
         return is_ok, penalty
 
     def check_global_params(self) -> tuple[bool, float]:
         """ Check validity of the global parameters """
         # Get parameters
-        v0, vinf, b_, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(self.params)
+        s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(self.params)
         if r < -1.0 or r > 1.0:
             return False, constants.FLOAT_INFTY
             # raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
@@ -119,15 +119,15 @@ class TsSvi1(ParametricImpliedVol):
 
         # Check bound for extremum of vstar
         tol = 1e-6
-        if is_ok and not isequal(b_, tol):
+        if is_ok and not isequal(chi, tol):
             if tau < tol:
                 is_ok = False
             else:
-                prod = b_ * tau
-                finf = vinf * vinf
-                small_b = v0 * v0 - finf
-                if b_ < 0.0:
-                    fext = finf + prod * np.exp(-1.0 + small_b / prod)
+                if chi < 0.0:
+                    prod = chi * tau
+                    vinf = sinf * sinf
+                    v_diff = s0 * s0 - vinf
+                    fext = vinf + prod * np.exp(-1.0 + v_diff / prod)
                     if fext < tol:
                         is_ok = False
 

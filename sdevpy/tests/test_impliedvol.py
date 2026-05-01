@@ -3,7 +3,7 @@ from scipy.integrate import quad
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi, gsvi
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
-from sdevpy.volatility.impliedvol.models.tssvi3 import TsSvi3
+from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
@@ -106,7 +106,7 @@ def test_tssvi2():
 
 
 def test_tssvi1_objective():
-    surface = TsSvi3()
+    surface = TsSvi1()
     t = np.asarray([0.5, 1.5, 2.5])
     k = np.asarray([90., 100., 110.])
     f = np.asarray([95., 105., 115.])
@@ -119,7 +119,7 @@ def test_tssvi1_objective():
 
 
 def test_tssvi1():
-    surface = TsSvi3()
+    surface = TsSvi1()
     params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     surface.update_params(params)
 
