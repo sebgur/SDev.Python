@@ -12,7 +12,6 @@ log.setLevel(logging.DEBUG)
 
 ######### ToDo #############################################
 # * Implement calib_lv_dupire
-# * Resolve no-arb problem on TsSvi2
 
 
 def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) -> float:

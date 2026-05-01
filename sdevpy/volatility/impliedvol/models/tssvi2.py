@@ -1,5 +1,9 @@
 """ Term-structure model for SVI. Give each SVI parameter a parametric formula along time and
     enforce no-arbitrage (approximately). This model has 15 parameters.
+    Here, as opposed to TsSvi1, the calendar spread no-arbitrage is not enforced exactly by
+    construction but approximately during the optimization, by looking at a sampled set
+    of expiries on SVI. We may introduce more expiries to be even more strict in the
+    no-arb enforcement.
 """
 import numpy as np
 import numpy.typing as npt
@@ -81,6 +85,7 @@ class TsSvi2(ParametricImpliedVol):
 
         # Check local parameters over sampled expiries
         if is_ok:
+            # Introduce more expiries here to be more strict in calendar spread no-arb enforcement
             sample_times = np.asarray([1 / 365, 7 / 365, 30 / 365, 0.5, 1, 5, 10, 40])
             sample_params = self.smile_parameters(sample_times, self.params)
             is_ok, penalty = svi.svi_check_params(sample_params)

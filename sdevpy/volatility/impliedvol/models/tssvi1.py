@@ -2,6 +2,13 @@
     enforce no-arbitrage (approximately). This model has 11 parameters.
     See Gurrieri, 'A Class of Term Structures for SVI Implied Volatility', 2010
     https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1779463
+    Beware of the reparameterization in the paper above, where the original SVI formula is
+    applied to the squared vol instead of the variance. This appears to be rather odd.
+    In the below we parameterize using the original SVI, but the idea remains nearly identical
+    to that in the paper.
+    However, these seems to be something strange with SVI's original paper's application of
+    the Rogers-Tehranchi bound, which we fix here. Indeed Rogers-Tehranchi looks like
+    it is on the total variance, so should be applied directly to SVI.
 """
 import numpy as np
 import numpy.typing as npt
@@ -113,7 +120,7 @@ class TsSvi1(ParametricImpliedVol):
         is_ok = True
         # Check necessary no-arbitrage
         no_arb1 = alpha * np.power(self.tmax, beta)
-        no_arb2 = 4.0 / (1.0 + np.abs(r))
+        no_arb2 = 4.0 / (1.0 + np.abs(r)) # Our interpretation of Rogers-Tehranchi
         if no_arb1 > no_arb2:
             is_ok = False
 
