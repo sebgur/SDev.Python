@@ -6,7 +6,7 @@ import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol
-from sdevpy.volatility.impliedvol.models import gsvi
+from sdevpy.volatility.impliedvol.models import svi
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
@@ -35,7 +35,7 @@ class TsSvi4(ParametricImpliedVol):
 
         # Calculate implied vol
         log_m = np.log(k / f) # log-moneyness
-        vol = gsvi.gsvi_formula(log_m, smile_params)
+        vol = svi.svi_formula(t, log_m, smile_params)
         return vol
 
     def smile_parameters(self, t: npt.ArrayLike, params: list[float]) -> list[float]:
@@ -44,7 +44,7 @@ class TsSvi4(ParametricImpliedVol):
             raise ValueError("TsSvi2 is not calculable at t = 0")
 
         # Get parameters
-        (v0, vinf, b_, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
+        (v0, vinf, chi, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
          tau_m, s0, sinf, tau_s) = self.get_parameters(params)
         if rho0 < -1.0 or rho0 > 1.0:
             raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
@@ -52,17 +52,17 @@ class TsSvi4(ParametricImpliedVol):
         if rhoinf < -1.0 or rhoinf > 1.0:
             raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
 
-        # Calculate new variables
+        # Calculate wstar as integral of Rebonato function
         f0 = v0 * v0
         finf = vinf * vinf
-        vstar = -b_ * tau_v + finf + tau_v / t * (b_ * (t + tau_v) + f0 - finf) * (1.0 - np.exp(-t / tau_v))
-        b = alpha * np.power(t, beta - 1.0)
-        r = rho0 + (rhoinf - rho0) * (1.0 - np.exp(-t / tau_rho))
-        m = m0 + (minf - m0) * (1.0 - np.exp(-t / tau_m))
-        s = s0 + (sinf - s0) * (1.0 - np.exp(-t / tau_s))
+        wstar = (finf - chi * tau_v) * t + tau_v * (chi * (t + tau_v) + f0 - finf) * (1.0 - np.exp(-t / tau_v))
 
         # Go back to standard parameters
-        a = vstar - b * s * np.sqrt(1.0 - r * r) # OK
+        b = alpha * np.power(t, beta)
+        s = s0 + (sinf - s0) * (1.0 - np.exp(-t / tau_s))
+        r = rho0 + (rhoinf - rho0) * (1.0 - np.exp(-t / tau_rho))
+        a = wstar - b * s * np.sqrt(1.0 - r * r)
+        m = m0 + (minf - m0) * (1.0 - np.exp(-t / tau_m))
 
         return [a, b, r, m, s]
 
@@ -83,14 +83,14 @@ class TsSvi4(ParametricImpliedVol):
         if is_ok:
             sample_times = np.asarray([1 / 365, 7 / 365, 30 / 365, 0.5, 1, 5, 10, 40])
             sample_params = self.smile_parameters(sample_times, self.params)
-            is_ok, penalty = gsvi.gsvi_check_params(sample_params)
+            is_ok, penalty = svi.svi_check_params(sample_params)
 
         return is_ok, penalty
 
     def check_global_params(self) -> tuple[bool, float]:
         """ Check validity of the global parameters """
         # Get parameters
-        (v0, vinf, b_, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
+        (v0, vinf, chi, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
          tau_m, s0, sinf, tau_s) = self.get_parameters(self.params)
         if rho0 < -1.0 or rho0 > 1.0:
             return False, constants.FLOAT_INFTY
@@ -109,16 +109,16 @@ class TsSvi4(ParametricImpliedVol):
 
         # Check bound for extremum of vstar
         tol = 1e-6
-        if is_ok and not isequal(b_, tol):
+        if is_ok and not isequal(chi, tol):
             if tau_v < tol:
                 is_ok = False
             else:
-                prod = b_ * tau_v
-                f0 = v0 * v0
-                finf = vinf * vinf
-                small_b = f0 - finf
-                if b_ < 0.0:
-                    fext = finf + prod * np.exp(-1.0 + small_b / prod)
+                if chi < 0.0:
+                    prod = chi * tau_v
+                    f0 = v0 * v0
+                    finf = vinf * vinf
+                    v_diff = f0 - finf
+                    fext = finf + prod * np.exp(-1.0 + v_diff / prod)
                     if fext < tol:
                         is_ok = False
 
@@ -135,7 +135,9 @@ class TsSvi4(ParametricImpliedVol):
     def initial_point(self) -> list[float]:
         """ Recommended initial point """
         # v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma
-        init_point = [0.10, 0.20, -0.05,  1.0, 0.1, 0.1000, -0.30, -0.30,  1.0,  1.00,  0.50,  0.5, 0.1, 0.1,  1.0]
+        # init_point = [0.10, 0.20, -0.05,  1.0, 0.1, 0.1000, -0.30, -0.30,  1.0,  1.00,  0.50,  0.5, 0.1, 0.1,  1.0]
+        init_point = [0.275,  0.274, -0.0003,  0.7, 0.07,  0.003, -0.3, -0.2, 1.3,  0.001, -0.017,  0.23, 0.000001,
+                      2.0, 5.0]
         return np.asarray(init_point)
 
 
@@ -160,6 +162,7 @@ if __name__ == "__main__":
     # Calibrate model
     calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-6})
     calibrator.calibrate(mkt_data)
+    print(f"Optimum parameters: {model.params}")
 
     # Estimate model on points and calculate RMSE, plot comparison
     n_rows, n_cols = 3, 2

@@ -64,7 +64,7 @@ class TsSvi3(ParametricImpliedVol):
         wstar = alpha * gamma * one_minus_rho2 / (pow_ + 1.0) * np.power(t, pow_ + 1.0)
         v0 = s0 * s0
         vinf = sinf * sinf
-        wstar += (vinf -chi * tau) * t + tau * (chi * (t + tau) + v0 - vinf) * (1.0 - np.exp(-t / tau))
+        wstar += (vinf - chi * tau) * t + tau * (chi * (t + tau) + v0 - vinf) * (1.0 - np.exp(-t / tau))
 
         lambda_ = lambda0 + gamma / (delta + 1.0) * np.power(t, delta + 1.0)
         xstar = x0star - r * (lambda_ - lambda0)
