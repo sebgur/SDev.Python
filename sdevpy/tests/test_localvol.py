@@ -3,7 +3,7 @@ import numpy.typing as npt
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
 from sdevpy.volatility.impliedvol.models.svi import SviSection
 from sdevpy.volatility.localvol.dupire import dupire_formula
-from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
+from sdevpy.volatility.impliedvol.models.tssvi3 import TsSvi3
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.localvol.localvol_calib import LvObjectiveBuilder
@@ -57,12 +57,12 @@ def make_mlv(**kwargs):
     return MatrixLocalVol(T_GRID, LOGM_GRID, make_vol_matrix(), **kwargs)
 
 def make_flat_surface():
-    s = TsSvi1()
+    s = TsSvi3()
     s.update_params(FLAT_TSSVI1_PARAMS)
     return s
 
 def make_tssvi1():
-    s = TsSvi1()
+    s = TsSvi3()
     s.update_params(s.initial_point())
     return s
 

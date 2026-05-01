@@ -171,11 +171,11 @@ if __name__ == "__main__":
             # lv2_ = dupire_formula_single(surface2, t1, t2, m_)
             # lv2.append(lv2_)
 
-            lv3_ = dupire_formula_single(surface3, t1, t2, m_)
-            lv3.append(lv3_)
+            # lv3_ = dupire_formula_single(surface3, t1, t2, m_)
+            # lv3.append(lv3_)
 
-            # lv4_ = dupire_formula_single(surface4, t1, t2, m_)
-            # lv4.append(lv4_)
+            lv4_ = dupire_formula_single(surface4, t1, t2, m_)
+            lv4.append(lv4_)
 
         lv1_sin.append(lv1)
         lv2_sin.append(lv2)
@@ -198,11 +198,11 @@ if __name__ == "__main__":
         # lv2_ = dupire_formula(surface2, t1, t2, m)
         # lv2_vec.append(lv2_)
 
-        lv3_ = dupire_formula(surface3, t1, t2, m)
-        lv3_vec.append(lv3_)
+        # lv3_ = dupire_formula(surface3, t1, t2, m)
+        # lv3_vec.append(lv3_)
 
-        # lv4_ = dupire_formula(surface4, t1, t2, m)
-        # lv4_vec.append(lv4_)
+        lv4_ = dupire_formula(surface4, t1, t2, m)
+        lv4_vec.append(lv4_)
 
     print("<><><><> Compare <><><><>")
     for i in range(len(ts)):
@@ -215,10 +215,10 @@ if __name__ == "__main__":
         #     print(f"LV2(sin): {lv2_sin[i][j]}")
         #     print(f"LV2(vec): {lv2_vec[i][j]}")
 
-        for j in range(len(lv3_sin[i])):
-            print(f"LV3(sin): {lv3_sin[i][j]}")
-            print(f"LV3(vec): {lv3_vec[i][j]}")
+        # for j in range(len(lv3_sin[i])):
+        #     print(f"LV3(sin): {lv3_sin[i][j]}")
+        #     print(f"LV3(vec): {lv3_vec[i][j]}")
 
-        # for j in range(len(lv4_sin[i])):
-        #     print(f"LV4(sin): {lv4_sin[i][j]}")
-        #     print(f"LV4(vec): {lv4_vec[i][j]}")
+        for j in range(len(lv4_sin[i])):
+            print(f"LV4(sin): {lv4_sin[i][j]}")
+            print(f"LV4(vec): {lv4_vec[i][j]}")
