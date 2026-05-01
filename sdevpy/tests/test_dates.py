@@ -1,7 +1,6 @@
 import datetime as dt
 from sdevpy.utilities import dates
 from sdevpy.utilities import scalendar as cdr
-from sdevpy.utilities import speriods
 
 
 def test_to_oadate():
@@ -14,7 +13,7 @@ def test_to_oadate():
 def test_tenor_advance():
     base = dt.datetime(2025, 12, 15)
     tenors = ['1D', '2W', '1M', '2Y', '1Y6M']
-    test = [base + speriods.period(t) for t in tenors]
+    test = [base + dates.period(t) for t in tenors]
     print(test)
     ref = [dt.datetime(2025, 12, 16), dt.datetime(2025, 12, 29), dt.datetime(2026, 1, 15),
            dt.datetime(2027, 12, 15), dt.datetime(2027, 6, 15)]

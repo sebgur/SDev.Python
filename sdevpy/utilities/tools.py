@@ -29,7 +29,7 @@ def isiterable(x):
     return isinstance(x, Iterable)
 
 
-def pd_read_xls(xls_file, col_name, index_col):
+def pd_read_xls(xls_file: str, col_name: str, index_col: int):
     """ Read Excel file and pick column of data and index """
     xls = pd.ExcelFile(xls_file)
     return xls.parse(col_name, index_col=index_col)

@@ -1,11 +1,10 @@
 import datetime as dt
 from datetime import timedelta
-# from dateutil.relativedelta import relativedelta
 from enum import Enum
 import pandas_market_calendars as mcal
 import holidays
+from sdevpy.utilities import dates as dts
 from sdevpy.utilities.tools import isiterable
-from sdevpy.utilities import speriods
 
 
 class BDC(Enum):
@@ -74,7 +73,7 @@ class Calendar:
         schedule_dates, d = [], self.adjust(start, convention)
         while d <= end:
             schedule_dates.append(d)
-            d = self.adjust(d + speriods.period(term), convention)
+            d = self.adjust(d + dts.period(term), convention)
 
         seen = set()
         adjusted = []
@@ -87,7 +86,7 @@ class Calendar:
         # adjusted, d = [], start
         # while d <= end:
         #     adjusted.append(self.adjust(d, convention))
-        #     d += speriods.period(term)
+        #     d += dts.period(term)
 
         return to_datetime(adjusted) if convert_to_datetime else adjusted
 
@@ -96,7 +95,7 @@ class Calendar:
                             stub: str = "short_front", # short_front|long_front|short_back|long_back
                             eom: bool = False, convert_to_datetime: bool = False) -> list[dt.date]:
         """ Generate a schedule of adjusted dates from start to end """
-        period = speriods.period(term)
+        period = dts.period(term)
         use_eom = eom and is_eom(start)
 
         # 1) Generate unadjusted roll dates
