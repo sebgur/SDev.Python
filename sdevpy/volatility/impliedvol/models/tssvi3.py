@@ -1,12 +1,14 @@
 """ Term-structure model for SVI. Give each SVI parameter a parametric formula along time and
-    enforce no-arbitrage (approximately). This model has 15 parameters.
+    enforce no-arbitrage (approximately). This model has 11 parameters.
+    See Gurrieri, 'A Class of Term Structures for SVI Implied Volatility', 2010
+    https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1779463
 """
 import numpy as np
 import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol
-from sdevpy.volatility.impliedvol.models import gsvi
+from sdevpy.volatility.impliedvol.models import svi
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
@@ -15,16 +17,16 @@ from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 
 
-class TsSvi2(ParametricImpliedVol):
+class TsSvi3(ParametricImpliedVol):
     def __init__(self, **kwargs):
         super().__init__()
-        self.n_params = 15
+        self.n_params = 11
         self.calculable_at_zero = False
         self.tmax = kwargs.get('tmax', 42)
 
     def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
         """ Calculate the smile parameters at given time and then calculate the Black implied vol
-            using the gSVI formula """
+            using the SVI formula """
         # Check parameters
         is_ok, _ = self.check_global_params()
         if not is_ok:
@@ -35,43 +37,52 @@ class TsSvi2(ParametricImpliedVol):
 
         # Calculate implied vol
         log_m = np.log(k / f) # log-moneyness
-        vol = gsvi.gsvi_formula(log_m, smile_params)
+        vol = svi.svi_formula(t, log_m, smile_params)
         return vol
 
     def smile_parameters(self, t: npt.ArrayLike, params: list[float]) -> list[float]:
-        """ Calculate smile parameters according to the TsSvi2 formulas """
+        """ Calculate smile parameters according to the TsSvi3 formulas """
         if np.any(t < self.eps):
-            raise ValueError("TsSvi2 is not calculable at t = 0")
+            raise ValueError("TsSvi3 is not calculable at t = 0")
 
         # Get parameters
-        (v0, vinf, b_, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
-         tau_m, s0, sinf, tau_s) = self.get_parameters(params)
-        if rho0 < -1.0 or rho0 > 1.0:
-            raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
+        s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(params)
+        if r < -1.0 or r > 1.0:
+            raise ValueError("Correlation should be between -1 and 1 in TsSvi3")
 
-        if rhoinf < -1.0 or rhoinf > 1.0:
-            raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
+        if delta + 1.0 < self.eps:
+            raise ValueError("Delta should be strictly higher than -1 in TsSvi3")
 
         # Calculate new variables
-        f0 = v0 * v0
-        finf = vinf * vinf
-        vstar = -b_ * tau_v + finf + tau_v / t * (b_ * (t + tau_v) + f0 - finf) * (1.0 - np.exp(-t / tau_v))
-        b = alpha * np.power(t, beta - 1.0)
-        r = rho0 + (rhoinf - rho0) * (1.0 - np.exp(-t / tau_rho))
-        m = m0 + (minf - m0) * (1.0 - np.exp(-t / tau_m))
-        s = s0 + (sinf - s0) * (1.0 - np.exp(-t / tau_s))
+        one_minus_rho2 = max(1.0 - r * r, 0.0)
+
+        # Vectorize r (the other ones broadcast fine thanks to t)
+        t = np.asarray(t, dtype=float)
+        r = np.full_like(t, r)
+
+        pow_ = beta + delta
+        wstar = alpha * gamma * one_minus_rho2 / (pow_ + 1.0) * np.power(t, pow_ + 1.0)
+        v0 = s0 * s0
+        vinf = sinf * sinf
+        wstar += (vinf -chi * tau) * t + tau * (chi * (t + tau) + v0 - vinf) * (1.0 - np.exp(-t / tau))
+
+        lambda_ = lambda0 + gamma / (delta + 1.0) * np.power(t, delta + 1.0)
+        xstar = x0star - r * (lambda_ - lambda0)
 
         # Go back to standard parameters
-        a = vstar - b * s * np.sqrt(1.0 - r * r) # OK
+        b = alpha * np.power(t, beta)
+        a = wstar - b * lambda_ * one_minus_rho2
+        m = xstar + r * lambda_
+        s = lambda_ * np.sqrt(one_minus_rho2)
 
         return [a, b, r, m, s]
 
     def get_parameters(self, x: list[float]) -> tuple[float, ...]:
         """ Return named parameters from input list """
-        if len(x) != 15:
-            raise ValueError("The number of parameters should be 15 for TsSvi2")
+        if len(x) != 11:
+            raise ValueError("The number of parameters should be 11 for TsSvi3")
 
-        return x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10], x[11], x[12], x[13], x[14]
+        return x[0], x[1], x[2], x[3], x[4], x[5], x[6], x[7], x[8], x[9], x[10]
 
     def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters """
@@ -83,42 +94,40 @@ class TsSvi2(ParametricImpliedVol):
         if is_ok:
             sample_times = np.asarray([1 / 365, 7 / 365, 30 / 365, 0.5, 1, 5, 10, 40])
             sample_params = self.smile_parameters(sample_times, self.params)
-            is_ok, penalty = gsvi.gsvi_check_params(sample_params)
+            is_ok, penalty = svi.svi_check_params(sample_params)
 
         return is_ok, penalty
 
     def check_global_params(self) -> tuple[bool, float]:
         """ Check validity of the global parameters """
         # Get parameters
-        (v0, vinf, b_, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
-         tau_m, s0, sinf, tau_s) = self.get_parameters(self.params)
-        if rho0 < -1.0 or rho0 > 1.0:
+        s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(self.params)
+        if r < -1.0 or r > 1.0:
             return False, constants.FLOAT_INFTY
-            # raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
+            # raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
 
-        if rhoinf < -1.0 or rhoinf > 1.0:
+        if delta + 1.0 < self.eps:
             return False, constants.FLOAT_INFTY
-            # raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
+            # raise ValueError("Delta should be strictly higher than -1 in TsSvi1")
 
         is_ok = True
         # Check necessary no-arbitrage
         no_arb1 = alpha * np.power(self.tmax, beta)
-        no_arb2 = 4.0 / (1.0 + np.maximum(np.abs(rho0), np.abs(rhoinf)))
+        no_arb2 = 4.0 / (1.0 + np.abs(r))
         if no_arb1 > no_arb2:
             is_ok = False
 
         # Check bound for extremum of vstar
         tol = 1e-6
-        if is_ok and not isequal(b_, tol):
-            if tau_v < tol:
+        if is_ok and not isequal(chi, tol):
+            if tau < tol:
                 is_ok = False
             else:
-                prod = b_ * tau_v
-                f0 = v0 * v0
-                finf = vinf * vinf
-                small_b = f0 - finf
-                if b_ < 0.0:
-                    fext = finf + prod * np.exp(-1.0 + small_b / prod)
+                if chi < 0.0:
+                    prod = chi * tau
+                    vinf = sinf * sinf
+                    v_diff = s0 * s0 - vinf
+                    fext = vinf + prod * np.exp(-1.0 + v_diff / prod)
                     if fext < tol:
                         is_ok = False
 
@@ -126,16 +135,16 @@ class TsSvi2(ParametricImpliedVol):
 
     def bounds(self, keep_feasible: bool=False):
         """ Recommended bounds """
-        # v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma
-        lw_bounds = [0.0, 0.00001, -1.0,  0.1, 0.0, 0.0001, -0.99, -0.99,  0.1, -0.99, -0.99,  0.1, 0.0, 0.0,  0.1]
-        up_bounds = [1.0, 1.00000,  1.0, 50.0, 5.0, 0.9990,  0.99,  0.99, 50.0,  1.00,  1.00, 50.0, 2.0, 2.0, 50.0]
+        # v0, vinf, b_, tau, alpha, beta, r, x0star, lambda0, gamma, delta
+        lw_bounds = [0.0, 0.00001, -1.0,  0.1, 0.00, 0.0001, -0.99, -0.50, 0.0, 0.0, -0.999]
+        up_bounds = [1.0, 1.00000,  1.0, 50.0, 5.00, 0.9990,  0.20,  2.00, 2.0, 5.0,  5.000]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=keep_feasible)
         return bounds
 
     def initial_point(self) -> list[float]:
         """ Recommended initial point """
-        # v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma
-        init_point = [0.10, 0.20, -0.05,  1.0, 0.1, 0.1000, -0.30, -0.30,  1.0,  1.00,  0.50,  0.5, 0.1, 0.1,  1.0]
+        # v0, vinf, b_, tau, alpha, beta, r, x0star, lambda0, gamma, delta
+        init_point = [0.10, 0.20, -0.05,  1.0, 0.10, 0.10, -0.30,  0.10, 0.1, 1.0,  1.000]
         return np.asarray(init_point)
 
 
@@ -153,12 +162,12 @@ if __name__ == "__main__":
     vol_surface = mkt_data.vols
 
     # Initialize model
-    model = TsSvi2()
+    model = TsSvi3()
     # model.update_params(model.initial_point())
-    # model.check_params()
+    # print(model.check_params())
 
     # Calibrate model
-    calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-6})
+    calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
     calibrator.calibrate(mkt_data)
 
     # Estimate model on points and calculate RMSE, plot comparison
@@ -168,6 +177,7 @@ if __name__ == "__main__":
         for j in range(n_cols):
             ax = axes[i, j]
             exp_idx = n_cols * i + j
+            # expiry = expiry_grid[exp_idx]
             expiry = timegrids.model_time(valdate, expiries[exp_idx])
             fwd = fwds[exp_idx]
             strikes = strike_surface[exp_idx]

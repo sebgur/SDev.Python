@@ -1,9 +1,13 @@
+from pathlib import Path
+import logging
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, LvMethod
 from sdevpy.maths import constants
 from sdevpy.utilities.tools import isequal
+log = logging.getLogger(Path(__file__).stem)
+log.setLevel(logging.DEBUG)
 
 
 ######### ToDo #############################################
@@ -12,8 +16,7 @@ from sdevpy.utilities.tools import isequal
 
 
 def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) -> float:
-    """ Calculate Dupire formula on the ImpliedVol.
-        ToDo: remove when all done """
+    """ ToDo: remove when all done """
     t_threshold = 0.0001
     x_threshold = 0.00001
     iv_threshold = 0.000001
@@ -24,6 +27,7 @@ def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) ->
 
     # Edge case: moneyness = 0
     dvar_dt = ivsurf.dvariance_dt(ts, te, x)
+    print(f'dvar_dt: {dvar_dt}')
     if x < x_threshold:
         return np.sqrt(dvar_dt)
 
@@ -103,8 +107,17 @@ def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -
         case _:
             raise ValueError(f"Invalid Dupire calculation method: {ivsurf.lv_method}")
 
+    if np.any(zero_mask):
+        log.debug(f"Zero-mask found for {np.count_nonzero(zero_mask)} points")
+
     sigma2 = np.where(zero_mask, 0.0, dvar_dt / denominator)
     sigma2 = np.where(x < x_threshold, dvar_dt, sigma2)
+
+    print(f"sigma2: {sigma2}")
+    neg_mask = (sigma2 < 0.0)
+    if np.any(neg_mask):
+        log.debug(f"Negative squared vol found for {np.count_nonzero(neg_mask)} points")
+
     return np.sqrt(np.maximum(sigma2, 0.0))
 
 
@@ -119,6 +132,7 @@ if __name__ == "__main__":
     from sdevpy.volatility.impliedvol.models.logmix import LogMix
     from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
     from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
+    from sdevpy.volatility.impliedvol.models.tssvi3 import TsSvi3
 
     t_grid = np.asarray([0.25, 1.0, 2.0])
     ts = t_grid[:-1]
@@ -137,16 +151,19 @@ if __name__ == "__main__":
     surface3 = TsSvi2()
     surface3.update_params(surface3.initial_point())
 
+    surface4 = TsSvi3()
+    surface4.update_params(surface4.initial_point())
+
     # Single
     print("<><><><> Single <><><><>")
-    lv1_sin, lv2_sin, lv3_sin = [], [], []
+    lv1_sin, lv2_sin, lv3_sin, lv4_sin = [], [], [], []
     for i in range(len(ts)):
         t1 = ts[i]
         t2 = te[i]
         m = x[i]
         print(f"Iteration {i+1} from {t1} to {t2}")
         print(f"Moneynesses: {m}")
-        lv1, lv2, lv3 = [], [], []
+        lv1, lv2, lv3, lv4 = [], [], [], []
         for m_ in m:
             # lv1_ = dupire_formula_single(surface1, t1, t2, m_)
             # lv1.append(lv1_)
@@ -154,20 +171,26 @@ if __name__ == "__main__":
             # lv2_ = dupire_formula_single(surface2, t1, t2, m_)
             # lv2.append(lv2_)
 
-            lv3_ = dupire_formula_single(surface3, t1, t2, m_)
-            lv3.append(lv3_)
+            # lv3_ = dupire_formula_single(surface3, t1, t2, m_)
+            # lv3.append(lv3_)
+
+            lv4_ = dupire_formula_single(surface4, t1, t2, m_)
+            lv4.append(lv4_)
 
         lv1_sin.append(lv1)
         lv2_sin.append(lv2)
         lv3_sin.append(lv3)
+        lv4_sin.append(lv4)
 
     # Vectorize
     print("<><><><> Vectorize <><><><>")
-    lv1_vec, lv2_vec, lv3_vec = [], [], []
+    lv1_vec, lv2_vec, lv3_vec, lv4_vec = [], [], [], []
     for i in range(len(ts)):
         t1 = ts[i]
         t2 = te[i]
         m = np.asarray(x[i])
+        print(f"Iteration {i+1} from {t1} to {t2}")
+        print(f"Moneynesses: {m}")
 
         # lv1_ = dupire_formula(surface1, t1, t2, m)
         # lv1_vec.append(lv1_)
@@ -175,8 +198,11 @@ if __name__ == "__main__":
         # lv2_ = dupire_formula(surface2, t1, t2, m)
         # lv2_vec.append(lv2_)
 
-        lv3_ = dupire_formula(surface3, t1, t2, m)
-        lv3_vec.append(lv3_)
+        # lv3_ = dupire_formula(surface3, t1, t2, m)
+        # lv3_vec.append(lv3_)
+
+        lv4_ = dupire_formula(surface4, t1, t2, m)
+        lv4_vec.append(lv4_)
 
     print("<><><><> Compare <><><><>")
     for i in range(len(ts)):
@@ -189,9 +215,10 @@ if __name__ == "__main__":
         #     print(f"LV2(sin): {lv2_sin[i][j]}")
         #     print(f"LV2(vec): {lv2_vec[i][j]}")
 
-        for j in range(len(lv3_sin[i])):
-            print(f"LV3(sin): {lv3_sin[i][j]}")
-            print(f"LV3(vec): {lv3_vec[i][j]}")
+        # for j in range(len(lv3_sin[i])):
+        #     print(f"LV3(sin): {lv3_sin[i][j]}")
+        #     print(f"LV3(vec): {lv3_vec[i][j]}")
 
-    # lv12 = dupire_formula(surface1, ts, te, x)
-    # print(lv12)
+        for j in range(len(lv4_sin[i])):
+            print(f"LV3(sin): {lv4_sin[i][j]}")
+            print(f"LV3(vec): {lv4_vec[i][j]}")

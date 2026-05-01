@@ -15,7 +15,7 @@ from sdevpy.maths import constants
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 
 
-class TsSvi2(ParametricImpliedVol):
+class TsSvi4(ParametricImpliedVol):
     def __init__(self, **kwargs):
         super().__init__()
         self.n_params = 15
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     vol_surface = mkt_data.vols
 
     # Initialize model
-    model = TsSvi2()
+    model = TsSvi4()
     # model.update_params(model.initial_point())
     # model.check_params()
 

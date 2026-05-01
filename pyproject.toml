@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sdevpy"
 version = "1.0.9"
-license-files = []
+license = {file = "LICENSE"}
+#license-files = []
 authors = [{ name="Sebastien Gurrieri", email="sebgur@gmail.com" }]
 description = "Python package for Finance"
 readme = "README.md"
@@ -20,6 +21,10 @@ dependencies = ["pandas", "numpy", "scipy", "matplotlib", "holidays",
 ]
 #dependencies = ["pyperclip", "tensorflow", "scikit-learn",
 # "tensorflow_probability", "silence_tensorflow"]
+
+[project.urls]
+"Git" = "https://github.com/sebgur/SDev.Python"
+"SDev Finance" = "http://sdev-finance.com/"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -48,7 +53,3 @@ omit = [
 exclude_lines = [
     "if __name__ == '__main__':",
 ]
-
-[project.urls]
-"Git page" = "https://github.com/sebgur/SDev.Python"
-"SDev Finance" = "http://sdev-finance.com/"
