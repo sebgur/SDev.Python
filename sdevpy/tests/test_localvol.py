@@ -4,7 +4,7 @@ from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, Matri
 from sdevpy.volatility.impliedvol.models.svi import SviSection
 from sdevpy.volatility.localvol.dupire import dupire_formula
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
-from sdevpy.volatility.impliedvol.models.tssvi4 import TsSvi4
+from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.localvol.localvol_calib import LvObjectiveBuilder
 from sdevpy.pde import forwardpde as fpde
@@ -67,7 +67,7 @@ def make_tssvi1():
     return s
 
 def make_tssvi2():
-    s = TsSvi4()
+    s = TsSvi2()
     s.update_params(s.initial_point())
     return s
 
