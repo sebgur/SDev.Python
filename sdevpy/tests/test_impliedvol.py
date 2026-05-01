@@ -4,7 +4,7 @@ from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi, gsvi
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
-from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
+from sdevpy.volatility.impliedvol.models.tssvi4 import TsSvi4
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
 
@@ -75,7 +75,7 @@ def test_logmix():
 
 
 def test_tssvi2_objective():
-    surface = TsSvi2()
+    surface = TsSvi4()
     t = np.asarray([0.5, 1.5, 2.5])
     k = np.asarray([90., 100., 110.])
     f = np.asarray([95., 105., 115.])
@@ -85,11 +85,12 @@ def test_tssvi2_objective():
     # params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     builder = TsIvObjectiveBuilder(surface, t, k, f, mkt_vols, mkt_prices)
     test = builder.objective(params)
-    assert isequal(test, 0.065354183239)
+    assert isequal(test, 0.04752866204709)
+    # assert isequal(test, 0.065354183239)
 
 
 def test_tssvi2():
-    surface = TsSvi2()
+    surface = TsSvi4()
     params = surface.initial_point()
     # params = [0.20, 0.25, 0.10, 2.5, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
     surface.update_params(params)
@@ -99,7 +100,8 @@ def test_tssvi2():
     f = np.asarray([95, 105, 115])
     is_call = True
     test = surface.calculate(t, k, is_call, f)
-    ref = np.asarray([0.41214181, 0.23553742, 0.20534387])
+    ref = np.asarray([0.28002666, 0.27620326, 0.27544121])
+    # ref = np.asarray([0.41214181, 0.23553742, 0.20534387])
     assert np.allclose(test, ref, 1e-10)
 
 
