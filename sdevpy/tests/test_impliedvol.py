@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.integrate import quad
 from sdevpy.utilities.tools import isequal
-from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi, gsvi
+from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
@@ -180,17 +180,6 @@ def test_vsvi_formula():
     assert np.allclose(test, ref, 1e-10)
 
 
-def test_gsvi_formula():
-    base_vol = 0.25
-    a, b, rho, m, sigma = base_vol, 0.1, -0.25, 0.0, 0.25 # a, b, rho, m, sigma
-    mx = np.asarray([0.5, 1.0, 2.0]) # Moneyness
-    log_m = np.log(mx) # Log-moneyness
-
-    test = gsvi.gsvi_formula(log_m, [a, b, rho, m, sigma])
-    ref = np.asarray([0.58396406, 0.52440442, 0.55349496])
-    assert np.allclose(test, ref, 1e-10)
-
-
 def test_sabr():
     # Test near ATM
     expiry = 0.5
@@ -212,4 +201,3 @@ if __name__ == "__main__":
     # test_biexp_formula()
     # test_cubicvol_formula()
     # test_vsvi_formula()
-    # test_gsvi_formula()

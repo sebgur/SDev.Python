@@ -2,7 +2,7 @@
 import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
-from sdevpy.volatility.impliedvol.models import biexp, svi, cubicvol, vsvi, gsvi
+from sdevpy.volatility.impliedvol.models import biexp, svi, cubicvol, vsvi
 
 
 #### Select valuation dates, terms and percentiles ####
@@ -96,13 +96,3 @@ for i in range(n_rows):
 fig.suptitle('vSVI Vols', fontsize=16, fontweight='bold')
 plt.tight_layout()
 plt.show()
-
-
-## gSVI model ##
-print("Running gSVI model")
-a, b, rho, m, sigma = base_vol, 0.1, -0.25, 0.0, 0.25 # a, b, rho, m, sigma
-mx = np.asarray([0.5, 1.0, 2.0]) # Moneyness
-log_m = np.log(mx) # Log-moneyness
-
-test = gsvi.gsvi_formula(log_m, [a, b, rho, m, sigma])
-print(test)
