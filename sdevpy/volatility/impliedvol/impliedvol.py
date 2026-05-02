@@ -65,15 +65,6 @@ class ImpliedVol(ABC):
         dvol_dx = (vol_up - vol_dn) / (2.0 * dx)
         return dvol_dx
 
-        ## Old formula with absolute bumps
-        # h = 0.001
-        # if x - h < 0.0:
-        #     raise ValueError("Negative strike in numerical 1st differential of implied volatility")
-
-        # tmp1 = self.volatility(t, x + h)
-        # tmp2 = self.volatility(t, x - h)
-        # return (tmp1 - tmp2) / (2.0 * h)
-
     def d2volatility_dx2(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
         """ Second differential of the volatility against the moneyness """
         hr = 0.05 # Relative bump
@@ -84,17 +75,6 @@ class ImpliedVol(ABC):
         vol_dn = self.volatility(t, x - dx)
         d2vol_dx2 = (vol_up + vol_dn - 2.0 * vol) / np.power(dx, 2)
         return d2vol_dx2
-
-        ## Old formula with absolute bumps
-        # h = 0.001
-        # two_h = 2.0 * h
-        # if x - two_h < 0.0:
-        #     raise ValueError("Negative strike in numerical 2nd differential of implied volatility")
-
-        # tmp = self.volatility(t, x)
-        # dxp = (self.volatility(t, x + two_h) - tmp) / two_h
-        # dxm = (tmp - self.volatility(t, x - two_h)) / two_h
-        # return (dxp - dxm) / two_h
 
     def density(self, t: float, fwd: float, strike: npt.ArrayLike) -> npt.NDArray[np.float64]:
         """ Probability density corresponding to the surface """

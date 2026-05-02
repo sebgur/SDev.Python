@@ -70,8 +70,6 @@ def implied_vol(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.Array
     strike = np.asarray(strike, dtype=float)
     fwd_price = np.asarray(fwd_price, dtype=float)
     is_call = np.asarray(is_call, dtype=bool)
-    # expiry = float(expiry)
-    # fwd = float(fwd)
 
     #### ATM branch ####
     m = fwd - strike

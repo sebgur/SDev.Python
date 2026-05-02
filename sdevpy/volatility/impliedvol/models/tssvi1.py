@@ -95,7 +95,6 @@ class TsSvi1(ParametricImpliedVol):
         """ Check validity of the parameters """
         # Check global parameters
         is_ok, penalty = self.check_global_params()
-        # is_ok, penalty = True, 0.0 # Skip global parameter check
 
         # Check local parameters over sampled expiries
         if is_ok:
@@ -111,11 +110,9 @@ class TsSvi1(ParametricImpliedVol):
         s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(self.params)
         if r < -1.0 or r > 1.0:
             return False, constants.FLOAT_INFTY
-            # raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
 
         if delta + 1.0 < self.eps:
             return False, constants.FLOAT_INFTY
-            # raise ValueError("Delta should be strictly higher than -1 in TsSvi1")
 
         is_ok = True
         # Check necessary no-arbitrage

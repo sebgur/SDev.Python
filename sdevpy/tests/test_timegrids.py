@@ -21,9 +21,6 @@ def test_timegridbuilder_times():
     expiries = np.asarray([1.4, 0.125, 0.5]).reshape(-1, 1)
     time_grid_builder.add_grid(expiries)
     test = time_grid_builder.complete_grid()
-    # time_grid_builder.refine()
-    # time_grid_builder.clean()
-    # test = np.asarray(time_grid_builder.time_grid_)
     ref = np.asarray([0.125, 0.46666667, 0.5, 0.93333333, 1.4])
     assert np.allclose(test, ref, 1e-10)
 

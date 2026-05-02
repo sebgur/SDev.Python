@@ -17,7 +17,7 @@ T_GRID    = np.array([0.25, 0.5, 1.0, 2.0])
 LOGM_GRID = np.array([-0.25, -0.2, 0.0, 0.2, 0.25])
 FLAT_VOL = 0.20
 
-# v0, vinf, b_, tau, alpha, beta, r, x0star, lambda0, gamma, delta
+# s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta
 FLAT_TSSVI1_PARAMS = [FLAT_VOL, FLAT_VOL, 0.0, 1.0, 0.0, 0.5, 0.0, 0.0, 0.1, 1.0, 1.0]
 
 _T_GRID  = np.array([0.5, 1.0])

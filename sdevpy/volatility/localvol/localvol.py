@@ -1,5 +1,6 @@
 import json
 import datetime as dt
+from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
 from abc import ABC, abstractmethod
@@ -40,7 +41,8 @@ class ParamLocalVolSection(ABC):
     """ Wrapper class around formulas that return a local volatility at a certain
         point in time t, for a list of log-moneynesses x. The section has parameters
         that can be optimized on, and it is used by the LocalVol subtype InterpolatedParamLocalVol. """
-    def __init__(self, time: float, formula):
+    def __init__(self, time: float,
+                 formula: Callable[[float, npt.ArrayLike, npt.ArrayLike], npt.ArrayLike]):
         self.params = None
         self.formula = formula
         self.model = None

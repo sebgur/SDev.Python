@@ -81,7 +81,6 @@ class TsSvi2(ParametricImpliedVol):
         """ Check validity of the parameters """
         # Check global parameters
         is_ok, penalty = self.check_global_params()
-        # is_ok, penalty = True, 0.0 # Skip global parameter check
 
         # Check local parameters over sampled expiries
         if is_ok:
@@ -99,11 +98,9 @@ class TsSvi2(ParametricImpliedVol):
          tau_m, s0, sinf, tau_s) = self.get_parameters(self.params)
         if rho0 < -1.0 or rho0 > 1.0:
             return False, constants.FLOAT_INFTY
-            # raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
 
         if rhoinf < -1.0 or rhoinf > 1.0:
             return False, constants.FLOAT_INFTY
-            # raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
 
         is_ok = True
         # Check necessary no-arbitrage
@@ -131,7 +128,7 @@ class TsSvi2(ParametricImpliedVol):
 
     def bounds(self, keep_feasible: bool=False):
         """ Recommended bounds """
-        # v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma
+        # v0, vinf, chi, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf, tau_m, s0, sinf, tau_s
         lw_bounds = [0.0, 0.00001, -1.0,  0.1, 0.0, 0.0001, -0.99, -0.99,  0.1, -0.99, -0.99,  0.1, 0.0, 0.0,  0.1]
         up_bounds = [1.0, 1.00000,  1.0, 50.0, 5.0, 0.9990,  0.99,  0.99, 50.0,  1.00,  1.00, 50.0, 2.0, 2.0, 50.0]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=keep_feasible)
@@ -139,7 +136,7 @@ class TsSvi2(ParametricImpliedVol):
 
     def initial_point(self) -> list[float]:
         """ Recommended initial point """
-        # v0, vInf, B, tauV, alpha, beta, rho0, rhoInf, tauRho, m0, mInf, tauM, sigma0, sigmaInf, tauSigma
+        # v0, vinf, chi, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf, tau_m, s0, sinf, tau_s
         # init_point = [0.10, 0.20, -0.05,  1.0, 0.1, 0.1000, -0.30, -0.30,  1.0,  1.00,  0.50,  0.5, 0.1, 0.1,  1.0]
         init_point = [0.275,  0.274, -0.0003,  0.7, 0.07,  0.003, -0.3, -0.2, 1.3,  0.001, -0.017,  0.23, 0.000001,
                       2.0, 5.0]
