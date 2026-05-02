@@ -7,7 +7,7 @@ from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.impliedvol.optionsurface import calibration_targets, IS_CALL
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
-from sdevpy.maths import metrics
+from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
 
@@ -185,8 +185,8 @@ class LvObjectiveBuilder:
             # were 0, assuming that should be much bigger than at any reasonable solution.
             # ToDo: Claude recommends using constants.FLOAT_INFTY. But didn't we use it before and
             #       it led to some problems and that's why we're doing this now? To be tested again.
-            # return constants.FLOAT_INFTY
-            return self.cf_prices.sum()
+            return constants.FLOAT_INFTY
+            # return self.cf_prices.sum()
 
     def set_expiry(self, exp_idx, old_x, old_dx, old_p):
         self.exp_idx = exp_idx
