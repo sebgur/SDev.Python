@@ -7,7 +7,19 @@ from sdevpy.utilities import dates
 from sdevpy.maths import interpolation as itp
 
 
-def get_local_vols(names, valdate, **kwargs):
+############ TODO #######################################################
+# * Plug in matrix local vols. But how do we do that? Can we also implement
+#   a calibration on the fly? We need to plug the two sides of the design.
+# * Maybe we can do that by an intermediate step where we dump the matrices
+#   in text files?
+# * So maybe here we need to implement that reading and start unifying the
+#   different local vol types between InterpolateSection and Matrix?
+# * Maybe we try to find a file and use it if it's there, and if it's not
+#   there then we trigger the calibration? And then the calibration dumps?
+
+
+def get_local_vols(names: list[str], valdate: dt.datetime, **kwargs) -> list[localvol.LocalVol]:
+    """ Retrieve local vols assuming calibration has already been done """
     folder = kwargs.get('folder', test_data_folder())
     lvs = []
     for name in names:
@@ -16,7 +28,7 @@ def get_local_vols(names, valdate, **kwargs):
     return lvs
 
 
-def create_sections(t_grid, model):
+def create_sections(t_grid: list[float], model):
     sections = []
     for t in t_grid:
         config = {'time': t, 'model': model, 'params': None}
@@ -26,7 +38,8 @@ def create_sections(t_grid, model):
     return sections
 
 
-def create_section(config):
+def create_section(config: dict):
+    """ Section factory: create a LocalVolSection from a config dictionary """
     time = config.get('time', None)
     model = config.get('model', None)
     param_config = config.get('params', None)
@@ -53,7 +66,8 @@ def load_lv_new(t_grid, model):
     return lv
 
 
-def load_lv_from_folder(t_grid, store_date, name, folder):
+def load_lv_from_folder(t_grid: list[float], store_date: dt.datetime, name: str, folder: str) -> localvol.LocalVol:
+    """ Create InterpolatedLocalVol from folder """
     file = os.path.join(folder, name)
     os.makedirs(file, exist_ok=True)
     file = os.path.join(file, store_date.strftime(dates.DATE_FILE_FORMAT) + ".json")
@@ -71,7 +85,8 @@ def load_lv_from_folder(t_grid, store_date, name, folder):
     return lv
 
 
-def load_lv_from_data(new_t_grid, data):
+def load_lv_from_data(new_t_grid: list[float], data: dict) -> localvol.LocalVol:
+    """ Create InterpolatedLocalVol from data """
     # Create sections
     sections = data['sections']
     if sections is None:
@@ -131,7 +146,8 @@ def load_lv_from_data(new_t_grid, data):
     return lv
 
 
-def write_example(date, name, folder):
+def write_example(date: dt.datetime, name: str, folder: str) -> None:
+    """ Write an example LocalVol to file """
     file = os.path.join(folder, name)
     os.makedirs(file, exist_ok=True)
     file = os.path.join(file, "localvol_" + date.strftime("%Y%m%d-%H.%M.%S") + ".json")
@@ -150,7 +166,8 @@ def write_example(date, name, folder):
         json.dump(obj, f, indent=2)
 
 
-def test_data_folder():
+def test_data_folder() -> str:
+    """ Test data folder for Local Vol """
     folder = Path(__file__).parent.parent.parent.parent.resolve()
     folder = os.path.join(os.path.join(folder, "datasets"), "localvol")
     os.makedirs(folder, exist_ok=True)
