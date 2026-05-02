@@ -54,11 +54,11 @@ class TsSvi1(ParametricImpliedVol):
 
         # Get parameters
         s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(params)
-        if r < -1.0 or r > 1.0:
-            raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
+        # if r < -1.0 or r > 1.0:
+        #     raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
 
-        if delta + 1.0 < self.eps:
-            raise ValueError("Delta should be strictly higher than -1 in TsSvi1")
+        # if delta + 1.0 < self.eps:
+        #     raise ValueError("Delta should be strictly higher than -1 in TsSvi1")
 
         # Calculate new variables
         one_minus_rho2 = max(1.0 - r * r, 0.0)
@@ -142,7 +142,7 @@ class TsSvi1(ParametricImpliedVol):
 
     def bounds(self, keep_feasible: bool=False):
         """ Recommended bounds """
-        # v0, vinf, b_, tau, alpha, beta, r, x0star, lambda0, gamma, delta
+        # s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta
         lw_bounds = [0.0, 0.00001, -1.0,  0.1, 0.00, 0.0001, -0.99, -0.50, 0.0, 0.0, -0.999]
         up_bounds = [1.0, 1.00000,  1.0, 50.0, 5.00, 0.9990,  0.20,  2.00, 2.0, 5.0,  5.000]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=keep_feasible)
@@ -150,7 +150,7 @@ class TsSvi1(ParametricImpliedVol):
 
     def initial_point(self) -> list[float]:
         """ Recommended initial point """
-        # v0, vinf, b_, tau, alpha, beta, r, x0star, lambda0, gamma, delta
+        # s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta
         init_point = [0.10, 0.20, -0.05,  1.0, 0.10, 0.10, -0.30,  0.10, 0.1, 1.0,  1.000]
         return np.asarray(init_point)
 

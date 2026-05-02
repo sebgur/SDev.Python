@@ -7,7 +7,6 @@ import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities import algos, tools
 log = logging.getLogger(Path(__file__).stem)
-log.setLevel(logging.DEBUG)
 
 
 def build_timegrid(t_start: float, t_end: float, config: dict) -> npt.NDArray[np.float64]:
@@ -70,7 +69,7 @@ class TimeGridBuilder(ABC):
         time = model_time(self.valdate, date)
         return algos.upper_bound(self.time_grid_, time, self.atol_)
 
-    def get_grid(self) -> npt.NDArray(np.float64):
+    def get_grid(self) -> npt.NDArray[np.float64]:
         """ Retrieve the final time grid as numpy array """
         return np.asarray(self.time_grid_)
 

@@ -69,7 +69,6 @@ class Calendar:
 
     def make_schedule(self, start, end, term, convention=BDC.F, convert_to_datetime=False):
         """ Simplified schedule generation for now (forward) """
-        # New logic (to be tested)
         schedule_dates, d = [], self.adjust(start, convention)
         while d <= end:
             schedule_dates.append(d)
@@ -81,12 +80,6 @@ class Calendar:
             if d not in seen:
                 adjusted.append(d)
                 seen.add(d)
-
-        # # Old logic
-        # adjusted, d = [], start
-        # while d <= end:
-        #     adjusted.append(self.adjust(d, convention))
-        #     d += dts.period(term)
 
         return to_datetime(adjusted) if convert_to_datetime else adjusted
 

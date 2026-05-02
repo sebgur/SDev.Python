@@ -10,7 +10,6 @@ from sdevpy.utilities.timegrids import SimpleTimeGridBuilder
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, LvMethod
 from sdevpy.market import eqvolsurface as vsurf
 log = logging.getLogger(Path(__file__).stem)
-log.setLevel(logging.DEBUG)
 
 
 ######### ToDo #############################################
@@ -29,7 +28,7 @@ def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) ->
 
     # Edge case: moneyness = 0
     dvar_dt = ivsurf.dvariance_dt(ts, te, x)
-    print(f'dvar_dt: {dvar_dt}')
+    # print(f'dvar_dt: {dvar_dt}')
     if x < x_threshold:
         return np.sqrt(dvar_dt)
 

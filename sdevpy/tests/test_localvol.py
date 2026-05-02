@@ -158,7 +158,7 @@ def test_calib_dupire():
     assert np.allclose(m_test, m_ref, 1e-10)
     lv_test = np.asarray(lv[1])
     lv_ref = np.asarray([0.72218576, 0.19823641, 0.18378965])
-    np.allclose(lv_test, lv_ref, 1e-10)
+    assert np.allclose(lv_test, lv_ref, 1e-10)
 
 
 def test_dupire_impliedvol():

@@ -23,7 +23,8 @@ class SviSection(ParamLocalVolSection):
 
 def svi(t: float, x: npt.ArrayLike, *params) -> npt.ArrayLike:
     """ SVI formula. Original by J. Gatheral, modified here:
-        * x is the log-moneyness, not just the moneyness as in the original
+        Args:
+            - x is the log-moneyness, not just the moneyness as in the original
     """
     # Retrieve parameters
     if len(params) != 5:
@@ -38,8 +39,8 @@ def svi(t: float, x: npt.ArrayLike, *params) -> npt.ArrayLike:
     # Check constraints
     is_ok, _ = svi_check_params(params)
     if not is_ok:
-        return np.full_like(np.asarray(x, dtype=float), np.nan)
-        # raise ValueError("Invalid SVI parameters")
+        # return np.full_like(np.asarray(x, dtype=float), np.nan)
+        raise ValueError("Invalid SVI parameters")
 
     # Calculate
     xm = x - m # x is the log-moneyness

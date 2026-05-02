@@ -50,11 +50,11 @@ class TsSvi2(ParametricImpliedVol):
         # Get parameters
         (v0, vinf, chi, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
          tau_m, s0, sinf, tau_s) = self.get_parameters(params)
-        if rho0 < -1.0 or rho0 > 1.0:
-            raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
+        # if rho0 < -1.0 or rho0 > 1.0:
+        #     raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
 
-        if rhoinf < -1.0 or rhoinf > 1.0:
-            raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
+        # if rhoinf < -1.0 or rhoinf > 1.0:
+        #     raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
 
         # Calculate wstar as integral of Rebonato function
         f0 = v0 * v0
