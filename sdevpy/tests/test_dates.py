@@ -12,11 +12,11 @@ def test_to_oadate():
 
 def test_tenor_advance():
     base = dt.datetime(2025, 12, 15)
-    tenors = ['1D', '2W', '1M', '2Y', '1Y6M']
+    tenors = ['-1D', '1D', '2W', '1M', '2Y', '1Y6M']
     test = [base + dates.period(t) for t in tenors]
     print(test)
-    ref = [dt.datetime(2025, 12, 16), dt.datetime(2025, 12, 29), dt.datetime(2026, 1, 15),
-           dt.datetime(2027, 12, 15), dt.datetime(2027, 6, 15)]
+    ref = [dt.datetime(2025, 12, 14), dt.datetime(2025, 12, 16), dt.datetime(2025, 12, 29),
+           dt.datetime(2026, 1, 15), dt.datetime(2027, 12, 15), dt.datetime(2027, 6, 15)]
     assert test == ref
 
 
@@ -54,4 +54,4 @@ def test_date_advance():
 
 
 if __name__ == "__main__":
-    test_make_schedule()
+    test_tenor_advance()
