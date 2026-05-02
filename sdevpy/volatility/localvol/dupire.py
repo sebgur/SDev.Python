@@ -8,16 +8,11 @@ from sdevpy.maths import constants
 from sdevpy.utilities.tools import isequal
 from sdevpy.utilities.timegrids import SimpleTimeGridBuilder
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, LvMethod
-from sdevpy.market import eqvolsurface as vsurf
 log = logging.getLogger(Path(__file__).stem)
 
 
-######### ToDo #############################################
-# * Implement calib_lv_dupire
-
-
 def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) -> float:
-    """ ToDo: remove when all done """
+    """ Dupire formula for testing/investigation purposes """
     t_threshold = 0.0001
     x_threshold = 0.00001
     iv_threshold = 0.000001
@@ -122,22 +117,37 @@ def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -
     return np.sqrt(np.maximum(sigma2, 0.0))
 
 
-def calib_lv_dupire(surface: ImpliedVol, valdate: dt.datetime, config: dict, **kwargs) -> dict:
-    """ Calibrate MatrixLocalVol by Dupire's formula, from a given implied vol
-        surface. """
+def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
+    """ Calibrate MatrixLocalVol by Dupire's formula, from a given implied vol surface """
     # Arguments
     verbose = kwargs.get('verbose', False)
     n_points_per_year = kwargs.get('points_per_year', 10)
     n_strikes = kwargs.get('n_strikes', 25)
     lw_percent = kwargs.get('low_percent', 0.01)
     up_percent = kwargs.get('up_percent', 1.0 - lw_percent)
+    tmax = kwargs.get('tmax', 2.0)
 
     # Create time grid starting at 1D
+    base_grid = []
+    # if tmax > 1.0 / 365:
+    #     base_grid.append(1.0 / 365)
+    # if tmax > 7.0 / 365:
+    #     base_grid.append(7.0 / 365)
+    # if tmax > 14.0 / 365:
+    #     base_grid.append(14.0 / 365)
+    # if tmax > 30.0 / 365:
+    #     base_grid.append(30.0 / 365)
+    # if tmax > 1.0:
+    #     base_grid.append(1.0)
+
+    base_grid.append(tmax)
+    base_grid = np.asarray(base_grid)
+    # short_end_grid = np.asarray([1.0 / 365, 7.0 / 365, 14.0 / 365, 30.0 / 365, 1.0, 2.0])
     t_grid_builder = SimpleTimeGridBuilder(include_t0=True, points_per_year=n_points_per_year)
-    short_end_grid = np.asarray([1.0 / 365, 7.0 / 365, 14.0 / 365, 30.0 / 365, 1.0, 2.0])
-    t_grid_builder.add_grid(short_end_grid)
+    t_grid_builder.add_grid(base_grid)
     t_grid = t_grid_builder.get_grid()
     t_grid = t_grid_builder.complete_grid()
+    print(t_grid)
     n_times = len(t_grid)
 
     # Calculate Dupire for suitable dates
@@ -248,7 +258,7 @@ if __name__ == "__main__":
         #     print(f"LV3(vec): {lv3_vec[i][j]}")
 
     # Calibrate
-    result = calib_lv_dupire(surface3, None, None, points_per_year=4, verbose=True)
+    result = calib_lv_dupire(surface3, points_per_year=10, verbose=True)
     lv = result['lv']
     m = result['moneyness']
     t = result['t_grid']
@@ -259,6 +269,7 @@ if __name__ == "__main__":
 
     # Time plot
     lvs = [lv[i][idx] for i in range(len(lv))]
+    print(lvs)
     plt.plot(t, lvs)
     plt.show()
 

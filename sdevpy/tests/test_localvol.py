@@ -148,16 +148,16 @@ def test_calib_dupire():
     surface.update_params(surface.initial_point())
 
     # Calibrate
-    result = calib_lv_dupire(surface, None, None, points_per_year=2, n_strikes=3)
+    result = calib_lv_dupire(surface, points_per_year=4, n_strikes=3)
     lv = result['lv']
     m = result['moneyness']
     t = result['t_grid']
-    assert (np.abs(t[1] - 0.002739726027397) < 1e-10)
+    assert (np.abs(t[1] - 0.2857142857142857) < 1e-10)
     m_test = np.asarray(m[1])
-    m_ref = np.asarray([0.88482086, 1.00596945, 1.12711805])
+    m_ref = np.asarray([0.79519045, 1.020546, 1.24590155])
     assert np.allclose(m_test, m_ref, 1e-10)
     lv_test = np.asarray(lv[1])
-    lv_ref = np.asarray([0.72218576, 0.19823641, 0.18378965])
+    lv_ref = np.asarray([0.33384114, 0.18219919, 0.36166036])
     assert np.allclose(lv_test, lv_ref, 1e-10)
 
 
