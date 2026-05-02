@@ -95,11 +95,23 @@
       border-left: 4px solid var(--green);
       border-radius: 8px;
       padding: .9rem 1.2rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
       font-size: .88rem;
       color: var(--muted);
     }
     .progress-banner strong { color: var(--text); }
+
+    .regress-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--orange);
+      border-radius: 8px;
+      padding: .9rem 1.2rem;
+      margin-bottom: 1.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .regress-banner strong { color: var(--text); }
 
     .issue {
       background: var(--surface);
@@ -187,39 +199,42 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-05-02 (full scan, 24th review)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-05-02 (full scan, 25th review)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--green)">A−</div>
+    <div class="grade-letter" style="color:var(--yellow)">B+</div>
     <div class="grade-details">
-      <h2>Nine items resolved — no High issues remain; final frontier is commented-out code</h2>
+      <h2>One commit since the 24th review — new scaffolding file with a latent contract bug</h2>
       <p>
-        Six commits since the 23rd review (most recently <code>d917484</code>) landed nine fixes:
-        the scale-dependent infeasibility penalty is resolved (<code>FLOAT_INFTY</code> is now used
-        consistently), the old absolute-bump code in <code>impliedvol.py</code> is deleted,
-        stale comments are updated across TsSvi1/TsSvi2 and the test file, skipped-guard comments
-        are cleaned from both TsSvi models, <code>bachelier.py</code> dead casts are gone, and
-        <code>Callable</code> is now imported from <code>collections.abc</code>.
-        <strong>There are no remaining High issues.</strong>
-        The ten issues below are all Medium or Low, concentrated in one pattern:
-        commented-out code that was left behind during refactoring rather than deleted.
-        One focused cleanup pass would bring the grade to A.
+        The single commit since the 24th review (<code>e4f82bb</code> "preparing ground for adding MC")
+        added work to <code>localvol_factory.py</code>. The new code introduces a
+        <strong>filename-format mismatch</strong> between the writer and the loader:
+        <code>write_example()</code> serialises files as <code>localvol_YYYYMMDD-HH.MM.SS.json</code>
+        while <code>load_lv_from_folder()</code> looks for <code>YYYYMMDD-HHMMSS.json</code>.
+        Files written by one cannot be loaded by the other.
+        The factory file also ships with an open-questions TODO block, missing type hints,
+        and a stray <code>print(file)</code>.
+        Meanwhile the cleanup pass on commented-out code that was the entire frontier in the
+        24th review didn't happen — the same Medium and Low items remain in <code>dates.py</code>,
+        the TsSvi models, and the test files. The grade drops from A− to B+ to flag the new
+        contract bug; the rest of the codebase is unchanged and still in good shape.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since last review (9 of 10):</strong>
-    <code>LvObjectiveBuilder</code> now returns <code>FLOAT_INFTY</code> (scale-independent penalty) &nbsp;·&nbsp;
-    Stale <code>ToDo</code> block removed from <code>dupire.py</code> &nbsp;·&nbsp;
-    Commented-out absolute-bump code deleted from <code>impliedvol.py</code> &nbsp;·&nbsp;
-    <code>FLAT_TSSVI1_PARAMS</code> comment updated to new param names &nbsp;·&nbsp;
-    <code>TsSvi2</code> bounds / <code>initial_point</code> comments corrected &nbsp;·&nbsp;
-    Skip-guard comments deleted from <code>tssvi1.py</code> and <code>tssvi2.py</code> &nbsp;·&nbsp;
-    Dead cast comments deleted from <code>bachelier.py</code> &nbsp;·&nbsp;
-    <code>test_timegrids.py</code> commented-out alternative code removed &nbsp;·&nbsp;
-    <code>localvol.py</code> <code>Callable</code> import moved to <code>collections.abc</code>
+    <strong>Progress since last review:</strong>
+    New <code>localvol_factory.py</code> module with section-creation API for BiExp / CubicVol / VSVI &nbsp;·&nbsp;
+    JSON load/dump pipeline for <code>InterpolatedParamLocalVol</code> with optional time-grid resampling &nbsp;·&nbsp;
+    Notebook updated for upcoming MC work
+  </div>
+
+  <div class="regress-banner">
+    <strong>New issue introduced this batch:</strong>
+    Filename format in <code>write_example()</code> (<code>"localvol_" + "%Y%m%d-%H.%M.%S"</code>)
+    does not match the format used by <code>load_lv_from_folder()</code>
+    (<code>dates.DATE_FILE_FORMAT</code> = <code>"%Y%m%d-%H%M%S"</code>). Round-trip is broken.
   </div>
 
   <!-- SCORECARD -->
@@ -232,44 +247,44 @@
       </thead>
       <tbody>
         <tr>
-          <td>Architecture</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy; <code>Calendar</code> composability; consistent penalty strategy now enforced throughout the calibration pipeline</td>
+          <td>Architecture</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy still solid; new <code>localvol_factory.py</code> ships with a six-question TODO block at the top of the module — the design boundary between matrix and section LVs is not yet decided</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Scale-dependent LV penalty fixed; <code>svi()</code> raises on invalid params; negative-tenor support added to <code>dates.period()</code></td>
+          <td>Correctness</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Core analytics unchanged and correct; new <code>write_example</code> / <code>load_lv_from_folder</code> filename-format mismatch breaks the write→read contract</td>
         </tr>
         <tr>
           <td>Error Handling</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Commented-out <code>ValueError</code> guards in TsSvi1/TsSvi2 <code>smile_parameters()</code> still present but inactive; <code>check_consistency()</code> dead code remains</td>
+          <td style="color:var(--muted);font-size:.83rem">Penalty strategy consistent in calibrators; commented-out <code>ValueError</code> guards in TsSvi1/TsSvi2 still present; <code>check_consistency()</code> dead code remains</td>
         </tr>
         <tr>
-          <td>Testing</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good coverage; <code>print()</code> noise remains in two test functions in <code>test_dates.py</code>; no end-to-end test for <code>calibrate_lv_interp()</code></td>
-        </tr>
-        <tr>
-          <td>Code Quality</td><td>7 / 10</td>
+          <td>Testing</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Major commented-out blocks cleared; remnants remain in <code>dates.py</code>, <code>dupire.py</code>, <code>localvol_calib.py</code>, <code>bachelier.py</code>, <code>tssvi2.py</code>; variable shadowing in <code>LogMix.price()</code></td>
+          <td style="color:var(--muted);font-size:.83rem">No tests added for <code>localvol_factory.py</code> — its filename bug would have been caught by a round-trip write→load test; <code>print(test)</code> noise remains in <code>test_dates.py</code></td>
         </tr>
         <tr>
-          <td>Maintainability</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>dupire_formula_single()</code> now retained as an investigation tool (docstring updated); <code>check_consistency()</code> dead method still unreachable</td>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Multiple commented-out blocks still scattered (<code>dates.py</code>, <code>localvol_calib.py</code>, <code>dupire.py</code>, <code>tssvi2.py</code>, <code>bachelier.py</code>); new file has <code>print(file)</code> debug, <code>import os, json</code> on one line, dead <code>section = None</code> assignment</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>formula</code> parameter now annotated with <code>collections.abc.Callable</code>; <code>implied_vols()</code> scalar branch still returns bare <code>float</code> vs annotated <code>NDArray</code></td>
+          <td>Maintainability</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Open-questions TODO block at top of new module is a maintainability flag — the file's API contract isn't settled</td>
+        </tr>
+        <tr>
+          <td>Type Safety</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Several functions in <code>localvol_factory.py</code> have no type annotations (<code>create_sections</code>, <code>create_section</code>, <code>load_lv_new</code>); <code>implied_vols()</code> scalar branch still inconsistent</td>
         </tr>
         <tr>
           <td>Documentation</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Stale param-name comments resolved across all models and tests; docstrings clear and up-to-date</td>
+          <td style="color:var(--muted);font-size:.83rem">Docstrings in core modules clear and accurate; new factory functions have brief but adequate docstrings</td>
         </tr>
       </tbody>
     </table>
@@ -279,52 +294,107 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- ISSUE 1 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title">Old <code>period()</code> implementation left as a 13-line commented-out block</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Filename format mismatch between <code>write_example()</code> and <code>load_lv_from_folder()</code></span>
+      <span class="badge high">High</span>
       <span class="badge new">New</span>
     </div>
-    <span class="loc">sdevpy/utilities/dates.py : 26–38</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol_factory.py : 73, 153</span>
     <p>
-      When negative-tenor support was added, the old <code>period()</code> function was commented
-      out rather than deleted. The result is a 13-line block immediately above the new
-      implementation that a reader must mentally skip on every visit to the file.
-      The old implementation has no correctness difference from the new one for positive tenors —
-      it is purely superseded code.
+      The two functions are intended to be inverses (write a file, load it back), but they
+      construct the filename differently:
     </p>
-    <pre><span class="rm"># def period(tenor_str: str) -> relativedelta:
-#     """ Conversion from string to Period (relativedelta) """
-#     pattern = r'(\d+Y)?(\d+M)?(\d+W)?(\d+D)?'
-#     ...
-#     return relativedelta(years=years, months=months, weeks=weeks, days=days)</span>
-<span class="c"># Delete the entire commented-out block — git history preserves the original</span></pre>
+    <pre><span class="c"># write_example (line 153)</span>
+file = os.path.join(file, <span class="st">"localvol_"</span> + date.strftime(<span class="st">"%Y%m%d-%H.%M.%S"</span>) + <span class="st">".json"</span>)
+
+<span class="c"># load_lv_from_folder (line 73) — uses dates.DATE_FILE_FORMAT = "%Y%m%d-%H%M%S"</span>
+file = os.path.join(file, store_date.strftime(dates.DATE_FILE_FORMAT) + <span class="st">".json"</span>)</pre>
+    <p>
+      A datetime <code>2025-12-15 12:30:45</code> serialises to
+      <code>localvol_20251215-12.30.45.json</code> on write but the loader looks for
+      <code>20251215-123045.json</code>. <strong>Anything written by <code>write_example</code>
+      cannot be read by <code>load_lv_from_folder</code></strong>, and the failure is a silent
+      <code>FileNotFoundError</code> at load time rather than a clear API error.
+    </p>
+    <p><strong>Fix:</strong> Use <code>dates.DATE_FILE_FORMAT</code> in both places, and
+    decide once whether the file should have the <code>localvol_</code> prefix:</p>
+    <pre><span class="rm">-    file = os.path.join(file, "localvol_" + date.strftime("%Y%m%d-%H.%M.%S") + ".json")</span>
+<span class="ok">+    file = os.path.join(file, date.strftime(dates.DATE_FILE_FORMAT) + ".json")</span></pre>
+    <p>A round-trip test (<code>write_example()</code> then <code>load_lv_from_folder()</code>
+    on the same date) would catch this in CI.</p>
   </div>
 
   <!-- ISSUE 2 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title">Commented-out <code>ValueError</code> guards in <code>TsSvi1/TsSvi2.smile_parameters()</code></span>
+      <span class="issue-title">Open-questions TODO block at the top of <code>localvol_factory.py</code></span>
       <span class="badge medium">Medium</span>
+      <span class="badge new">New</span>
     </div>
-    <span class="loc">tssvi1.py : 57–61 &nbsp;·&nbsp; tssvi2.py : 53–57</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol_factory.py : 10–18</span>
     <p>
-      The duplicate <code>ValueError</code> guards identified in the 22nd review were commented
-      out two batches ago and have not been deleted. Each block is four lines of dead code that
-      adds noise to an already-complex method. The checks are redundant because
-      <code>check_global_params()</code> already guards them before <code>smile_parameters()</code>
-      is ever reached through the normal path.
+      The module begins with a six-line TODO block consisting entirely of open design questions:
     </p>
-    <p><strong>Fix:</strong> Delete the commented-out blocks. If the guards are deemed important
-    for direct callers, document the precondition in the docstring instead.</p>
+    <pre>############ TODO #######################################################
+# * Plug in matrix local vols. But how do we do that? Can we also implement
+#   a calibration on the fly? We need to plug the two sides of the design.
+# * Maybe we can do that by an intermediate step where we dump the matrices
+#   in text files?
+# * So maybe here we need to implement that reading and start unifying the
+#   different local vol types between InterpolateSection and Matrix?
+# * Maybe we try to find a file and use it if it's there, and if it's not
+#   there then we trigger the calibration? And then the calibration dumps?</pre>
+    <p>
+      Unanswered design questions in production source code create ambiguity about whether the
+      module is ready to be consumed. The factory's API contract is the central concern of any
+      consumer, and reading "we need to plug the two sides of the design" tells them the contract
+      is not stable.
+    </p>
+    <p><strong>Fix:</strong> Move open design questions to a design doc, an issue tracker, or
+    a planning notebook. Keep the source file declarative about what it currently does.</p>
   </div>
 
   <!-- ISSUE 3 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
+      <span class="issue-title">Old <code>period()</code> implementation left as a 13-line commented-out block</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/utilities/dates.py : 26–38</span>
+    <p>
+      When negative-tenor support was added, the old <code>period()</code> function was commented
+      out rather than deleted. The block sits directly above the new implementation and adds 13
+      lines of mental noise to every reading of the file. <code>git log -p</code> preserves the
+      original perfectly.
+    </p>
+    <p><strong>Fix:</strong> Delete lines 26–38.</p>
+  </div>
+
+  <!-- ISSUE 4 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#4</span>
+      <span class="issue-title">Commented-out <code>ValueError</code> guards in <code>TsSvi1/TsSvi2.smile_parameters()</code></span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">tssvi1.py : 57–61 &nbsp;·&nbsp; tssvi2.py : 53–57</span>
+    <p>
+      The duplicate <code>ValueError</code> guards identified three reviews ago were commented
+      out and have not been deleted. Each block is four lines of dead code adding noise to a
+      complex method. The corresponding live guards in <code>check_global_params()</code>
+      already cover the same conditions.
+    </p>
+    <p><strong>Fix:</strong> Delete the commented-out blocks.</p>
+  </div>
+
+  <!-- ISSUE 5 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#5</span>
       <span class="issue-title">Residual variable shadowing in <code>LogMix.price()</code></span>
       <span class="badge medium">Medium</span>
     </div>
@@ -332,9 +402,9 @@
     <p>
       Inside the mixture loop, <code>f</code> and <code>k</code> are reassigned as loop-local
       values, shadowing the <code>fwd</code> and <code>strike</code> parameters of the method.
-      The call on line 203 then passes <code>k</code> and <code>f</code> to <code>self.black()</code>,
-      which is unambiguous to the compiler but confusing to a reader who must check whether these
-      are the original arguments or the adjusted loop values.
+      The call on line 203 passes <code>k</code> and <code>f</code> to <code>self.black()</code>,
+      which is unambiguous to the compiler but confusing to a reader who must check whether
+      they are the original arguments or the adjusted loop values.
     </p>
     <pre><span class="rm">            f = fwd * (1.0 + self.mean[i].value(t))
             k = strike * (1.0 + self.strike[i].value(t))</span>
@@ -342,10 +412,10 @@
             k_i = strike * (1.0 + self.strike[i].value(t))</span></pre>
   </div>
 
-  <!-- ISSUE 4 -->
+  <!-- ISSUE 6 -->
   <div class="issue medium">
     <div class="issue-header">
-      <span class="issue-num">#4</span>
+      <span class="issue-num">#6</span>
       <span class="issue-title"><code>check_consistency()</code> is dead code with a "not used yet" docstring</span>
       <span class="badge medium">Medium</span>
     </div>
@@ -354,99 +424,87 @@
       <code>TsIvCalibrator.check_consistency()</code> has been unreachable since it was written.
       Its docstring reads <em>"this function is not used yet, but will be used in a later phase"</em>.
       It is never called anywhere in the codebase. Shipping untested dead code creates a false
-      impression that negative-rate handling is active, and the method will likely be
-      out-of-date with the surrounding API by the time it is ever needed.
+      impression that negative-rate handling is in place, and the method will likely be
+      out-of-date with the surrounding API by the time it is needed.
     </p>
-    <p><strong>Fix:</strong> Delete the method now. Implement it in a focused commit when it is
+    <p><strong>Fix:</strong> Delete the method now; implement it in a focused commit when it is
     needed and has a test.</p>
   </div>
 
-  <!-- ISSUE 5 -->
+  <!-- ISSUE 7 -->
   <div class="issue medium">
     <div class="issue-header">
-      <span class="issue-num">#5</span>
-      <span class="issue-title"><code>print(test)</code> left in two test functions in <code>test_dates.py</code></span>
+      <span class="issue-num">#7</span>
+      <span class="issue-title"><code>print()</code> debug calls in tests and factory module</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/test_dates.py : 17, 31</span>
+    <span class="loc">test_dates.py : 17, 31 &nbsp;·&nbsp; localvol_factory.py : 155</span>
     <p>
       <code>test_tenor_advance()</code> and <code>test_make_schedule()</code> both call
-      <code>print(test)</code> immediately before the <code>assert</code>.
-      Test output should be deterministic and silent unless a test fails.
-      These prints pollute <code>pytest</code>'s output for every test run (unless <code>-s</code>
-      is suppressed), making it harder to notice genuine failures in surrounding output.
+      <code>print(test)</code> immediately before <code>assert</code>; <code>write_example()</code>
+      calls <code>print(file)</code> after constructing the path. Test output should be silent
+      unless something fails, and library functions should not print to stdout.
     </p>
-    <p><strong>Fix:</strong> Delete both <code>print(test)</code> calls.</p>
-  </div>
-
-  <!-- ISSUE 6 -->
-  <div class="issue">
-    <div class="issue-header">
-      <span class="issue-num">#6</span>
-      <span class="issue-title">Commented-out old penalty return in <code>localvol_calib.py</code></span>
-      <span class="badge low">Low</span>
-    </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol_calib.py : 189</span>
-    <p>
-      The infeasibility penalty was correctly changed to <code>constants.FLOAT_INFTY</code>, but
-      the old implementation is still present as a comment directly below the new return:
-      <code># return self.cf_prices.sum()</code>. The surrounding block already has a lengthy
-      prose comment explaining the rationale for the choice; the commented-out alternative adds
-      noise without value.
-    </p>
-    <p><strong>Fix:</strong> Delete <code># return self.cf_prices.sum()</code>.</p>
-  </div>
-
-  <!-- ISSUE 7 -->
-  <div class="issue">
-    <div class="issue-header">
-      <span class="issue-num">#7</span>
-      <span class="issue-title">Commented-out debug prints in <code>dupire.py</code></span>
-      <span class="badge low">Low</span>
-    </div>
-    <span class="loc">sdevpy/volatility/localvol/dupire.py : 26, 117</span>
-    <p>
-      Two debug prints remain commented out: <code># print(f'dvar_dt: {dvar_dt}')</code>
-      (line 26, inside <code>dupire_formula_single()</code>) and
-      <code># print(f"sigma2: {sigma2}")</code> (line 117, inside <code>dupire_formula()</code>).
-      Both have been there since before the 22nd review. Commented-out prints accumulate as
-      permanent clutter when not cleaned up after debugging.
-    </p>
-    <p><strong>Fix:</strong> Delete both lines.</p>
+    <p><strong>Fix:</strong> Delete all three calls. If <code>write_example()</code> needs
+    observability, replace with <code>log.info(...)</code>.</p>
   </div>
 
   <!-- ISSUE 8 -->
-  <div class="issue">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title">Commented-out old <code>initial_point</code> vector in <code>TsSvi2</code></span>
-      <span class="badge low">Low</span>
+      <span class="issue-title">Missing type annotations and dead assignment in <code>localvol_factory.py</code></span>
+      <span class="badge medium">Medium</span>
+      <span class="badge new">New</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/models/tssvi2.py : 140</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol_factory.py : 31, 41, 63, 57</span>
     <p>
-      The line
-      <code># init_point = [0.10, 0.20, -0.05, 1.0, 0.1, 0.1000, -0.30, -0.30, 1.0, 1.00, 0.50, 0.5, 0.1, 0.1, 1.0]</code>
-      is the original initial point, superseded by the current 15-element vector on the next line.
-      It serves no purpose except to show that the initial point changed at some point in history —
-      information already available from <code>git log</code>.
+      <strong>Missing annotations:</strong> <code>create_sections(t_grid, model)</code>,
+      <code>create_section(config)</code>, <code>load_lv_new(t_grid, model)</code>,
+      <code>write_example(date, name, folder)</code> — none of these annotate parameters or
+      return types except <code>load_lv_from_folder</code> and <code>load_lv_from_data</code>.
+      The codebase otherwise carries strong typing; this module breaks the pattern.
     </p>
-    <p><strong>Fix:</strong> Delete the commented-out line.</p>
+    <p>
+      <strong>Dead assignment:</strong> Line 57 inside <code>create_section</code>:
+    </p>
+    <pre>        case _:
+<span class="rm">            section = None</span>
+            raise ValueError(f"Unknown section type: {model}")</pre>
+    <p>
+      <code>section = None</code> is unreachable — the very next line raises. Delete it.
+    </p>
+    <p>
+      <strong>Style nit:</strong> Line 1 imports two modules on one line
+      (<code>import os, json</code>); PEP 8 calls for one import per line.
+    </p>
   </div>
 
   <!-- ISSUE 9 -->
   <div class="issue">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title">Commented-out one-liner in <code>bachelier.py</code></span>
+      <span class="issue-title">Scattered commented-out one-liners that have outlived their purpose</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/analytics/bachelier.py : 14</span>
+    <span class="loc">localvol_calib.py : 189 &nbsp;·&nbsp; dupire.py : 26, 117 &nbsp;·&nbsp; tssvi2.py : 140 &nbsp;·&nbsp; bachelier.py : 14</span>
     <p>
-      Line 14 reads <code># wd = d if is_call else -d</code> — the scalar predecessor of the
-      <code>np.where</code> vectorisation on line 13. It has no documentation value and is
-      not guarding any regression risk.
+      Five separate commented-out lines remain across the codebase, each from a previous
+      refactor:
     </p>
-    <p><strong>Fix:</strong> Delete the line.</p>
+    <p>
+      <strong><code>localvol_calib.py:189</code></strong> — <code># return self.cf_prices.sum()</code>,
+      the old penalty implementation. Superseded by <code>FLOAT_INFTY</code> directly above.<br/>
+      <strong><code>dupire.py:26</code></strong> — <code># print(f'dvar_dt: {dvar_dt}')</code>
+      inside <code>dupire_formula_single()</code>.<br/>
+      <strong><code>dupire.py:117</code></strong> — <code># print(f"sigma2: {sigma2}")</code>
+      inside <code>dupire_formula()</code>.<br/>
+      <strong><code>tssvi2.py:140</code></strong> — <code># init_point = [...]</code>, the
+      pre-tuned initial point.<br/>
+      <strong><code>bachelier.py:14</code></strong> — <code># wd = d if is_call else -d</code>,
+      the scalar predecessor of the <code>np.where</code> vectorisation above.
+    </p>
+    <p><strong>Fix:</strong> Delete all five. Git history preserves the originals.</p>
   </div>
 
   <!-- ISSUE 10 -->
@@ -458,8 +516,8 @@
     </div>
     <span class="loc">sdevpy/analytics/black.py : 41–42</span>
     <p>
-      <code>implied_vols()</code> is annotated <code>-> npt.NDArray[np.float64]</code>, but when
-      both <code>strike</code> and <code>fwd_price</code> are scalar it returns the bare
+      <code>implied_vols()</code> is annotated <code>-> npt.NDArray[np.float64]</code>, but
+      when both <code>strike</code> and <code>fwd_price</code> are scalar it returns the bare
       <code>float</code> from <code>implied_vol()</code>. Callers that unconditionally call
       array methods (<code>.shape</code>, indexing) on the result will fail at runtime for
       scalar inputs without a clear type error.
