@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
 from sdevpy.volatility.impliedvol.models.svi import SviSection
-from sdevpy.volatility.localvol.dupire import dupire_formula
+from sdevpy.volatility.localvol.dupire import dupire_formula, calib_lv_dupire
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
@@ -141,6 +141,26 @@ def test_lv_bysections_builder_calculate_vols_has_correct_length_and_positive_va
 
 
 ##################### Dupire formula ##############################################################
+def test_calib_dupire():
+    """ Calibrate LV with Dupire """
+    # Set IV surface model
+    surface = TsSvi1()
+    surface.update_params(surface.initial_point())
+
+    # Calibrate
+    result = calib_lv_dupire(surface, None, None, points_per_year=2, n_strikes=3)
+    lv = result['lv']
+    m = result['moneyness']
+    t = result['t_grid']
+    assert (np.abs(t[1] - 0.002739726027397) < 1e-10)
+    m_test = np.asarray(m[1])
+    m_ref = np.asarray([0.88482086, 1.00596945, 1.12711805])
+    assert np.allclose(m_test, m_ref, 1e-10)
+    lv_test = np.asarray(lv[1])
+    lv_ref = np.asarray([0.72218576, 0.19823641, 0.18378965])
+    np.allclose(lv_test, lv_ref, 1e-10)
+
+
 def test_dupire_impliedvol():
     """ Check Dupire formula by implied vol method """
     x = np.asarray([0.9, 1.0, 1.1])
@@ -281,7 +301,6 @@ def test_lv_by_section_values():
 
     logm = [-0.5, 0.0, 0.5]
     test = lv.value(0.75, logm)
-    # print(test)
     ref = np.asarray([0.52487337, 0.4472136,  0.52487337,])
     assert np.allclose(test, ref, 1e-10)
 
@@ -314,5 +333,6 @@ def test_lv_bysections_dump_data_keys():
 
 
 if __name__ == "__main__":
-    test_dupire_impliedvol()
-    test_dupire_pdf()
+    test_calib_dupire()
+    # test_dupire_impliedvol()
+    # test_dupire_pdf()
