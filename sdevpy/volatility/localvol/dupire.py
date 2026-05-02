@@ -147,7 +147,6 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
     t_grid_builder.add_grid(base_grid)
     t_grid = t_grid_builder.get_grid()
     t_grid = t_grid_builder.complete_grid()
-    print(t_grid)
     n_times = len(t_grid)
 
     # Calculate Dupire for suitable dates
