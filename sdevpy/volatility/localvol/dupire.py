@@ -3,9 +3,12 @@ import logging
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
-from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, LvMethod
+from scipy.stats import norm
 from sdevpy.maths import constants
 from sdevpy.utilities.tools import isequal
+from sdevpy.utilities.timegrids import SimpleTimeGridBuilder
+from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, LvMethod
+from sdevpy.market import eqvolsurface as vsurf
 log = logging.getLogger(Path(__file__).stem)
 log.setLevel(logging.DEBUG)
 
@@ -112,7 +115,7 @@ def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -
     sigma2 = np.where(zero_mask, 0.0, dvar_dt / denominator)
     sigma2 = np.where(x < x_threshold, dvar_dt, sigma2)
 
-    print(f"sigma2: {sigma2}")
+    # print(f"sigma2: {sigma2}")
     neg_mask = (sigma2 < 0.0)
     if np.any(neg_mask):
         log.debug(f"Negative squared vol found for {np.count_nonzero(neg_mask)} points")
@@ -120,14 +123,54 @@ def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -
     return np.sqrt(np.maximum(sigma2, 0.0))
 
 
-def calib_lv_dupire(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
-    """ Calibrate MatrixLocalVol by Dupire's formula """
-    # Reject expiries that are less than 1D away
-    # Use 1D as start date if 1D not in calibration set, or 0.5D otherwise?
-    return {}
+def calib_lv_dupire(surface: ImpliedVol, valdate: dt.datetime, config: dict, **kwargs) -> dict:
+    """ Calibrate MatrixLocalVol by Dupire's formula, from a given implied vol
+        surface. """
+    # Arguments
+    verbose = kwargs.get('verbose', False)
+    n_points_per_year = kwargs.get('points_per_year', 10)
+    n_strikes = kwargs.get('n_strikes', 25)
+    lw_percent = kwargs.get('low_percent', 0.01)
+    up_percent = kwargs.get('up_percent', 1.0 - lw_percent)
+
+    # Create time grid starting at 1D
+    t_grid_builder = SimpleTimeGridBuilder(include_t0=True, points_per_year=n_points_per_year)
+    short_end_grid = np.asarray([1.0 / 365, 7.0 / 365, 14.0 / 365, 30.0 / 365, 1.0, 2.0])
+    t_grid_builder.add_grid(short_end_grid)
+    t_grid = t_grid_builder.get_grid()
+    t_grid = t_grid_builder.complete_grid()
+    n_times = len(t_grid)
+
+    # Calculate Dupire for suitable dates
+    lv = [[None]] * n_times
+    moneynesses = [[None]] * n_times
+    for i in range(1, n_times - 1):
+        ts = t_grid[i]
+        te = t_grid[i + 1]
+        # Create moneynesses axis
+        atm_vol = surface.black_volatility(ts, 1.0, 1.0) # ATM
+        stdev = atm_vol * np.sqrt(ts)
+        low_k = np.exp(-0.5 * stdev * stdev + stdev * norm.ppf(lw_percent))
+        up_k = np.exp(-0.5 * stdev * stdev + stdev * norm.ppf(up_percent))
+        m = np.linspace(low_k, up_k, n_strikes)
+
+        moneynesses[i] = m
+        lv[i] = dupire_formula(surface, ts, te, m)
+
+        if verbose:
+            log.info(f"Iteration {i+1} from {ts} to {te}")
+            log.info(f"Moneynesses: {m}")
+            log.info(f"Local vol: {lv[i]}")
+
+    # Set first and last slices to next/previous
+    moneynesses[0], lv[0] = moneynesses[1], lv[1]
+    moneynesses[-1], lv[-1] = moneynesses[-2], lv[-2]
+
+    return {'t_grid': t_grid, 'moneyness': moneynesses, 'lv': lv}
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     from sdevpy.volatility.impliedvol.models.logmix import LogMix
     from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
     from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
@@ -136,8 +179,6 @@ if __name__ == "__main__":
     ts = t_grid[:-1]
     te = t_grid[1:]
     x = [[0.99, 1.0, 1.01], [0.9, 0.95, 1.0, 1.05, 1.1]]#, [0.8, 1.0, 1.2]]
-    # ts, te = 0.5, 1.0
-    # x = 1.2
 
     # Set IV surface models
     surface1 = LogMix(3)
@@ -206,3 +247,24 @@ if __name__ == "__main__":
         # for j in range(len(lv3_sin[i])):
         #     print(f"LV3(sin): {lv3_sin[i][j]}")
         #     print(f"LV3(vec): {lv3_vec[i][j]}")
+
+    # Calibrate
+    result = calib_lv_dupire(surface3, None, None, points_per_year=4, verbose=True)
+    lv = result['lv']
+    m = result['moneyness']
+    t = result['t_grid']
+
+    # Display LV
+    idx = 6
+    # print(lv)
+
+    # Time plot
+    lvs = [lv[i][idx] for i in range(len(lv))]
+    plt.plot(t, lvs)
+    plt.show()
+
+    # Strike plot
+    ms = m[idx]
+    lvs = lv[idx]
+    plt.plot(ms, lvs)
+    plt.show()
