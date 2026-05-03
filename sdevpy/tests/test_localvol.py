@@ -305,7 +305,8 @@ def test_lv_by_section_values():
 
     logm = [-0.5, 0.0, 0.5]
     test = lv.value(0.75, logm)
-    ref = np.asarray([0.52487337, 0.4472136,  0.52487337,])
+    ref = np.asarray([0.45455367, 0.38729833, 0.45455367])
+    # ref = np.asarray([0.52487337, 0.4472136, 0.52487337])
     assert np.allclose(test, ref, 1e-10)
 
 

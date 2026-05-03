@@ -84,22 +84,27 @@ class TimeInterpolatedLocalVol(LocalVol):
         return self.sections[t_idx]
 
 
-class ParamLocalVolSection(ABC):
+class ParamLocalVolSection(LocalVolSection):#(ABC):
     """ Wrapper class around formulas that return a local volatility at a certain
         point in time t, for a list of log-moneynesses x. The section has parameters
         that can be optimized on, and it is used by the LocalVol subtype InterpolatedParamLocalVol. """
     def __init__(self, time: float,
                  formula: Callable[[float, npt.ArrayLike, npt.ArrayLike], npt.ArrayLike]):
+        super().__init__(time)
         self.params = None
         self.formula = formula
         self.model = None
-        self.time = time
+        # self.time = time
 
-    def value(self, t: npt.ArrayLike, x: npt.ArrayLike) -> npt.ArrayLike:
-        """ In the base, we simply use the formula on the parameters. In inherited classes, we
-            may have a more complex behaviour such as applying the formula to a transformed
-            set of parameters. """
-        return self.formula(t, x, self.params)
+    # def value(self, t: npt.ArrayLike, x: npt.ArrayLike) -> npt.ArrayLike:
+    #     """ In the base, we simply use the formula on the parameters. In inherited classes, we
+    #         may have a more complex behaviour such as applying the formula to a transformed
+    #         set of parameters. """
+    #     return self.formula(self.time, x, self.params)
+
+    def value(self, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ Use the member formula at the member time """
+        return self.formula(self.time, x, self.params)
 
     def update_params(self, new_params: npt.ArrayLike) -> None:
         """ In the base, we only copy the new parameters in. Inherited classes may do more. """
@@ -137,7 +142,8 @@ class InterpolatedParamLocalVol(LocalVol):
         """ Values of the LV along array of log-moneynesses at given time """
         t_idx = algos.upper_bound(self.t_grid, t)
         t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
-        return self.sections[t_idx].value(t, logm)
+        return self.sections[t_idx].value(logm)
+        # return self.sections[t_idx].value(t, logm)
 
     def section(self, t_idx: int):
         """ Retrieve local vol section at given time index """
