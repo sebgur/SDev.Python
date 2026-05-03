@@ -127,16 +127,16 @@ class ParamLocalVolSection(LocalVolSection):#(ABC):
         return data
 
 
-class InterpolatedParamLocalVol(LocalVol):
+class InterpolatedParamLocalVol(TimeInterpolatedLocalVol):#(LocalVol):
     """ Local Vol subtype defined as a series spot-parametric functions along the time direction """
     def __init__(self, sections: list[ParamLocalVolSection], **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(sections, **kwargs)
 
-        # Sort by increasing date
-        sections.sort(key=lambda x: x.time)
+        # # Sort by increasing date
+        # sections.sort(key=lambda x: x.time)
 
-        self.sections = sections
-        self.t_grid = [section.time for section in self.sections]
+        # self.sections = sections
+        # self.t_grid = [section.time for section in self.sections]
 
     def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
         """ Values of the LV along array of log-moneynesses at given time """
@@ -145,9 +145,9 @@ class InterpolatedParamLocalVol(LocalVol):
         return self.sections[t_idx].value(logm)
         # return self.sections[t_idx].value(t, logm)
 
-    def section(self, t_idx: int):
-        """ Retrieve local vol section at given time index """
-        return self.sections[t_idx]
+    # def section(self, t_idx: int):
+    #     """ Retrieve local vol section at given time index """
+    #     return self.sections[t_idx]
 
     def check_params(self, t_idx: int):
         """ Check validity of parameters at given time index """
