@@ -6,6 +6,7 @@ import numpy.typing as npt
 from abc import ABC, abstractmethod
 from scipy.interpolate import RegularGridInterpolator
 from sdevpy.utilities import algos, dates
+from sdevpy.maths.interpolation import create_interpolation
 
 
 class LocalVolSection(ABC):
@@ -84,7 +85,7 @@ class TimeInterpolatedLocalVol(LocalVol):
         return self.sections[t_idx]
 
 
-class ParamLocalVolSection(LocalVolSection):#(ABC):
+class ParamLocalVolSection(LocalVolSection):
     """ Wrapper class around formulas that return a local volatility at a certain
         point in time t, for a list of log-moneynesses x. The section has parameters
         that can be optimized on, and it is used by the LocalVol subtype InterpolatedParamLocalVol. """
@@ -94,13 +95,6 @@ class ParamLocalVolSection(LocalVolSection):#(ABC):
         self.params = None
         self.formula = formula
         self.model = None
-        # self.time = time
-
-    # def value(self, t: npt.ArrayLike, x: npt.ArrayLike) -> npt.ArrayLike:
-    #     """ In the base, we simply use the formula on the parameters. In inherited classes, we
-    #         may have a more complex behaviour such as applying the formula to a transformed
-    #         set of parameters. """
-    #     return self.formula(self.time, x, self.params)
 
     def value(self, x: npt.ArrayLike) -> npt.ArrayLike:
         """ Use the member formula at the member time """
@@ -127,16 +121,10 @@ class ParamLocalVolSection(LocalVolSection):#(ABC):
         return data
 
 
-class InterpolatedParamLocalVol(TimeInterpolatedLocalVol):#(LocalVol):
+class InterpolatedParamLocalVol(TimeInterpolatedLocalVol):
     """ Local Vol subtype defined as a series spot-parametric functions along the time direction """
     def __init__(self, sections: list[ParamLocalVolSection], **kwargs):
         super().__init__(sections, **kwargs)
-
-    # def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
-    #     """ Values of the LV along array of log-moneynesses at given time """
-    #     t_idx = algos.upper_bound(self.t_grid, t)
-    #     t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
-    #     return self.sections[t_idx].value(logm)
 
     def check_params(self, t_idx: int):
         """ Check validity of parameters at given time index """
@@ -160,6 +148,57 @@ class InterpolatedParamLocalVol(TimeInterpolatedLocalVol):#(LocalVol):
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
                 'sections': sections}
         return data
+
+
+class InterpolatedLocalVolSection(LocalVolSection):
+    """ Wrapper class around formulas that return a local volatility at a certain
+        point in time t, for a list of log-moneynesses x. The section has parameters
+        that can be optimized on, and it is used by the LocalVol subtype InterpolatedParamLocalVol. """
+    def __init__(self, time: float, logm_list: list[float], vol_list: list[float], **kwargs):
+        super().__init__(time)
+        interp = kwargs.get('interp', 'cubic')
+        self.interp = create_interpolation(interp=interp, l_extrap='flat', r_extrap='flat')
+        self.interp.set_data(logm_list, vol_list)
+
+    def value(self, logm: npt.ArrayLike) -> npt.ArrayLike:
+        """ Use the interpolation method along the log-moneyness direction """
+        return self.interp.value(logm)
+
+
+class MatrixLocalVol2(TimeInterpolatedLocalVol):
+    """ Local Vol subtype by interpolation of matrix along expiry and strike directions.
+        Interpolation is in both dimensions (defaulting to Linear).
+        Possible choices are: linear, nearest, cubic, quintic and pchip.
+        More recommended choices: linear, pchip and cubic, in order of increasing smoothness/oscillations.
+        Extrapolation is flat (clamping to nearest boundary value).
+    """
+    def __init__(self, t_grid: list[float], logm_matrix: list[list[float]], vol_matrix: list[list[float]], **kwargs):
+        # Check sizes
+        n_times = len(t_grid)
+        if len(logm_matrix) != n_times:
+            raise ValueError("Incompatible sizes between time grid and log-moneyness matrix")
+
+        if len(vol_matrix) != n_times:
+            raise ValueError("Incompatible sizes between time grid and vol matrix")
+
+        # Create sections
+        sections = []
+        for i in range(n_times):
+            t, logm, vol = t_grid[i], logm_matrix[i], vol_matrix[i]
+            sections.append(InterpolatedLocalVolSection(t, logm, vol))
+
+        # Instantiate super()
+        super().__init__(sections, **kwargs)
+
+    def section(self, t: float):
+        """ Retrieve LV section at given time t, i.e. a function of the log-moneyness log_m """
+        return lambda logm: self.value(t, logm)
+
+    def dump_data(self) -> dict:
+        """ Dump object to dictionary """
+        return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
+                'logm_grid': self.logm_grid.tolist(), 'vol_matrix': self.vol_matrix.tolist()}
 
 
 class MatrixLocalVol(LocalVol):

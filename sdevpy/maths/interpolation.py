@@ -1,5 +1,6 @@
 """ Various interpolations and parametric forms """
 import numpy as np
+import numpy.typing as npt
 import scipy.interpolate as spi
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
@@ -7,6 +8,7 @@ from sdevpy.maths import constants
 
 
 def create_interpolation(**kwargs):
+    """ Create interpolation object based on interpolation and extrapolation choices """
     interp = kwargs.get('interp', 'linear')
     l_extrap = kwargs.get('l_extrap', 'builtin')
     r_extrap = kwargs.get('r_extrap', 'builtin')
@@ -17,7 +19,7 @@ def create_interpolation(**kwargs):
     return interpolation
 
 
-def create_extrapolator(interpolator, type='builtin'):
+def create_extrapolator(interpolator, type: str='builtin'):
     type_dn = type.lower()
     match type_dn:
         case 'none':
@@ -32,7 +34,7 @@ def create_extrapolator(interpolator, type='builtin'):
             raise TypeError(f"Unknown extrapolator type: {type}")
 
 
-def create_interpolator(type='linear', **kwargs):
+def create_interpolator(type: str='linear', **kwargs):
     type_dn = type.lower()
     match type_dn:
         case 'step':
@@ -57,7 +59,8 @@ class Interpolator(ABC):
         elif x_grid is not None and y_grid is not None:
             self.set_data(x_grid, y_grid)
 
-    def set_data(self, x_grid, y_grid):
+    def set_data(self, x_grid: npt.ArrayLike, y_grid: npt.ArrayLike) -> None:
+        """ Set data for x and y axis """
         self.x_grid = x_grid
         self.y_grid = y_grid
         self.initialize()
@@ -67,7 +70,8 @@ class Interpolator(ABC):
         pass
 
     @abstractmethod
-    def value(self, x):
+    def value(self, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ Interpolated values at point x """
         pass
 
 
@@ -241,14 +245,16 @@ class Interpolation:
         elif x_grid is not None and y_grid is not None:
             self.set_data(x_grid, y_grid)
 
-    def set_data(self, x_grid, y_grid):
+    def set_data(self, x_grid, y_grid) -> None:
+        """ Set data for x and y axis """
         self.x_grid = x_grid
         self.y_grid = y_grid
         self.l_extrap.set_data(x_grid, y_grid)
         self.interp.set_data(x_grid, y_grid)
         self.r_extrap.set_data(x_grid, y_grid)
 
-    def value(self, x):
+    def value(self, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ Interpolated values at point x """
         x = np.asarray(x)
         v = self.interp.value(x)
         below = (x < self.x_grid[0] + self.eps)
