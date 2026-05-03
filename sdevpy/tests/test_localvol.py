@@ -46,7 +46,11 @@ def make_lv_by_sections(t_grid: list[float]=None, params: npt.ArrayLike=None):
 def make_vol_matrix(t_grid=T_GRID, logm_grid=LOGM_GRID):
     """ Bilinear test surface: vol = 0.20 + 0.02*t - 0.05*logm.
         Linear interpolation reproduces this exactly at any interior point. """
+    print(t_grid)
+    print(logm_grid)
     t, lm = np.meshgrid(t_grid, logm_grid, indexing='ij')
+    print(t)
+    print(lm)
     return lv_func_def(t, lm) # 0.20 + 0.02 * t - 0.05 * lm
 
 def lv_func_def(t, lm):
@@ -333,6 +337,11 @@ def test_lv_bysections_dump_data_keys():
 
 
 if __name__ == "__main__":
-    test_calib_dupire()
+    # test_calib_dupire()
     # test_dupire_impliedvol()
     # test_dupire_pdf()
+
+    print(f"T_GRID: {T_GRID}")
+    print(f"LOGM_GRID: {LOGM_GRID}")
+
+    lv = MatrixLocalVol(T_GRID, LOGM_GRID, make_vol_matrix(), interpolation='cubic')

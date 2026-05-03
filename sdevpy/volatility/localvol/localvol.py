@@ -8,6 +8,22 @@ from scipy.interpolate import RegularGridInterpolator
 from sdevpy.utilities import algos, dates
 
 
+class LocalVolSection(ABC):
+    """ Base class for Local Vol time sections, i.e. functions that return the local volatility at a certain
+        point in time t, for a list of log-moneynesses x. These sections are used by numerical methods,
+        i.e. PDE and MC, to speed up the calculation along the spot direction, effectively by caching the
+        time-dependent part of the interpolation that is done only once per time section. """
+    def __init__(self, time: float):
+        self.time = time
+
+    @abstractmethod
+    def value(self, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ In the base, we simply use the formula on the parameters. In inherited classes, we
+            may have a more complex behaviour such as applying the formula to a transformed
+            set of parameters. """
+        pass
+
+
 class LocalVol(ABC):
     """ Base class for Local Vol """
     def __init__(self, **kwargs):
@@ -15,14 +31,20 @@ class LocalVol(ABC):
         self.name = kwargs.get('name', 'MyIndex')
         self.snapdate = kwargs.get('snapdate', self.valdate)
 
-    @abstractmethod
     def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
-        """ Values of the LV along array of log-moneynesses at given time """
-        pass
+        """ In the base, we assume that the value at time t and log-moneynesses logm is obtained by
+            first retrieving a time section, then returning the values in that time section
+            at the requested log-moneynesses. This behaviour can always be overriden in inherited
+            classes if ever necessary. In practice, more likely than not, we will store the sections
+            in a list before launching the numerical method (e.g. PDE/MC) """
+        section = self.section(t)
+        return section.value(logm)
 
     @abstractmethod
-    def section(self, t: float):
-        """ Retrieve LV section at given time t, i.e. a function of the log-moneyness log_m """
+    def section(self, t: float) -> LocalVolSection:
+        """ Retrieve LV section at given time t, i.e. a function of the log-moneyness log_m.
+            How to retrieve an LV section is a modelling question and done differently in 
+            inherited classes. """
         pass
 
     def dump(self, file: str, indent: int=2) -> None:
@@ -35,6 +57,31 @@ class LocalVol(ABC):
     def dump_data(self) -> dict:
         """ Dump LV object into dictionary """
         pass
+
+
+class TimeInterpolatedLocalVol(LocalVol):
+    """ Local Vol subtype whose sections are found by interpolation along the time direction. More specifically,
+        the interpolation is piecewise constant. """
+    def __init__(self, sections: list[LocalVolSection], **kwargs):
+        super().__init__(**kwargs)
+
+        # Sort by increasing date
+        sections.sort(key=lambda x: x.time)
+
+        self.sections = sections
+        self.t_grid = [section.time for section in self.sections]
+
+    def section(self, t: float) -> LocalVolSection:
+        """ The section is obtained by locating the requested time t on the time axis and
+            picking the section at the pillar index above (upper_bound) """
+        t_idx = algos.upper_bound(self.t_grid, t)
+        t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
+        print(f"Section requested at {t}, using pillar at time/time index: {self.t_grid}/{t_idx}")
+        return self.section_at_index(t_idx)
+
+    def section_at_index(self, t_idx: int):
+        """ Retrieve local vol section at given time index """
+        return self.sections[t_idx]
 
 
 class ParamLocalVolSection(ABC):
@@ -170,25 +217,29 @@ class MatrixLocalVol(LocalVol):
 
 
 if __name__ == "__main__":
-    from sdevpy.volatility.impliedvol.models.svi import SviSection
+    #### LocalVol as matrix interpolation ####
+    print("Hello")
 
-    t_grid = np.array([0.1, 0.25, 0.5, 1.0, 2.0, 5.0])
-    alnv = 0.25
-    a = alnv**2 * np.sqrt(1.0) # a > 0
-    b = 0.2 # b > 0
-    rho = 0.0 # -1 < rho < 1
-    m = 0.5 # No constraints
-    sigma = 0.25 # > 0
-    params = [a, b, rho, m, sigma]
+    # #### LocalVol interpolated by sections ####
+    # from sdevpy.volatility.impliedvol.models.svi import SviSection
 
-    section_grid = [SviSection(t_grid[i]) for i in range(t_grid.shape[0])]
-    lv = InterpolatedParamLocalVol(section_grid)
+    # t_grid = np.array([0.1, 0.25, 0.5, 1.0, 2.0, 5.0])
+    # alnv = 0.25
+    # a = alnv**2 * np.sqrt(1.0) # a > 0
+    # b = 0.2 # b > 0
+    # rho = 0.0 # -1 < rho < 1
+    # m = 0.5 # No constraints
+    # sigma = 0.25 # > 0
+    # params = [a, b, rho, m, sigma]
 
-    # Initialize parameters
-    for t_idx in range(len(t_grid)):
-        lv.update_params(t_idx, params)
+    # section_grid = [SviSection(t_grid[i]) for i in range(t_grid.shape[0])]
+    # lv = InterpolatedParamLocalVol(section_grid)
 
-    lv_t = 0.75
-    lv_logm = 0.0
-    lvol = lv.value(lv_t, lv_logm)
-    print(f"T/LOG-M/LV: {lv_t}/{lv_logm}/{lvol}")
+    # # Initialize parameters
+    # for t_idx in range(len(t_grid)):
+    #     lv.update_params(t_idx, params)
+
+    # lv_t = 0.75
+    # lv_logm = 0.0
+    # lvol = lv.value(lv_t, lv_logm)
+    # print(f"T/LOG-M/LV: {lv_t}/{lv_logm}/{lvol}")
