@@ -61,7 +61,7 @@ class LocalVol(ABC):
 
 class TimeInterpolatedLocalVol(LocalVol):
     """ Local Vol subtype whose sections are found by interpolation along the time direction. More specifically,
-        the interpolation is piecewise constant. """
+        the time interpolation is piecewise constant. """
     def __init__(self, sections: list[LocalVolSection], **kwargs):
         super().__init__(**kwargs)
 
@@ -132,34 +132,23 @@ class InterpolatedParamLocalVol(TimeInterpolatedLocalVol):#(LocalVol):
     def __init__(self, sections: list[ParamLocalVolSection], **kwargs):
         super().__init__(sections, **kwargs)
 
-        # # Sort by increasing date
-        # sections.sort(key=lambda x: x.time)
-
-        # self.sections = sections
-        # self.t_grid = [section.time for section in self.sections]
-
-    def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
-        """ Values of the LV along array of log-moneynesses at given time """
-        t_idx = algos.upper_bound(self.t_grid, t)
-        t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
-        return self.sections[t_idx].value(logm)
-        # return self.sections[t_idx].value(t, logm)
-
-    # def section(self, t_idx: int):
-    #     """ Retrieve local vol section at given time index """
-    #     return self.sections[t_idx]
+    # def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
+    #     """ Values of the LV along array of log-moneynesses at given time """
+    #     t_idx = algos.upper_bound(self.t_grid, t)
+    #     t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
+    #     return self.sections[t_idx].value(logm)
 
     def check_params(self, t_idx: int):
         """ Check validity of parameters at given time index """
-        return self.sections[t_idx].check_params()
+        return self.section_at_index(t_idx).check_params()
 
     def update_params(self, t_idx: int, new_params: npt.ArrayLike) -> None:
         """ Update parameters at given time index """
-        self.sections[t_idx].update_params(new_params)
+        self.section_at_index(t_idx).update_params(new_params)
 
     def params(self, t_idx: int) -> npt.ArrayLike:
         """ Retrieve parameters at given time index """
-        return self.sections[t_idx].params
+        return self.section_at_index(t_idx).params
 
     def dump_data(self) -> dict:
         """ Dump LV object into dictionary """
