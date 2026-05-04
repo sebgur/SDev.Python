@@ -77,7 +77,7 @@ class TimeInterpolatedLocalVol(LocalVol):
             picking the section at the pillar index above (upper_bound) """
         t_idx = algos.upper_bound(self.t_grid, t)
         t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
-        print(f"Section requested at {t}, using pillar at time/time index: {self.t_grid}/{t_idx}")
+        print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
         return self.section_at_index(t_idx)
 
     def section_at_index(self, t_idx: int):
@@ -156,7 +156,7 @@ class InterpolatedLocalVolSection(LocalVolSection):
         that can be optimized on, and it is used by the LocalVol subtype InterpolatedParamLocalVol. """
     def __init__(self, time: float, logm_list: list[float], vol_list: list[float], **kwargs):
         super().__init__(time)
-        interp = kwargs.get('interp', 'cubic')
+        interp = kwargs.get('interpolation', 'cubicspline')
         self.interp = create_interpolation(interp=interp, l_extrap='flat', r_extrap='flat')
         self.interp.set_data(logm_list, vol_list)
 
@@ -185,14 +185,10 @@ class MatrixLocalVol2(TimeInterpolatedLocalVol):
         sections = []
         for i in range(n_times):
             t, logm, vol = t_grid[i], logm_matrix[i], vol_matrix[i]
-            sections.append(InterpolatedLocalVolSection(t, logm, vol))
+            sections.append(InterpolatedLocalVolSection(t, logm, vol, **kwargs))
 
         # Instantiate super()
         super().__init__(sections, **kwargs)
-
-    def section(self, t: float):
-        """ Retrieve LV section at given time t, i.e. a function of the log-moneyness log_m """
-        return lambda logm: self.value(t, logm)
 
     def dump_data(self) -> dict:
         """ Dump object to dictionary """

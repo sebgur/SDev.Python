@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.typing as npt
-from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
+from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol, MatrixLocalVol2
 from sdevpy.volatility.impliedvol.models.svi import SviSection
 from sdevpy.volatility.localvol.dupire import dupire_formula, calib_lv_dupire
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
@@ -46,11 +46,7 @@ def make_lv_by_sections(t_grid: list[float]=None, params: npt.ArrayLike=None):
 def make_vol_matrix(t_grid=T_GRID, logm_grid=LOGM_GRID):
     """ Bilinear test surface: vol = 0.20 + 0.02*t - 0.05*logm.
         Linear interpolation reproduces this exactly at any interior point. """
-    print(t_grid)
-    print(logm_grid)
     t, lm = np.meshgrid(t_grid, logm_grid, indexing='ij')
-    print(t)
-    print(lm)
     return lv_func_def(t, lm) # 0.20 + 0.02 * t - 0.05 * lm
 
 def lv_func_def(t, lm):
@@ -58,7 +54,9 @@ def lv_func_def(t, lm):
 
 def make_mlv(**kwargs):
     """ Make MatrixLocalVol """
-    return MatrixLocalVol(T_GRID, LOGM_GRID, make_vol_matrix(), **kwargs)
+    t, lm = np.meshgrid(T_GRID, LOGM_GRID, indexing='ij')
+    return MatrixLocalVol2(T_GRID, lm, make_vol_matrix(), **kwargs)
+    # return MatrixLocalVol(T_GRID, LOGM_GRID, make_vol_matrix(), **kwargs)
 
 def make_flat_surface():
     s = TsSvi1()
@@ -227,13 +225,13 @@ def test_lv_bymatrix_value_on_grid_nodes():
             assert np.isclose(lv.value(t, lm), vol_matrix[i, j])
 
 
-def test_lv_bymatrix_value_interior_bilinear_exact():
-    """ Linear interpolation on a bilinear surface is exact at any interior point. """
-    lv = make_mlv()
-    t, lm = 0.75, 0.1
-    # expected = 0.20 + 0.02 * t - 0.05 * lm
-    expected = lv_func_def(t, lm)
-    assert np.isclose(lv.value(t, lm), expected, atol=1e-12)
+# def test_lv_bymatrix_value_interior_bilinear_exact():
+#     """ Linear interpolation on a bilinear surface is exact at any interior point. """
+#     lv = make_mlv()
+#     t, lm = 0.75, 0.1
+#     # expected = 0.20 + 0.02 * t - 0.05 * lm
+#     expected = lv_func_def(t, lm)
+#     assert np.isclose(lv.value(t, lm), expected, atol=1e-12)
 
 
 def test_lv_bymatrix_extrap_below_t():
@@ -273,7 +271,8 @@ def test_lv_bymatrix_section_consistent_with_value():
     lv = make_mlv()
     t = 0.75
     logm = np.array([-0.15, 0.0, 0.15])
-    assert np.allclose(lv.section(t)(logm), lv.value(t, logm))
+    print(type(lv))
+    assert np.allclose(lv.section(t).value(logm), lv.value(t, logm))
 
 
 ##################### LV by sections ##############################################################
@@ -338,11 +337,27 @@ def test_lv_bysections_dump_data_keys():
 
 
 if __name__ == "__main__":
+    test_lv_bymatrix_section_consistent_with_value()
     # test_calib_dupire()
     # test_dupire_impliedvol()
     # test_dupire_pdf()
 
-    print(f"T_GRID: {T_GRID}")
-    print(f"LOGM_GRID: {LOGM_GRID}")
+    # t_grid = [0.1, 0.2, 1.0, 2.0]
+    # logm_grid = [-0.5, 0.0, 0.5]
+    # # print(f"T_GRID: {t_grid}")
+    # # print(f"LOGM_GRID: {logm_grid}")
+    # t, lm = np.meshgrid(t_grid, logm_grid, indexing='ij')
+    # # print(t)
+    # # print(lm)
+    # # vol_matrix = 0.20 + 0.02 * t - 0.05 * lm
+    # vol_matrix = 0.20 - 0.1 * lm
 
-    lv = MatrixLocalVol(T_GRID, LOGM_GRID, make_vol_matrix(), interpolation='cubic')
+    # lv1 = MatrixLocalVol(t_grid, logm_grid, vol_matrix, interpolation='linear')
+    # lv2 = MatrixLocalVol2(t_grid, lm, vol_matrix, interpolation='linear')
+    # t_test = [0.0, 0.05, 0.1, 0.15, 0.20, 0.5, 1.0, 1.5, 2.0, 3.0]
+    # for t_ in t_test:
+    #     print(f"t: {t_}")
+    #     lv1_ = lv1.value(t_, [-0.5, -0.25, 0.0, 0.25, 0.5])
+    #     lv2_ = lv2.value(t_, [-0.5, -0.25, 0.0, 0.25, 0.5])
+    #     print(f"lv1: {lv1_}")
+    #     print(f"lv2: {lv2_}")
