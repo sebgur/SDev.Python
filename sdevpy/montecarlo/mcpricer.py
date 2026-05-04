@@ -40,6 +40,7 @@ def price_book(valdate: dt.datetime, book, **kwargs):
     # Set model
     lv_map = kwargs.get('lv_map', None)
     use_lv = (lv_map is not None)
+    print(lv_map)
     model = MultiAssetGBM(spot, fwd_curves, lvs, disc_tgrid, use_lv=use_lv)
 
     # Set spot path generator
