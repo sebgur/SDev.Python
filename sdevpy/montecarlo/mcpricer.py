@@ -31,14 +31,16 @@ def price_book(valdate: dt.datetime, book, **kwargs):
     disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
     spot = get_spots(names, valdate)
     fwd_curves = get_forward_curves(names, valdate)
-    lvs = lvf.get_local_vols(names, valdate)
+    lvs = lvf.get_local_vols(names, valdate, **kwargs)
     corr = get_correlations(names, valdate)
 
     # Build time grid
     disc_tgrid = build_timegrid(valdate, eventdates, McConfig(**kwargs))
 
     # Set model
-    model = MultiAssetGBM(spot, fwd_curves, lvs, disc_tgrid)
+    lv_map = kwargs.get('lv_map', None)
+    use_lv = (lv_map is not None)
+    model = MultiAssetGBM(spot, fwd_curves, lvs, disc_tgrid, use_lv=use_lv)
 
     # Set spot path generator
     generator = PathGenerator(model, disc_tgrid, **kwargs, corr_matrix=corr)
