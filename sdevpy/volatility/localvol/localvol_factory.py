@@ -21,9 +21,18 @@ from sdevpy.maths import interpolation as itp
 def get_local_vols(names: list[str], valdate: dt.datetime, **kwargs) -> list[localvol.LocalVol]:
     """ Retrieve local vols assuming calibration has already been done """
     folder = kwargs.get('folder', test_data_folder())
+    lv_map = kwargs.get('lv_map', None)
     lvs = []
-    for name in names:
-        lvs.append(load_lv_from_folder(None, valdate, name, folder))
+    if lv_map is None: # Then read from folder
+        for name in names:
+            lvs.append(load_lv_from_folder(None, valdate, name, folder))
+    else: # Read from map
+        for name in names:
+            name_lv = lv_map.get(name, None)
+            if name_lv is not None:
+                lvs.append(name_lv)
+            else:
+                raise ValueError(f"Could not find LV object in map for name: {name}")
 
     return lvs
 
