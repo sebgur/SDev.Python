@@ -165,11 +165,10 @@ class InterpolatedLocalVolSection(LocalVolSection):
         return self.interp.value(logm)
 
 
-class MatrixLocalVol2(TimeInterpolatedLocalVol):
+class MatrixLocalVol(TimeInterpolatedLocalVol):
     """ Local Vol subtype by interpolation of matrix along expiry and strike directions.
-        Interpolation is in both dimensions (defaulting to Linear).
-        Possible choices are: linear, nearest, cubic, quintic and pchip.
-        More recommended choices: linear, pchip and cubic, in order of increasing smoothness/oscillations.
+        Interpolation is piecewise constant in time.
+        Possible choices in the strike direction are: linear, cubicspline.
         Extrapolation is flat (clamping to nearest boundary value).
     """
     def __init__(self, t_grid: list[float], logm_matrix: list[list[float]], vol_matrix: list[list[float]], **kwargs):
@@ -195,55 +194,6 @@ class MatrixLocalVol2(TimeInterpolatedLocalVol):
         return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
                 'logm_grid': self.logm_grid.tolist(), 'vol_matrix': self.vol_matrix.tolist()}
-
-
-# class MatrixLocalVol(LocalVol):
-#     """ Local Vol subtype by interpolation of matrix along expiry and strike directions.
-#         Interpolation is in both dimensions (defaulting to Linear).
-#         Possible choices are: linear, nearest, cubic, quintic and pchip.
-#         More recommended choices: linear, pchip and cubic, in order of increasing smoothness/oscillations.
-#         Extrapolation is flat (clamping to nearest boundary value).
-#     """
-#     def __init__(self, t_grid: npt.ArrayLike, logm_grid: npt.ArrayLike, vol_matrix: npt.ArrayLike, **kwargs):
-#         super().__init__(**kwargs)
-#         self.t_grid = np.asarray(t_grid)
-#         self.logm_grid = np.asarray(logm_grid)
-#         self.vol_matrix = np.asarray(vol_matrix)
-#         self.method = kwargs.get('interpolation', 'linear')
-
-#         # Check sizes
-#         expected = (len(self.t_grid), len(self.logm_grid))
-#         vol_shape = self.vol_matrix.shape
-#         if vol_shape != expected:
-#             raise ValueError(f"Vol matrix size {vol_shape} inconsistent with time/strike size {expected}")
-
-#         # Set interpolator
-#         tx_axis = (self.t_grid, self.logm_grid)
-#         self.interp = RegularGridInterpolator(tx_axis, self.vol_matrix, method=self.method,
-#                                               bounds_error=False, fill_value=None)
-
-#     def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
-#         """ Interpolate local vol matrix at time t over array of log-moneynesses """
-#         scalar = np.ndim(logm) == 0
-#         logm_ = np.atleast_1d(np.asarray(logm, dtype=float))
-
-#         # Clamp to grid bounds for flat extrapolation
-#         t_c = float(np.clip(t, self.t_grid[0], self.t_grid[-1]))
-#         logm_c = np.clip(logm_, self.logm_grid[0], self.logm_grid[-1])
-
-#         pts = np.column_stack([np.full_like(logm_c, t_c), logm_c])
-#         result = self.interp(pts)
-#         return float(result[0]) if scalar else result
-
-#     def section(self, t: float):
-#         """ Retrieve LV section at given time t, i.e. a function of the log-moneyness log_m """
-#         return lambda logm: self.value(t, logm)
-
-#     def dump_data(self) -> dict:
-#         """ Dump object to dictionary """
-#         return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-#                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
-#                 'logm_grid': self.logm_grid.tolist(), 'vol_matrix': self.vol_matrix.tolist()}
 
 
 if __name__ == "__main__":
