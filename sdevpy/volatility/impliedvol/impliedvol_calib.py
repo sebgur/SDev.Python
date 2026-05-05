@@ -63,7 +63,8 @@ class TsIvCalibrator:
         self.result = None
         self.sol = None
 
-    def calibrate(self, mkt_data: EqVolSurfaceData, init_point=None) -> None:
+    # def calibrate(self, mkt_data: EqVolSurfaceData, init_point=None) -> None:
+    def calibrate(self, mkt_data: dict, init_point=None) -> None:
         # Retrieve target data
         self.prepare_target_data(mkt_data)
 
@@ -91,16 +92,18 @@ class TsIvCalibrator:
         # Make sure model is left at solution point
         self.model.update_params(self.sol)
 
-    def prepare_target_data(self, mkt_data: EqVolSurfaceData) -> None:
+    def prepare_target_data(self, mkt_data: dict) -> None:# EqVolSurfaceData) -> None:
         """ Flatten target market data into lists of values along all expiries """
-        expiries = mkt_data.expiries
-        fwds = mkt_data.forwards
-        strike_surface = mkt_data.get_strikes('absolute')
-        vol_surface = mkt_data.vols
-        price_surface = mkt_data.call_prices # Just calls for now
+
+        option_data = mkt_data['option_data']
+        expiries = option_data.expiries
+        fwds = option_data.forwards
+        strike_surface = option_data.get_strikes('absolute')
+        vol_surface = option_data.vols
+        price_surface = option_data.call_prices # Just calls for now
 
         # Reformat inputs to flat vectors
-        valdate = mkt_data.valdate
+        valdate = option_data.valdate
         self.times, self.strikes, self.fwds = [], [], []
         self.mkt_vols, self.mkt_prices = [], []
         for i in range(len(expiries)):

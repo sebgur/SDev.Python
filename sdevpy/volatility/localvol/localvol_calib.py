@@ -10,6 +10,7 @@ from sdevpy.analytics import black
 from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
+from sdevpy.market.eqforward import get_forward_curves
 
 
 ########## ToDo ########################################################################
@@ -27,12 +28,16 @@ def calibrate_lv_interp(valdate: dt.datetime, name: str, config: dict, **kwargs)
     disp_opt = kwargs.get('disp_opt', False)
     calc_pde_vols = kwargs.get('calc_pde_vols', False)
 
+    # Retrieve forward curve
+    fwd_curve = get_forward_curves([name], valdate)[0]
+
     # Retrieve target market option data
     file = vsurf.data_file(name, valdate)
     surface_data = vsurf.eqvolsurfacedata_from_file(file)
     expiries = surface_data.expiries
-    fwds = surface_data.forwards
-    strike_surface = surface_data.get_strikes('absolute')
+    # fwds = surface_data.forwards
+    fwds = fwd_curve.value(expiries)
+    strike_surface = surface_data.get_strikes2(fwd_curve=fwd_curve, to_type='absolute')
     vol_surface = surface_data.vols
 
     # Set calibration time grid
@@ -227,7 +232,7 @@ class LvObjectiveBuilder:
 if __name__ == "__main__":
     verbose, n_digits = False, 6
     np.set_printoptions(suppress=True, precision=n_digits)
-    name = "XYZ"
+    name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
     lv_data_folder = lvf.test_data_folder()
     # 'L-BFGS-B'
@@ -252,8 +257,13 @@ if __name__ == "__main__":
     surface_data = calib_result['iv_data']
     expiries = surface_data.expiries
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
+
+    # Retrieve forward curve
+    fwd_curve = get_forward_curves([name], valdate)[0]
+
     # fwds = surface_data.forwards
-    strike_surface = surface_data.get_strikes('absolute')
+    fwds = fwd_curve.value(expiries)
+    strike_surface = surface_data.get_strikes2(fwd_curve=fwd_curve, to_type='absolute')
     vol_surface = surface_data.vols
 
     # Calculate RMSEs on vols

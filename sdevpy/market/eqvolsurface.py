@@ -6,7 +6,7 @@ from pathlib import Path
 from sdevpy.utilities import dates
 from sdevpy.utilities import timegrids
 from sdevpy.analytics import black
-from sdevpy.market.eqforward import EqForwardCurve
+from sdevpy.market.eqforward import EqForwardCurve, get_forward_curves
 log = logging.getLogger(__name__)
 
 
@@ -184,9 +184,12 @@ if __name__ == "__main__":
     # file = data_file(folder, name, valdate)
     # surface_data.dump(file)
 
+    # Get forward curve
+    fwd_curve = get_forward_curves([name], valdate)[0]
+
     # Get data from existing file
-    file = data_file(folder, name, valdate)
+    file = data_file(name, valdate, folder=folder)
     surface_data = eqvolsurfacedata_from_file(file)
-    print(surface_data.get_strikes('absolute'))
-    print(surface_data.get_strikes('relative'))
+    print(surface_data.get_strikes2(to_type='absolute'))
+    print(surface_data.get_strikes2(fwd_curve=fwd_curve, to_type='relative'))
     surface_data.pretty_print(4)

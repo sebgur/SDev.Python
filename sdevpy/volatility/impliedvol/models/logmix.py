@@ -15,6 +15,7 @@ import scipy.optimize as opt
 from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol, LvMethod
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 from sdevpy.market import eqvolsurface as vsurf
+from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
 from sdevpy.maths.metrics import rmse
@@ -420,14 +421,18 @@ if __name__ == "__main__":
     name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
 
+    # Retrieve forward curve
+    fwd_curve = get_forward_curves([name], valdate)[0]
+
     # Retrieve target market option data
     file = vsurf.data_file(name, valdate)
-    mkt_data = vsurf.eqvolsurfacedata_from_file(file)
-    expiries = mkt_data.expiries
-    fwds = mkt_data.forwards
-    strike_surface = mkt_data.get_strikes('absolute')
-    vol_surface = mkt_data.vols
-    call_surface = mkt_data.call_prices
+    option_data = vsurf.eqvolsurfacedata_from_file(file)
+    expiries = option_data.expiries
+    fwds = fwd_curve.value(expiries)
+    strike_surface = option_data.get_strikes2(fwd_curve=fwd_curve, to_type='absolute')
+    vol_surface = option_data.vols
+    call_surface = option_data.call_prices
+    mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
 
     # Initialize model
     model = LogMix(n_mix=3)
