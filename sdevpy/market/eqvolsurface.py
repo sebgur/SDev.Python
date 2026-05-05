@@ -1,6 +1,7 @@
 import os, json, logging
 import datetime as dt
 import numpy as np
+import numpy.typing as npt
 from pathlib import Path
 from sdevpy.utilities import dates
 from sdevpy.utilities import timegrids
@@ -52,7 +53,8 @@ class EqVolSurfaceData:
             vols = self.vols[exp_idx]
             self.call_prices.append(black.price(t, strikes, True, fwd, vols))
 
-    def get_strikes(self, type: str='absolute'):
+    def get_strikes(self, type: str='absolute') -> npt.ArrayLike:
+        """ Retrieve strikes, absolute or relative """
         req_type = type.lower()
         if req_type == 'absolute':
             return self.abs_strikes
@@ -70,7 +72,8 @@ class EqVolSurfaceData:
         sections = []
         for i, expiry in enumerate(self.expiries):
             expiry_str = expiry.strftime(dates.DATE_FORMAT)
-            section = {'expiry': expiry_str, 'forward': self.forwards[i], 'strikes': self.input_strikes[i].tolist(),
+            section = {'expiry': expiry_str, #'forward': self.forwards[i],
+                       'strikes': self.input_strikes[i].tolist(),
                        'vols': self.vols[i].tolist()}
             sections.append(section)
 
@@ -93,7 +96,7 @@ class EqVolSurfaceData:
         for i in range(n_exp):
             print(sep)
             print(f"Expiry {i+1}/{n_exp}: {self.expiries[i].strftime(dates.DATE_FORMAT)}")
-            print(f"Forward: {self.forwards[i]:,.{n_digits}f}")
+            # print(f"Forward: {self.forwards[i]:,.{n_digits}f}")
             with np.printoptions(precision=n_digits):
                 print("Strikes", self.input_strikes[i])
                 print("Vols", self.vols[i])

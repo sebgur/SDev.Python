@@ -4,7 +4,7 @@ from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
 from abc import ABC, abstractmethod
-from scipy.interpolate import RegularGridInterpolator
+# from scipy.interpolate import RegularGridInterpolator
 from sdevpy.utilities import algos, dates
 from sdevpy.maths.interpolation import create_interpolation
 
@@ -77,7 +77,7 @@ class TimeInterpolatedLocalVol(LocalVol):
             picking the section at the pillar index above (upper_bound) """
         t_idx = algos.upper_bound(self.t_grid, t)
         t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
-        print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
+        # print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
         return self.section_at_index(t_idx)
 
     def section_at_index(self, t_idx: int):

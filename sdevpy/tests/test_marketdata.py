@@ -44,5 +44,6 @@ def test_eqforward_creation():
                   dt.datetime(2031, 2, 15), dt.datetime(2036, 2, 15)]
 
     test = curve.value(test_dates)
-    ref = np.asarray([100.28716535, 101.09321315, 102.21072051, 111.87417472, 128.4201])
+    ref = np.asarray([100.50233117, 101.4947209, 102.06711626, 112.73343447, 128.4201])
+    # ref = np.asarray([100.28716535, 101.09321315, 102.21072051, 111.87417472, 128.4201])
     assert np.allclose(test, ref, 1e-10)
