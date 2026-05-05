@@ -6,6 +6,7 @@ from pathlib import Path
 from sdevpy.utilities import dates
 from sdevpy.utilities import timegrids
 from sdevpy.analytics import black
+from sdevpy.market.eqforward import EqForwardCurve
 log = logging.getLogger(__name__)
 
 
@@ -62,6 +63,28 @@ class EqVolSurfaceData:
             return self.abs_strikes / self.forwards.reshape(-1, 1)
         else:
             raise ValueError(f"Unknown strike type {to_type}: expected absolute or relative")
+
+    def get_strikes2(self, fwd_curve: EqForwardCurve=None, to_type: str='absolute') -> npt.ArrayLike:
+        """ Retrieve strikes, absolute or relative """
+        to_type_lw = to_type.lower()
+        if to_type_lw == self.strike_input_type:
+            return self.input_strikes
+        else: # Need conversion
+            if fwd_curve is None:
+                raise ValueError(f"Forward curve required for strike conversion but None given: {self.name}")
+
+            # Need to loop over expiries because not all expiries must have the same number of strikes.
+            # Therefore we cannot put the strikes into numpy arrays.
+            fwds = fwd_curve.value(self.expiries)
+            n_times = len(self.expiries)
+            if to_type_lw == 'absolute' and self.strike_input_type == 'relative':
+                conv_strikes = [self.input_strikes[i] * fwds[i] for i in range(n_times)]
+            elif to_type_lw == 'relative' and self.strike_input_type == 'absolute':
+                conv_strikes = [self.input_strikes[i] / fwds[i] for i in range(n_times)]
+            else:
+                raise ValueError(f"Unknown strike type {to_type}: expected absolute or relative")
+
+            return conv_strikes
 
     def dump(self, file, indent=2):
         data = self.dump_data()

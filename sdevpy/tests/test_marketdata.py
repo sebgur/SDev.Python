@@ -58,10 +58,17 @@ def test_eq_option_strikes():
     file = vsurf.data_file(name, valdate)
     vol_data = vsurf.eqvolsurfacedata_from_file(file)
 
+    # Retrieve forward curve
+    fwd_curve = eqf.get_forward_curves([name], valdate)[0]
+
     # Access data in object
-    expiries = vol_data.expiries
-    fwds = vol_data.forwards
+    # expiries = vol_data.expiries
     test = vol_data.get_strikes('absolute')
+    # print(test)
+    test = vol_data.get_strikes2(fwd_curve, 'absolute')
+    # print(ref2)
+    # assert(np.allclose(test, ref2, 1e-10))
+
     # print(test)
     ref = np.asarray([[90.26318122, 94.70076604, 99.88756326, 105.35844335, 110.53815253],
                       [84.95857122, 91.65636925, 99.71914514, 108.49118276, 117.04419888],
@@ -71,8 +78,13 @@ def test_eq_option_strikes():
                       [46.17835038, 64.83651535, 94.53027807, 137.82316066, 193.51001927]])
     assert(np.allclose(test, ref, 1e-10))
 
-    test = vol_data.get_strikes('relative')
+    # test = vol_data.get_strikes('relative')
     # print(test)
+    # print('ref2')
+    test = vol_data.get_strikes2(fwd_curve, 'relative')
+    # print(ref2)
+    # assert(np.allclose(test, ref2, 1e-10))
+
     ref = np.asarray([[0.90082835, 0.94511554, 0.99687988, 1.05147937, 1.10317297],
                       [0.84534839, 0.91199231, 0.99221794, 1.07950081, 1.16460439],
                       [0.78492002, 0.87383905, 0.98449644, 1.10916676, 1.23481783],

@@ -16,16 +16,8 @@ def get_forward_curves(names, valdate, **kwargs):
         file = data_file(name, valdate, **kwargs)
         data = eqforwarddata_from_file(file)
         curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
-        # yieldcurve = ycrv.get_yieldcurve('USD.SOFR.1D', valdate)
-        curve.calibrate(data, spot)#, yieldcurve)
+        curve.calibrate(data, spot)
         fwd_curves.append(curve)
-
-    # drifts = np.asarray([0.02, 0.05, 0.04])
-    # fwd_curves_old = []
-    # for s, mu in zip(spots, drifts):
-    #     # Use the default variable trick to circumvent late binding in python loops
-    #     # Otherwise, all the lambda functions will effectively be the same
-    #     fwd_curves_old.append(lambda t, s=s, mu=mu: s * np.exp(mu * t))
 
     return fwd_curves
 
