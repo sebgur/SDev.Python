@@ -53,15 +53,15 @@ class EqVolSurfaceData:
             vols = self.vols[exp_idx]
             self.call_prices.append(black.price(t, strikes, True, fwd, vols))
 
-    def get_strikes(self, type: str='absolute') -> npt.ArrayLike:
+    def get_strikes(self, to_type: str='absolute') -> npt.ArrayLike:
         """ Retrieve strikes, absolute or relative """
-        req_type = type.lower()
-        if req_type == 'absolute':
+        to_type_lw = to_type.lower()
+        if to_type_lw == 'absolute':
             return self.abs_strikes
-        elif req_type == 'relative':
+        elif to_type_lw == 'relative':
             return self.abs_strikes / self.forwards.reshape(-1, 1)
         else:
-            raise ValueError(f"Unknown strike type {req_type}: expected absolute or relative")
+            raise ValueError(f"Unknown strike type {to_type}: expected absolute or relative")
 
     def dump(self, file, indent=2):
         data = self.dump_data()
