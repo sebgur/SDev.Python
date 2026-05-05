@@ -45,14 +45,37 @@ class EqVolSurfaceData:
         else:
             raise ValueError(f"Strike input type not supported yet: {self.strike_input_type}")
 
-        # Calculate prices
-        self.call_prices = []
+        # # Calculate prices
+        # self.call_prices = []
+        # for exp_idx, expiry in enumerate(self.expiries):
+        #     t = timegrids.model_time(self.valdate, expiry)
+        #     fwd = self.forwards[exp_idx]
+        #     strikes = self.abs_strikes[exp_idx]
+        #     vols = self.vols[exp_idx]
+        #     self.call_prices.append(black.price(t, strikes, True, fwd, vols))
+
+    def get_prices(self, fwd_curve: EqForwardCurve, option_type: str='call') -> npt.ArrayLike:
+        option_type_lw = option_type.lower()
+        prices = []
+        abs_strikes = self.get_strikes(fwd_curve, to_type='absolute')
         for exp_idx, expiry in enumerate(self.expiries):
             t = timegrids.model_time(self.valdate, expiry)
-            fwd = self.forwards[exp_idx]
-            strikes = self.abs_strikes[exp_idx]
+            fwd = fwd_curve.value(expiry)
+            strikes = abs_strikes[exp_idx]
             vols = self.vols[exp_idx]
-            self.call_prices.append(black.price(t, strikes, True, fwd, vols))
+            match option_type_lw:
+                case 'call':
+                    price = black.price(t, strikes, True, fwd, vols)
+                case 'put':
+                    price = black.price(t, strikes, False, fwd, vols)
+                case 'straddle':
+                    price = black.price(t, strikes, True, fwd, vols)
+                    price = price + black.price(t, strikes, False, fwd, vols)
+                case _:
+                    raise ValueError(f"Invalid option type: {option_type}")
+
+            prices.append(price)
+        return prices
 
     def get_strikes(self, fwd_curve: EqForwardCurve=None, to_type: str='absolute') -> npt.ArrayLike:
         """ Retrieve strikes, absolute or relative """

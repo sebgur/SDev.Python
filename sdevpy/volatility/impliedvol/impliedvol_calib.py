@@ -100,7 +100,7 @@ class TsIvCalibrator:
         fwds = fwd_curve.value(expiries)
         strike_surface = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
         vol_surface = option_data.vols
-        price_surface = option_data.call_prices # Just calls for now
+        price_surface = option_data.get_prices(fwd_curve, option_type='call') # Just calls for now
 
         # Reformat inputs to flat vectors
         valdate = option_data.valdate

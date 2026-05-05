@@ -431,7 +431,7 @@ if __name__ == "__main__":
     fwds = fwd_curve.value(expiries)
     strike_surface = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
     vol_surface = option_data.vols
-    call_surface = option_data.call_prices
+    call_surface = option_data.get_prices(fwd_curve, option_type='call')
     mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
 
     # Initialize model
