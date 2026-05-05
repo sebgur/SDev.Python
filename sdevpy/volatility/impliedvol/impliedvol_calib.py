@@ -94,11 +94,11 @@ class TsIvCalibrator:
 
     def prepare_target_data(self, mkt_data: dict) -> None:# EqVolSurfaceData) -> None:
         """ Flatten target market data into lists of values along all expiries """
-
+        fwd_curve = mkt_data['forward_curve']
         option_data = mkt_data['option_data']
         expiries = option_data.expiries
-        fwds = option_data.forwards
-        strike_surface = option_data.get_strikes('absolute')
+        fwds = fwd_curve.value(expiries)
+        strike_surface = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
         vol_surface = option_data.vols
         price_surface = option_data.call_prices # Just calls for now
 

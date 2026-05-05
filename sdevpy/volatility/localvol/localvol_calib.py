@@ -37,7 +37,7 @@ def calibrate_lv_interp(valdate: dt.datetime, name: str, config: dict, **kwargs)
     expiries = surface_data.expiries
     # fwds = surface_data.forwards
     fwds = fwd_curve.value(expiries)
-    strike_surface = surface_data.get_strikes2(fwd_curve=fwd_curve, to_type='absolute')
+    strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
     vol_surface = surface_data.vols
 
     # Set calibration time grid
@@ -263,7 +263,7 @@ if __name__ == "__main__":
 
     # fwds = surface_data.forwards
     fwds = fwd_curve.value(expiries)
-    strike_surface = surface_data.get_strikes2(fwd_curve=fwd_curve, to_type='absolute')
+    strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
     vol_surface = surface_data.vols
 
     # Calculate RMSEs on vols

@@ -54,17 +54,7 @@ class EqVolSurfaceData:
             vols = self.vols[exp_idx]
             self.call_prices.append(black.price(t, strikes, True, fwd, vols))
 
-    def get_strikes(self, to_type: str='absolute') -> npt.ArrayLike:
-        """ Retrieve strikes, absolute or relative """
-        to_type_lw = to_type.lower()
-        if to_type_lw == 'absolute':
-            return self.abs_strikes
-        elif to_type_lw == 'relative':
-            return self.abs_strikes / self.forwards.reshape(-1, 1)
-        else:
-            raise ValueError(f"Unknown strike type {to_type}: expected absolute or relative")
-
-    def get_strikes2(self, fwd_curve: EqForwardCurve=None, to_type: str='absolute') -> npt.ArrayLike:
+    def get_strikes(self, fwd_curve: EqForwardCurve=None, to_type: str='absolute') -> npt.ArrayLike:
         """ Retrieve strikes, absolute or relative """
         to_type_lw = to_type.lower()
         if to_type_lw == self.strike_input_type:
@@ -190,6 +180,6 @@ if __name__ == "__main__":
     # Get data from existing file
     file = data_file(name, valdate, folder=folder)
     surface_data = eqvolsurfacedata_from_file(file)
-    print(surface_data.get_strikes2(to_type='absolute'))
-    print(surface_data.get_strikes2(fwd_curve=fwd_curve, to_type='relative'))
+    print(surface_data.get_strikes(to_type='absolute'))
+    print(surface_data.get_strikes(fwd_curve=fwd_curve, to_type='relative'))
     surface_data.pretty_print(4)

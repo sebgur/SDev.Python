@@ -63,7 +63,7 @@ def test_eq_option_strikes():
 
     # Access data in object
     # expiries = vol_data.expiries
-    test = vol_data.get_strikes2(fwd_curve, 'absolute')
+    test = vol_data.get_strikes(fwd_curve, 'absolute')
     # print(test)
 
     ref = np.asarray([[90.26318122, 94.70076604, 99.88756326, 105.35844335, 110.53815253],
@@ -74,7 +74,7 @@ def test_eq_option_strikes():
                       [46.17835038, 64.83651535, 94.53027807, 137.82316066, 193.51001927]])
     assert(np.allclose(test, ref, 1e-10))
 
-    test = vol_data.get_strikes2(fwd_curve, 'relative')
+    test = vol_data.get_strikes(fwd_curve, 'relative')
     # print(test)
 
     ref = np.asarray([[0.90082835, 0.94511554, 0.99687988, 1.05147937, 1.10317297],

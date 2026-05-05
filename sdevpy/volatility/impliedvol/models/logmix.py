@@ -429,7 +429,7 @@ if __name__ == "__main__":
     option_data = vsurf.eqvolsurfacedata_from_file(file)
     expiries = option_data.expiries
     fwds = fwd_curve.value(expiries)
-    strike_surface = option_data.get_strikes2(fwd_curve=fwd_curve, to_type='absolute')
+    strike_surface = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
     vol_surface = option_data.vols
     call_surface = option_data.call_prices
     mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
