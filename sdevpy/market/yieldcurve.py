@@ -4,7 +4,8 @@ import datetime as dt
 import numpy as np
 from abc import ABC, abstractmethod
 from enum import Enum
-from sdevpy.utilities import timegrids, dates
+from sdevpy.utilities import dates as dts
+from sdevpy.utilities import timegrids
 from sdevpy.maths import interpolation as itp
 
 
@@ -128,13 +129,13 @@ class InterpolatedYieldCurve(YieldCurve):
             raise RuntimeError("Failure to set curve interpolation")
 
     def dump_data(self):
-        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dts.DATE_FORMAT),
+                'snapdate': self.snapdate.strftime(dts.DATETIME_FORMAT),
                 'interp_var': self.interp_var_str, 'interp_type': self.interp_type}
 
         pillars = []
         for expiry, df in zip(self.dates, self.dfs, strict=True):
-            pillar = {'expiry': expiry.strftime(dates.DATE_FORMAT), 'df': df}
+            pillar = {'expiry': expiry.strftime(dts.DATE_FORMAT), 'df': df}
             pillars.append(pillar)
 
         data['pillars'] = pillars
@@ -147,13 +148,13 @@ class YieldCurveVariable(Enum):
     LOG_DISCOUNT = 2
 
 
-def get_yieldcurve(name, date, **kwargs):
+def get_yieldcurve(name: str, date: dt.datetime, **kwargs):
     file = data_file(name, date, **kwargs)
     curve = yieldcurve_from_file(file)
     return curve
 
 
-def yieldcurve_from_file(file):
+def yieldcurve_from_file(file: str):
     with open(file) as f:
         data = json.load(f)
 
@@ -161,12 +162,12 @@ def yieldcurve_from_file(file):
     valdate = data.get('valdate')
     snapdate = data.get('snapdate') # Claude says this will be wrong
     # Claude says to do the below but this fails in UT
-    # snapdate = dt.datetime.strptime(data.get('snapdate'), dates.DATE_FILE_FORMAT)
+    # snapdate = dt.datetime.strptime(data.get('snapdate'), dts.DATE_FILE_FORMAT)
     interp_var = data.get('interp_var')
     interp_type = data.get('interp_type')
     pillars = data.get('pillars')
 
-    valdate = dt.datetime.strptime(valdate, dates.DATE_FORMAT)
+    valdate = dt.datetime.strptime(valdate, dts.DATE_FORMAT)
     curve = InterpolatedYieldCurve(valdate=valdate, interp_var=interp_var, interp_type=interp_type,
                                    name=name, snapdate=snapdate)
 
@@ -174,7 +175,7 @@ def yieldcurve_from_file(file):
     pillar_dates, pillar_dfs = [], []
     for pillar in pillars:
         date_str = pillar.get('expiry')
-        date = dt.datetime.strptime(date_str, dates.DATE_FORMAT)
+        date = dt.datetime.strptime(date_str, dts.DATE_FORMAT)
         df = pillar.get('df')
         pillar_dates.append(date)
         pillar_dfs.append(df)
@@ -187,7 +188,7 @@ def data_file(name, date, **kwargs):
     folder = kwargs.get('folder', test_data_folder())
     name_folder = os.path.join(folder, name)
     os.makedirs(name_folder, exist_ok=True)
-    file = os.path.join(name_folder, date.strftime(dates.DATE_FILE_FORMAT) + ".json")
+    file = os.path.join(name_folder, date.strftime(dts.DATE_FILE_FORMAT) + ".json")
     return file
 
 
@@ -201,7 +202,6 @@ def test_data_folder():
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from sdevpy.utilities import dates
 
     valdate = dt.datetime(2026, 2, 15)
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     curve.set_data(zdates, dfs)
 
     # Interpolate and display
-    test_dates = [dates.advance(valdate, months=1*n) for n in range(1, 600)]
+    test_dates = [dts.advance(valdate, str(n) + 'm') for n in range(1, 600)]
     test_dfs = curve.discount(test_dates)
     test_times = timegrids.model_time(valdate, test_dates)
     test_zrs = -np.log(test_dfs) / test_times

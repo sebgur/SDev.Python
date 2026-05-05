@@ -165,7 +165,7 @@ def to_eom(d: dt.date) -> dt.date:
     return next_month - timedelta(days=next_month.day)
 
 
-def make_calendar(name, start_year=2000, end_year=2100):
+def make_calendar(name: str, start_year: int=2000, end_year: int=2100):
     if ',' in name:
         cdr_names = name.split(',')
         cdrs = [make_calendar(cdrn, start_year=start_year, end_year=end_year) for cdrn in cdr_names]
@@ -203,7 +203,8 @@ def make_calendar_from_mcal(exchange, years: range):
     return Calendar(name=exchange, holiday_set=holidays)
 
 
-def list_mcal_calendars():
+def list_mcal_calendars() -> list[str]:
+    """ List all calendars available in mcal """
     print(mcal.get_calendar_names())
 
 
@@ -215,7 +216,8 @@ def make_schedule(calstr, start, end, term, convention=BDC.F, convert_to_datetim
     return schedule
 
 
-def to_datetime(date):
+def to_datetime(date) -> dt.datetime:
+    """ Convert date to datetime """
     if isiterable(date):
         datetimes = [dt.datetime.combine(d, dt.time.min) for d in date]
         return datetimes

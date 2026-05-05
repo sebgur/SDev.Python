@@ -2,7 +2,8 @@ import os, json
 import datetime as dt
 import numpy as np
 from pathlib import Path
-from sdevpy.utilities import dates, timegrids
+from sdevpy.utilities import dates as dts
+from sdevpy.utilities import timegrids
 from sdevpy.maths import interpolation as itp
 from sdevpy.market import yieldcurve as ycrv
 from sdevpy.market.spot import get_spots
@@ -43,12 +44,12 @@ class EqForwardData:
     def dump_data(self):
         pillars = []
         for expiry, forward in zip(self.expiries, self.forwards, strict=True):
-            expiry_str = expiry.strftime(dates.DATE_FORMAT)
+            expiry_str = expiry.strftime(dts.DATE_FORMAT)
             pillar = {'expiry': expiry_str, 'forward': forward}
             pillars.append(pillar)
 
-        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 'pillars': pillars}
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dts.DATE_FORMAT),
+                'snapdate': self.snapdate.strftime(dts.DATETIME_FORMAT), 'pillars': pillars}
         return data
 
 
@@ -72,7 +73,7 @@ class EqForwardCurve:
         # Check consistency
         for d in self.dates:
             if d <= self.valdate:
-                raise RuntimeError(f"Expiry before or at valuation date: {d.strftime(dates.DATE_FORMAT)}")
+                raise RuntimeError(f"Expiry before or at valuation date: {d.strftime(dts.DATE_FORMAT)}")
 
         # Calibrate
         if self.interp_var == 'yield':
@@ -125,11 +126,11 @@ def eqforwarddata_from_file(file):
     # Convert date strings into dates
     for pillar in pillars:
         date_str = pillar.get('expiry')
-        date = dt.datetime.strptime(date_str, dates.DATE_FORMAT)
+        date = dt.datetime.strptime(date_str, dts.DATE_FORMAT)
         pillar['expiry'] = date
 
-    data = EqForwardData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), pillars,
-                         name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT))
+    data = EqForwardData(dt.datetime.strptime(valdate, dts.DATE_FORMAT), pillars,
+                         name=name, snapdate=dt.datetime.strptime(snapdate, dts.DATETIME_FORMAT))
     return data
 
 
@@ -137,7 +138,7 @@ def data_file(name, date, **kwargs):
     folder = kwargs.get('folder', test_data_folder())
     name_folder = os.path.join(folder, name)
     os.makedirs(name_folder, exist_ok=True)
-    file = os.path.join(name_folder, date.strftime(dates.DATE_FILE_FORMAT) + ".json")
+    file = os.path.join(name_folder, date.strftime(dts.DATE_FILE_FORMAT) + ".json")
     return file
 
 
@@ -153,7 +154,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     name = "ABC"
-    valdate = dt.datetime(2026, 2, 15)
+    valdate = dt.datetime(2025, 12, 15)
 
     # Generate a sample to start from
     spot = 100.0
@@ -166,7 +167,7 @@ if __name__ == "__main__":
     pillars = [{'expiry': d, 'forward': f} for d, f in zip(expiries, zfwds, strict=True)]
     data = EqForwardData(valdate, pillars, name=name)
     file = data_file(name, valdate)
-    data.dump(file)
+    # data.dump(file)
 
     # Get data from existing file
     test_data = eqforwarddata_from_file(file)
@@ -177,7 +178,7 @@ if __name__ == "__main__":
     curve.calibrate(test_data, spot, yieldcurve)
 
     # Interpolate and display
-    test_dates = [dates.advance(valdate, months=1*n) for n in range(1, 150)]
+    test_dates = [dts.advance(valdate, str(n) + 'm') for n in range(1, 150)]
     test_fwds = curve.value(test_dates)
 
     # Original data

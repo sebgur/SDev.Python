@@ -1,5 +1,5 @@
 import datetime as dt
-from sdevpy.utilities import dates
+from sdevpy.utilities import dates as dts
 from openbb import obb
 obb.user.preferences.output_type = "dataframe"
 
@@ -12,7 +12,7 @@ db_root = r'C:\\temp\\database'
 print(today.strftime('%d-%b-%Y'))
 
 # Retrieving all data
-hist_start = dates.advance(today, years=-1)
+hist_start = dts.advance(today, '-1y')
 print(hist_start.strftime('%d-%b-%Y'))
 
 start = "2025-03-01"
