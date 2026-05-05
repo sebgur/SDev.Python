@@ -4,7 +4,6 @@ from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
 from abc import ABC, abstractmethod
-# from scipy.interpolate import RegularGridInterpolator
 from sdevpy.utilities import algos, dates
 from sdevpy.maths.interpolation import create_interpolation
 
@@ -44,7 +43,7 @@ class LocalVol(ABC):
     @abstractmethod
     def section(self, t: float) -> LocalVolSection:
         """ Retrieve LV section at given time t, i.e. a function of the log-moneyness log_m.
-            How to retrieve an LV section is a modelling question and done differently in 
+            How to retrieve an LV section is a modelling question and done differently in
             inherited classes. """
         pass
 
@@ -194,6 +193,68 @@ class MatrixLocalVol(TimeInterpolatedLocalVol):
         return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
                 'logm_grid': self.logm_grid.tolist(), 'vol_matrix': self.vol_matrix.tolist()}
+
+
+class FlatLocalVolSection(LocalVolSection):
+    """ Flat volatility across moneynesses (Black-Scholes) """
+    def __init__(self, time: float, vol: float):
+        super().__init__(time)
+        self.vol = vol
+
+    def value(self, logm: npt.ArrayLike) -> npt.ArrayLike:
+        """ Return flat vol """
+        return self.vol
+
+
+class VectorLocalVol(TimeInterpolatedLocalVol):
+    """ Local Vol subtype returning one number per expiry section, with no spot dependence.
+        Interpolation is piecewise constant in time.
+        For Black-Scholes with time-dependent vol.
+    """
+    def __init__(self, t_grid: list[float], vol_grid: list[float], **kwargs):
+        self.vol_grid = vol_grid
+        # Check sizes
+        n_times = len(t_grid)
+        if len(vol_grid) != n_times:
+            raise ValueError("Incompatible sizes between time grid and vol grid")
+
+        # Create sections
+        sections = []
+        for i in range(n_times):
+            t, vol = t_grid[i], vol_grid[i]
+            sections.append(FlatLocalVolSection(t, vol))
+
+        # Instantiate super()
+        super().__init__(sections, **kwargs)
+
+    def dump_data(self) -> dict:
+        """ Dump object to dictionary """
+        return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
+                'vol': self.vol_grid.tolist()}
+
+
+class ConstantLocalVol(LocalVol):
+    """ Local Vol subtype returning one single number for all expiries and strikes.
+        For Black-Scholes model with constant vol.
+    """
+    def __init__(self, vol: float, **kwargs):
+        super().__init__(**kwargs)
+        self.vol = vol
+        self.tmax = 100.0 # 100y
+
+    def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
+        """ Single flat number for all expiries and strikes """
+        return np.full_like(logm, self.vol)
+
+    def section(self, t: float) -> LocalVolSection:
+        """ Retrieve flat LV section at max time 100y """
+        return FlatLocalVolSection(self.tmax, self.vol)
+
+    def dump_data(self) -> dict:
+        """ Dump object to dictionary """
+        return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 'vol': self.vol}
 
 
 if __name__ == "__main__":
