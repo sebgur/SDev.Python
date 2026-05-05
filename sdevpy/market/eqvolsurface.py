@@ -22,37 +22,13 @@ class EqVolSurfaceData:
 
         # Extract
         self.expiries = np.asarray([s['expiry'] for s in sections])
-        self.forwards = np.asarray([s['forward'] for s in sections])
         self.input_strikes = [np.asarray(s['strikes']) for s in sections]
         self.vols = [np.asarray(s['vols']) for s in sections]
 
         # Size checks
         n_times = len(self.expiries)
-        if any(len(x) != n_times for x in (self.forwards, self.input_strikes, self.vols)):
+        if any(len(x) != n_times for x in (self.input_strikes, self.vols)):
             raise ValueError("Incompatible size along time direction between expiries, forwards, strikes and vols")
-
-        # Calculate missing strike type
-        if self.strike_input_type == 'absolute':
-            self.abs_strikes = self.input_strikes
-        elif self.strike_input_type == 'relative':
-            # self.abs_strikes = self.forwards * self.input_strikes # Old way assuming numpy matrix
-            # The code below is a quick non-tested implementation to cater for the non-matrix case.
-            # To be tested if/when case presents itself.
-            log.warning("Relative strike conversion should be tested")
-            self.abs_strikes = []
-            for i in range(n_times):
-                self.abs_strikes.append(self.forwards[i] * self.input_strikes[i])
-        else:
-            raise ValueError(f"Strike input type not supported yet: {self.strike_input_type}")
-
-        # # Calculate prices
-        # self.call_prices = []
-        # for exp_idx, expiry in enumerate(self.expiries):
-        #     t = timegrids.model_time(self.valdate, expiry)
-        #     fwd = self.forwards[exp_idx]
-        #     strikes = self.abs_strikes[exp_idx]
-        #     vols = self.vols[exp_idx]
-        #     self.call_prices.append(black.price(t, strikes, True, fwd, vols))
 
     def get_prices(self, fwd_curve: EqForwardCurve, option_type: str='call') -> npt.ArrayLike:
         option_type_lw = option_type.lower()
@@ -108,8 +84,7 @@ class EqVolSurfaceData:
         sections = []
         for i, expiry in enumerate(self.expiries):
             expiry_str = expiry.strftime(dates.DATE_FORMAT)
-            section = {'expiry': expiry_str, #'forward': self.forwards[i],
-                       'strikes': self.input_strikes[i].tolist(),
+            section = {'expiry': expiry_str, 'strikes': self.input_strikes[i].tolist(),
                        'vols': self.vols[i].tolist()}
             sections.append(section)
 
@@ -132,7 +107,6 @@ class EqVolSurfaceData:
         for i in range(n_exp):
             print(sep)
             print(f"Expiry {i+1}/{n_exp}: {self.expiries[i].strftime(dates.DATE_FORMAT)}")
-            # print(f"Forward: {self.forwards[i]:,.{n_digits}f}")
             with np.printoptions(precision=n_digits):
                 print("Strikes", self.input_strikes[i])
                 print("Vols", self.vols[i])
