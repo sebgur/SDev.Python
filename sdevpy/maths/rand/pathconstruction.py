@@ -27,7 +27,8 @@ def get_path_builder(time_grid, n_factors: int=1, **kwargs):
     return path_builder
 
 
-def brownianbridge(n_paths, time_grid, n_factors, rng):
+def brownianbridge(n_paths: int, time_grid, n_factors: int, rng):
+    """ Build a path based by the Brownian Bridge construction """
     n_steps = len(time_grid) - 1
     t = time_grid[-1]
 
