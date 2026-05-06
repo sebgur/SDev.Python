@@ -8,6 +8,7 @@ from sdevpy.maths import constants
 from sdevpy.utilities.tools import isequal
 from sdevpy.utilities.timegrids import SimpleTimeGridBuilder
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, LvMethod
+from sdevpy.volatility.localvol.localvol import MatrixLocalVol
 log = logging.getLogger(Path(__file__).stem)
 
 
@@ -170,7 +171,9 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
     # moneynesses[0], lv[0] = moneynesses[1], lv[1]
     # moneynesses[-1], lv[-1] = moneynesses[-2], lv[-2]
 
-    return {'t_grid': t_grid, 'moneyness': moneynesses, 'lv': lv}
+    lv_obj = MatrixLocalVol(t_grid, np.log(moneynesses), lv)
+    return {'lv': lv_obj, 't_grid': t_grid, 'moneyness': moneynesses, 'lv_matrix': lv}
+    # return {'t_grid': t_grid, 'moneyness': moneynesses, 'lv': lv}
 
 
 if __name__ == "__main__":
@@ -254,7 +257,7 @@ if __name__ == "__main__":
 
     # Calibrate
     result = calib_lv_dupire(surface3, points_per_year=10, verbose=True)
-    lv = result['lv']
+    lv = result['lv_matrix']
     m = result['moneyness']
     t = result['t_grid']
 

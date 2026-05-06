@@ -152,7 +152,7 @@ def test_calib_dupire():
 
     # Calibrate
     result = calib_lv_dupire(surface, points_per_year=4, n_strikes=3)
-    lv = result['lv']
+    lv = result['lv_matrix']
     m = result['moneyness']
     t = result['t_grid']
     assert (np.abs(t[1] - 0.2857142857142857) < 1e-10)
