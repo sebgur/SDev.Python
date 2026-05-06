@@ -83,6 +83,16 @@ class TimeInterpolatedLocalVol(LocalVol):
         """ Retrieve local vol section at given time index """
         return self.sections[t_idx]
 
+    def dump_data(self) -> dict:
+        """ Dump LV object into dictionary """
+        sections = []
+        for section in self.sections:
+            sections.append(section.dump())
+
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
+                'sections': sections}
+        return data
 
 class ParamLocalVolSection(LocalVolSection):
     """ Wrapper class around formulas that return a local volatility at a certain
@@ -137,16 +147,16 @@ class InterpolatedParamLocalVol(TimeInterpolatedLocalVol):
         """ Retrieve parameters at given time index """
         return self.section_at_index(t_idx).params
 
-    def dump_data(self) -> dict:
-        """ Dump LV object into dictionary """
-        sections = []
-        for section in self.sections:
-            sections.append(section.dump())
+    # def dump_data(self) -> dict:
+    #     """ Dump LV object into dictionary """
+    #     sections = []
+    #     for section in self.sections:
+    #         sections.append(section.dump())
 
-        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
-                'sections': sections}
-        return data
+    #     data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+    #             'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
+    #             'sections': sections}
+    #     return data
 
 
 class InterpolatedLocalVolSection(LocalVolSection):
@@ -167,6 +177,7 @@ class InterpolatedLocalVolSection(LocalVolSection):
 class MatrixLocalVol(TimeInterpolatedLocalVol):
     """ Local Vol subtype by interpolation of matrix along expiry and strike directions.
         Interpolation is piecewise constant in time.
+        The time section indexed at t_{i+1} is valid over (t_i, t_{i+1}].
         Possible choices in the strike direction are: linear, cubicspline.
         Extrapolation is flat (clamping to nearest boundary value).
     """
@@ -188,11 +199,11 @@ class MatrixLocalVol(TimeInterpolatedLocalVol):
         # Instantiate super()
         super().__init__(sections, **kwargs)
 
-    def dump_data(self) -> dict:
-        """ Dump object to dictionary """
-        return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
-                'logm_grid': self.logm_grid.tolist(), 'vol_matrix': self.vol_matrix.tolist()}
+    # def dump_data(self) -> dict:
+    #     """ Dump object to dictionary """
+    #     return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+    #             'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
+    #             'logm_grid': self.logm_grid.tolist(), 'vol_matrix': self.vol_matrix.tolist()}
 
 
 class FlatLocalVolSection(LocalVolSection):
@@ -227,11 +238,11 @@ class VectorLocalVol(TimeInterpolatedLocalVol):
         # Instantiate super()
         super().__init__(sections, **kwargs)
 
-    def dump_data(self) -> dict:
-        """ Dump object to dictionary """
-        return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
-                'vol': self.vol_grid.tolist()}
+    # def dump_data(self) -> dict:
+    #     """ Dump object to dictionary """
+    #     return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+    #             'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
+    #             'vol': self.vol_grid.tolist()}
 
 
 class ConstantLocalVol(LocalVol):
