@@ -3,11 +3,11 @@ import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
 from sdevpy.volatility.impliedvol.models.svi import SviSection
-from sdevpy.volatility.localvol.dupire import dupire_formula, calib_lv_dupire
+from sdevpy.volatility.localvol.dupire_calib import dupire_formula, calib_lv_dupire
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
-from sdevpy.volatility.localvol.localvol_calib import LvObjectiveBuilder
+from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 
