@@ -57,13 +57,15 @@ def add_correlations(date: dt.datetime, names1: list[str], names2: list[str], va
             f.write(f"{name1}-{name2},{value}\n")
 
 
-def data_file(date: dt.datetime, **kwargs):
+def data_file(date: dt.datetime, **kwargs) -> str:
+    """ Data file for correlations """
     folder = kwargs.get('folder', test_data_folder())
     file = Path(folder) / (date.strftime(dts.DATE_FILE_FORMAT) + ".csv")
     return file
 
 
-def test_data_folder():
+def test_data_folder() -> str:
+    """ Test data folder for correlations """
     folder = Path(__file__).parent.parent.parent / "datasets" / "marketdata" / "correlations"
     folder.mkdir(parents=True, exist_ok=True)
     return folder
