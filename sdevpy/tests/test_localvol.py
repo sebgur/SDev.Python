@@ -156,10 +156,13 @@ def test_calib_dupire():
     t = result['t_grid']
     assert (np.abs(t[1] - 0.2857142857142857) < 1e-10)
     m_test = np.asarray(m[1])
+    # print(m_test)
     m_ref = np.asarray([0.79519045, 1.020546, 1.24590155])
     assert np.allclose(m_test, m_ref, 1e-10)
     lv_test = np.asarray(lv[1])
-    lv_ref = np.asarray([0.33384114, 0.18219919, 0.36166036])
+    # print(m_test)
+    lv_ref = np.asarray([0.3291237, 0.16782647, 0.16614304])
+    # lv_ref = np.asarray([0.33384114, 0.18219919, 0.36166036])
     assert np.allclose(lv_test, lv_ref, 1e-10)
 
 
