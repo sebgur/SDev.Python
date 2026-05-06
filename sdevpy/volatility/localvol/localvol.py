@@ -23,6 +23,11 @@ class LocalVolSection(ABC):
             set of parameters. """
         pass
 
+    @abstractmethod
+    def dump(self) -> dict:
+        """ Base method (abstract) for dumping to dictionary """
+        pass
+
 
 class LocalVol(ABC):
     """ Base class for Local Vol """
@@ -94,6 +99,7 @@ class TimeInterpolatedLocalVol(LocalVol):
                 'sections': sections}
         return data
 
+
 class ParamLocalVolSection(LocalVolSection):
     """ Wrapper class around formulas that return a local volatility at a certain
         point in time t, for a list of log-moneynesses x. The section has parameters
@@ -125,7 +131,8 @@ class ParamLocalVolSection(LocalVolSection):
     def dump_params(self):
         pass
 
-    def dump(self):
+    def dump(self) -> dict:
+        """ Dump to dictionary """
         data = {'time': self.time, 'model': self.model, 'params': self.dump_params()}
         return data
 
@@ -165,13 +172,22 @@ class InterpolatedLocalVolSection(LocalVolSection):
         that can be optimized on, and it is used by the LocalVol subtype InterpolatedParamLocalVol. """
     def __init__(self, time: float, logm_list: list[float], vol_list: list[float], **kwargs):
         super().__init__(time)
-        interp = kwargs.get('interpolation', 'cubicspline')
-        self.interp = create_interpolation(interp=interp, l_extrap='flat', r_extrap='flat')
+        self.logm_list = logm_list
+        self.vol_list = vol_list
+        interp_type = kwargs.get('interpolation', 'cubicspline')
+        self.interp_type = interp_type
+        self.interp = create_interpolation(interp=interp_type, l_extrap='flat', r_extrap='flat')
         self.interp.set_data(logm_list, vol_list)
 
     def value(self, logm: npt.ArrayLike) -> npt.ArrayLike:
         """ Use the interpolation method along the log-moneyness direction """
         return self.interp.value(logm)
+
+    def dump(self) -> dict:
+        """ Dump to dictionary """
+        data = {'time': self.time, 'model': self.interp_type, 'logm': self.logm_list,
+                'vol': self.vol_list}
+        return data
 
 
 class MatrixLocalVol(TimeInterpolatedLocalVol):
@@ -215,6 +231,11 @@ class FlatLocalVolSection(LocalVolSection):
     def value(self, logm: npt.ArrayLike) -> npt.ArrayLike:
         """ Return flat vol """
         return self.vol
+
+    def dump(self) -> dict:
+        """ Dump to dictionary """
+        data = {'time': self.time, 'model': 'flat', 'vol': self.vol}
+        return data
 
 
 class VectorLocalVol(TimeInterpolatedLocalVol):

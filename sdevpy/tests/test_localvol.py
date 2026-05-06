@@ -1,3 +1,4 @@
+import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
@@ -261,6 +262,24 @@ def test_lv_bymatrix_section_consistent_with_value():
     assert np.allclose(lv.section(t).value(logm), lv.value(t, logm))
 
 
+def test_lv_bymatrix_dump():
+    lv = make_mlv()
+    lv.valdate = lv.snapdate = dt.datetime(2025, 12, 15)
+    lv_data = lv.dump_data()
+    # print(lv_data)
+    sections = lv_data['sections']
+    assert len(sections) == 4
+
+    test_section = sections[1]
+    assert abs(test_section['time'] - 0.5) < 1e-10
+    assert test_section['model'] == 'cubicspline'
+    assert len(test_section['logm']) == 5
+
+    test_vol = np.asarray(test_section['vol'])
+    ref_vol = np.asarray([0.2225, 0.22, 0.21, 0.2, 0.1975])
+    assert np.allclose(test_vol, ref_vol, 1e-10)
+
+
 ##################### LV by sections ##############################################################
 def test_lv_sections_sorted_by_time():
     """ Sections passed in reverse order should be stored sorted by time """
@@ -323,7 +342,9 @@ def test_lv_bysections_dump_data_keys():
 
 
 if __name__ == "__main__":
-    test_lv_bymatrix_section_consistent_with_value()
+    test_lv_bymatrix_dump()
+
+    # test_lv_bymatrix_section_consistent_with_value()
     # test_calib_dupire()
     # test_dupire_impliedvol()
     # test_dupire_pdf()
