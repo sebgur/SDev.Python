@@ -1,28 +1,27 @@
 """ Json utilities for serializing, deserializing, etc. """
 import json
-# from pydantic import BaseModel
-# from typing import Optional
 
-def serialize(dic, file):
+
+def serialize(dic: dict, file: str, indent: int=2) -> None:
     """ Serialize dictionary into json file """
     with open(file, "w", encoding='utf8') as write:
-        json.dump(dic, write)
+        json.dump(dic, write, indent=indent)
 
 
-def deserialize(file):
+def deserialize(file: str) -> dict:
     """ Deserialize json file into dictionary """
     with open(file, encoding='utf8') as file_hdl: # 'with' makes it unnecessary to close file_hdl
         dic = json.load(file_hdl)
     return dic
 
 
-def to_string(dic):
+def to_string(dic: dict) -> str:
     """ Serialize dictionary into json string """
     jsonstr = json.dumps(dic)
     return jsonstr
 
 
-def from_string(jsonstr):
+def from_string(jsonstr: str) -> dict:
     """ Deserialize json string into dictionary """
     dic = json.loads(jsonstr)
     return dic

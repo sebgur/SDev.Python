@@ -12,7 +12,7 @@ import datetime as dt
 import logging
 from scipy.stats import norm
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol, LvMethod
+from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol, LvMethod, data_file
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.market.eqforward import get_forward_curves
@@ -361,6 +361,10 @@ class LogMix(ParametricImpliedVol):
 
         return init_params
 
+    def dump_data(self) -> dict:
+        """ Dump to dictionary """
+        return {'type': 'LogMix', 'n_mix': self.n_mix, 'params': self.params.tolist()}
+
 
 def get_logmix_parameters(n_mix: int, params: npt.ArrayLike, verbose: bool=True) -> tuple[dict, bool]:
     """ Given the parameters as a list and knowing n_mix (i.e. number of lognormal components),
@@ -442,6 +446,7 @@ if __name__ == "__main__":
     # Calibrate model
     calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
     calibrator.calibrate(mkt_data)
+    model.dump(data_file(name, valdate, 'LogMix'))
 
     # Estimate model on points and calculate RMSE, plot comparison
     n_rows, n_cols = 3, 2

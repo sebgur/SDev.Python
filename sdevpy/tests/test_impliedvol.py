@@ -1,8 +1,10 @@
 import numpy as np
+import datetime as dt
 from scipy.integrate import quad
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
+from sdevpy.volatility.impliedvol.impliedvol_factory import get_impliedvol
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
@@ -72,6 +74,15 @@ def test_logmix():
     test = surface.calculate(t, k, is_call, f)
     ref = np.asarray([8.09016928, 12.68788175, 16.77192795])
     assert np.allclose(test, ref, 1e-10)
+
+
+def test_logmix_from_file():
+    name, date = 'ABC', dt.datetime(2025, 12, 15)
+    ivol = get_impliedvol(name, date, 'LogMix')
+    n_mix = ivol.n_mix
+    params = ivol.params
+    assert n_mix == 3
+    assert len(params) == 19
 
 
 def test_tssvi2_objective():
@@ -192,7 +203,8 @@ def test_sabr():
 
 
 if __name__ == "__main__":
-    test_logmix_pdf_integrates_to_one()
+    test_logmix_from_file()
+    # test_logmix_pdf_integrates_to_one()
     # test_logmix_pdf()
     # test_sabr()
     # test_tssvi1_objective()

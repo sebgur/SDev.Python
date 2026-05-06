@@ -14,7 +14,8 @@ import numpy as np
 import numpy.typing as npt
 import datetime as dt
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol
+from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol, data_file
+from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 from sdevpy.volatility.impliedvol.models import svi
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.market.eqforward import get_forward_curves
@@ -22,7 +23,6 @@ from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths import constants
-from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 
 
 class TsSvi1(ParametricImpliedVol):
@@ -152,6 +152,10 @@ class TsSvi1(ParametricImpliedVol):
         init_point = [0.10, 0.20, -0.05,  1.0, 0.10, 0.10, -0.30,  0.10, 0.1, 1.0,  1.000]
         return np.asarray(init_point)
 
+    def dump_data(self) -> dict:
+        """ Dump to dictionary """
+        return {'type': 'TsSvi1', 'params': self.params.tolist()}
+
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
@@ -178,6 +182,7 @@ if __name__ == "__main__":
     # Calibrate model
     calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
     calibrator.calibrate(mkt_data)
+    model.dump(data_file(name, valdate, 'TsSvi1'))
 
     # Estimate model on points and calculate RMSE, plot comparison
     n_rows, n_cols = 3, 2

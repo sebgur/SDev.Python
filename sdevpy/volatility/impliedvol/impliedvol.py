@@ -1,3 +1,5 @@
+from pathlib import Path
+import datetime as dt
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
@@ -5,6 +7,8 @@ import numpy.typing as npt
 from scipy.stats import norm
 from scipy.optimize import brentq
 from sdevpy.maths import constants
+from sdevpy.utilities import dates as dts
+from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.analytics import black, bachelier
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 
@@ -29,6 +33,17 @@ class ImpliedVol(ABC):
 
     @abstractmethod
     def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
+        """ Return the calculated quantity according to calculate_type """
+        pass
+
+    def dump(self, file: str) -> None:
+        """ Dump to json file """
+        data = self.dump_data()
+        jsm.serialize(data, file)
+
+    @abstractmethod
+    def dump_data(self) -> dict:
+        """ Dump to dictionary """
         pass
 
     ############### Dupire Logic ##################################################################
@@ -207,3 +222,23 @@ class ParametricImpliedVol(ImpliedVol):
     def initial_point(self) -> list[float]:
         """ Recommended initial point for optimization on parameters """
         pass
+
+
+def data_file(name: str, date: dt.datetime, model_name: str, **kwargs) -> str:
+    """ Data file for implied vol models """
+    folder = kwargs.get('folder', test_data_folder())
+    name_folder = folder / name
+    name_folder.mkdir(parents=True, exist_ok=True)
+    filename = date.strftime(dts.DATE_FILE_FORMAT) + "_" + model_name + ".json"
+    return name_folder / filename
+
+
+def test_data_folder() -> str:
+    """ Test data folder for implied vol models """
+    path = Path(__file__).parent.parent.parent.parent / "datasets" / "impliedvol"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+if __name__ == "__main__":
+    print(test_data_folder())
