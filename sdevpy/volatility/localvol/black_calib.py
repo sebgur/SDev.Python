@@ -27,22 +27,25 @@ def calib_lv_black(surface: ImpliedVol, dates: list[dt.datime], strikes: list[fl
     # Calibrate
     valdate = surface.base_date
     times = timegrids.model_time(valdate, dates)
-    vols = surface.black_volatility(times, strikes, fwds)
+    ivols = surface.black_volatility(times, strikes, fwds)
+    lv = None
     if n_times < 1:
         raise ValueError("No option dates specified")
     elif n_times == 1:
-        return ConstantLocalVol(vols[0])
+        lv = ConstantLocalVol(ivols[0])
     else:
         lvols = []
-        for i in range(times):
+        for i in range(len(times)):
             if i == 0:
-                lvols.append(vols[0])
+                lvols.append(ivols[0])
             else:
-                ts, vols = times[i - 1], vols[i - 1]
-                te, vole = times[i], vols[i]
+                ts, vols = times[i - 1], ivols[i - 1]
+                te, vole = times[i], ivols[i]
                 lvols.append(np.sqrt((vole**2 * te - vols**2 * ts) / (te - ts)))
 
-        return VectorLocalVol(times, lvols)
+        lv = VectorLocalVol(times, lvols)
+
+    return {'lv': lv}
 
 
 if __name__ == "__main__":

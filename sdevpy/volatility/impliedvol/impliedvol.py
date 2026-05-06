@@ -153,7 +153,7 @@ class ImpliedVol(ABC):
         value = self.calculate(t, k, is_call, f)
         return self.to_price(t, k, f, is_call, value)
 
-    def black_volatility(self, t: float, k: float, f: float) -> float:
+    def black_volatility(self, t: npt.ArrayLike, k: npt.ArrayLike, f: npt.ArrayLike) -> npt.ArrayLike:
         """ Black implied volatility """
         is_call = True
         value = self.calculate(t, k, is_call, f)

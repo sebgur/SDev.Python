@@ -124,6 +124,7 @@ class TsIvCalibrator:
         self.fwds = np.asarray(self.fwds)
         self.mkt_vols = np.asarray(self.mkt_vols)
         self.mkt_prices = np.asarray(self.mkt_prices)
+        self.model.base_date = valdate
 
     def check_consistency(self, options: list[list[OptionTarget]]) -> list[list[OptionTarget]]:
         """ Take out negative rate options depending on model features.
