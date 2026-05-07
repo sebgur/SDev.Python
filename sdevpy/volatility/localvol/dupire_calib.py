@@ -119,7 +119,9 @@ def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -
 
 
 def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
-    """ Calibrate MatrixLocalVol by Dupire's formula, from a given implied vol surface """
+    """ Calibrate MatrixLocalVol by Dupire's formula, from a given implied vol surface.
+        Passing the time grid is typically what we do when we want to use Black-Scholes
+        model but still go through the Dupire calibration, for investigation purposes. """
     # Arguments
     verbose = kwargs.get('verbose', False)
     n_points_per_year = kwargs.get('points_per_year', 10)
@@ -128,6 +130,11 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
     up_percent = kwargs.get('up_percent', 1.0 - lw_percent)
     tmax = kwargs.get('tmax', 2.0)
     t_grid = kwargs.get('t_grid', None)
+    grid_in_percents = kwargs.get('grid_in_percents', False) # True to equally space strikes in percents
+    conf = None
+    if grid_in_percents:
+        percents = np.linspace(lw_percent, up_percent, n_strikes)
+        conf = norm.ppf(percents)
 
     # Create time grid
     if t_grid is None:
@@ -136,7 +143,6 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
         base_grid = np.asarray(base_grid)
         t_grid_builder = SimpleTimeGridBuilder(include_t0=True, points_per_year=n_points_per_year)
         t_grid_builder.add_grid(base_grid)
-        # t_grid = t_grid_builder.get_grid()
         t_grid = t_grid_builder.complete_grid()
     n_times = len(t_grid)
 
@@ -149,11 +155,13 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
         te = t_grid[i + 1]
         # Create moneynesses axis
         atm_vol = surface.black_volatility(te, 1.0, 1.0) # ATM
-        # atm_vol = surface.black_volatility(ts, 1.0, 1.0) # ATM
         stdev = atm_vol * np.sqrt(te)
-        low_k = np.exp(-0.5 * stdev * stdev + stdev * norm.ppf(lw_percent))
-        up_k = np.exp(-0.5 * stdev * stdev + stdev * norm.ppf(up_percent))
-        m = np.linspace(low_k, up_k, n_strikes)
+        if grid_in_percents:
+            m = np.exp(-0.5 * stdev * stdev + stdev * conf)
+        else:
+            low_k = np.exp(-0.5 * stdev * stdev + stdev * norm.ppf(lw_percent))
+            up_k = np.exp(-0.5 * stdev * stdev + stdev * norm.ppf(up_percent))
+            m = np.linspace(low_k, up_k, n_strikes)
 
         moneynesses[i + 1] = m
         lv[i + 1] = dupire_formula(surface, ts, te, m)
