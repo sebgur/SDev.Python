@@ -3,6 +3,24 @@ import datetime as dt
 from sdevpy.utilities import timegrids as tmg
 
 
+def test_timegridbuilder_buckets():
+    base = dt.datetime(2023, 1, 24)
+    fixing = dt.datetime(2022, 1, 24)
+    expiry = dt.datetime(2025, 1, 24)
+
+    # Define buckets
+    buckets = []
+    buckets.append(tmg.TimeGridBucket(start=0.5, end=0.6, n_points=4))
+    buckets.append(tmg.TimeGridBucket(start=1.0, end=1.1, n_points=4))
+
+    builder = tmg.BucketTimeGridBuilder(buckets=buckets)
+    builder.add_dates(base, [fixing, expiry])
+    test = builder.complete_grid()
+    print(test)
+    ref = np.asarray([0.5, 0.53333333, 0.56666667, 0.6, 1.0, 1.03333333, 1.06666667, 1.1, 2.00273973])
+    assert np.allclose(test, ref, 1e-10)
+
+
 def test_timegridbuilder_dates():
     base = dt.datetime(2023, 1, 24)
     fixing = dt.datetime(2022, 1, 24)
@@ -40,6 +58,7 @@ def test_model_time():
 
 
 if __name__ == "__main__":
-    test_timegridbuilder_dates()
-    test_timegridbuilder_times()
-    test_model_time()
+    test_timegridbuilder_buckets()
+    # test_timegridbuilder_dates()
+    # test_timegridbuilder_times()
+    # test_model_time()

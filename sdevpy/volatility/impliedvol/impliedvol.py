@@ -60,7 +60,9 @@ class ImpliedVol(ABC):
 
     def taylor_dx(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
         """ Differential of volatility against moneyness, order 1 and 2 """
+        # hr = 0.01 # Relative bump
         hr = 0.05 # Relative bump
+        # hr = 0.10 # Relative bump
         dx = hr * x
 
         vol = self.volatility(t, x)

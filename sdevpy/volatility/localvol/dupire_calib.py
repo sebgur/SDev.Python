@@ -6,7 +6,7 @@ import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.maths import constants
 from sdevpy.utilities.tools import isequal
-from sdevpy.utilities.timegrids import SimpleTimeGridBuilder
+from sdevpy.utilities.timegrids import SimpleTimeGridBuilder, BucketTimeGridBuilder
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, LvMethod
 from sdevpy.volatility.localvol.localvol import MatrixLocalVol
 log = logging.getLogger(Path(__file__).stem)
@@ -125,6 +125,7 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
     # Arguments
     verbose = kwargs.get('verbose', False)
     n_points_per_year = kwargs.get('points_per_year', 10)
+    time_buckets = kwargs.get('time_buckets', None)
     n_strikes = kwargs.get('n_strikes', 25)
     lw_percent = kwargs.get('low_percent', 0.01)
     up_percent = kwargs.get('up_percent', 1.0 - lw_percent)
@@ -141,7 +142,10 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
         base_grid = []
         base_grid.append(tmax)
         base_grid = np.asarray(base_grid)
-        t_grid_builder = SimpleTimeGridBuilder(include_t0=True, points_per_year=n_points_per_year)
+        if time_buckets is not None:
+            t_grid_builder = BucketTimeGridBuilder(include_t0=True, buckets=time_buckets)
+        else:
+            t_grid_builder = SimpleTimeGridBuilder(include_t0=True, points_per_year=n_points_per_year)
         t_grid_builder.add_grid(base_grid)
         t_grid = t_grid_builder.complete_grid()
     n_times = len(t_grid)

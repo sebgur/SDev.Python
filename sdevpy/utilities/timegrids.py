@@ -1,6 +1,7 @@
 """ Generation of time grids for numerical methods such as Monte-Carlo or PDE. """
 from pathlib import Path
 import logging
+from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import datetime as dt
 import numpy as np
@@ -93,9 +94,42 @@ class SimpleTimeGridBuilder(TimeGridBuilder):
         if npoints < 1:
             log.debug("No points added in grid refinement")
             fine_grid = np.asarray([])
-            # raise ValueError("Empty fine grid in simple time grid builder")
         else:
             fine_grid = np.linspace(0.0, tmax, npoints)
+
+        return fine_grid
+
+
+@dataclass
+class TimeGridBucket:
+    start: float
+    end: float
+    n_points: int
+
+
+class BucketTimeGridBuilder(TimeGridBuilder):
+    """ TimeGridBuilder that has a point_per_year granularity defined in several ranges for
+        better granularity, allowing e.g. higher densities at early time steps and looser
+        density at later time steps """
+    def __init__(self, include_t0: bool=False, buckets: list[TimeGridBucket]=None):
+        super().__init__(include_t0)
+        self.buckets = buckets
+
+    def fine_grid(self) -> npt.NDArray[np.float64]:
+        """ Generate fine grid according to bucket definitions """
+        if self.buckets is None or len(self.buckets) < 1:
+            log.debug("No points added in grid refinement")
+            fine_grid = np.asarray([])
+        else:
+            base_grid = []
+            for bucket in self.buckets:
+                bucket_grid = np.linspace(bucket.start, bucket.end, bucket.n_points)
+                base_grid.extend(bucket_grid)
+
+            # Clip at tmax
+            tmax = self.max()
+            fine_grid = np.asarray([t for t in base_grid if t < tmax])
+
         return fine_grid
 
 
@@ -107,8 +141,6 @@ def model_time(date1: npt.ArrayLike, date2: npt.ArrayLike) -> npt.ArrayLike:
         return np.asarray(span)
     else:
         return spans.days / 365.0
-    # span = date2 - date1
-    # return span.days / 365.0
 
 
 if __name__ == "__main__":
