@@ -73,14 +73,20 @@ class TimeInterpolatedLocalVol(LocalVol):
         # Sort by increasing date
         sections.sort(key=lambda x: x.time)
 
+        # Save sections and extract time grid
         self.sections = sections
         self.t_grid = [section.time for section in self.sections]
 
     def section(self, t: float) -> LocalVolSection:
         """ The section is obtained by locating the requested time t on the time axis and
             picking the section at the pillar index above (upper_bound) """
-        t_idx = algos.upper_bound(self.t_grid, t)
-        t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
+        t_idx = algos.upper_bound(self.t_grid, t, clamp=True)
+        # t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
+
+        # Old version with upper_bound and manual clamping
+        # t_idx = algos.upper_bound(self.t_grid, t)
+        # t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
+
         # print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
         return self.section_at_index(t_idx)
 
@@ -154,17 +160,6 @@ class InterpolatedParamLocalVol(TimeInterpolatedLocalVol):
         """ Retrieve parameters at given time index """
         return self.section_at_index(t_idx).params
 
-    # def dump_data(self) -> dict:
-    #     """ Dump LV object into dictionary """
-    #     sections = []
-    #     for section in self.sections:
-    #         sections.append(section.dump())
-
-    #     data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-    #             'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
-    #             'sections': sections}
-    #     return data
-
 
 class InterpolatedLocalVolSection(LocalVolSection):
     """ Wrapper class around formulas that return a local volatility at a certain
@@ -212,14 +207,8 @@ class MatrixLocalVol(TimeInterpolatedLocalVol):
             t, logm, vol = t_grid[i], logm_matrix[i], vol_matrix[i]
             sections.append(InterpolatedLocalVolSection(t, logm, vol, **kwargs))
 
-        # Instantiate super()
+        # Instantiate base
         super().__init__(sections, **kwargs)
-
-    # def dump_data(self) -> dict:
-    #     """ Dump object to dictionary """
-    #     return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-    #             'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
-    #             'logm_grid': self.logm_grid.tolist(), 'vol_matrix': self.vol_matrix.tolist()}
 
 
 class FlatLocalVolSection(LocalVolSection):
@@ -256,14 +245,8 @@ class VectorLocalVol(TimeInterpolatedLocalVol):
             t, vol = t_grid[i], vol_grid[i]
             sections.append(FlatLocalVolSection(t, vol))
 
-        # Instantiate super()
+        # Instantiate base
         super().__init__(sections, **kwargs)
-
-    # def dump_data(self) -> dict:
-    #     """ Dump object to dictionary """
-    #     return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-    #             'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 't_grid': self.t_grid.tolist(),
-    #             'vol': self.vol_grid.tolist()}
 
 
 class ConstantLocalVol(LocalVol):
@@ -290,29 +273,4 @@ class ConstantLocalVol(LocalVol):
 
 
 if __name__ == "__main__":
-    #### LocalVol as matrix interpolation ####
     print("Hello")
-
-    # #### LocalVol interpolated by sections ####
-    # from sdevpy.volatility.impliedvol.models.svi import SviSection
-
-    # t_grid = np.array([0.1, 0.25, 0.5, 1.0, 2.0, 5.0])
-    # alnv = 0.25
-    # a = alnv**2 * np.sqrt(1.0) # a > 0
-    # b = 0.2 # b > 0
-    # rho = 0.0 # -1 < rho < 1
-    # m = 0.5 # No constraints
-    # sigma = 0.25 # > 0
-    # params = [a, b, rho, m, sigma]
-
-    # section_grid = [SviSection(t_grid[i]) for i in range(t_grid.shape[0])]
-    # lv = InterpolatedParamLocalVol(section_grid)
-
-    # # Initialize parameters
-    # for t_idx in range(len(t_grid)):
-    #     lv.update_params(t_idx, params)
-
-    # lv_t = 0.75
-    # lv_logm = 0.0
-    # lvol = lv.value(lv_t, lv_logm)
-    # print(f"T/LOG-M/LV: {lv_t}/{lv_logm}/{lvol}")
