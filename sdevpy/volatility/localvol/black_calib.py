@@ -9,7 +9,7 @@ from sdevpy.utilities import timegrids
 log = logging.getLogger(Path(__file__).stem)
 
 
-def calib_lv_black(surface: ImpliedVol, dates: list[dt.datime], strikes: list[float],
+def calib_lv_black(surface: ImpliedVol, dates: list[dt.datetime], strikes: list[float],
                    fwds: list[float]) -> dict:
     """ Calibrate VectorLocalVol or ConstantLocalVol by Black closed-form.
         Pick maturities and strikes to calibrated to. """

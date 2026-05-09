@@ -63,7 +63,7 @@ def create_section(config: dict):
         case 'vsvi':
             section = vsvi.create_section(time, param_config)
         case _:
-            section = None
+            # section = None
             raise ValueError(f"Unknown section type: {model}")
 
     return section
@@ -159,7 +159,7 @@ def write_example(date: dt.datetime, name: str, folder: str) -> None:
     """ Write an example LocalVol to file """
     file = os.path.join(folder, name)
     os.makedirs(file, exist_ok=True)
-    file = os.path.join(file, "localvol_" + date.strftime("%Y%m%d-%H.%M.%S") + ".json")
+    file = os.path.join(file, date.strftime(dates.DATE_FILE_FORMAT) + ".json")
     sections = []
     print(file)
     for i in range(4):
@@ -205,9 +205,10 @@ if __name__ == "__main__":
     # Dump
     lv_data = lv.dump_data()
     print(lv_data)
-    data = {'valdate': valdate.strftime(dates.DATE_FORMAT),
-            'snapdate': valdate.strftime(dates.DATETIME_FORMAT),
-            'sections': lv_data}
+    data = lv_data
+    # data = {'valdate': valdate.strftime(dates.DATE_FORMAT),
+    #         'snapdate': valdate.strftime(dates.DATETIME_FORMAT),
+    #         'sections': lv_data}
     file = os.path.join(folder, 'test_dump.json')
     print(file)
     print(data)

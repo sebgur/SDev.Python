@@ -14,7 +14,7 @@ def test_tenor_advance():
     base = dt.datetime(2025, 12, 15)
     tenors = ['-1D', '1D', '2W', '1M', '2Y', '1Y6M']
     test = [base + dts.period(t) for t in tenors]
-    print(test)
+    # print(test)
     ref = [dt.datetime(2025, 12, 14), dt.datetime(2025, 12, 16), dt.datetime(2025, 12, 29),
            dt.datetime(2026, 1, 15), dt.datetime(2027, 12, 15), dt.datetime(2027, 6, 15)]
     assert test == ref
@@ -28,7 +28,7 @@ def test_make_schedule():
     start = dt.date(2024, 1, 15)
     end = dt.date(2025, 1, 15)
     test = cal.make_schedule_fancy(start, end, '3M')
-    print(test)
+    # print(test)
     ref = [dt.date(2024, 1, 16), dt.date(2024, 4, 15), dt.date(2024, 7, 15),
            dt.date(2024, 10, 15), dt.date(2025, 1, 15)]
     assert test == ref
