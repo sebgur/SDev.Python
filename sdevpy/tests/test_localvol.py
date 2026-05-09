@@ -4,11 +4,13 @@ import numpy.typing as npt
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
 from sdevpy.volatility.impliedvol.models.svi import SviSection
 from sdevpy.volatility.localvol.dupire_calib import dupire_formula, calib_lv_dupire
+from sdevpy.volatility.localvol.black_calib import calib_lv_black
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder
 from sdevpy.pde import forwardpde as fpde
+from sdevpy.utilities import timegrids
 from sdevpy.analytics import black
 
 
@@ -341,8 +343,64 @@ def test_lv_bysections_dump_data_keys():
     assert set(data.keys()) == {'name', 'valdate', 'snapdate', 'sections'}
 
 
+##################### LV calib (Black case) #######################################################
+def test_lv_calib_black():
+    # Pick ivol
+    iv_surface = make_tssvi1()
+    valdate = dt.datetime(2025, 12, 15)
+    iv_surface.base_date = valdate
+
+    # Calibrate Black LV through main function
+    dates = np.asarray([dt.datetime(2026, 3, 15), dt.datetime(2026, 9, 15), dt.datetime(2027, 12, 15)])
+    fwds = np.full(len(dates), 1.0) # Only caring about ATM
+    strikes = fwds # Only caring about ATM
+    lv_result = calib_lv_black(iv_surface, dates, strikes, fwds)
+    lv = lv_result['lv']
+
+    # Calibrate by hand
+    print("calib by hand")
+    times = timegrids.model_time(valdate, dates)
+    calib_times, calib_lvols = [], []
+    for i in range(len(dates)):
+        te = times[i]
+        ke = strikes[i]
+        fe = fwds[i]
+        ivole = iv_surface.black_volatility(te, ke, fe)
+        if i == 0:
+            ts, ivols = 0.0, 0.0
+        else:
+            ts = times[i - 1]
+            ks = strikes[i - 1]
+            fs = fwds[i - 1]
+            ivols = iv_surface.black_volatility(ts, ks, fs)
+
+        calib_times.append(te)
+        fwd_vol2 = (ivole**2 * te - ivols**2 * ts) / (te - ts)
+        calib_lvols.append(np.sqrt(np.maximum(fwd_vol2, 0.0)))
+
+    # # Create sampling grid
+    # print(lv.t_grid)
+    # print(lv.vol_grid)
+
+    # sample_t = [0.0]
+    # sample_t.append(calib_times[0] / 2.0)
+    # sample_t.append(calib_times[0])
+    # sample_t.append((calib_times[1] + calib_times[0]) / 2.0)
+    # sample_t.append(calib_times[1])
+    # sample_t.append((calib_times[2] + calib_times[1]) / 2.0)
+    # sample_t.append(calib_times[2])
+    # sample_t.append(calib_times[2] + 1.0)
+
+    # for t in sample_t:
+    #     print(f"{t}: {lv.value(t, [0.0])}")
+
+    assert np.allclose(lv.t_grid, calib_times, 1e-10)
+    assert np.allclose(lv.vol_grid, calib_lvols, 1e-10)
+
+
 if __name__ == "__main__":
-    test_lv_bymatrix_dump()
+    test_lv_calib_black()
+    # test_lv_bymatrix_dump()
 
     # test_lv_bymatrix_section_consistent_with_value()
     # test_calib_dupire()

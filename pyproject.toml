@@ -46,7 +46,15 @@ ignore = ["E401", "I001"]
 [tool.coverage.run]
 omit = [
     "sdevpy/**/__init__.py",
-    "sdevpy/projects/raschka/*"
+    "sdevpy/tests/test.py",
+    "sdevpy/projects/raschka/*",
+    "sdevpy/projects/stovol/*",
+    "sdevpy/projects/stovolinverse/*",
+    "sdevpy/projects/aad/*",
+    "sdevpy/projects/chat_gpt2.py",
+    "sdevpy/tensorflow/*",
+    "sdevpy/machinelearning/*",
+    "sdevpy/volatility/mlsurfacegen/*"
 ]
 
 [tool.coverage.report]

@@ -20,17 +20,26 @@ def unique_sorted(arr: npt.ArrayLike, atol: float=1e-11) -> npt.ArrayLike:
     return sorted_arr[keep]
 
 
-def upper_bound(arr_sorted: npt.ArrayLike, value: float, atol: float=1e-11) -> int:
+def upper_bound(arr_sorted: npt.ArrayLike, value: float, atol: float=1e-11, clamp: bool=False) -> int:
     """ Upper bound index """
     idx = np.searchsorted(arr_sorted, value)
 
-    # The problem is that due to the float precision issue, we might answer the next
-    # pillar even though we're within tolerance of the previous pillar.
-    # So we check closeness with the previous pillar, and if we're within tolerance,
-    # we answer that pillar instead.
+    # Check closeness with the previous pillar. If within tolerance, answer that pillar instead.
     if idx > 0: # No issue on first pillar as we can't be closer to the previous pillar
         if np.isclose(arr_sorted[idx - 1], value, rtol=0.0, atol=atol):
             idx = idx - 1
+
+    return idx
+
+
+def lower_bound(arr_sorted: npt.ArrayLike, value: float, atol: float = 1e-11, clamp: bool=False) -> int:
+    """ Lower bound index: index of the largest element <= value (with float tolerance) """
+    idx = np.searchsorted(arr_sorted, value, side='right') - 1
+
+    # Check closeness with the next pillar. If within tolerance, answer that pillar instead.
+    if idx + 1 < len(arr_sorted): # No issue on last pillar as we can't be closer to the next pillar
+        if np.isclose(arr_sorted[idx + 1], value, rtol=0.0, atol=atol):
+            idx = idx + 1
 
     return idx
 
@@ -43,73 +52,15 @@ if __name__ == "__main__":
 
     # Example sorted array
     print("<><><><><><><><>")
-    arr = np.array([1.1, 2.2, 3.3, 4.4, 5.5])
+    arr = np.array([0.0, 1.0, 2.0])
     print(f"Array: {arr}")
     tol = 1e-4
 
-    # Value to locate
-    value = 0.5
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
+    values = [-0.5, 0.0, 0.001, 0.999, 1.0, 1.000001, 1.001, 1.5, 2.0, 2.000001, 2.5]
 
-    value = 1.1
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
-
-    value = 1.5
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
-
-    value = 2.1999
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
-
-    value = 2.19999
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
-
-    value = 2.2
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
-
-    value = 2.2000001
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
-
-    value = 5.49999
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
-
-    value = 5.5
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
-
-    value = 5.5000001
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
-
-    value = 5.6
-    index = np.searchsorted(arr, value)
-    print(f"Point/Index: {value}/{index}")
-    index = upper_bound(arr, value, tol)
-    print(f"Point/Index(new): {value}/{index}")
+    # Locate
+    for value in values:
+        print("<>" * 20)
+        # print(f"Point/Index(searchsorted): {value}/{np.searchsorted(arr, value)}")
+        print(f"Point/Index(lower): {value}/{lower_bound(arr, value, tol)}")
+        print(f"Point/Index(upper): {value}/{upper_bound(arr, value, tol)}")

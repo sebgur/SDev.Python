@@ -113,7 +113,6 @@
     .issue.critical { border-left-color: var(--red);    }
     .issue.high     { border-left-color: var(--orange); }
     .issue.medium   { border-left-color: var(--yellow); }
-    .issue.low      { border-left-color: var(--muted);  }
 
     .issue-header {
       display: flex;
@@ -137,7 +136,6 @@
     .badge.critical { background: #3d1515; color: var(--red);    }
     .badge.high     { background: #2d1e0f; color: var(--orange); }
     .badge.medium   { background: #2c2005; color: var(--yellow); }
-    .badge.low      { background: #1c2128; color: var(--muted);  }
 
     .loc {
       display: inline-block;
@@ -188,35 +186,34 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-05-07 (26th review, full scan)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-05-09 (full scan, 7th review)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter">B+</div>
+    <div class="grade-letter">B-</div>
     <div class="grade-details">
-      <h2>Major localvol refactoring lands — filename bug persists, two new HIGH issues introduced</h2>
+      <h2>Five previous issues resolved — new critical regression in <code>shift_forward</code></h2>
       <p>
-        The <code>localvol</code> module has been substantially redesigned: a richer seven-class hierarchy
-        (<code>LocalVolSection</code>, <code>TimeInterpolatedLocalVol</code>, <code>MatrixLocalVol</code>
-        rebuilt as section-based, plus <code>VectorLocalVol</code>, <code>ConstantLocalVol</code>,
-        <code>FlatLocalVolSection</code>, <code>InterpolatedLocalVolSection</code>), a new
-        <code>black_calib.py</code>, and a renamed <code>lvsection_calib.py</code> with forward-curve
-        integration. Test coverage for the localvol subsystem grew to 20+ tests. However, the
-        <code>write_example()</code> filename-format mismatch (first flagged in review #25) is still
-        unresolved, a <code>dt.datime</code> typo was introduced in <code>black_calib.py</code>, and
-        the <code>MatrixLocalVol</code> dump/load round-trip is broken by commented-out serialisation code.
-        Excessive commented-out debris across the new files also pulls the grade down.
+        Good progress: five issues from the prior review are confirmed fixed, including the
+        <code>write_example</code> filename bug, the <code>dt.datime</code> typo, and the
+        <code>WorstOf</code> / <code>WorstOfBarrier</code> lifecycle methods.
+        <code>PdeConfig</code> has been cleanly converted to a dataclass with proper type annotations.
+        However, the newly introduced <code>shift_forward</code> function has a critical defect:
+        it returns <code>None</code> when a shift is actually applied, silently passing a
+        <code>None</code> density into every subsequent PDE step.
+        Two persisting high-severity issues — <code>check_degrees_of_freedom</code> shadowing
+        and debug <code>print()</code> calls in <code>tssvi1.py</code> — remain unaddressed.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Progress since last review:</strong>
-    <code>localvol.py</code> redesigned with 7-class hierarchy &nbsp;·&nbsp;
-    <code>dupire_calib.py</code> (renamed) now returns <code>MatrixLocalVol</code> directly &nbsp;·&nbsp;
-    <code>lvsection_calib.py</code> (renamed) uses forward curves instead of surface forwards &nbsp;·&nbsp;
-    <code>black_calib.py</code> added for Black closed-form LV calibration &nbsp;·&nbsp;
-    <code>test_localvol.py</code> expanded with 20+ new tests covering matrix LV, section LV, and Dupire
+    <strong>Fixed since last review (5 of 10):</strong>
+    <code>write_example()</code> filename now uses <code>DATE_FILE_FORMAT</code> correctly &nbsp;·&nbsp;
+    <code>dt.datime</code> typo fixed in <code>black_calib.py</code> &nbsp;·&nbsp;
+    <code>WorstOf.set_eventindexes()</code> now resolves expiry index properly &nbsp;·&nbsp;
+    <code>Maximum</code> and <code>BarrierDown</code> now raise <code>NotImplementedError</code> &nbsp;·&nbsp;
+    <code>WorstOfBarrier</code> lifecycle hooks implemented
   </div>
 
   <div class="scorecard">
@@ -230,42 +227,42 @@
         <tr>
           <td>Architecture</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">New localvol hierarchy is clean; <code>TimeInterpolatedLocalVol</code> as a shared base for all section types is sound. Round-trip gap in the factory is design debt, not a structural flaw.</td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy; <code>PdeConfig</code> dataclass conversion is a genuine improvement; local vol refactoring well-structured</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>7 / 10</td>
+          <td>Correctness</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Fair</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>shift_forward</code> returns <code>None</code> on the main code path; <code>check_degrees_of_freedom</code> shadow crashes every calibration call</td>
+        </tr>
+        <tr>
+          <td>Error Handling</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>write_example()</code> filename bug persists; <code>dt.datime</code> typo in <code>black_calib.py</code>; <code>MatrixLocalVol</code> dump/load round-trip broken via factory; <code>__main__</code> test script builds wrong JSON structure</td>
+          <td style="color:var(--muted);font-size:.83rem">Logging and exception narrowing applied consistently; empty expiry sublists still silently propagated</td>
         </tr>
         <tr>
-          <td>Error Handling</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Size checks in new classes are consistent and well-placed; dead <code>section = None</code> before raise in factory; <code>ConstantLocalVol.dump_data()</code> format incompatible with factory loader</td>
+          <td>Testing</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good MC, interpolation, and PDE density tests; calibration, <code>TsSvi1</code>, and <code>shift_forward</code> entirely untested</td>
         </tr>
         <tr>
-          <td>Testing</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Comprehensive new suite: grid nodes, extrapolation, dump, section delegation, Dupire formula, objective builder. <code>print()</code> still in <code>test_dates.py</code>. <code>black_calib.py</code> has no tests.</td>
-        </tr>
-        <tr>
-          <td>Code Quality</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Significant commented-out code throughout new files; debug prints commented but not deleted; placeholder <code>__main__</code> in <code>black_calib.py</code></td>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Debug <code>print()</code> calls in both <code>tssvi1.py</code> and <code>shift_forward</code>; <code>TEST_VOL</code> still not injectable</td>
         </tr>
         <tr>
           <td>Maintainability</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Three <code>dump_data()</code> methods commented out leave serialisation intent unclear; TODO design block in factory; unused <code>check_consistency()</code> in calibrator</td>
+          <td style="color:var(--muted);font-size:.83rem">Dataclass and module layout improvements are positive; recurring attribute/method naming conflict still unguarded by convention</td>
         </tr>
         <tr>
           <td>Type Safety</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>dt.datime</code> typo in <code>black_calib.py</code>; <code>implied_vols()</code> scalar branch annotated <code>NDArray</code> but returns bare <code>float</code>; new classes are otherwise well-annotated</td>
+          <td style="color:var(--muted);font-size:.83rem"><code>npt</code> now imported in <code>forwardpde.py</code>; dataclass fields typed; <code>build_spotgrid</code> still annotates <code>config: dict</code> instead of <code>PdeConfig</code></td>
         </tr>
         <tr>
-          <td>Documentation</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">New classes have clear, informative docstrings explaining the design intent. TODO block in <code>localvol_factory.py</code> is informal brainstorming, not documentation.</td>
+          <td>Documentation</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good docstrings in major classes; payoff classes, <code>tssvi1</code>, and <code>shift_forward</code> remain sparse</td>
         </tr>
       </tbody>
     </table>
@@ -274,186 +271,192 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
-  <div class="issue high">
+  <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>write_example()</code> filename format doesn't match <code>load_lv_from_folder()</code> — round-trip permanently broken</span>
-      <span class="badge high">High · Persists from #25</span>
+      <span class="issue-title"><code>shift_forward</code> returns <code>None</code> when a shift is applied — silently corrupts every subsequent PDE step</span>
+      <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol_factory.py · line 162 vs line 82</span>
+    <span class="loc">sdevpy/pde/forwardpde.py · lines 101–116</span>
     <p>
-      <strong>Why it's bad:</strong> <code>write_example()</code> at line 162 writes files named
-      <code>"localvol_" + date.strftime("%Y%m%d-%H.%M.%S") + ".json"</code> — with the
-      <code>localvol_</code> prefix and dots between hours, minutes, and seconds.
-      <code>load_lv_from_folder()</code> at line 82 constructs the expected path as
-      <code>store_date.strftime(dates.DATE_FILE_FORMAT) + ".json"</code> where
-      <code>DATE_FILE_FORMAT = '%Y%m%d-%H%M%S'</code> — no prefix, no dots.
-      Files written by <code>write_example()</code> will never be found by the loader.
+      <strong>Why it's bad:</strong> The <code>if</code> branch (when the forward is off by more than
+      <code>tol</code>) computes <code>p_shifted</code> correctly but never returns it —
+      only the <code>else</code> branch has a <code>return p</code>. When a shift is actually
+      needed, the function falls through and implicitly returns <code>None</code>.
+      In <code>density_step</code>, <code>p = shift_forward(old_x, p)</code> then assigns
+      <code>None</code> to <code>p</code>, after which <code>mass = np.trapezoid(p, x)</code>
+      raises <code>TypeError</code>. The bug is currently latent because
+      <code>PdeConfig.shift_forward</code> defaults to <code>False</code>, but it will fire the
+      moment the feature is turned on.
     </p>
-    <p><strong>Fix:</strong> Align the write path with the load path:</p>
-    <pre><span class="rm">file = os.path.join(file, "localvol_" + date.strftime("%Y%m%d-%H.%M.%S") + ".json")</span>
-<span class="ok">file = os.path.join(file, date.strftime(dates.DATE_FILE_FORMAT) + ".json")</span></pre>
+    <pre><span class="kw">if</span> np.abs(pde_forward_m - target_forward_m) > tol:
+    ...
+    p_shifted = np.maximum(p_shifted, <span class="st">0.0</span>)
+    pde_forward_m = np.trapezoid(ex * p_shifted, x)
+    print(...)
+    <span class="rm"># ← missing return p_shifted</span>
+<span class="kw">else</span>:
+    <span class="kw">return</span> p  <span class="c"># only this branch returns a value</span></pre>
+    <p><strong>Fix:</strong> Add the missing return at the end of the <code>if</code> block:</p>
+    <pre>    pde_forward_m = np.trapezoid(ex * p_shifted, x)
+    print(...)
+<span class="ok">    return p_shifted</span>
+<span class="kw">else</span>:
+    <span class="kw">return</span> p</pre>
   </div>
 
   <!-- 2 -->
-  <div class="issue high">
+  <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>dt.datime</code> typo in <code>calib_lv_black()</code> signature</span>
-      <span class="badge high">High · New</span>
+      <span class="issue-title"><code>check_degrees_of_freedom</code> boolean attribute shadows the method of the same name — <code>TypeError</code> on every calibration call</span>
+      <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/black_calib.py · line 12</span>
+    <span class="loc">sdevpy/models/surfaces/zerosurface.py · lines 24, 218–219, 224</span>
     <p>
-      <strong>Why it's bad:</strong> The signature reads
-      <code>dates: list[dt.datime]</code> instead of <code>list[dt.datetime]</code>.
-      Python doesn't evaluate annotations at runtime by default so there is no immediate crash,
-      but any tool that resolves type hints — a documentation generator, <code>get_type_hints()</code>,
-      a runtime validator — raises
-      <code>AttributeError: module 'datetime' has no attribute 'datime'</code>.
+      <strong>Why it's bad:</strong> <code>__init__</code> sets
+      <code>self.check_degrees_of_freedom = True</code>, an instance attribute that shadows the
+      method <code>def check_degrees_of_freedom(self, options)</code> defined further down.
+      In <code>check_consistency()</code>:
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="rm">def calib_lv_black(surface: ImpliedVol, dates: list[dt.datime], strikes: list[float],</span>
-<span class="ok">def calib_lv_black(surface: ImpliedVol, dates: list[dt.datetime], strikes: list[float],</span></pre>
+    <pre><span class="kw">if</span> self.check_degrees_of_freedom:        <span class="c"># truthy boolean — OK</span>
+    self.check_degrees_of_freedom(c_options) <span class="c"># calls True(...) → TypeError!</span></pre>
+    <p>
+      Python raises <code>TypeError: 'bool' object is not callable</code> on every calibration
+      call where the flag is <code>True</code>. This is the same attribute/method shadowing
+      pattern that previously affected <code>expiry_times</code> and was flagged in the last review.
+    </p>
+    <p><strong>Fix:</strong> Rename the boolean flag:</p>
+    <pre><span class="rm">self.check_degrees_of_freedom = True</span>
+<span class="ok">self.do_check_degrees_of_freedom = True</span>
+
+<span class="rm">if self.check_degrees_of_freedom:</span>
+<span class="rm">    self.check_degrees_of_freedom(c_options)</span>
+<span class="ok">if self.do_check_degrees_of_freedom:</span>
+<span class="ok">    self.check_degrees_of_freedom(c_options)</span></pre>
   </div>
 
   <!-- 3 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>MatrixLocalVol</code> can be serialised but not deserialised via the factory — round-trip broken</span>
-      <span class="badge high">High · New</span>
+      <span class="issue-title">Debug <code>print()</code> calls in <code>shift_forward</code> fire on every PDE step when forward-shifting is enabled</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol.py · lines 218–222 &nbsp;·&nbsp; sdevpy/volatility/localvol/localvol_factory.py · lines 58–68</span>
+    <span class="loc">sdevpy/pde/forwardpde.py · lines 105, 114</span>
     <p>
-      <strong>Why it's bad:</strong> <code>MatrixLocalVol.dump_data()</code> is commented out,
-      so serialisation falls through to <code>TimeInterpolatedLocalVol.dump_data()</code>.
-      That calls <code>section.dump()</code> on each <code>InterpolatedLocalVolSection</code>,
-      producing <code>{'time': ..., 'model': 'cubicspline', 'logm': [...], 'vol': [...]}</code>.
-      But <code>localvol_factory.create_section()</code> dispatches on <code>model.lower()</code>
-      and only knows <code>'biexp'</code>, <code>'cubicvol'</code>, and <code>'vsvi'</code>.
-      <code>'cubicspline'</code> falls through to <code>raise ValueError("Unknown section type")</code>.
-      Any <code>MatrixLocalVol</code> saved to disk cannot be loaded back.
-      The same applies to <code>VectorLocalVol</code> whose sections dump <code>model: 'flat'</code>.
+      <strong>Why it's bad:</strong> Two unconditional <code>print()</code> calls inside
+      <code>shift_forward</code> will flood stdout during calibration or MC pricing the moment
+      <code>config.shift_forward = True</code> is set, producing thousands of lines of output,
+      breaking any output-parsing pipeline, and degrading performance through repeated console
+      flushing.
     </p>
-    <p>
-      <strong>Fix:</strong> Add <code>'cubicspline'</code> and <code>'flat'</code> cases to
-      <code>create_section()</code> that reconstruct <code>InterpolatedLocalVolSection</code>
-      and <code>FlatLocalVolSection</code> respectively — or restore a distinct
-      <code>MatrixLocalVol.dump_data()</code> that uses its own top-level format with a
-      corresponding loader.
-    </p>
+    <pre><span class="rm">print(f"PDE forward moneyness: {pde_forward_m}")</span>
+<span class="rm">print(f"After shift: {pde_forward_m}")</span></pre>
+    <p><strong>Fix:</strong> Remove both lines. If diagnostics are needed, use <code>logging.debug()</code>.</p>
   </div>
 
   <!-- 4 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title">Dead assignment <code>section = None</code> immediately before unconditional <code>raise</code></span>
-      <span class="badge medium">Medium · Persists from #25</span>
+      <span class="issue-title">Debug <code>print()</code> statements left in <code>TsSvi1.formula()</code> and <code>formula_parameters()</code> — flagged in prior review, not fixed</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol_factory.py · lines 66–67</span>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · lines 23–25, 67</span>
     <p>
-      <strong>Why it's bad:</strong> In the <code>case _:</code> branch of <code>create_section()</code>,
-      <code>section = None</code> is assigned and then the function immediately raises
-      <code>ValueError</code>. The assignment is unreachable by any caller — the exception fires
-      before the variable can be observed. It implies the function might return <code>None</code>
-      under some conditions, which is not the case.
+      <strong>Why it's bad:</strong> Four <code>print()</code> calls fire on every option
+      evaluation. For a vol surface queried across a grid of strikes and expiries — or repeatedly
+      during calibration — this floods stdout with thousands of lines, degrades performance, and
+      breaks any pipeline that parses output. This was issue #2 in the previous review.
     </p>
-    <p><strong>Fix:</strong> Delete the dead assignment:</p>
-    <pre>        <span class="kw">case</span> _:
-<span class="rm">            section = None</span>
-            <span class="kw">raise</span> <span class="fn">ValueError</span>(<span class="st">f"Unknown section type: {model}"</span>)</pre>
+    <pre><span class="rm">print(f"time: {t}")</span>
+<span class="rm">print(f"x: {log_m}")</span>
+<span class="rm">print(f"params: {params}")</span>
+<span class="c"># and inside formula_parameters():</span>
+<span class="rm">print(f"shape inside: {svi_params.shape}")</span></pre>
+    <p><strong>Fix:</strong> Remove all four lines.</p>
   </div>
 
   <!-- 5 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title"><code>__main__</code> test script in <code>localvol_factory.py</code> constructs wrong JSON structure</span>
-      <span class="badge medium">Medium · New</span>
+      <span class="issue-title">Flat-vol sigma fixed at <code>TEST_VOL = 0.20</code> — not injectable via constructor</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol_factory.py · lines 206–215</span>
+    <span class="loc">sdevpy/montecarlo/assetmodels.py · lines 5, 25</span>
     <p>
-      <strong>Why it's bad:</strong> <code>lv_data = lv.dump_data()</code> returns
-      <code>{'name': ..., 'valdate': ..., 'snapdate': ..., 'sections': [...]}</code>.
-      The script then wraps the entire dict as the sections value:
-      <code>data = {'valdate': ..., 'snapdate': ..., 'sections': lv_data}</code>.
-      When this JSON is loaded by <code>load_lv_from_data()</code>,
-      <code>data['sections']</code> is the full object dict instead of the section list,
-      so the subsequent <code>for section_config in sections</code> loop iterates over
-      dict keys (<code>'name'</code>, <code>'valdate'</code>, …) and raises a confusing
-      <code>KeyError</code> or <code>TypeError</code> with no clear cause.
+      <strong>Why it's bad:</strong> When <code>use_lv=False</code> (the default), every asset is
+      simulated at exactly 20% flat volatility regardless of market data. The name
+      <code>TEST_VOL</code> signals testing intent, yet no <code>kwargs</code> hook exists to
+      override it. Any production use of the constant-vol path yields wrong prices silently.
     </p>
-    <p><strong>Fix:</strong> Use <code>lv_data</code> directly — it already contains the complete structure:</p>
-    <pre><span class="rm">data = {'valdate': valdate.strftime(dates.DATE_FORMAT),
-        'snapdate': valdate.strftime(dates.DATETIME_FORMAT),
-        'sections': lv_data}</span>
-<span class="ok">data = lv_data  <span class="c"># dump_data() already includes name/valdate/snapdate/sections</span></span></pre>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">self.sigma = np.asarray([TEST_VOL for _ in range(self.n_factors)])</span>
+<span class="ok">sigma = kwargs.get('sigma', [TEST_VOL] * self.n_factors)
+self.sigma = np.asarray(sigma)</span></pre>
   </div>
 
   <!-- 6 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">Excessive commented-out code across all new and refactored localvol files</span>
-      <span class="badge medium">Medium · Ongoing</span>
+      <span class="issue-title">Empty expiry sublists silently appended — downstream <code>x[0]</code> raises <code>IndexError</code></span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">dupire_calib.py · lines 27, 113, 139, 146, 152, 160–161, 169, 172–176 &nbsp;·&nbsp; localvol.py · lines 84, 157–166, 218–222, 262–265, 296–318 &nbsp;·&nbsp; lvsection_calib.py · lines 38, 104, 265, 307–309</span>
+    <span class="loc">sdevpy/models/surfaces/optionsurface.py · lines 162–165</span>
     <p>
-      <strong>Why it's bad:</strong> Commented-out code is noise that obscures intent and
-      accumulates silently. The three large commented-out <code>dump_data()</code> blocks in
-      <code>localvol.py</code> (lines 157–166, 218–222, 262–265) are particularly confusing
-      because they look like the canonical implementation while the live one is the fallback —
-      creating real ambiguity about the serialisation design.
-      Two debug <code>print()</code> calls in <code>dupire_calib.py</code> (lines 27 and 113)
-      have been commented rather than deleted, which is the correct direction but not the
-      final step.
+      <strong>Why it's bad:</strong> When all targets for an expiry fail conversion,
+      <code>convert_to_target_values()</code> logs a warning but still appends an empty list.
+      In <code>ZeroSurface.calibrate()</code>, <code>[x[0].expiry for x in target_options]</code>
+      then raises <code>IndexError</code> on the empty sublist — a confusing traceback that points
+      to the wrong location.
     </p>
-    <p>
-      <strong>Fix:</strong> Delete all commented-out blocks. The old formats for
-      <code>dump_data()</code> are preserved in git history if ever needed. The two
-      commented-out <code>print()</code> calls can simply be removed.
-    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">        conv_options.append(conv_at_exp)</span>
+<span class="ok">        if len(conv_at_exp) > 0:
+            conv_options.append(conv_at_exp)</span></pre>
   </div>
 
   <!-- 7 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title"><code>check_consistency()</code> in <code>TsIvCalibrator</code> is dead code, documented as such</span>
-      <span class="badge medium">Medium · Persists</span>
+      <span class="issue-title"><code>formula()</code> return type hint says <code>float</code> but actually returns <code>ndarray</code></span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · lines 129–143</span>
+    <span class="loc">sdevpy/models/surfaces/tssvi1.py · line 20 &nbsp;·&nbsp; sdevpy/models/surfaces/zerosurface.py · line 261</span>
     <p>
-      <strong>Why it's bad:</strong> The method's own docstring says <em>"this function is not
-      used yet, but will be in a later phase if/when we want to introduce negative rates."</em>
-      It is never called anywhere in the codebase. Dead code with a "not used yet" note
-      signals half-baked intent, drifts out of sync as surrounding types evolve, and misleads
-      readers into thinking negative-rate handling is a live concern in this class.
+      <strong>Why it's bad:</strong> <code>formula()</code> receives <code>k: npt.ArrayLike</code>
+      and returns a NumPy array when <code>k</code> is an array. The declared return type
+      <code>-&gt; float</code> is wrong, misleading IDEs and type checkers into expecting a scalar.
     </p>
-    <p>
-      <strong>Fix:</strong> Delete the method. Capture the design intent in a GitHub issue
-      or a comment at the future call site — not in dead production code.
-    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">def formula(self, t, k, is_call, f, params) -> float:</span>
+<span class="ok">def formula(self, t, k, is_call, f, params) -> npt.NDArray[np.float64]:</span></pre>
   </div>
 
   <!-- 8 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>print()</code> calls in test functions pollute test output</span>
-      <span class="badge medium">Medium · Persists from #25</span>
+      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP classes still exposed in the public API</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/test_dates.py · lines 17, 31</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 66–89</span>
     <p>
-      <strong>Why it's bad:</strong> <code>test_tenor_advance()</code> prints the computed
-      date list and <code>test_make_schedule()</code> prints the schedule before asserting.
-      Test functions should be silent on success. Stdout noise makes genuine diagnostic
-      output harder to spot and breaks CI pipelines that treat unexpected output as a warning.
+      <strong>Why it's bad:</strong> Both classes carry <em>"Warning: work in progress"</em>
+      comments and skip all lifecycle hooks (<code>set_nameindexes</code>,
+      <code>set_valuation_date</code>, <code>set_eventindexes</code>).
+      <code>NotImplementedError</code> is now raised in <code>evaluate()</code> (improvement over
+      last review), but the classes remain importable with no clear indication they are
+      incomplete, and <code>BarrierDown</code> still takes a raw integer index bypassing
+      name-resolution.
     </p>
     <p>
-      <strong>Fix:</strong> Delete both <code>print()</code> calls. The assertions directly
-      below them are the correct way to verify the result.
+      <strong>Fix:</strong> Complete the lifecycle methods or move to a private
+      <code>_wip.py</code> module with a deprecation warning on import.
     </p>
   </div>
 
@@ -461,47 +464,50 @@
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title">Design-question TODO block embedded as a comment at the top of a production module</span>
-      <span class="badge medium">Medium · Persists from #25</span>
+      <span class="issue-title"><code>build_spotgrid</code> annotates <code>config: dict</code> instead of <code>PdeConfig</code></span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol_factory.py · lines 10–18</span>
+    <span class="loc">sdevpy/pde/forwardpde.py · line 66</span>
     <p>
-      <strong>Why it's bad:</strong> The eight-line block starting with
-      <em>"Plug in matrix local vols. But how do we do that?"</em> is informal design
-      brainstorming, not documentation. Parts of it describe work that is now done
-      (matrix LV exists), making the notes stale. Readers cannot tell which questions
-      remain open.
+      <strong>Why it's bad:</strong> Now that <code>PdeConfig</code> is a typed dataclass,
+      annotating the parameter as <code>dict</code> is actively wrong. IDEs will not autocomplete
+      field names (<code>.mesh_vol</code>, <code>.n_meshes</code>, etc.), and type checkers will
+      flag every caller that passes a <code>PdeConfig</code> instance as a type error — the
+      opposite of what the dataclass conversion was meant to achieve.
     </p>
-    <p>
-      <strong>Fix:</strong> Delete the block. Move any genuinely open design questions
-      to a GitHub issue. The code itself answers the structural questions.
-    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">def build_spotgrid(maturity: float, config: dict):</span>
+<span class="ok">def build_spotgrid(maturity: float, config: PdeConfig) -> tuple[npt.NDArray[np.float64], float, int]:</span></pre>
   </div>
 
   <!-- 10 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>black_calib.py</code>: commented-out kwarg it never had, and non-functional <code>__main__</code> placeholder</span>
-      <span class="badge low">Low · New</span>
+      <span class="issue-title">No tests for <code>shift_forward</code>, calibration path, or <code>TsSvi1</code> evaluation</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/black_calib.py · lines 17, 51–52</span>
+    <span class="loc">sdevpy/tests/ · codebase-wide</span>
     <p>
-      <strong>Why it's bad:</strong> Line 17 has
-      <code># verbose = kwargs.get('verbose', False)</code>, but <code>calib_lv_black()</code>
-      takes no <code>**kwargs</code> — the commented code could never have worked as written.
-      The <code>__main__</code> block at lines 51–52 just prints <code>"Hello"</code>: a clear
-      placeholder that was never followed through. Both items add noise without value.
+      <strong>Why it's bad:</strong> Issue #1 (missing <code>return</code> in
+      <code>shift_forward</code>) and issue #2 (<code>check_degrees_of_freedom</code> shadow)
+      would both be caught immediately by basic smoke tests. The pattern is consistent: critical
+      bugs are introduced in untested code and survive until manual end-to-end runs happen to
+      exercise the path. <code>TsSvi1.formula()</code>, <code>convert_option()</code>,
+      <code>convert_target()</code>, and <code>shift_forward</code> all remain entirely
+      unverified.
     </p>
     <p>
-      <strong>Fix:</strong> Delete line 17. Either implement a meaningful
-      <code>__main__</code> example (constructing a surface, calling the calibrator, asserting
-      the output shape) or remove the block entirely.
+      <strong>Fix:</strong> Add at minimum: (1) a <code>test_shift_forward</code> that sets
+      <code>config.shift_forward = True</code> and asserts the returned density is not
+      <code>None</code> and integrates to 1; (2) a <code>ZeroSurface.check_consistency()</code>
+      smoke test to catch the recurring attribute/method shadow bug class; (3) a
+      <code>TsSvi1</code> forward-evaluation test checking output shape and positivity.
     </p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-05-07 (26th review)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review &nbsp;·&nbsp; 2026-05-09 (7th review)
   </footer>
 </div>
 </body>

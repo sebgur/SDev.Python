@@ -1,20 +1,16 @@
-from pathlib import Path
-import logging
 import numpy as np
-import numpy.typing as npt
 import datetime as dt
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol
 from sdevpy.volatility.localvol.localvol import VectorLocalVol, ConstantLocalVol
 from sdevpy.utilities import timegrids
-log = logging.getLogger(Path(__file__).stem)
 
 
 def calib_lv_black(surface: ImpliedVol, dates: list[dt.datetime], strikes: list[float],
                    fwds: list[float]) -> dict:
-    """ Calibrate VectorLocalVol or ConstantLocalVol by Black closed-form.
+    """ Calibrate VectorLocalVol or ConstantLocalVol by Black closed-form, from given IV surface.
         Pick maturities and strikes to calibrated to. """
-    # Arguments
-    # verbose = kwargs.get('verbose', False)
+    strikes = np.asarray(strikes)
+    fwds = np.asarray(fwds)
 
     # Check sizes
     n_times = len(dates)
@@ -24,10 +20,25 @@ def calib_lv_black(surface: ImpliedVol, dates: list[dt.datetime], strikes: list[
     if len(fwds) != n_times:
         raise ValueError("Inconsistent sizes between expiries and forwards")
 
-    # Calibrate
+    # Calculate target vols
     valdate = surface.base_date
     times = timegrids.model_time(valdate, dates)
     ivols = surface.black_volatility(times, strikes, fwds)
+
+    # Calibrate
+    result = calib_black_from_vols(times, ivols)
+    return result
+
+
+def calib_black_from_vols(expiries: list[float], ivols: list[float]) -> dict:
+    """ Calibrate VectorLocalVol or ConstantLocalVol by Black closed-form, from given expiry times
+        and implied vols """
+    # Check sizes
+    n_times = len(expiries)
+    if len(ivols) != n_times:
+        raise ValueError("Inconsistent sizes between expiries and implied vols")
+
+    # Calibrate
     lv = None
     if n_times < 1:
         raise ValueError("No option dates specified")
@@ -35,15 +46,15 @@ def calib_lv_black(surface: ImpliedVol, dates: list[dt.datetime], strikes: list[
         lv = ConstantLocalVol(ivols[0])
     else:
         lvols = []
-        for i in range(len(times)):
+        for i in range(len(expiries)):
             if i == 0:
                 lvols.append(ivols[0])
             else:
-                ts, vols = times[i - 1], ivols[i - 1]
-                te, vole = times[i], ivols[i]
+                ts, vols = expiries[i - 1], ivols[i - 1]
+                te, vole = expiries[i], ivols[i]
                 lvols.append(np.sqrt((vole**2 * te - vols**2 * ts) / (te - ts)))
 
-        lv = VectorLocalVol(times, lvols)
+        lv = VectorLocalVol(expiries, lvols)
 
     return {'lv': lv}
 
