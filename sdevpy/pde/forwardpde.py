@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 import time
@@ -7,22 +6,8 @@ import matplotlib.pyplot as plt
 from sdevpy.analytics import black
 from sdevpy.maths import metrics
 from sdevpy.pde import pdeschemes
+from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.utilities import timegrids
-
-
-@dataclass
-class PdeConfig:
-    n_timesteps: int = 25
-    n_meshes: int = 100
-    mesh_vol: float = 0.20
-    percentile: float = 1e-6
-    mollifier: float = 1.5
-    scheme: str = 'Implicit'
-    theta: float = 0.5
-    rannacher_time: float = 7.0 / 365.0
-    rescale_x: bool = True
-    rescale_p: bool = True
-    shift_forward: bool = True
 
 
 def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64], old_dx: float,

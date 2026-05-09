@@ -4,7 +4,7 @@ from sdevpy.pde.forwardpde import PdeConfig, density, calculate_densities
 from sdevpy.analytics import black
 
 
-def check_forward_pde(rescale_x: bool):
+def check_forward_pde(rescale_x: bool, scheme: str='rannacher'):
     spot, r, q, atm_vol = 100.0, 0.04, 0.01, 0.20
     maturities = np.array([0.1, 0.5, 1.0, 2.5, 5.0, 10.0])
 
@@ -13,7 +13,7 @@ def check_forward_pde(rescale_x: bool):
         return np.asarray([atm_vol for x in x_grid])
 
     # PDE config
-    pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher',
+    pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme=scheme,
                            rescale_x=rescale_x, rescale_p=True)
 
     # Run PDE
@@ -87,6 +87,51 @@ def test_forward_pde_no_rescale_x():
     assert pde_ok and cf_ok
 
 
+def test_forward_pde_implicit():
+    reports = check_forward_pde(rescale_x=True, scheme='implicit')
+    pde_sums = [r['pde_prices'].sum() for r in reports]
+    print(np.asarray(pde_sums))
+
+    pde_ref = np.asarray([2.70813352, 10.60375539, 21.44415924, 60.13071881, 132.23445455, 278.74946682])
+    assert np.allclose(np.asarray(pde_sums), pde_ref, 1e-10)
+
+
+def test_forward_pde_explicit():
+    spot, r, q, atm_vol, maturity = 100.0, 0.04, 0.01, 0.20, 1.5
+
+    def my_lv(t, x_grid):
+        """ As a function of log forward moneyness """
+        return np.asarray([atm_vol for x in x_grid])
+
+    # PDE config
+    pde_config = PdeConfig(n_timesteps=100, n_meshes=25, mesh_vol=atm_vol, scheme='explicit',
+                           rescale_x=True, rescale_p=True)
+
+    # Run PDE
+    x, dx, p = density(maturity, my_lv, pde_config)
+
+    # Check option prices
+    strikes = np.linspace(0.50 * spot, 2.0 * spot, 16)
+    fwd = spot * np.exp((r - q) * maturity)
+    it_prices = np.maximum(fwd - strikes, 0.0) # Intrinsic values
+
+    s = fwd * np.exp(x)
+    pde_prices = []
+    for k in strikes:
+        payoff = np.maximum(s - k, 0.0)
+        weighted_payoff = payoff * p
+        pde_prices.append(np.trapezoid(weighted_payoff, x))
+
+    pde_prices = pde_prices - it_prices
+
+    # Gather values
+    pde_sum = pde_prices.sum()
+    # print(pde_sum)
+
+    pde_ref = 33.51835236599183
+    assert isequal(pde_sum, pde_ref, 1e-10)
+
+
 def test_forward_pde_simple():
     spot, r, q, atm_vol, maturity = 100.0, 0.04, 0.01, 0.20, 1.5
 
@@ -133,5 +178,4 @@ def test_forward_pde_simple():
 
 
 if __name__ == "__main__":
-    test_forward_pde()
-    test_forward_pde_no_rescale_x()
+    test_forward_pde_explicit()

@@ -1,26 +1,23 @@
+from dataclasses import dataclass
 import numpy as np
+import numpy.typing as npt
 from abc import ABC, abstractmethod
 from sdevpy.maths import tridiag
 
 
-def scheme(config, ts):
-    scheme_type = config.scheme.upper()
-    if scheme_type == 'IMPLICIT':
-        return ImplicitScheme()
-    elif scheme_type == 'CN':
-        return ThetaScheme(0.5)
-    elif scheme_type == 'THETA':
-        return ThetaScheme(config.theta)
-    elif scheme_type == 'EXPLICIT':
-        return ExplicitScheme()
-    elif scheme_type == 'RANNACHER':
-        eps = 1e-8
-        if ts - eps <= config.rannacher_time:
-            return ImplicitScheme()
-        else:
-            return ThetaScheme(0.5)
-    else:
-        raise TypeError(f"Unknown PDE scheme type: {scheme_type}")
+@dataclass
+class PdeConfig:
+    n_timesteps: int = 25
+    n_meshes: int = 100
+    mesh_vol: float = 0.20
+    percentile: float = 1e-6
+    mollifier: float = 1.5
+    scheme: str = 'Implicit'
+    theta: float = 0.5
+    rannacher_time: float = 7.0 / 365.0
+    rescale_x: bool = True
+    rescale_p: bool = True
+    shift_forward: bool = True
 
 
 class PdeScheme(ABC):
@@ -28,7 +25,8 @@ class PdeScheme(ABC):
         self.local_vol = None
 
     @abstractmethod
-    def roll_forward(self, p, x, ts, te, dx):
+    def roll_forward(self, p: npt.ArrayLike, x: npt.ArrayLike, ts: float, te: float,
+                     dx: float) -> npt.NDArray[np.float64]: # pragma: no cover
         pass
 
 
@@ -42,7 +40,8 @@ class ThetaScheme(PdeScheme):
         self.theta = theta
         self.one_m_theta = 1.0 - theta
 
-    def roll_forward(self, p, x, ts, te, dx):
+    def roll_forward(self, p: npt.ArrayLike, x: npt.ArrayLike, ts: float, te: float,
+                     dx: float) -> npt.NDArray[np.float64]:
         n_x = x.shape[0]
         dt = te - ts
         a = 1.0 / dx**2 + 0.5 / dx
@@ -88,7 +87,8 @@ class ImplicitScheme(PdeScheme):
     def __init__(self):
         super().__init__()
 
-    def roll_forward(self, p, x, ts, te, dx):
+    def roll_forward(self, p: npt.ArrayLike, x: npt.ArrayLike, ts: float, te: float,
+                     dx: float) -> npt.NDArray[np.float64]:
         n_x = x.shape[0]
         dt = te - ts
         a = dt / 2.0 * (1.0 / dx**2 + 0.5 / dx)
@@ -117,7 +117,8 @@ class ExplicitScheme(PdeScheme):
     def __init__(self):
         super().__init__()
 
-    def roll_forward(self, p, x, ts, te, dx):
+    def roll_forward(self, p: npt.ArrayLike, x: npt.ArrayLike, ts: float, te: float,
+                     dx: float) -> npt.NDArray[np.float64]: # pragma: no cover
         n_x = x.shape[0]
         dt = te - ts
         a = dt / 2.0 * (1.0 / dx**2 + 0.5 / dx)
@@ -138,3 +139,23 @@ class ExplicitScheme(PdeScheme):
             y[j] = p_tmp
 
         return y
+
+
+def scheme(config: PdeConfig, ts: float) -> PdeScheme:
+    scheme_type = config.scheme.upper()
+    if scheme_type == 'IMPLICIT':
+        return ImplicitScheme()
+    elif scheme_type == 'CN': # pragma: no cover
+        return ThetaScheme(0.5)
+    elif scheme_type == 'THETA': # pragma: no cover
+        return ThetaScheme(config.theta)
+    elif scheme_type == 'EXPLICIT':
+        return ExplicitScheme()
+    elif scheme_type == 'RANNACHER':
+        eps = 1e-8
+        if ts - eps <= config.rannacher_time:
+            return ImplicitScheme()
+        else:
+            return ThetaScheme(0.5)
+    else:
+        raise TypeError(f"Unknown PDE scheme type: {scheme_type}") # pragma: no cover
