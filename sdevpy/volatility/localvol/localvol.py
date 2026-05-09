@@ -215,7 +215,7 @@ class FlatLocalVolSection(LocalVolSection):
 
     def value(self, logm: npt.ArrayLike) -> npt.ArrayLike:
         """ Return flat vol """
-        return self.vol
+        return np.full_like(logm, self.vol)
 
     def dump(self) -> dict:
         """ Dump to dictionary """

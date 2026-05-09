@@ -18,7 +18,7 @@ n_dev = 4 # Distribution display range in number of stdevs
 n_rows, n_cols = 3, 2 # n_rows * n_cols must match number of maturities
 valdate = dt.datetime(2025, 12, 15)
 expiries = [dt.datetime(2026, 1, 15), dt.datetime(2026, 5, 15), dt.datetime(2026, 12, 15),
-            dt.datetime(2027, 5, 15), dt.datetime(2030, 12, 15), dt.datetime(2035, 12, 15)]
+            dt.datetime(2027, 5, 15), dt.datetime(2027, 12, 15), dt.datetime(2030, 12, 15)]
 
 # Define IV surface and calibrate Black LV
 print("Define IV surface")
@@ -26,17 +26,26 @@ iv_surface = test_localvol.make_tssvi1()
 maturities = timegrids.model_time(valdate, expiries)
 calib_fwds = spot * np.exp((r - q) * maturities)
 calib_strikes = calib_fwds
-lv_calib =  calib_lv_black(iv_surface, valdate, expiries, calib_strikes, calib_fwds)
+lv_calib = calib_lv_black(iv_surface, valdate, expiries, calib_strikes, calib_fwds)
 lv = lv_calib['lv']
+calib_vols = lv_calib['calib_vols']
+print(f"Calib target vols: {calib_vols}")
+
+# logm = np.asarray([-0.5, 0.0, 0.5])
+# lv_mat = lv.value(0.6, logm)
+# print(f"CheckXXXXXXXXXX: {lv_mat}")
 
 # Local Vol
 def my_lv(t, x_grid):
     """ As a function of log forward moneyness """
     return np.asarray([atm_vol for x in x_grid])
 
+mesh_vol = calib_vols[0]# * 2
+# mesh_vol = atm_vol# * 2
+
 # PDE config
 print("Define PDE config")
-pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher',
+pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=mesh_vol, scheme='rannacher',
                         rescale_x=True, rescale_p=True)
 print(f"Time steps: {pde_config.n_timesteps}")
 print(f"Spot steps: {pde_config.n_meshes}")
@@ -44,15 +53,17 @@ print(f"Spot steps: {pde_config.n_meshes}")
 start_timer = time.time()
 
 # Run PDE to calculate densities at each maturity
-density_reports = calculate_densities(maturities, my_lv, pde_config)
+density_reports = calculate_densities(maturities, lv.value, pde_config)
+# density_reports = calculate_densities(maturities, my_lv, pde_config)
 
 # Calculate PDE option prices and compare against closed-form
 reports = []
-for density_report in density_reports:
+for r_idx, density_report in enumerate(density_reports):
     maturity = density_report['end_time']
     x = density_report['x_grid']
     p = density_report['p_grid']
-    cf_vol = atm_vol # ToDo: change for Black LV
+    # cf_vol = atm_vol
+    cf_vol = calib_vols[r_idx]
 
     ## Check density ##
     stdev = cf_vol * np.sqrt(maturity)
@@ -75,7 +86,7 @@ for density_report in density_reports:
     ## Check prices ##
     fwd = spot * np.exp((r - q) * maturity)
     strikes = np.linspace(0.50 * fwd, 2.0 * fwd, 16)
-    cf_prices = black.price_straddles(maturity, strikes, fwd, atm_vol)
+    cf_prices = black.price_straddles(maturity, strikes, fwd, cf_vol)
 
     # Calculate PDE prices
     s = fwd * np.exp(x)

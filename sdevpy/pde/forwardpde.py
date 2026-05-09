@@ -55,7 +55,7 @@ def density(maturity: float, local_vol, config: PdeConfig):
     return x, dx, p
 
 
-def build_spotgrid(maturity: float, config: dict):
+def build_spotgrid(maturity: float, config: PdeConfig):
     """ Built spot grid for PDEs """
     mesh_percentile = config.percentile
     mesh_vol = config.mesh_vol

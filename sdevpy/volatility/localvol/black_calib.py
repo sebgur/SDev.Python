@@ -26,6 +26,7 @@ def calib_lv_black(surface: ImpliedVol, valdate: dt.datetime, dates: list[dt.dat
 
     # Calibrate
     result = calib_black_from_vols(times, ivols)
+    result['calib_vols'] = ivols
     return result
 
 
