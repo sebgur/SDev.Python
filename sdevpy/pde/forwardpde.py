@@ -1,4 +1,6 @@
+from dataclasses import dataclass
 import numpy as np
+import numpy.typing as npt
 import time
 from scipy.stats import norm
 import matplotlib.pyplot as plt
@@ -8,10 +10,28 @@ from sdevpy.pde import pdeschemes
 from sdevpy.utilities import timegrids
 
 
-def density_step(old_p, old_x, old_dx, t_grid, local_vol, config):
+@dataclass
+class PdeConfig:
+    n_timesteps: int = 25
+    n_meshes: int = 100
+    mesh_vol: float = 0.20
+    percentile: float = 1e-6
+    mollifier: float = 1.5
+    scheme: str = 'Implicit'
+    theta: float = 0.5
+    rannacher_time: float = 7.0 / 365.0
+    rescale_x: bool = True
+    rescale_p: bool = True
+    shift_forward: bool = False
+
+
+def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64], old_dx: float,
+                 t_grid: npt.NDArray[np.float64], local_vol, config: PdeConfig):
     """ Forward PDE evolution along t_grid, with optional rescaling of meshes at
-        beginning of the step and optional rescaling of density at end of the step """
-    # Rescale inputs
+        beginning of the step, optional shifting of the density along its x-axis
+        to mach the forward, and optional rescaling of density to integrated to 1
+        at end of the step """
+    # Rescale spot grid
     if config.rescale_x:
         x, dx, spot_idx = build_spotgrid(t_grid[-1], config)
         p = np.interp(x, old_x, old_p, left=0.0, right=0.0)
@@ -22,16 +42,20 @@ def density_step(old_p, old_x, old_dx, t_grid, local_vol, config):
     for i in range(t_grid.shape[0] - 1):
         p = roll_forward(p, x, dx, t_grid[i], t_grid[i + 1], local_vol, config)
 
+    # Shift to match forward
+    if config.shift_forward:
+        p = shift_forward(old_x, p)
+
     # Rescale density
     if config.rescale_p: # Rescale mass to 1.0 at te
         mass = np.trapezoid(p, x)
-        p /= mass
         # print(f"Mass: {mass:.6f}")
+        p /= mass
 
     return x, dx, p
 
 
-def density(maturity, local_vol, config):
+def density(maturity: float, local_vol, config: PdeConfig):
     """ Simple forward PDE for density, without step rescaling of meshes until maturity """
     # Build time grid
     t_grid = timegrids.build_timegrid(0.0, maturity, config)
@@ -56,7 +80,8 @@ def density(maturity, local_vol, config):
     return x, dx, p
 
 
-def build_spotgrid(maturity, config):
+def build_spotgrid(maturity: float, config: dict):
+    """ Built spot grid for PDEs """
     mesh_percentile = config.percentile
     mesh_vol = config.mesh_vol
     n_meshes = config.n_meshes
@@ -90,57 +115,32 @@ def roll_forward(p, x, dx, ts, te, local_vol, pde_config):
     return p_new
 
 
-def shift_to_match_forward(s0, x, p, target_forward):
-    """ Shift the density to match the forward. We are not using this for now.
-        This code was written by Claude and has not been tested. """
+def shift_forward(x: npt.NDArray[np.float64], p: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """ Shift the density to match the forward. We are not using this for now. """
     ex = np.exp(x)
-    cur_forward = np.trapezoid(ex * p, x)
-    if cur_forward <= 0:
-        p = np.maximum(p, 0)
-        p = p / np.trapezoid(p, x)
+    pde_forward_m = np.trapezoid(ex * p, x) # If perfect, would be 1.0
+    print(f"PDE forward moneyness: {pde_forward_m}")
+    tol = 1e-6
+    target_forward_m = 1.0
+    if np.abs(pde_forward_m - target_forward_m) > tol: # Only shift if beyond tolerance
+        shift = np.log(target_forward_m / pde_forward_m)
+        x_shifted = x + shift
+        p_shifted = np.interp(x, x_shifted, p, left=0.0, right=0.0)
+        p_shifted = np.maximum(p_shifted, 0.0)
+        pde_forward_m = np.trapezoid(ex * p_shifted, x) # If perfect, would be 1.0
+        print(f"After shift: {pde_forward_m}")
+    else:
         return p
-    alpha = np.log(target_forward / cur_forward)
-    x_shifted = x - alpha
-    p_shifted = np.interp(x, x_shifted, p, left=0.0, right=0.0)
-    p_shifted = np.maximum(p_shifted, 0.0)
-    mass = np.trapezoid(p_shifted, x)
-    if mass <= 0:
-        p_shifted = np.exp(-0.5 * ((x - np.log(s0)) / (0.1))**2)
-        mass = np.trapezoid(p_shifted, x)
-    p_shifted /= mass
-    return p_shifted
-
-
-class PdeConfig:
-    """ ToDo: should we make this a dataclass? Recommended by Claude. """
-    def __init__(self, **kwargs):
-        self.n_timesteps = kwargs.get('n_timesteps', 25)
-        self.n_meshes = kwargs.get('n_meshes', 100)
-        self.mesh_vol = kwargs.get('mesh_vol', 0.20)
-        self.percentile = kwargs.get('percentile', 1e-6)
-        self.mollifier = kwargs.get('mollifier', 1.5)
-        self.scheme = kwargs.get('scheme', 'Implicit')
-        self.theta = kwargs.get('theta', 0.5)
-        self.rannacher_time = kwargs.get('rannacher_time', 7.0 / 365.0)
-        self.rescale_x = kwargs.get('rescale_x', True)
-        self.rescale_p = kwargs.get('rescale_p', True)
 
 
 if __name__ == "__main__":
-    spot = 100.0
-    r = 0.04
-    q = 0.01
-    atm_vol = 0.20
+    spot, r, q, atm_vol = 100.0, 0.04, 0.01, 0.20
     maturities = np.array([0.1, 0.5, 1.0, 2.5, 5.0, 10.0])
-    n_rows = 3
-    n_cols = 2 # n_rows * n_cols must match number of maturities
+    n_rows, n_cols = 3, 2 # n_rows * n_cols must match number of maturities
 
     def my_lv(t, x_grid):
         """ As a function of log forward moneyness """
-        # vol_atm = 0.20
-        # skew = -0.1
         return np.asarray([atm_vol for x in x_grid])
-        # return np.asarray([np.maximum(0.01, atm_vol + skew * x) for x in x_grid])
 
     #### Diagnostics #################################################################
     pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher',

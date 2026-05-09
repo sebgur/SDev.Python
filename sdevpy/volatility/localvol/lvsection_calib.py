@@ -14,10 +14,7 @@ from sdevpy.market.eqforward import get_forward_curves
 
 
 ########## ToDo ########################################################################
-# * Implement MC and check calibration against it.
-# * Test with calibrated XYZ in CubicVol if we can do better manually
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
-# * Use actual data from SPX
 # * Calibration weights based on percentiles, with possible removal of options
 
 
