@@ -365,7 +365,6 @@ def test_lv_calib_black():
     lv = lv_result['lv']
 
     # Calibrate by hand
-    print("calib by hand")
     times = timegrids.model_time(valdate, dates)
     calib_times, calib_lvols = [], []
     for i in range(len(dates)):
@@ -381,53 +380,35 @@ def test_lv_calib_black():
             fs = fwds[i - 1]
             ivols = iv_surface.black_volatility(ts, ks, fs)
 
-        calib_times.append(te)
+        calib_times.append(ts)
         fwd_vol2 = (ivole**2 * te - ivols**2 * ts) / (te - ts)
         calib_lvols.append(np.sqrt(np.maximum(fwd_vol2, 0.0)))
 
-    # Create sampling grid
-    print(lv.t_grid)
-    print(lv.vol_grid)
+    # # Create sampling grid
+    # print(lv.t_grid)
+    # print(lv.vol_grid)
 
-    sample_t = [0.0]
-    sample_t.append(calib_times[0] / 2.0)
-    sample_t.append(calib_times[0])
-    sample_t.append((calib_times[1] + calib_times[0]) / 2.0)
-    sample_t.append(calib_times[1])
-    sample_t.append((calib_times[2] + calib_times[1]) / 2.0)
-    sample_t.append(calib_times[2])
-    sample_t.append(calib_times[2] + 1.0)
+    # sample_t = [0.0]
+    # sample_t.append(calib_times[0] / 2.0)
+    # sample_t.append(calib_times[0])
+    # sample_t.append((calib_times[1] + calib_times[0]) / 2.0)
+    # sample_t.append(calib_times[1])
+    # sample_t.append((calib_times[2] + calib_times[1]) / 2.0)
+    # sample_t.append(calib_times[2])
+    # sample_t.append(calib_times[2] + 1.0)
 
-    for t in sample_t:
-        print(f"{t}: {lv.value(t, [0.0])}")
+    # for t in sample_t:
+    #     print(f"{t}: {lv.value(t, [0.0])}")
 
     assert np.allclose(lv.t_grid, calib_times, 1e-10)
     assert np.allclose(lv.vol_grid, calib_lvols, 1e-10)
 
 
 if __name__ == "__main__":
-    test_lv_by_section_values()
-    # test_lv_calib_black()
+    # test_lv_by_section_values()
+    test_lv_calib_black()
     # test_lv_bymatrix_dump()
-
     # test_lv_bymatrix_section_consistent_with_value()
     # test_calib_dupire()
     # test_dupire_impliedvol()
     # test_dupire_pdf()
-
-    # t_grid = [0.1, 0.2, 1.0, 2.0]
-    # logm_grid = [-0.5, 0.0, 0.5]
-    # # print(f"T_GRID: {t_grid}")
-    # # print(f"LOGM_GRID: {logm_grid}")
-    # t, lm = np.meshgrid(t_grid, logm_grid, indexing='ij')
-    # # print(t)
-    # # print(lm)
-    # # vol_matrix = 0.20 + 0.02 * t - 0.05 * lm
-    # vol_matrix = 0.20 - 0.1 * lm
-
-    # lv2 = MatrixLocalVol(t_grid, lm, vol_matrix, interpolation='linear')
-    # t_test = [0.0, 0.05, 0.1, 0.15, 0.20, 0.5, 1.0, 1.5, 2.0, 3.0]
-    # for t_ in t_test:
-    #     print(f"t: {t_}")
-    #     lv2_ = lv2.value(t_, [-0.5, -0.25, 0.0, 0.25, 0.5])
-    #     print(f"lv2: {lv2_}")

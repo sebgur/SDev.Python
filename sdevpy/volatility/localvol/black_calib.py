@@ -54,7 +54,10 @@ def calib_black_from_vols(expiries: list[float], ivols: list[float]) -> dict:
                 te, vole = expiries[i], ivols[i]
                 lvols.append(np.sqrt((vole**2 * te - vols**2 * ts) / (te - ts)))
 
-        lv = VectorLocalVol(expiries, lvols)
+        lv_expiries = [0]
+        lv_expiries.extend(expiries[:-1])
+        lv = VectorLocalVol(lv_expiries, lvols) # For lower_bound
+        # lv = VectorLocalVol(expiries, lvols) # For old upper_bound
 
     return {'lv': lv}
 
