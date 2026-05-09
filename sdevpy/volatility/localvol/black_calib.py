@@ -15,10 +15,10 @@ def calib_lv_black(surface: ImpliedVol, dates: list[dt.datetime], strikes: list[
     # Check sizes
     n_times = len(dates)
     if len(strikes) != n_times:
-        raise ValueError("Inconsistent sizes between expiries and strikes")
+        raise ValueError("Inconsistent sizes between expiries and strikes") # pragma: no cover
 
     if len(fwds) != n_times:
-        raise ValueError("Inconsistent sizes between expiries and forwards")
+        raise ValueError("Inconsistent sizes between expiries and forwards") # pragma: no cover
 
     # Calculate target vols
     valdate = surface.base_date
@@ -36,12 +36,12 @@ def calib_black_from_vols(expiries: list[float], ivols: list[float]) -> dict:
     # Check sizes
     n_times = len(expiries)
     if len(ivols) != n_times:
-        raise ValueError("Inconsistent sizes between expiries and implied vols")
+        raise ValueError("Inconsistent sizes between expiries and implied vols") # pragma: no cover
 
     # Calibrate
     lv = None
     if n_times < 1:
-        raise ValueError("No option dates specified")
+        raise ValueError("No option dates specified") # pragma: no cover
     elif n_times == 1:
         lv = ConstantLocalVol(ivols[0])
     else:

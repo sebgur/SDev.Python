@@ -21,7 +21,11 @@ def unique_sorted(arr: npt.ArrayLike, atol: float=1e-11) -> npt.ArrayLike:
 
 
 def upper_bound(arr_sorted: npt.ArrayLike, value: float, atol: float=1e-11, clamp: bool=False) -> int:
-    """ Upper bound index """
+    """ Upper bound index (with absolute tolerance):
+        - when exactly on pillar: return that pillar's index
+        - when between two pillars: return the upper pillar's index
+        - before the first pillar: no ambiguity, return 0 (first pillar's index)
+        - after the last pillar: return len(arr_sorted) for clamp=False, len(arr_sorted)-1 otherwise """
     idx = np.searchsorted(arr_sorted, value)
 
     # Check closeness with the previous pillar. If within tolerance, answer that pillar instead.
@@ -36,7 +40,11 @@ def upper_bound(arr_sorted: npt.ArrayLike, value: float, atol: float=1e-11, clam
 
 
 def lower_bound(arr_sorted: npt.ArrayLike, value: float, atol: float = 1e-11, clamp: bool=False) -> int:
-    """ Lower bound index: index of the largest element <= value (with float tolerance) """
+    """ Lower bound index (with absolute tolerance):
+        - when exactly on pillar: return that pillar's index
+        - when between two pillars: return the lower pillar's index
+        - before the first pillar: return -1 for clamp=False, 0 for clamp=True (first pillar's index)
+        - after the last pillar: no ambiguity, return len(arr_sorted)-1 """
     idx = np.searchsorted(arr_sorted, value, side='right') - 1
 
     # Check closeness with the next pillar. If within tolerance, answer that pillar instead.

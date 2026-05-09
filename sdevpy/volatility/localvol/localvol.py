@@ -80,12 +80,8 @@ class TimeInterpolatedLocalVol(LocalVol):
     def section(self, t: float) -> LocalVolSection:
         """ The section is obtained by locating the requested time t on the time axis and
             picking the section at the pillar index above (upper_bound) """
-        t_idx = algos.upper_bound(self.t_grid, t, clamp=True)
-        # t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
-
-        # Old version with upper_bound and manual clamping
-        # t_idx = algos.upper_bound(self.t_grid, t)
-        # t_idx = min(t_idx, len(self.sections) - 1) # Flat extrapolation beyond last pillar
+        t_idx = algos.lower_bound(self.t_grid, t, clamp=True)
+        # t_idx = algos.upper_bound(self.t_grid, t, clamp=True) # Old version with upper_bound
 
         # print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
         return self.section_at_index(t_idx)

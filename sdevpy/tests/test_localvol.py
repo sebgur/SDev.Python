@@ -311,8 +311,15 @@ def test_lv_by_section_values():
 
     logm = [-0.5, 0.0, 0.5]
     test = lv.value(0.75, logm)
-    ref = np.asarray([0.45455367, 0.38729833, 0.45455367])
-    # ref = np.asarray([0.52487337, 0.4472136, 0.52487337])
+    # section1 = lv.section_at_index(0)
+    # section2 = lv.section_at_index(1)
+    # test1 = section1.value(logm)
+    # test2 = section2.value(logm)
+    # print(test)
+    # print(test1)
+    # print(test2)
+    ref = np.asarray([0.43324738, 0.34641016, 0.43324738])
+    # ref = np.asarray([0.45455367, 0.38729833, 0.45455367]) # For old upper_bound case
     assert np.allclose(test, ref, 1e-10)
 
 
@@ -378,28 +385,29 @@ def test_lv_calib_black():
         fwd_vol2 = (ivole**2 * te - ivols**2 * ts) / (te - ts)
         calib_lvols.append(np.sqrt(np.maximum(fwd_vol2, 0.0)))
 
-    # # Create sampling grid
-    # print(lv.t_grid)
-    # print(lv.vol_grid)
+    # Create sampling grid
+    print(lv.t_grid)
+    print(lv.vol_grid)
 
-    # sample_t = [0.0]
-    # sample_t.append(calib_times[0] / 2.0)
-    # sample_t.append(calib_times[0])
-    # sample_t.append((calib_times[1] + calib_times[0]) / 2.0)
-    # sample_t.append(calib_times[1])
-    # sample_t.append((calib_times[2] + calib_times[1]) / 2.0)
-    # sample_t.append(calib_times[2])
-    # sample_t.append(calib_times[2] + 1.0)
+    sample_t = [0.0]
+    sample_t.append(calib_times[0] / 2.0)
+    sample_t.append(calib_times[0])
+    sample_t.append((calib_times[1] + calib_times[0]) / 2.0)
+    sample_t.append(calib_times[1])
+    sample_t.append((calib_times[2] + calib_times[1]) / 2.0)
+    sample_t.append(calib_times[2])
+    sample_t.append(calib_times[2] + 1.0)
 
-    # for t in sample_t:
-    #     print(f"{t}: {lv.value(t, [0.0])}")
+    for t in sample_t:
+        print(f"{t}: {lv.value(t, [0.0])}")
 
     assert np.allclose(lv.t_grid, calib_times, 1e-10)
     assert np.allclose(lv.vol_grid, calib_lvols, 1e-10)
 
 
 if __name__ == "__main__":
-    test_lv_calib_black()
+    test_lv_by_section_values()
+    # test_lv_calib_black()
     # test_lv_bymatrix_dump()
 
     # test_lv_bymatrix_section_consistent_with_value()
