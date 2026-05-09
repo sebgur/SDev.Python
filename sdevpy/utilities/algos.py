@@ -29,6 +29,9 @@ def upper_bound(arr_sorted: npt.ArrayLike, value: float, atol: float=1e-11, clam
         if np.isclose(arr_sorted[idx - 1], value, rtol=0.0, atol=atol):
             idx = idx - 1
 
+    if clamp:
+        idx = min(idx, len(arr_sorted) - 1)
+
     return idx
 
 
@@ -40,6 +43,9 @@ def lower_bound(arr_sorted: npt.ArrayLike, value: float, atol: float = 1e-11, cl
     if idx + 1 < len(arr_sorted): # No issue on last pillar as we can't be closer to the next pillar
         if np.isclose(arr_sorted[idx + 1], value, rtol=0.0, atol=atol):
             idx = idx + 1
+
+    if clamp:
+        idx = max(idx, 0)
 
     return idx
 
@@ -54,7 +60,8 @@ if __name__ == "__main__":
     print("<><><><><><><><>")
     arr = np.array([0.0, 1.0, 2.0])
     print(f"Array: {arr}")
-    tol = 1e-4
+    atol = 1e-4
+    clamp = True
 
     values = [-0.5, 0.0, 0.001, 0.999, 1.0, 1.000001, 1.001, 1.5, 2.0, 2.000001, 2.5]
 
@@ -62,5 +69,5 @@ if __name__ == "__main__":
     for value in values:
         print("<>" * 20)
         # print(f"Point/Index(searchsorted): {value}/{np.searchsorted(arr, value)}")
-        print(f"Point/Index(lower): {value}/{lower_bound(arr, value, tol)}")
-        print(f"Point/Index(upper): {value}/{upper_bound(arr, value, tol)}")
+        print(f"Point/Index(lower): {value}/{lower_bound(arr, value, atol, clamp=clamp)}")
+        print(f"Point/Index(upper): {value}/{upper_bound(arr, value, atol, clamp=clamp)}")

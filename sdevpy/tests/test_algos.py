@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from sdevpy.utilities.algos import unique_sorted, upper_bound
+from sdevpy.utilities.algos import unique_sorted, upper_bound, lower_bound
 
 
 ########## unique_sorted ##########################################################################
@@ -62,63 +62,50 @@ def test_unique_sorted_custom_atol():
     assert len(result2) == 3
 
 
-########## upper_bound ############################################################################
+########## upper/lower bounds #####################################################################
+REF_VECTOR = np.array([0.0, 1.0, 2.0])
+TEST_VECTOR = [-0.5, 0.0, 0.001, 0.999, 0.99999, 1.0, 1.000001, 1.001, 1.5, 2.0, 2.000001, 2.5]
 
-def test_upper_bound_exact_match():
-    # Value exactly on a grid point should return that index
-    arr = np.array([1.0, 2.0, 3.0])
-    assert upper_bound(arr, 1.0) == 0
-    assert upper_bound(arr, 2.0) == 1
-    assert upper_bound(arr, 3.0) == 2
+def test_upper_bound_with_clamping():
+    atol = 1e-4
+    clamp = True
+    test = []
+    for value in TEST_VECTOR:
+        test.append(upper_bound(REF_VECTOR, value, atol, clamp=clamp))
 
-
-def test_upper_bound_strictly_between():
-    # Value strictly between two grid points → index of the upper point
-    arr = np.array([1.0, 2.0, 3.0])
-    assert upper_bound(arr, 1.5) == 1
-    assert upper_bound(arr, 2.5) == 2
+    ref = [0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
+    assert test == ref
 
 
-def test_upper_bound_below_first():
-    arr = np.array([1.0, 2.0, 3.0])
-    assert upper_bound(arr, 0.5) == 0
+def test_upper_bound_without_clamping():
+    atol = 1e-4
+    test = []
+    for value in TEST_VECTOR:
+        test.append(upper_bound(REF_VECTOR, value, atol))
+
+    ref = [0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3]
+    assert test == ref
 
 
-def test_upper_bound_above_last():
-    arr = np.array([1.0, 2.0, 3.0])
-    assert upper_bound(arr, 4.0) == 3  # past-the-end index
+def test_lower_bound_with_clamping():
+    atol = 1e-4
+    clamp = True
+    test = []
+    for value in TEST_VECTOR:
+        test.append(lower_bound(REF_VECTOR, value, atol, clamp=clamp))
+
+    ref = [0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2]
+    assert test == ref
 
 
-def test_upper_bound_within_atol_of_previous():
-    # Value within atol of arr[0] should snap down to index 0
-    arr = np.array([1.0, 2.0, 3.0])
-    # 1.0 + 1e-12 is within default atol=1e-11 of arr[0]=1.0
-    # searchsorted returns 1, but snap should pull it back to 0
-    assert upper_bound(arr, 1.0 + 1e-12) == 0
+def test_lower_bound_without_clamping():
+    atol = 1e-4
+    test = []
+    for value in TEST_VECTOR:
+        test.append(lower_bound(REF_VECTOR, value, atol))
 
-
-def test_upper_bound_outside_atol_of_previous():
-    # Value outside atol should NOT snap; it belongs to the next interval
-    arr = np.array([1.0, 2.0, 3.0])
-    # 1.0 + 1e-9 is outside default atol=1e-11, so no snap
-    assert upper_bound(arr, 1.0 + 1e-9) == 1
-
-
-def test_upper_bound_custom_atol():
-    arr = np.array([1.0, 2.0, 3.0])
-    # With atol=1e-3, a value 5e-4 above arr[0] should snap to index 0
-    assert upper_bound(arr, 1.0 + 5e-4, atol=1e-3) == 0
-    # A value 2e-3 above arr[0] should NOT snap
-    assert upper_bound(arr, 1.0 + 2e-3, atol=1e-3) == 1
-
-
-def test_upper_bound_financial_times():
-    # Realistic model time grid: daily to 2 years
-    arr = np.array([1/365, 7/365, 30/365, 0.5, 1.0, 2.0])
-    assert upper_bound(arr, 0.5) == 3
-    assert upper_bound(arr, 1.0) == 4
-    # Slightly above 0.5, outside tolerance → next slot
-    assert upper_bound(arr, 0.5 + 1e-9) == 4
+    ref = [-1, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2]
+    assert test == ref
 
 
 if __name__ == "__main__":
