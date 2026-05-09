@@ -15,7 +15,7 @@ class MultiAssetHeston:
         self.L = np.linalg.cholesky(corr_matrix)
 
     def initial_state(self, n_paths):
-        s = np.tile(self.S0, (n_paths, 1))
+        s = np.tile(self.s0, (n_paths, 1))
         v = np.tile(self.v0, (n_paths, 1))
         return s, v
 

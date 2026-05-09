@@ -5,7 +5,7 @@ from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option, make_asian_option
 from sdevpy.montecarlo.mcpricer import price_book
-from sdevpy.models.localvol_factory import get_local_vols
+from sdevpy.volatility.localvol.localvol_factory import get_local_vols
 from sdevpy.analytics import black
 from sdevpy.utilities import timegrids
 from sdevpy.utilities import book as bk

@@ -11,6 +11,7 @@ from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.utilities import timegrids
+from sdevpy.utilities.tools import isequal
 from sdevpy.analytics import black
 
 
@@ -404,9 +405,30 @@ def test_lv_calib_black():
     assert np.allclose(lv.vol_grid, calib_lvols, 1e-10)
 
 
+def test_lv_calib_black_constant():
+    # Pick ivol
+    iv_surface = make_tssvi1()
+    valdate = dt.datetime(2025, 12, 15)
+    iv_surface.base_date = valdate
+
+    # Calibrate Black LV through main function
+    dates = np.asarray([dt.datetime(2027, 12, 15)])
+    fwds = np.full(len(dates), 1.0) # Only caring about ATM
+    strikes = fwds # Only caring about ATM
+    lv_result = calib_lv_black(iv_surface, dates, strikes, fwds)
+    lv = lv_result['lv']
+
+    # Calibrate by hand
+    times = timegrids.model_time(valdate, dates)
+    te, ke, fe = times[0], strikes[0], fwds[0]
+    calib_lvol = iv_surface.black_volatility(te, ke, fe)
+
+    assert isequal(lv.vol, calib_lvol, 1e-10)
+
 if __name__ == "__main__":
+    test_lv_calib_black_constant()
     # test_lv_by_section_values()
-    test_lv_calib_black()
+    # test_lv_calib_black()
     # test_lv_bymatrix_dump()
     # test_lv_bymatrix_section_consistent_with_value()
     # test_calib_dupire()
