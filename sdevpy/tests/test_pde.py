@@ -4,7 +4,7 @@ from sdevpy.pde.forwardpde import PdeConfig, density, calculate_densities
 from sdevpy.analytics import black
 
 
-def test_forward_pde():
+def check_forward_pde(rescale_x: bool):
     spot, r, q, atm_vol = 100.0, 0.04, 0.01, 0.20
     maturities = np.array([0.1, 0.5, 1.0, 2.5, 5.0, 10.0])
 
@@ -14,7 +14,7 @@ def test_forward_pde():
 
     # PDE config
     pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher',
-                           rescale_x=True, rescale_p=True)
+                           rescale_x=rescale_x, rescale_p=True)
 
     # Run PDE
     density_reports = calculate_densities(maturities, my_lv, pde_config)
@@ -43,6 +43,12 @@ def test_forward_pde():
         report = {'pde_prices': pde_prices - it_prices, 'cf_prices': cf_prices - it_prices}
         reports.append(report)
 
+    return reports
+
+
+def test_forward_pde():
+    reports = check_forward_pde(rescale_x=True)
+
     # Gather values
     pde_sums, cf_sums = [], []
     for r in reports:
@@ -50,8 +56,29 @@ def test_forward_pde():
         cf_sums.append(r['cf_prices'].sum())
 
     # print(np.asarray(pde_sums))
+    # print(np.asarray(cf_sums))
     pde_ref = np.asarray([2.70606853, 10.6012976, 21.44167511, 60.14815888, 132.34671851, 279.04775693])
     # pde_ref = np.asarray([2.73414261826, 10.63198237231, 21.4763468108, 60.1939276268, 132.4162443424, 279.171161237])
+    cf_ref = np.asarray([2.70369628483, 10.60016306545, 21.43931715705, 60.14359001452, 132.344239396, 279.0267305878])
+
+    pde_ok = np.allclose(np.asarray(pde_sums), pde_ref, 1e-10)
+    cf_ok = np.allclose(np.asarray(cf_sums), cf_ref, 1e-10)
+
+    assert pde_ok and cf_ok
+
+
+def test_forward_pde_no_rescale_x():
+    reports = check_forward_pde(rescale_x=False)
+
+    # Gather values
+    pde_sums, cf_sums = [], []
+    for r in reports:
+        pde_sums.append(r['pde_prices'].sum())
+        cf_sums.append(r['cf_prices'].sum())
+
+    # print(np.asarray(pde_sums))
+    # print(np.asarray(cf_sums))
+    pde_ref = np.asarray([2.67658397, 10.57688613, 21.43376434, 60.11816797, 132.3149149, 278.98433455])
     cf_ref = np.asarray([2.70369628483, 10.60016306545, 21.43931715705, 60.14359001452, 132.344239396, 279.0267305878])
 
     pde_ok = np.allclose(np.asarray(pde_sums), pde_ref, 1e-10)
@@ -106,5 +133,5 @@ def test_forward_pde_simple():
 
 
 if __name__ == "__main__":
-    test_forward_pde_simple()
-    # test_forward_pde()
+    test_forward_pde()
+    test_forward_pde_no_rescale_x()
