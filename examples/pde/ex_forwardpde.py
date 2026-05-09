@@ -30,16 +30,18 @@ lv_calib = calib_lv_black(iv_surface, valdate, expiries, calib_strikes, calib_fw
 lv = lv_calib['lv']
 calib_vols = lv_calib['calib_vols']
 print(f"Calib target vols: {calib_vols}")
-
-# logm = np.asarray([-0.5, 0.0, 0.5])
-# lv_mat = lv.value(0.6, logm)
-# print(f"CheckXXXXXXXXXX: {lv_mat}")
+# ToDo: check we get the same thing using iv_surface?
 
 # Local Vol
 def my_lv(t, x_grid):
     """ As a function of log forward moneyness """
     return np.asarray([atm_vol for x in x_grid])
 
+# ToDo: might be better to choose it thanks to the LV so we can do it in the scheme
+#       So we need to implement some kind of lv.average() method that calculates
+#       some kind of average value from 0 to a certain time point.
+#       In fact it sounds like the implied vol is better suited for that in theory
+#       as we probably want to estimate the distribution's vol.
 mesh_vol = calib_vols[0]# * 2
 # mesh_vol = atm_vol# * 2
 
