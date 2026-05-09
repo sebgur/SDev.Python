@@ -5,8 +5,8 @@ from sdevpy.volatility.localvol.localvol import VectorLocalVol, ConstantLocalVol
 from sdevpy.utilities import timegrids
 
 
-def calib_lv_black(surface: ImpliedVol, dates: list[dt.datetime], strikes: list[float],
-                   fwds: list[float]) -> dict:
+def calib_lv_black(surface: ImpliedVol, valdate: dt.datetime, dates: list[dt.datetime],
+                   strikes: list[float], fwds: list[float]) -> dict:
     """ Calibrate VectorLocalVol or ConstantLocalVol by Black closed-form, from given IV surface.
         Pick maturities and strikes to calibrated to. """
     strikes = np.asarray(strikes)
@@ -21,7 +21,6 @@ def calib_lv_black(surface: ImpliedVol, dates: list[dt.datetime], strikes: list[
         raise ValueError("Inconsistent sizes between expiries and forwards") # pragma: no cover
 
     # Calculate target vols
-    valdate = surface.base_date
     times = timegrids.model_time(valdate, dates)
     ivols = surface.black_volatility(times, strikes, fwds)
 

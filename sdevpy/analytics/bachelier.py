@@ -8,10 +8,9 @@ from scipy.optimize import minimize_scalar
 def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
           vol: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """ Option price under the Bachelier model """
-    stdev = vol * expiry**0.5
+    stdev = vol * np.sqrt(expiry)
     d = (fwd - strike) / stdev
     wd = np.where(is_call, d, -d)
-    # wd = d if is_call else -d
     return stdev * (wd * norm.cdf(wd) + norm.pdf(d))
 
 

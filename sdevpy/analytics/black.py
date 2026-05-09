@@ -9,12 +9,19 @@ from sdevpy.utilities.tools import isiterable
 def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
           vol: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """ Option price under the Black-Scholes model """
-    # w = 1.0 if is_call else -1.0
     w = np.where(is_call, 1.0, -1.0)
     s = vol * np.sqrt(expiry)
     d1 = np.log(fwd / strike) / s + 0.5 * s
     d2 = d1 - s
     return w * (fwd * norm.cdf(w * d1) - strike * norm.cdf(w * d2))
+
+
+def price_straddles(expiry: npt.ArrayLike, strike: npt.ArrayLike, fwd: npt.ArrayLike,
+                    vol: npt.ArrayLike) -> npt.NDArray[np.float64]:
+    """ Straddle price under the Black model """
+    call = price(expiry, strike, True, fwd, vol)
+    put = price(expiry, strike, False, fwd, vol)
+    return call + put
 
 
 def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:

@@ -362,7 +362,7 @@ def test_lv_calib_black():
     dates = np.asarray([dt.datetime(2026, 3, 15), dt.datetime(2026, 9, 15), dt.datetime(2027, 12, 15)])
     fwds = np.full(len(dates), 1.0) # Only caring about ATM
     strikes = fwds # Only caring about ATM
-    lv_result = calib_lv_black(iv_surface, dates, strikes, fwds)
+    lv_result = calib_lv_black(iv_surface, valdate, dates, strikes, fwds)
     lv = lv_result['lv']
 
     # Calibrate by hand
@@ -415,7 +415,7 @@ def test_lv_calib_black_constant():
     dates = np.asarray([dt.datetime(2027, 12, 15)])
     fwds = np.full(len(dates), 1.0) # Only caring about ATM
     strikes = fwds # Only caring about ATM
-    lv_result = calib_lv_black(iv_surface, dates, strikes, fwds)
+    lv_result = calib_lv_black(iv_surface, valdate, dates, strikes, fwds)
     lv = lv_result['lv']
 
     # Calibrate by hand
