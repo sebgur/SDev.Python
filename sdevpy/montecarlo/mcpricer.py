@@ -38,10 +38,9 @@ def price_book(valdate: dt.datetime, book, **kwargs):
     disc_tgrid = build_timegrid(valdate, eventdates, McConfig(**kwargs))
 
     # Set model
-    lv_map = kwargs.get('lv_map', None)
-    use_lv = (lv_map is not None)
-    # print(lv_map)
-    model = MultiAssetGBM(spot, fwd_curves, lvs, disc_tgrid, use_lv=use_lv)
+    # lv_map = kwargs.get('lv_map', None)
+    # use_lv = (lv_map is not None)
+    model = MultiAssetGBM(spot, fwd_curves, lvs, disc_tgrid)#, use_lv=use_lv)
 
     # Set spot path generator
     generator = PathGenerator(model, disc_tgrid, **kwargs, corr_matrix=corr)

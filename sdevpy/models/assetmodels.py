@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 
-TEST_VOL = 0.20
+# TEST_VOL = 0.20
 
 
 class FactorModel(ABC):
@@ -22,10 +22,8 @@ class MultiAssetGBM(FactorModel):
         self.lv = lv
         self.time_grid = time_grid
         self.n_factors = len(self.spot) # Used by PathGenerator
-        self.sigma = None# np.asarray([TEST_VOL for _ in range(self.n_factors)])
-        self.use_lv = False
-        # self.sigma = np.asarray([TEST_VOL for _ in range(self.n_factors)])
-        # self.use_lv = kwargs.get('use_lv', False)
+        # self.sigma = None
+        # self.use_lv = False
 
         # Cache forwards
         fwd_grid = []
@@ -45,17 +43,11 @@ class MultiAssetGBM(FactorModel):
 
         # Calculate the log-moneyness to evaluate the local vol
         logms = np.log(state / fs)
+
         # Vols
         lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
         lvols = lvols.T
         vol = lvols
-        # if not self.use_lv: # Constant vol
-        #     vol = self.sigma
-        # else: # Local vol
-        #     lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
-        #     lvols = lvols.T
-        #     vol = lvols
-
         # print(vol)
 
         # Now evolve
