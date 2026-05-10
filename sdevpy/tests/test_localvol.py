@@ -159,12 +159,12 @@ def test_calib_dupire():
     m = result['moneyness']
     t = result['t_grid']
     assert (np.abs(t[1] - 0.2857142857142857) < 1e-10)
-    m_test = np.asarray(m[1])
+    m_test = np.asarray(m[0])
     # print(m_test)
     m_ref = np.asarray([0.79519045, 1.020546, 1.24590155])
     assert np.allclose(m_test, m_ref, 1e-10)
-    lv_test = np.asarray(lv[1])
-    # print(m_test)
+    lv_test = np.asarray(lv[0])
+    # print(lv_test)
     lv_ref = np.asarray([0.3291237, 0.16782647, 0.16614304])
     # lv_ref = np.asarray([0.33384114, 0.18219919, 0.36166036])
     assert np.allclose(lv_test, lv_ref, 1e-10)
@@ -426,7 +426,7 @@ def test_lv_calib_black_constant():
     assert isequal(lv.vol, calib_lvol, 1e-10)
 
 if __name__ == "__main__":
-    test_lv_calib_black_constant()
+    test_calib_dupire()
     # test_lv_by_section_values()
     # test_lv_calib_black()
     # test_lv_bymatrix_dump()
