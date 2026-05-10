@@ -53,16 +53,20 @@ class ThetaScheme(PdeScheme):
         lv = self.local_vol(ts, x) # Called twice in consecutive steps
         one_m_theta_dt_2 = self.one_m_theta * dt / 2.0
         y = np.zeros(n_x)
-        for j in range(n_x):
-            p_tmp = (1.0 - one_m_theta_dt_2 * b * lv[j]**2) * p[j]
 
-            if j < n_x - 1: # Beyond that the probability is 0
-                p_tmp += one_m_theta_dt_2 * a * lv[j + 1]**2 * p[j + 1]
+        # Vectorized
+        y = (1.0 - one_m_theta_dt_2 * b * lv**2) * p
+        y[:-1] += one_m_theta_dt_2 * a * lv[1:]**2 * p[1:]
+        y[1:] += one_m_theta_dt_2 * c * lv[:-1]**2 * p[:-1]
 
-            if j > 0: # Before that the probability is 0
-                p_tmp += one_m_theta_dt_2 * c * lv[j - 1]**2 * p[j - 1]
-
-            y[j] = p_tmp
+        # # Original
+        # for j in range(n_x):
+        #     p_tmp = (1.0 - one_m_theta_dt_2 * b * lv[j]**2) * p[j]
+        #     if j < n_x - 1: # Beyond that the probability is 0
+        #         p_tmp += one_m_theta_dt_2 * a * lv[j + 1]**2 * p[j + 1]
+        #     if j > 0: # Before that the probability is 0
+        #         p_tmp += one_m_theta_dt_2 * c * lv[j - 1]**2 * p[j - 1]
+        #     y[j] = p_tmp
 
         # Calculate band vectors for tridiagonal system
         # lv = self.local_vol(te, x) # Use only the one at ts for lower_bound LV
@@ -139,16 +143,20 @@ class ExplicitScheme(PdeScheme):
 
         lv = self.local_vol(ts, x)
         y = np.zeros(n_x)
-        for j in range(n_x):
-            p_tmp = (1.0 - b * lv[j]**2) * p[j]
 
-            if j < n_x - 1: # Beyond that the probability is 0
-                p_tmp += a * lv[j + 1]**2 * p[j + 1]
+        # Vectorized
+        y = (1.0 - b * lv**2) * p
+        y[:-1] += a * lv[1:]**2 * p[1:]
+        y[1:] += c * lv[:-1]**2 * p[:-1]
 
-            if j > 0: # Before that the probability is 0
-                p_tmp += c * lv[j - 1]**2 * p[j - 1]
-
-            y[j] = p_tmp
+        # # Original
+        # for j in range(n_x):
+        #     p_tmp = (1.0 - b * lv[j]**2) * p[j]
+        #     if j < n_x - 1: # Beyond that the probability is 0
+        #         p_tmp += a * lv[j + 1]**2 * p[j + 1]
+        #     if j > 0: # Before that the probability is 0
+        #         p_tmp += c * lv[j - 1]**2 * p[j - 1]
+        #     y[j] = p_tmp
 
         return y
 
