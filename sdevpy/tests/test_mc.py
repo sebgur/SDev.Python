@@ -6,6 +6,7 @@ from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option
 from sdevpy.utilities import book as bk
 from sdevpy.montecarlo.mcpricer import price_book, path_interp_coeffs, interp_paths
 from sdevpy.montecarlo.payoffs import cashflows as cfl
+from sdevpy.volatility.localvol.localvol import ConstantLocalVol
 
 
 def test_mc():
@@ -47,9 +48,13 @@ def test_mc():
     # Create book
     book.add_trades(trades)
 
+    # Create LV map for testing
+    lv = ConstantLocalVol(0.20)
+    lv_map = {'ABC': lv, 'KLM': lv, 'XYZ': lv}
+
     ## Price ##
     mc_price = price_book(valdate, book, scramble=False, constr_type='brownianbridge',
-                          rng_type='sobol', n_paths=2000)
+                          rng_type='sobol', n_paths=2000, lv_map=lv_map)
     test = mc_price['pv']
     # print(test)
     ref = np.asarray([8.91971331055, 0.0, 5.04962052174, 0.00330715322, -53.11327812897])
@@ -83,4 +88,3 @@ def test_path_interpolation():
 
 if __name__ == "__main__":
     test_mc()
-    test_path_interpolation()

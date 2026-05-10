@@ -22,14 +22,16 @@ class MultiAssetGBM(FactorModel):
         self.lv = lv
         self.time_grid = time_grid
         self.n_factors = len(self.spot) # Used by PathGenerator
-        self.sigma = np.asarray([TEST_VOL for _ in range(self.n_factors)])
-        self.use_lv = kwargs.get('use_lv', False)
+        self.sigma = None# np.asarray([TEST_VOL for _ in range(self.n_factors)])
+        self.use_lv = False
+        # self.sigma = np.asarray([TEST_VOL for _ in range(self.n_factors)])
+        # self.use_lv = kwargs.get('use_lv', False)
 
         # Cache forwards
         fwd_grid = []
         for t in time_grid:
             fwd_grid.append(np.asarray([f.value_float(t) for f in fwd_curve]))
-            # fwd_grid.append(np.asarray([f(t) for f in fwd_curve]))
+
         self.fwd_grid = np.asarray(fwd_grid)
 
     def initial_state(self):
@@ -44,12 +46,15 @@ class MultiAssetGBM(FactorModel):
         # Calculate the log-moneyness to evaluate the local vol
         logms = np.log(state / fs)
         # Vols
-        if not self.use_lv: # Constant vol
-            vol = self.sigma
-        else: # Local vol
-            lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
-            lvols = lvols.T
-            vol = lvols
+        lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
+        lvols = lvols.T
+        vol = lvols
+        # if not self.use_lv: # Constant vol
+        #     vol = self.sigma
+        # else: # Local vol
+        #     lvols = np.asarray([self.lv[i].value(ts, logms[:, i]) for i in range(self.n_factors)])
+        #     lvols = lvols.T
+        #     vol = lvols
 
         # print(vol)
 
