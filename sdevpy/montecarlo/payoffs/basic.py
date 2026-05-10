@@ -217,7 +217,7 @@ class Terminal(Payoff):
 
     def set_valuation_date(self, valdate):
         if self.expiry < valdate:
-            raise RuntimeError("Past trade found")
+            raise ValueError("Past trade found")
 
         self.eventdates = [self.expiry]
 

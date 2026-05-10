@@ -209,7 +209,8 @@ class ParametricImpliedVol(ImpliedVol):
 
     def update_params(self, x: list[float]) -> None:
         """ Update the current parameters """
-        self.params = x
+        self.params = np.asarray(x, dtype=float)
+        # self.params = x
 
     def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters, return is_ok state and penalty value (0.0 if is_ok) """

@@ -55,11 +55,6 @@ class TsSvi1(ParametricImpliedVol):
 
         # Get parameters
         s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta = self.get_parameters(params)
-        # if r < -1.0 or r > 1.0:
-        #     raise ValueError("Correlation should be between -1 and 1 in TsSvi1")
-
-        # if delta + 1.0 < self.eps:
-        #     raise ValueError("Delta should be strictly higher than -1 in TsSvi1")
 
         # Calculate new variables
         one_minus_rho2 = max(1.0 - r * r, 0.0)

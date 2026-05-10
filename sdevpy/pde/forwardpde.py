@@ -30,7 +30,6 @@ def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64],
     # Rescale density
     if config.rescale_p: # Rescale mass to 1.0 at te
         mass = np.trapezoid(p, x)
-        print(f"Mass: {mass:.6f}")
         p /= mass
 
     return x, dx, p
