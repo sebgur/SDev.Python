@@ -29,8 +29,8 @@ def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64],
 
     # Rescale density
     if config.rescale_p: # Rescale mass to 1.0 at te
-        mass = np.trapezoid(p, x)
-        p /= mass
+        #mass = mass(p, x) # np.trapezoid(p, x)
+        p /=  mass(p, x)
 
     return x, dx, p
 
@@ -104,13 +104,26 @@ def shift_forward(x: npt.NDArray[np.float64], p: npt.NDArray[np.float64], tol: f
         x_shifted = x + shift
         p_shifted = np.interp(x, x_shifted, p, left=0.0, right=0.0)
         p_shifted = np.maximum(p_shifted, 0.0)
-        pde_forward_m = np.trapezoid(ex * p_shifted, x) # If perfect, would be 1.0
+        pde_forward_m = expectation(ex, p_shifted, x) # If perfect, would be 1.0
+        # pde_forward_m = np.trapezoid(ex * p_shifted, x) # If perfect, would be 1.0
         return p_shifted
     else:
         return p
 
 
-def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: PdeConfig) -> dict:
+def mass(p_grid: npt.NDArray[np.float64], x_grid: npt.NDArray[np.float64]) -> float:
+    """ Calculate mass of the probability density p_grid along variable x_grid
+        (i.e. its integral from -infty to +infty) """
+    return np.trapezoid(p_grid, x_grid)
+
+
+def expectation(payoff: npt.NDArray[np.float64], p_grid: npt.NDArray[np.float64],
+                x_grid: npt.NDArray[np.float64]) -> float:
+    """ Calculate expected value of payoff given probability and x grids """
+    return np.trapezoid(payoff * p_grid, x_grid)
+
+
+def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: PdeConfig, **kwargs) -> dict:
     """ Calculate densities at specified maturities """
     # Initialize spot grid: first maturity if rescaling on x, last maturity otherwise
     spotgrid_tmax = maturities[0] if pde_config.rescale_x else maturities[-1]
