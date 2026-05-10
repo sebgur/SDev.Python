@@ -70,14 +70,19 @@ class ThetaScheme(PdeScheme):
         upper = np.zeros(n_x - 1)
         main = np.zeros(n_x)
         lower = np.zeros(n_x - 1)
-        for j in range(n_x):
-            main[j] = (1.0 + theta_dt_2 * b * lv[j]**2)
 
-            if j < n_x - 1:
-                upper[j] = -theta_dt_2 * a * lv[j + 1]**2
+        # Vectorized
+        main = 1.0 + theta_dt_2 * b * lv**2
+        upper = -theta_dt_2 * a * lv[1:]**2
+        lower = -theta_dt_2 * c * lv[:-1]**2
 
-            if j > 0:
-                lower[j - 1] = -theta_dt_2 * c * lv[j - 1]**2
+        # # Original
+        # for j in range(n_x):
+        #     main[j] = (1.0 + theta_dt_2 * b * lv[j]**2)
+        #     if j < n_x - 1:
+        #         upper[j] = -theta_dt_2 * a * lv[j + 1]**2
+        #     if j > 0:
+        #         lower[j - 1] = -theta_dt_2 * c * lv[j - 1]**2
 
         # Solve tridiagonal system
         p_new = tridiag.solve(upper, main, lower, y)
