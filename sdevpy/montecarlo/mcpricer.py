@@ -1,18 +1,24 @@
 """ The MC path builder only requires the paths of the underlying assets as a big
     multi-d vector. This way we can get those paths from an independent engine. """
 import numpy as np
+import numpy.typing as npt
 import datetime as dt
 from sdevpy.utilities import timegrids, timer
 from sdevpy.volatility.localvol import localvol_factory as lvf
+from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.models.assetmodels import MultiAssetGBM
 from sdevpy.montecarlo.pathgenerator import PathGenerator
 from sdevpy.market.spot import get_spots
 from sdevpy.market.yieldcurve import get_yieldcurve
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.market.correlations import get_correlations
+from sdevpy.montecarlo.payoffs import cashflows as cfl
+from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
+from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
+from sdevpy.utilities.book import Book
 
 
-def build_timegrid(valdate: dt.datetime, eventdates, config):
+def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) -> npt.ArrayLike:
     """ Create simple time grid based on max of eventdates """
     max_date = eventdates.max()
     max_t = timegrids.model_time(valdate, max_date)
@@ -20,7 +26,7 @@ def build_timegrid(valdate: dt.datetime, eventdates, config):
     return disc_tgrid
 
 
-def price_book(valdate: dt.datetime, book, **kwargs):
+def price_book(valdate: dt.datetime, book: Book, **kwargs) -> dict:
     """ Price book (PV) by Monte-Carlo """
     names = book.set_nameindexes()
     book.set_valuation_date(valdate)
@@ -107,7 +113,8 @@ class MonteCarloPricer:
         self.n_paths = n_paths
         self.timers = []
 
-    def pv(self, book):
+    def pv(self, book: Book) -> dict:
+        """ Calculate PV for a book of trades """
         # Generate spots paths on disc. grid: n_mc x (n_steps + 1) x n_assets
         timer_path = timer.Stopwatch("Generate spot paths")
         disc_paths = self.path_generator.generate_paths(self.n_paths)
@@ -140,7 +147,8 @@ class MonteCarloPricer:
         self.timers = [timer_path, timer_interp, timer_payoff]
         return pvs
 
-    def build(self, mkt_state, book):
+    def build(self, mkt_state: dict, book) -> dict:
+        """ Build paths and calculate trade PVs """
         # paths = mkt_state.event_paths
         reports = []
         for trade in book.trades:
@@ -173,6 +181,7 @@ class MonteCarloPricer:
         return reports
 
     def print_timers(self):
+        """ Print timers to console """
         for timer_ in self.timers:
             timer_.print()
 
@@ -188,3 +197,44 @@ class McConfig:
         # self.constr_type = kwargs.get('constr_type', 'brownianbridge')
         # self.rng_type = kwargs.get('rng_type', 'sobol')
         # self.scramble = kwargs.get('scramble', False)
+
+
+def price_vanillas(valdate: dt.datetime, expiries: list[dt.datetime], strikes: list[list[float]],
+                   name: str, lv: LocalVol, **kwargs) -> list[npt.NDArray[np.float64]]:
+    """ Helper to price vanillas by Monte-Carlo simulation on LV process.
+        Return a list of forward prices per expiry, corresponding to each strike.
+        The option type is straddle by default but can be changed to call or put. """
+    option_type = kwargs.get('option_type', 'Straddle')
+
+    # Create portfolio
+    trades = []
+    for exp_idx, expiry in enumerate(expiries):
+        exp_strikes = strikes[exp_idx]
+        for strike in exp_strikes:
+            index = make_vanilla_option(name, strike, option_type, expiry)
+            cf = cfl.Cashflow(index, expiry)
+            trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
+
+    # Create book
+    book = Book()
+    book.add_trades(trades)
+
+    # Calculate MC prices (discounted)
+    sim_prices = price_book(valdate, book, lv_map={name: lv}, **kwargs)
+    sim_prices = sim_prices['pv']
+
+    # Calculate forward prices and reformat container (per expiry)
+    disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
+    mc_prices = []
+    count = 0
+    for i in range(len(expiries)):
+        disc = disc_curve.discount(expiries[i]) # To capitalize MC prices
+        mc_price = []
+        for _ in range(len(strikes[i])):
+            disc_price = sim_prices[count]
+            mc_price.append(disc_price / disc)
+            count += 1
+
+        mc_prices.append(mc_price)
+
+    return mc_prices

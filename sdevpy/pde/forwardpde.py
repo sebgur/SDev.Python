@@ -1,9 +1,14 @@
+import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.pde import pdeschemes
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.utilities import timegrids
+from sdevpy.utilities.tools import isequal
+from sdevpy.market.eqforward import EqForwardCurve
+from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol
+from sdevpy.volatility.localvol.localvol import LocalVol
 
 
 def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64], old_dx: float,
@@ -145,6 +150,56 @@ def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: Pde
         reports.append(report)
 
     return reports
+
+
+def price_vanillas(valdate: dt.datetime, expiries: list[dt.datetime], strikes: list[list[float]],
+                   fwd_curve: EqForwardCurve, iv_surface: ImpliedVol, lv: LocalVol,
+                   **kwargs) -> list[npt.NDArray[np.float64]]:
+    """ Helper to price vanillas by PDE on LV process.
+        Return a list of forward prices per expiry, corresponding to each strike.
+        The option type is straddle (cannot be changed at the moment). """
+    n_timesteps = kwargs.get('n_timesteps', 100)
+    n_meshes = kwargs.get('n_meshes', 250)
+    scheme = kwargs.get('scheme', 'rannacher')
+
+    # Calculate expiry times and forwards
+    expiry_times = timegrids.model_time(valdate, expiries)
+
+    # PDE config
+    mesh_vol = iv_surface.black_volatility(expiry_times[0], 1.0, 1.0)
+    pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, mesh_vol=mesh_vol, scheme=scheme,
+                            rescale_x=True, rescale_p=True, shift_forward=False,
+                            iv_surface=iv_surface)
+
+    # Run PDE to calculate densities at each maturity
+    density_reports = calculate_densities(expiry_times, lv.value, pde_config)
+
+    # Calculate PDE prices (forward)
+    pde_prices = []
+    for r_idx, density_report in enumerate(density_reports):
+        dens_mty = density_report['end_time']
+        x = density_report['x_grid']
+        p = density_report['p_grid']
+        fwd = fwd_curve.value(expiries[r_idx])
+
+        # # Check density
+        # print(f"Density: {mass(p, x):.6f}")
+
+        # Check timing consistency
+        if not isequal(dens_mty, expiry_times[r_idx]):
+            raise ValueError(f"Inconsistent times between closed-form and densities at density time {dens_mty}")
+
+        # Calculate PDE prices
+        s = fwd * np.exp(x)
+        exp_strikes = strikes[r_idx]
+        pde_price = []
+        for k in exp_strikes: # ToDo: can this be vectorized?
+            payoff = np.maximum(s - k, 0.0) + np.maximum(k - s, 0.0)
+            pde_price.append(expectation(payoff, p, x))
+
+        pde_prices.append(np.asarray(pde_price))
+
+    return pde_prices
 
 
 if __name__ == "__main__":
