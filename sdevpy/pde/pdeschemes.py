@@ -51,7 +51,7 @@ class ThetaScheme(PdeScheme):
         c = 1.0 / dx**2 - 0.5 / dx
 
         # Calculate result vector using previous probabilities
-        lv = self.local_vol(ts, x) # Called twice in consecutive steps.
+        lv = self.local_vol(ts, x) # Called twice in consecutive steps
         one_m_theta_dt_2 = self.one_m_theta * dt / 2.0
         y = np.zeros(n_x)
         for j in range(n_x):

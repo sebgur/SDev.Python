@@ -83,7 +83,7 @@ class TimeInterpolatedLocalVol(LocalVol):
         t_idx = algos.lower_bound(self.t_grid, t, clamp=True)
         # t_idx = algos.upper_bound(self.t_grid, t, clamp=True) # Old version with upper_bound
 
-        print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
+        # print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
         return self.section_at_index(t_idx)
 
     def section_at_index(self, t_idx: int):
