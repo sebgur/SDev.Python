@@ -58,7 +58,11 @@ def density(maturity: float, local_vol, config: PdeConfig):
 def build_spotgrid(maturity: float, config: PdeConfig):
     """ Built spot grid for PDEs """
     mesh_percentile = config.percentile
-    mesh_vol = config.mesh_vol
+    if config.iv_surface is None:
+        mesh_vol = config.mesh_vol
+    else:
+        mesh_vol = config.iv_surface.black_volatility(maturity, 1.0, 1.0)
+
     n_meshes = config.n_meshes
     p = norm.ppf(1.0 - mesh_percentile)
     x_max = mesh_vol * np.sqrt(maturity) * p
@@ -95,7 +99,6 @@ def shift_forward(x: npt.NDArray[np.float64], p: npt.NDArray[np.float64], tol: f
     """ Shift the density to match the forward. We are not using this for now. """
     ex = np.exp(x)
     pde_forward_m = np.trapezoid(ex * p, x) # If perfect, would be 1.0
-    # print(f"PDE forward moneyness: {pde_forward_m}")
     target_forward_m = 1.0
     if np.abs(pde_forward_m - target_forward_m) > tol: # Only shift if beyond tolerance
         shift = np.log(target_forward_m / pde_forward_m)
@@ -103,13 +106,12 @@ def shift_forward(x: npt.NDArray[np.float64], p: npt.NDArray[np.float64], tol: f
         p_shifted = np.interp(x, x_shifted, p, left=0.0, right=0.0)
         p_shifted = np.maximum(p_shifted, 0.0)
         pde_forward_m = np.trapezoid(ex * p_shifted, x) # If perfect, would be 1.0
-        # print(f"After shift: {pde_forward_m}")
         return p_shifted
     else:
         return p
 
 
-def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: PdeConfig):
+def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: PdeConfig) -> dict:
     """ Calculate densities at specified maturities """
     # Initialize spot grid: first maturity if rescaling on x, last maturity otherwise
     spotgrid_tmax = maturities[0] if pde_config.rescale_x else maturities[-1]

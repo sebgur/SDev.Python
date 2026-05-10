@@ -3,6 +3,7 @@ import numpy as np
 import numpy.typing as npt
 from abc import ABC, abstractmethod
 from sdevpy.maths import tridiag
+from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol
 
 
 @dataclass
@@ -18,6 +19,7 @@ class PdeConfig:
     rescale_x: bool = True
     rescale_p: bool = True
     shift_forward: bool = True
+    iv_surface: ImpliedVol = None
 
 
 class PdeScheme(ABC):
@@ -49,7 +51,7 @@ class ThetaScheme(PdeScheme):
         c = 1.0 / dx**2 - 0.5 / dx
 
         # Calculate result vector using previous probabilities
-        lv = self.local_vol(ts, x)
+        lv = self.local_vol(ts, x) # Called twice in consecutive steps.
         one_m_theta_dt_2 = self.one_m_theta * dt / 2.0
         y = np.zeros(n_x)
         for j in range(n_x):

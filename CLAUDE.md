@@ -6,6 +6,9 @@
 
 You may read, analyze, and explain Python code, but all edits are made exclusively by the user. When asked to fix a bug, add a feature, or refactor code, respond with suggestions only — describe what to change and why, but do not use the Edit or Write tools on any `.py` files.
 
+## Memory
+Do not read, write, or update any files in the memory directory. Do not use the auto-memory system.
+
 ## Code Review Rules
 
 - Before reporting any issue, read the exact file and line number directly with the Read tool.

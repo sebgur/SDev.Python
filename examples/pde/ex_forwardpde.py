@@ -13,7 +13,8 @@ from sdevpy.tests import test_localvol
 
 
 # Init data
-spot, r, q, atm_vol = 100.0, 0.04, 0.01, 0.20
+spot, r, q = 100.0, 0.04, 0.01
+# atm_vol = 0.20
 n_dev = 4 # Distribution display range in number of stdevs
 n_rows, n_cols = 3, 2 # n_rows * n_cols must match number of maturities
 valdate = dt.datetime(2025, 12, 15)
@@ -28,29 +29,36 @@ calib_fwds = spot * np.exp((r - q) * maturities)
 calib_strikes = calib_fwds
 lv_calib = calib_lv_black(iv_surface, valdate, expiries, calib_strikes, calib_fwds)
 lv = lv_calib['lv']
+# print(lv.vol_grid)
+# # lv.vol_grid[0] = 0.15
+# # lv.vol_grid[1] = 0.15
+# # lv.vol_grid[2] = 0.15
+# lv.vol_grid[3] += 0.05
+# # lv.vol_grid[4] = 0.15
+# # lv.vol_grid[5] = 0.15
+# print(lv.vol_grid)
+# lv.refresh_sections()
 calib_vols = lv_calib['calib_vols']
 print(f"Calib target vols: {calib_vols}")
-# ToDo: check we get the same thing using iv_surface?
+print(f"LV time grid: {np.asarray(lv.t_grid)}")
 
-# Local Vol
-def my_lv(t, x_grid):
-    """ As a function of log forward moneyness """
-    return np.asarray([atm_vol for x in x_grid])
+# lv_value = lv.value
+# lvs = lv_value(0.5, [-0.5, 0, 0.5])
+# print(f"Check used lvs: {lvs}")
 
-# ToDo: might be better to choose it thanks to the LV so we can do it in the scheme
-#       So we need to implement some kind of lv.average() method that calculates
-#       some kind of average value from 0 to a certain time point.
-#       In fact it sounds like the implied vol is better suited for that in theory
-#       as we probably want to estimate the distribution's vol.
-mesh_vol = calib_vols[0]# * 2
-# mesh_vol = atm_vol# * 2
+# # Local Vol
+# def my_lv(t, x_grid):
+#     """ As a function of log forward moneyness """
+#     return np.asarray([atm_vol for x in x_grid])
 
 # PDE config
 print("Define PDE config")
+mesh_vol = calib_vols[0]
 pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=mesh_vol, scheme='rannacher',
-                        rescale_x=True, rescale_p=True)
+                        rescale_x=True, rescale_p=True, iv_surface=iv_surface)
 print(f"Time steps: {pde_config.n_timesteps}")
 print(f"Spot steps: {pde_config.n_meshes}")
+print(f"Mesh vol: {mesh_vol*100:.2f}%")
 
 start_timer = time.time()
 
@@ -64,7 +72,6 @@ for r_idx, density_report in enumerate(density_reports):
     maturity = density_report['end_time']
     x = density_report['x_grid']
     p = density_report['p_grid']
-    # cf_vol = atm_vol
     cf_vol = calib_vols[r_idx]
 
     ## Check density ##

@@ -83,7 +83,7 @@ class TimeInterpolatedLocalVol(LocalVol):
         t_idx = algos.lower_bound(self.t_grid, t, clamp=True)
         # t_idx = algos.upper_bound(self.t_grid, t, clamp=True) # Old version with upper_bound
 
-        # print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
+        print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
         return self.section_at_index(t_idx)
 
     def section_at_index(self, t_idx: int):
@@ -239,6 +239,20 @@ class VectorLocalVol(TimeInterpolatedLocalVol):
         sections = []
         for i in range(n_times):
             t, vol = t_grid[i], vol_grid[i]
+            sections.append(FlatLocalVolSection(t, vol))
+
+        # Instantiate base
+        super().__init__(sections, **kwargs)
+
+    def refresh_sections(self, **kwargs) -> None:
+        """ Refresh sections in case vol_grid was modified from outside """
+        if len(self.vol_grid) != len(self.t_grid):
+            raise ValueError("Incompatible sizes between new vol grid and existing time grid")
+
+        # Create sections
+        sections = []
+        for i in range(len(self.t_grid)):
+            t, vol = self.t_grid[i], self.vol_grid[i]
             sections.append(FlatLocalVolSection(t, vol))
 
         # Instantiate base
