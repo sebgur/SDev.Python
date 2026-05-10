@@ -100,7 +100,7 @@ def roll_forward(p: npt.NDArray[np.float64], x: npt.NDArray[np.float64], dx: flo
 
 
 def shift_forward(x: npt.NDArray[np.float64], p: npt.NDArray[np.float64], tol: float=1e-6) -> npt.NDArray[np.float64]:
-    """ Shift the density to match the forward. We are not using this for now. """
+    """ Shift the density to match the forward """
     ex = np.exp(x)
     pde_forward_m = np.trapezoid(ex * p, x) # If perfect, would be 1.0
     target_forward_m = 1.0

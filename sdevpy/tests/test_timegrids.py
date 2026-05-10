@@ -16,7 +16,7 @@ def test_timegridbuilder_buckets():
     builder = tmg.BucketTimeGridBuilder(buckets=buckets)
     builder.add_dates(base, [fixing, expiry])
     test = builder.complete_grid()
-    print(test)
+    # print(test)
     ref = np.asarray([0.5, 0.53333333, 0.56666667, 0.6, 1.0, 1.03333333, 1.06666667, 1.1, 2.00273973])
     assert np.allclose(test, ref, 1e-10)
 

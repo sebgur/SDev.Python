@@ -363,6 +363,8 @@ class LogMix(ParametricImpliedVol):
 
     def dump_data(self) -> dict:
         """ Dump to dictionary """
+        if self.params is None:
+                raise RuntimeError("Model has no parameters yet. Call update_params() first.")
         return {'type': 'LogMix', 'n_mix': self.n_mix, 'params': self.params.tolist()}
 
 

@@ -90,8 +90,7 @@ def test_forward_pde_no_rescale_x():
 def test_forward_pde_implicit():
     reports = check_forward_pde(rescale_x=True, scheme='implicit')
     pde_sums = [r['pde_prices'].sum() for r in reports]
-    print(np.asarray(pde_sums))
-
+    # print(np.asarray(pde_sums))
     pde_ref = np.asarray([2.70813352, 10.60375539, 21.44415924, 60.13071881, 132.23445455, 278.74946682])
     assert np.allclose(np.asarray(pde_sums), pde_ref, 1e-10)
 

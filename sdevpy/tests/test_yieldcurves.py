@@ -45,5 +45,5 @@ def test_yieldcurve_reading():
     dfs = curve.discount(zdates)
     test = -np.log(dfs) / ztimes
     ref = np.asarray([0.00589787, 0.01375476, 0.01850221, 0.02168115, 0.02991536])
-    print(test)
+    # print(test)
     assert np.allclose(test, ref, 1e-10)

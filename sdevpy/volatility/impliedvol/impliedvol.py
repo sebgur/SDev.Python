@@ -22,10 +22,10 @@ class ImpliedVol(ABC):
     def __init__(self):
         self.calculate_type = OptionQuoteType.LogNormalVol
         self.shift = 0.0 # In Math format, i.e. 0.01 for 1%
-        self.allow_negative_variables = False
+        # self.allow_negative_variables = False
         self.calculable_at_zero = True
         self.lv_method = LvMethod.ImpliedVol
-        self.daycount = None
+        # self.daycount = None
         self.expiry_times = []
         self.eps = constants.EPS
         self.time_epsilon = 0.000001

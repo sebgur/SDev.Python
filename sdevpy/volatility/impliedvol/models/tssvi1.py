@@ -149,6 +149,8 @@ class TsSvi1(ParametricImpliedVol):
 
     def dump_data(self) -> dict:
         """ Dump to dictionary """
+        if self.params is None:
+                raise RuntimeError("Model has no parameters yet. Call update_params() first.")
         return {'type': 'TsSvi1', 'params': self.params.tolist()}
 
 
