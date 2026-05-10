@@ -12,7 +12,6 @@ class PdeConfig:
     n_meshes: int = 100
     mesh_vol: float = 0.20
     percentile: float = 1e-6
-    mollifier: float = 1.5
     scheme: str = 'Implicit'
     theta: float = 0.5
     rannacher_time: float = 7.0 / 365.0
