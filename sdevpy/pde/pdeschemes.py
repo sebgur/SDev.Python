@@ -102,18 +102,23 @@ class ImplicitScheme(PdeScheme):
         c = dt / 2.0 * (1.0 / dx**2 - 0.5 / dx)
 
         lv = self.local_vol(ts, x) # Use the one at ts for lower_bound LV
-        # lv = self.local_vol(te, x)
+        # lv = self.local_vol(te, x) # Original
         upper = np.zeros(n_x - 1)
         main = np.zeros(n_x)
         lower = np.zeros(n_x - 1)
-        for j in range(n_x):
-            main[j] = (1.0 + b * lv[j]**2)
 
-            if j < n_x - 1:
-                upper[j] = -a * lv[j + 1]**2
+        # Vectorized
+        main = 1.0 + b * lv**2
+        upper = -a * lv[1:]**2
+        lower = -c * lv[:-1]**2
 
-            if j > 0:
-                lower[j - 1] = -c * lv[j - 1]**2
+        # # Original
+        # for j in range(n_x):
+        #     main[j] = (1.0 + b * lv[j]**2)
+        #     if j < n_x - 1:
+        #         upper[j] = -a * lv[j + 1]**2
+        #     if j > 0:
+        #         lower[j - 1] = -c * lv[j - 1]**2
 
         # Solve tridiagonal system
         p_new = tridiag.solve(upper, main, lower, p)
