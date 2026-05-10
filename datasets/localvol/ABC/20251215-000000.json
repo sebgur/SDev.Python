@@ -4,7 +4,7 @@
   "snapdate": "15-Dec-2025 00:00:00",
   "sections": [
     {
-      "time": 0.0986301,
+      "time": 0.0,
       "model": "BiExp",
       "params": {
         "f0": 0.25,
@@ -16,7 +16,7 @@
       }
     },
     {
-      "time": 0.5,
+      "time": 0.0986301,
       "model": "BiExp",
       "params": {
         "f0": 0.5,
@@ -28,7 +28,7 @@
       }
     },
     {
-      "time": 1.5,
+      "time": 0.5,
       "model": "BiExp",
       "params": {
         "f0": 1.0,
@@ -40,7 +40,7 @@
       }
     },
     {
-      "time": 1.875,
+      "time": 1.5,
       "model": "BiExp",
       "params": {
         "f0": 0.5,

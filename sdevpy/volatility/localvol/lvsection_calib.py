@@ -1,10 +1,12 @@
 import os
 import datetime as dt
 import numpy as np
-import matplotlib.pyplot as plt
+import numpy.typing as npt
 from sdevpy.utilities import timegrids, dates
 from sdevpy.volatility.localvol import localvol_factory as lvf
+from sdevpy.volatility.localvol.localvol import LocalVolSection
 from sdevpy.volatility.impliedvol.optionsurface import calibration_targets, IS_CALL
+from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics, constants
@@ -13,12 +15,7 @@ from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.market.eqforward import get_forward_curves
 
 
-########## ToDo ########################################################################
-# * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
-# * Calibration weights based on percentiles, with possible removal of options
-
-
-def calibrate_lv_interp(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
+def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
     """ Calibrate InterpolatedParamLocalVol type to market data """
     # Arguments
     verbose = kwargs.get('verbose', False)
@@ -32,7 +29,6 @@ def calibrate_lv_interp(valdate: dt.datetime, name: str, config: dict, **kwargs)
     file = vsurf.data_file(name, valdate)
     surface_data = vsurf.eqvolsurfacedata_from_file(file)
     expiries = surface_data.expiries
-    # fwds = surface_data.forwards
     fwds = fwd_curve.value(expiries)
     strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
     vol_surface = surface_data.vols
@@ -51,9 +47,10 @@ def calibrate_lv_interp(valdate: dt.datetime, name: str, config: dict, **kwargs)
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
 
     # Set forward PDE
-    mesh_vol = vol_surface.mean()
+    mesh_vol = vol_surface[0].mean()
     pde_config = fpde.PdeConfig(n_timesteps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],
-                                mesh_vol=mesh_vol, scheme='rannacher', rescale_x=True, rescale_p=True)
+                                mesh_vol=mesh_vol, scheme='rannacher', rescale_x=True, rescale_p=True,
+                                shift_forward=False)
 
     # Set objective
     obj_builder = LvObjectiveBuilder(lv, fwds, strike_surface, cf_price_surface, pde_config)
@@ -129,7 +126,7 @@ def calibrate_lv_interp(valdate: dt.datetime, name: str, config: dict, **kwargs)
 
 
 class LvObjectiveBuilder:
-    def __init__(self, lv, fwds, strike_surface, cf_price_surface, pde_config):
+    def __init__(self, lv: LocalVolSection, fwds, strike_surface, cf_price_surface, pde_config: PdeConfig):
         self.expiry_grid = lv.t_grid
         self.cf_price_surface = cf_price_surface
         self.strike_surface = strike_surface
@@ -141,19 +138,13 @@ class LvObjectiveBuilder:
         # Slice variable
         self.exp_idx = 0
         self.step_grid = None
-        self.old_p = None
-        self.old_x = None
-        self.old_dx = 0.0
-        self.new_p = None
-        self.new_x = None
-        self.new_dx = 0.0
+        self.old_p, self.old_x, self.old_dx = None, None, 0.0
+        self.new_p, self.new_x, self.new_dx = None, None, 0.0
         self.fwd = 0.0
-        self.strikes = None
-        self.cf_prices = None
-        self.pde_prices = None
+        self.strikes, self.cf_prices, self.pde_prices = None, None, None
         self.rmse = 0.0
 
-    def objective(self, params):
+    def objective(self, params: npt.ArrayLike):
         # Update params first so they're available to check. Alternatively we could pass them
         # to check_params() and only set them if they're ok.
         self.lv.update_params(self.exp_idx, params)
@@ -187,8 +178,8 @@ class LvObjectiveBuilder:
             # were 0, assuming that should be much bigger than at any reasonable solution.
             # ToDo: Claude recommends using constants.FLOAT_INFTY. But didn't we use it before and
             #       it led to some problems and that's why we're doing this now? To be tested again.
-            return constants.FLOAT_INFTY
-            # return self.cf_prices.sum()
+            # return constants.FLOAT_INFTY
+            return self.cf_prices.sum()
 
     def set_expiry(self, exp_idx, old_x, old_dx, old_p):
         self.exp_idx = exp_idx
@@ -227,19 +218,22 @@ class LvObjectiveBuilder:
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     verbose, n_digits = False, 6
     np.set_printoptions(suppress=True, precision=n_digits)
     name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
+
+    # Calibration config
     lv_data_folder = lvf.test_data_folder()
-    # 'L-BFGS-B'
-    config = {'start_new': False, 'model': 'CubicVol', 'store_date': valdate,
-              'optimizer': 'SLSQP', 'tol': 1e-4, 'pde_timesteps': 50,
-              'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
+    config = {'start_new': False, 'model': 'CubicVol', 'store_date': valdate, 'optimizer': 'SLSQP',
+              'tol': 1e-4, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
               'sol_as_init': False}
 
     # Calibrate LV
-    calib_result = calibrate_lv_interp(valdate, name, config, verbose=True, calc_pde_vols=True)
+    print("Launching calibration")
+    calib_result = calibrate_lv_bysections(valdate, name, config, verbose=True, calc_pde_vols=True)
     lv = calib_result['lv']
 
     # Dump LV result to file

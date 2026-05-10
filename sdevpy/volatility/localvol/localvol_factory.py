@@ -69,7 +69,8 @@ def create_section(config: dict):
     return section
 
 
-def load_lv_new(t_grid, model):
+def load_lv_new(t_grid: list[float], model: str):
+    """ Load new LV by sections of given model on given time grid """
     sections = create_sections(t_grid, model)
     lv = localvol.InterpolatedParamLocalVol(sections)
     return lv

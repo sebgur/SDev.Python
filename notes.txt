@@ -1,22 +1,19 @@
-xlwings
-
+########## xlwings ################################################################################
 > pip install xlwings
 
 > xlwings addin install
 
-Fine-tune existing open source model on transforming term sheets into FpML. Then implement a deterministic model to translate FpML into your own db. This way the TermSheet->FpML model can be open source/usable by anyway and marketed. Would it make sense to implement the reverse, i.e. an FpML-> TermSheet model?
-
-#### Run pytest coverage ####
+########## Run pytest coverage ####################################################################
 >pip install pytest-cov
-
-To run:
 
 >pytest --cov=sdevpy --cov-report=html
 
-#### Claude's recommendations on Architecture ####
-At 7/10 the architecture is already solid. The three things most likely to move it to 8+:
+########## ToDo ###################################################################################
+# * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
+# * Calibration weights based on percentiles, with possible removal of options
 
-2. Use the existing MC framework consistently
+########## Claude's recommendations on Architecture ###############################################
+1. Use the existing MC framework consistently
 
 fbsabr.py, mcheston.py, and mczabr.py each hand-roll their own Monte Carlo loop
 (draw gaussians → evolve → collect payoff), duplicating the logic that already lives in
@@ -24,7 +21,7 @@ PathGenerator. The architecture has the right abstractions — Payoff, PathGener
 but the analytics modules bypass them entirely. Unifying them would eliminate the duplication and
 make the analytics modules benefit from improvements to the MC engine.
 
-4. Define protocols for market data boundaries
+2. Define protocols for market data boundaries
 
 eqvolsurface.eqvolsurfacedata_from_file() returns an object whose shape is implicit — consumers
 must know that it has .expiries, .forwards, .vols, .get_strikes(). A typing.Protocol
@@ -32,22 +29,30 @@ must know that it has .expiries, .forwards, .vols, .get_strikes(). A typing.Prot
 The same applies to the parameters dictionaries passed to the MC pricers
 ({'LnVol': ..., 'Beta': ..., 'Rho': ...}) — these should be typed dataclasses, not plain dicts.
 
+3. Extract price_straddles() out of bachelier.py
 
-Realistically, item 2 above is the most impactful and the hardest.
+It is a matrix-level utility, not an atomic pricing function. It breaks the module's single
+responsibility and has a completely different interface from everything else in the file. It belongs
+in a higher-level utility module (e.g., sdevpy/analytics/utils.py or alongside the straddle-specific
+project code).
 
-More recent run below.
+4. Introduce a shared protocol for analytics modules
 
-1. Extract price_straddles() out of bachelier.py
-It is a matrix-level utility, not an atomic pricing function. It breaks the module's single responsibility and has a completely different interface from everything else in the file. It belongs in a higher-level utility module (e.g., sdevpy/analytics/utils.py or alongside the straddle-specific project code).
-
-2. Introduce a shared protocol for analytics modules
-black.py and bachelier.py expose the same logical interface — price, implied_vol — but there's no formal contract. A Protocol class would let calibration code, zerosurface.py, and tests reference a model type rather than a concrete module:
-
+black.py and bachelier.py expose the same logical interface — price, implied_vol — but there's no
+formal contract. A Protocol class would let calibration code, zerosurface.py, and tests reference a
+model type rather than a concrete module:
 
 class AnalyticsModel(Protocol):
     def price(self, expiry, strike, is_call, fwd, vol): ...
     def implied_vol(self, expiry, strike, is_call, fwd, fwd_price): ...
-3. Replace the repeated match calculate_type blocks in zerosurface.py
-forward_price(), black_volatility(), bachelier_volatility(), and shifted_black_volatility() all contain the same four-case match on self.calculate_type. Every time a new OptionQuoteType is added, all four methods must be updated. A dispatch dict defined once would eliminate the duplication and make the open/closed principle hold.
 
-The inconsistent return type of implied_vol_newton() (issue #1 from the last review) also counts against Architecture — a function that returns either a scalar or an array depending on input size is not a well-defined contract.
+5. Replace the repeated match calculate_type blocks in zerosurface.py
+
+forward_price(), black_volatility(), bachelier_volatility(), and shifted_black_volatility() all contain
+the same four-case match on self.calculate_type. Every time a new OptionQuoteType is added, all four
+methods must be updated. A dispatch dict defined once would eliminate the duplication and make the
+open/closed principle hold.
+
+The inconsistent return type of implied_vol_newton() (issue #1 from the last review) also counts against
+Architecture — a function that returns either a scalar or an array depending on input size is not a
+well-defined contract.
