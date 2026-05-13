@@ -36,15 +36,25 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     # Set calibration time grid
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
+    # ToDo: set up time grid for LV to interpolate on (lower bound)
+    lv_t_grid = [0.0]
+    lv_t_grid.extend(expiry_grid[:-1])
+
     # Set calibration targets
     cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
 
     # Initial LV: either from scratch or from existing
     if config['start_new']:
+        print("Starting from new LV")
         lv = lvf.load_lv_new(expiry_grid, config['model'])
     else:
+        print("Reading LV from folder")
         lv = lvf.load_lv_from_folder(expiry_grid, valdate, name, config['lv_folder'])
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
+
+    print(f"LV init: {lv}")
+    print(f"IV time grid: {}")
+    print(f"LV time grid: {lv.t_grid}")
 
     # Set forward PDE
     mesh_vol = vol_surface[0].mean()
