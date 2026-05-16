@@ -1,24 +1,6 @@
 import numpy as np
 import numpy.typing as npt
-from sdevpy.volatility.localvol.localvol import ParamLocalVolSection
 from sdevpy.maths import constants
-
-
-class SviSection(ParamLocalVolSection):
-    def __init__(self, time, check_butterfly=False):
-        super().__init__(time, svi_formula)
-        self.check_butterfly = check_butterfly
-        self.model = 'SVI'
-
-    def check_params(self) -> tuple[bool, float]:
-        """ Check parameter consistency """
-        return svi_check_params(self.params, self.check_butterfly)
-
-    def dump_params(self) -> dict:
-        """ Dump parameter to dictionary """
-        data = {'a': self.params[0], 'b': self.params[1], 'rho': self.params[2],
-                'm': self.params[3], 'sigma': self.params[4]}
-        return data
 
 
 def svi(t: float, x: npt.ArrayLike, *params) -> npt.ArrayLike:

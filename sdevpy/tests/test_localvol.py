@@ -3,7 +3,6 @@ import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
 from sdevpy.volatility.impliedvol.models.biexp import BiExpSection
-from sdevpy.volatility.impliedvol.models.svi import SviSection
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
@@ -13,7 +12,7 @@ from sdevpy.analytics import black
 
 
 ############### TEST HELPERS ######################################################################
-VALID_PARAMS = np.array([0.04, 0.1, 0.0, 0.0, 0.2])  # a, b, rho, m, sigma
+VALID_PARAMS  = np.array([0.24, 0.32, 0.34, 0.05, 0.04, -0.8])
 T_GRID    = np.array([0.25, 0.5, 1.0, 2.0])
 LOGM_GRID = np.array([-0.25, -0.2, 0.0, 0.2, 0.25])
 FLAT_VOL = 0.20
@@ -41,7 +40,7 @@ def make_lv_by_sections(t_grid: list[float]=None, params: npt.ArrayLike=None):
         t_grid = [0.25, 0.5, 1.0, 2.0]
     if params is None:
         params = VALID_PARAMS
-    sections = [SviSection(t) for t in t_grid]
+    sections = [BiExpSection(t) for t in t_grid]
     lv = InterpolatedParamLocalVol(sections)
     for i in range(len(t_grid)):
         lv.update_params(i, params)
@@ -219,7 +218,7 @@ def test_lv_bymatrix_dump():
 ##################### LV by sections ##############################################################
 def test_lv_sections_sorted_by_time():
     """ Sections passed in reverse order should be stored sorted by time """
-    sections = [SviSection(t) for t in [2.0, 0.5, 1.0]]
+    sections = [BiExpSection(t) for t in [2.0, 0.5, 1.0]]
     lv = InterpolatedParamLocalVol(sections)
     times = [s.time for s in lv.sections]
     assert times == sorted(times)
@@ -227,7 +226,7 @@ def test_lv_sections_sorted_by_time():
 
 def test_lv_t_grid_matches_sections():
     """ LV's time grid matches sections' """
-    sections = [SviSection(t) for t in [3.0, 1.0, 0.5]]
+    sections = [BiExpSection(t) for t in [3.0, 1.0, 0.5]]
     lv = InterpolatedParamLocalVol(sections)
     assert lv.t_grid == [0.5, 1.0, 3.0]
 
@@ -235,15 +234,18 @@ def test_lv_t_grid_matches_sections():
 def test_lv_by_section_values():
     """Between pillars, value() must delegate to the upper (right) section."""
     t_grid = [0.5, 1.0, 2.0]
-    params_mid  = np.array([0.04, 0.1, 0.0, 0.0, 0.2])
-    params_high = np.array([0.09, 0.2, 0.0, 0.0, 0.3])
-    sections = [SviSection(t) for t in t_grid]
+    params_mid  = np.array([0.24, 0.32, 0.34, 0.05, 0.04, -0.8])
+    params_high = np.array([0.28, 0.34, 0.38, 0.06, 0.03, -0.6])
+    # params_mid  = np.array([0.04, 0.1, 0.0, 0.0, 0.2])
+    # params_high = np.array([0.09, 0.2, 0.0, 0.0, 0.3])
+    sections = [BiExpSection(t) for t in t_grid]
     lv = InterpolatedParamLocalVol(sections)
     lv.update_params(0, params_mid)
     lv.update_params(1, params_high)
     lv.update_params(2, params_mid)
 
-    logm = [-0.5, 0.0, 0.5]
+    logm = np.asarray([-0.5, 0.0, 0.5])
+    # logm = np.asarray([-0.5, 0.0, 0.5])
     test = lv.value(0.75, logm)
     # section1 = lv.section_at_index(0)
     # section2 = lv.section_at_index(1)
@@ -252,8 +254,8 @@ def test_lv_by_section_values():
     # print(test)
     # print(test1)
     # print(test2)
-    ref = np.asarray([0.43324738, 0.34641016, 0.43324738])
-    # ref = np.asarray([0.45455367, 0.38729833, 0.45455367]) # For old upper_bound case
+    ref = np.asarray([0.31997821, 0.24, 0.33999348])
+    # ref = np.asarray([0.43324738, 0.34641016, 0.43324738])
     assert np.allclose(test, ref, 1e-10)
 
 
