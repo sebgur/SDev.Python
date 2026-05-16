@@ -6,7 +6,7 @@ from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.tests.test_localvol import (make_tssvi1, make_tssvi2, make_logmix2)
 from sdevpy.tests.test_localvol import (make_flat_surface, FLAT_VOL)
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol
-from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder, calibrate_lv_bysections
+from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
 from sdevpy.maths import metrics
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal

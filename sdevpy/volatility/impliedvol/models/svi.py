@@ -10,11 +10,11 @@ class SviSection(ParamLocalVolSection):
         self.check_butterfly = check_butterfly
         self.model = 'SVI'
 
-    def check_params(self):
+    def check_params(self) -> tuple[bool, float]:
         """ Check parameter consistency """
         return svi_check_params(self.params, self.check_butterfly)
 
-    def dump_params(self):
+    def dump_params(self) -> dict:
         """ Dump parameter to dictionary """
         data = {'a': self.params[0], 'b': self.params[1], 'rho': self.params[2],
                 'm': self.params[3], 'sigma': self.params[4]}

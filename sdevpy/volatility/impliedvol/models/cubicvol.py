@@ -27,15 +27,15 @@ def create_section(time: float, param_config: dict=None, fill_sample: bool=True)
 
 
 class CubicVolSection(ParamLocalVolSection):
-    def __init__(self, time):
+    def __init__(self, time: float):
         super().__init__(time, cubicvoleps_formula)
         self.model = 'CubicVol'
         self.eff_params = None
 
-    def value(self, t, x):
-        return self.formula(t, x, self.eff_params)
+    # def value(self, t, x):
+    #     return self.formula(t, x, self.eff_params)
 
-    def update_params(self, new_params):
+    def update_params(self, new_params: npt.ArrayLike) -> None:
         """ We optimize on the original parameters which have a more intuitive meaning, but it is
             more computationally efficient to use the epsilons inside """
         self.params = new_params.copy()
@@ -48,12 +48,14 @@ class CubicVolSection(ParamLocalVolSection):
         else:
             self.eff_params = None
 
-    def check_params(self):
+    def check_params(self) -> tuple[bool, float]:
+        """ Check parameter consistency """
         # Check by calculating epsilons
         is_ok, penalty, epsl, epsr = cubicvol_check_params(self.params)
         return is_ok, penalty
 
-    def dump_params(self):
+    def dump_params(self) -> dict:
+        """ Dump parameter to dictionary """
         data = {'atm': self.params[0], 'skew': self.params[1], 'kurt': self.params[2],
                 'vl': self.params[3], 'vr': self.params[4]}
         return data
@@ -72,6 +74,7 @@ def cubicvoleps_formula(t: npt.ArrayLike, x: npt.ArrayLike, params: list[float])
 
 
 def cubicvol_check_params(params: list[float]):
+    """ Check parameter consistency """
     is_ok = False
     epsl = epsr = None
     if len(params) == 5:
