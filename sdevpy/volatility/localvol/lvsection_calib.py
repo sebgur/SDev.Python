@@ -172,7 +172,8 @@ class LvObjectiveBuilder:
         self.strikes, self.cf_prices, self.pde_prices = None, None, None
         self.rmse = 0.0
 
-    def objective(self, params: npt.ArrayLike):
+    def objective(self, params: npt.ArrayLike) -> float:
+        """ Objective function for LvSection calibration """
         # Update params first so they're available to check. Alternatively we could pass them
         # to check_params() and only set them if they're ok.
         self.lv.update_params(self.exp_idx, params)
@@ -210,7 +211,8 @@ class LvObjectiveBuilder:
             # return constants.FLOAT_INFTY
             return self.cf_prices.sum()
 
-    def set_expiry(self, exp_idx, old_x, old_dx, old_p):
+    def set_expiry(self, exp_idx: int, old_x: npt.ArrayLike, old_dx: float, old_p: npt.ArrayLike) -> None:
+        """ Set calibration targets and previous density for next calibration expiry """
         self.exp_idx = exp_idx
         ts = self.start_time if self.exp_idx == 0 else self.expiry_grid[self.exp_idx - 1]
         te = self.expiry_grid[self.exp_idx]
@@ -256,7 +258,7 @@ if __name__ == "__main__":
 
     # Calibration config
     lv_data_folder = lvf.test_data_folder()
-    config = {'start_new': False, 'model': 'BiExp', 'store_date': valdate, 'optimizer': 'SLSQP',
+    config = {'start_new': True, 'model': 'CubicVol', 'store_date': valdate, 'optimizer': 'SLSQP',
               'tol': 1e-6, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
               'sol_as_init': False}
 

@@ -1,4 +1,4 @@
-import os, json
+import json
 from pathlib import Path
 import datetime as dt
 from sdevpy.volatility.impliedvol.models import biexp, vsvi, cubicvol
@@ -78,12 +78,12 @@ def load_lv_new(t_grid: list[float], model: str):
 
 def load_lv_from_folder(t_grid: list[float], store_date: dt.datetime, name: str, folder: str) -> localvol.LocalVol:
     """ Create InterpolatedLocalVol from folder """
-    file = os.path.join(folder, name)
-    os.makedirs(file, exist_ok=True)
-    file = os.path.join(file, store_date.strftime(dates.DATE_FILE_FORMAT) + ".json")
+    file = Path(folder) / name
+    file.mkdir(parents=True, exist_ok=True)
+    file = file / (store_date.strftime(dates.DATE_FILE_FORMAT) + ".json")
 
     # Check file existence
-    if not os.path.exists(file):
+    if not file.exists():
         raise FileNotFoundError(f"Local vol file not found: {file}")
 
     # Retrieve LV definition
@@ -158,9 +158,9 @@ def load_lv_from_data(new_t_grid: list[float], data: dict) -> localvol.LocalVol:
 
 def write_example(date: dt.datetime, name: str, folder: str) -> None:
     """ Write an example LocalVol to file """
-    file = os.path.join(folder, name)
-    os.makedirs(file, exist_ok=True)
-    file = os.path.join(file, date.strftime(dates.DATE_FILE_FORMAT) + ".json")
+    file = Path(folder) / name
+    file.mkdir(parents=True, exist_ok=True)
+    file = file / (date.strftime(dates.DATE_FILE_FORMAT) + ".json")
     sections = []
     print(file)
     for i in range(4):
@@ -179,8 +179,8 @@ def write_example(date: dt.datetime, name: str, folder: str) -> None:
 def test_data_folder() -> str:
     """ Test data folder for Local Vol """
     folder = Path(__file__).parent.parent.parent.parent.resolve()
-    folder = os.path.join(os.path.join(folder, "datasets"), "localvol")
-    os.makedirs(folder, exist_ok=True)
+    folder = folder / "datasets" / "localvol"
+    folder.mkdir(parents=True, exist_ok=True)
     return folder
 
 
@@ -210,7 +210,7 @@ if __name__ == "__main__":
     # data = {'valdate': valdate.strftime(dates.DATE_FORMAT),
     #         'snapdate': valdate.strftime(dates.DATETIME_FORMAT),
     #         'sections': lv_data}
-    file = os.path.join(folder, 'test_dump.json')
+    file = Path(folder) / 'test_dump.json'
     print(file)
     print(data)
     with open(file, 'w') as f:
