@@ -15,10 +15,10 @@ def calib_lv_black(surface: ImpliedVol, valdate: dt.datetime, dates: list[dt.dat
     # Check sizes
     n_times = len(dates)
     if len(strikes) != n_times:
-        raise ValueError("Inconsistent sizes between expiries and strikes") # pragma: no cover
+        raise ValueError("Inconsistent sizes between expiries and strikes") # pragma: no cov
 
     if len(fwds) != n_times:
-        raise ValueError("Inconsistent sizes between expiries and forwards") # pragma: no cover
+        raise ValueError("Inconsistent sizes between expiries and forwards") # pragma: no cov
 
     # Calculate target vols
     times = timegrids.model_time(valdate, dates)
@@ -36,12 +36,12 @@ def calib_black_from_vols(expiries: list[float], ivols: list[float]) -> dict:
     # Check sizes
     n_times = len(expiries)
     if len(ivols) != n_times:
-        raise ValueError("Inconsistent sizes between expiries and implied vols") # pragma: no cover
+        raise ValueError("Inconsistent sizes between expiries and implied vols") # pragma: no cov
 
     # Calibrate
     lv = None
     if n_times < 1:
-        raise ValueError("No option dates specified") # pragma: no cover
+        raise ValueError("No option dates specified") # pragma: no cov
     elif n_times == 1:
         lv = ConstantLocalVol(ivols[0])
     else:

@@ -1,3 +1,4 @@
+""" Not covered by tests for now, by choice. Cover if re-starting work through C#. """
 from sdevpy.settings import USERNAME
 import datetime as dt
 import numpy as np

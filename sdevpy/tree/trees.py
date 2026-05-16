@@ -1,17 +1,17 @@
 """ Binomial and trinomial trees for Black-Scholes model.
-    The binomial tree implementation is ours. The trinomial tree implementation
-    design is ours but the numerical code comes from
-    https://github.com/pachacutexx/Option-Pricing
-     """
+    The binomial tree implementation is ours. The trinomial tree implementation design is ours
+    but the numerical code comes from https://github.com/pachacutexx/Option-Pricing
+"""
 import numpy as np
 from abc import ABC, abstractmethod
 
 
 class Tree(ABC):
-    def __init__(self, n_steps):
+    def __init__(self, n_steps: int):
         self.n_steps = n_steps
 
     def price(self, payoff, spot, vol, rf_rate, div_rate, disc_rate):
+        """ Calculate payoff PV """
         ttm = payoff.maturity
         dt = ttm / self.n_steps
         df = np.exp(-disc_rate * dt)

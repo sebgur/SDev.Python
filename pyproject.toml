@@ -47,6 +47,7 @@ ignore = ["E401", "I001"]
 omit = [
     "sdevpy/**/__init__.py",
     "sdevpy/tests/test.py",
+    "sdevpy/utilities/pydotnet.py",
     "sdevpy/projects/raschka/*",
     "sdevpy/projects/stovol/*",
     "sdevpy/projects/stovolinverse/*",
@@ -60,5 +61,5 @@ omit = [
 [tool.coverage.report]
 exclude_lines = [
     "if __name__ == .__main__.:",
-    "pragma: no cover"
+    "pragma: no cov"
 ]

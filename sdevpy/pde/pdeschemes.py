@@ -27,7 +27,7 @@ class PdeScheme(ABC):
 
     @abstractmethod
     def roll_forward(self, p: npt.ArrayLike, x: npt.ArrayLike, ts: float, te: float,
-                     dx: float) -> npt.NDArray[np.float64]: # pragma: no cover
+                     dx: float) -> npt.NDArray[np.float64]: # pragma: no cov
         pass
 
 
@@ -134,7 +134,7 @@ class ExplicitScheme(PdeScheme):
         super().__init__()
 
     def roll_forward(self, p: npt.ArrayLike, x: npt.ArrayLike, ts: float, te: float,
-                     dx: float) -> npt.NDArray[np.float64]: # pragma: no cover
+                     dx: float) -> npt.NDArray[np.float64]: # pragma: no cov
         n_x = x.shape[0]
         dt = te - ts
         a = dt / 2.0 * (1.0 / dx**2 + 0.5 / dx)
@@ -165,9 +165,9 @@ def scheme(config: PdeConfig, ts: float) -> PdeScheme:
     scheme_type = config.scheme.upper()
     if scheme_type == 'IMPLICIT':
         return ImplicitScheme()
-    elif scheme_type == 'CN': # pragma: no cover
+    elif scheme_type == 'CN': # pragma: no cov
         return ThetaScheme(0.5)
-    elif scheme_type == 'THETA': # pragma: no cover
+    elif scheme_type == 'THETA': # pragma: no cov
         return ThetaScheme(config.theta)
     elif scheme_type == 'EXPLICIT':
         return ExplicitScheme()
@@ -178,4 +178,4 @@ def scheme(config: PdeConfig, ts: float) -> PdeScheme:
         else:
             return ThetaScheme(0.5)
     else:
-        raise TypeError(f"Unknown PDE scheme type: {scheme_type}") # pragma: no cover
+        raise TypeError(f"Unknown PDE scheme type: {scheme_type}") # pragma: no cov

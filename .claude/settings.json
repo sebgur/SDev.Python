@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-ChildItem *)"
+      "Read(**)",
+      "Read(//tmp/**)",
+      "Bash(**)",
+      "Bash(grep*)",
+      "Bash(awk*)",
+      "Bash(wc*)",
+      "Bash(find*)",
+      "Bash(xargs*)",
+      "Bash(sort*)",
+      "Bash(sleep*)",
+      "Bash(cat*)",
+      "Bash(git log*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(git log *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git status*)"
     ]
   }
 }

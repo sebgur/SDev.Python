@@ -188,34 +188,36 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-05-10 &nbsp;·&nbsp; <strong>10th review</strong> (full scan)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-05-16 &nbsp;·&nbsp; <strong>10th review</strong> (full scan)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--green)">B+</div>
+    <div class="grade-letter">B</div>
     <div class="grade-details">
-      <h2>Five fixes landed including the critical notional bug — remaining issues are medium/low severity</h2>
+      <h2>Six high-priority fixes landed — test file split introduced duplication, four issues persist</h2>
       <p>
-        All five top-priority issues from the 9th review are resolved: <code>trade.notional</code> is
-        now correctly applied in MC pricing, the three test-function <code>print()</code> calls are
-        commented out, <code>check_consistency</code> dead code is removed, <code>ImplicitScheme</code>
-        is fully vectorized, and <code>dump_data()</code> guards are in place across all three
-        parametric models (TsSvi1, TsSvi2, LogMix). No remaining critical or high-correctness bugs
-        exist at the PDE or MC layer. <code>ThetaScheme</code>'s <em>y</em>-vector assembly is still
-        a Python loop (the band-matrix part was vectorized this cycle), <code>ExplicitScheme</code>
-        is entirely a loop, and two WIP payoff stubs continue to live in the public API.
+        Six of the ten issues from the 9th review are now resolved: <code>trade.notional</code> is correctly
+        applied, all three test-function <code>print()</code> calls are commented out, <code>check_consistency</code>
+        dead code is gone, <code>dump_data()</code> before <code>update_params()</code> is guarded in all three
+        models, PDE scheme matrix loops are fully vectorized, and <code>implied_vol</code> tolerance is now
+        <code>1e-8</code> with <code>xmax=10.0</code>. The new <code>test_localvol_calib.py</code> adds two
+        valuable calibration integration tests, but it also duplicates eight tests verbatim from
+        <code>test_localvol.py</code> — creating a maintenance split without clear ownership, and regressing
+        one reference to a rounded value. <code>Maximum</code>/<code>BarrierDown</code> WIP stubs, the
+        new-contract Variance crash, the <code>shift_forward</code> docstring, and the uncovered
+        <code>TsIvCalibrator.calibrate</code> path remain open.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since 9th review (5 of 10):</strong>
-    <code>trade.notional</code> now multiplied into MC PV in <code>mcpricer.py:177</code> &nbsp;·&nbsp;
-    three test-function <code>print()</code> calls commented out (<code>test_pde.py:93</code>,
-    <code>test_timegrids.py:19</code>, <code>test_yieldcurves.py:48</code>) &nbsp;·&nbsp;
+    <strong>Fixed since 9th review (6 of 10):</strong>
+    <code>trade.notional</code> now multiplied in at <code>mcpricer.py:177</code> &nbsp;·&nbsp;
+    all three test <code>print()</code> calls commented out &nbsp;·&nbsp;
     <code>check_consistency</code> dead code removed from <code>impliedvol_calib.py</code> &nbsp;·&nbsp;
-    <code>ImplicitScheme.roll_forward</code> fully vectorized with NumPy slices &nbsp;·&nbsp;
-    <code>dump_data()</code> <code>params is None</code> guard added to TsSvi1, TsSvi2, and LogMix
+    <code>dump_data()</code> guards added in <code>TsSvi1</code>, <code>TsSvi2</code>, <code>LogMix</code> &nbsp;·&nbsp;
+    PDE scheme matrix loops vectorized (old loops preserved as comments) &nbsp;·&nbsp;
+    <code>implied_vol</code> <code>xtol</code> tightened to <code>1e-8</code>, <code>xmax</code> raised to <code>10.0</code>
   </div>
 
   <div class="scorecard">
@@ -229,42 +231,42 @@
         <tr>
           <td>Architecture</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy, solid PDE/MC separation, Dupire calibration well-structured; no structural changes this cycle</td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy, solid PDE/MC/IV separation; no structural regressions</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>trade.notional</code> fixed; <code>dump_data</code> guards added across all models; <code>Variance</code> still crashes for new contracts (start &ge; valdate); <code>black.implied_vol</code> precision limited to ~1bp</td>
+          <td>Correctness</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>trade.notional</code> bug fixed; Variance new-contract crash still open; <code>build_spotgrid</code> loop is logically correct but inefficient</td>
         </tr>
         <tr>
           <td>Error Handling</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Dead code removed; <code>dump_data</code> guards consistent across all three models; <code>Variance.current_fixing</code> latent crash for new contracts remains</td>
+          <td style="color:var(--muted);font-size:.83rem"><code>dump_data</code> guards added, dead code removed; <code>TsIvObjectiveBuilder</code> silently accepts <code>mkt_prices=None</code> which crashes at optimization time</td>
         </tr>
         <tr>
           <td>Testing</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Test-function prints removed; <code>TsIvCalibrator.calibrate</code> end-to-end path and Dupire calibration still not covered by pytest</td>
+          <td style="color:var(--muted);font-size:.83rem">Two new calibration integration tests; 8 tests duplicated verbatim from <code>test_localvol.py</code>; one reference regressed to rounded; <code>TsIvCalibrator.calibrate</code> still untested</td>
         </tr>
         <tr>
           <td>Code Quality</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>ImplicitScheme</code> fully vectorized; <code>ThetaScheme</code> y-vector and <code>ExplicitScheme</code> still Python loops; stale commented-out blocks remain in <code>pdeschemes.py</code></td>
+          <td style="color:var(--muted);font-size:.83rem">PDE scheme matrix loops now vectorized; <code>build_spotgrid</code> and per-strike price loops still use Python <code>for</code></td>
         </tr>
         <tr>
           <td>Maintainability</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good module layout and docstrings; <code>shift_forward</code> default vs docstring inconsistency persists; duplicate commented-out lines in <code>dupire_calib.py</code></td>
+          <td style="color:var(--muted);font-size:.83rem">Good overall module layout; new test duplication creates split ownership — a change to a shared helper must now be made in two files</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>params is None</code> guards now uniform across TsSvi1, TsSvi2, and LogMix; <code>update_params</code> coerces to <code>ndarray</code>; no remaining unguarded <code>.tolist()</code> calls</td>
+          <td>Type Safety</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Runtime guards added for uninitialized <code>params</code>; <code>TsIvObjectiveBuilder</code> allows <code>None</code> price target to flow in silently</td>
         </tr>
         <tr>
           <td>Documentation</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good docstrings on key classes; <code>shift_forward</code> docstring still says "not using this for now" while the default is <code>True</code></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>shift_forward</code> docstring still says "not using this for now" while <code>PdeConfig</code> defaults it <code>True</code>; <code>build_spotgrid</code> docstring has "Built" typo</td>
         </tr>
       </tbody>
     </table>
@@ -276,29 +278,23 @@
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>Variance</code> always crashes for new contracts — <code>current_fixing</code> never set when <code>start &ge; valdate</code></span>
+      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP stubs exported in the public API</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 452, 460–463</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
     <p>
-      <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets
-      <code>self.current_fixing = None</code>. In <code>set_valuation_date</code>, when
-      <code>start &ge; valdate</code> (a brand-new variance swap with no historical fixings),
-      <code>hist_fixing_dates</code> is empty and the condition
-      <code>len(hist_fixings) &ge; 1</code> is never satisfied, so <code>current_fixing</code>
-      stays <code>None</code>. Then <code>evaluate()</code>:
-    </p>
-    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
-    <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
-    <p>
-      raises on every pricing call. The existing test in <code>test_mc.py</code> uses
-      <code>start_date = 2025-11-15</code> with <code>valdate = 2025-12-15</code>, so there
-      are always historical fixings — the new-contract path is never exercised by the test suite.
+      <strong>Why it's bad:</strong> Both classes carry <em>"Warning: work in progress"</em> comments
+      and both raise <code>NotImplementedError</code> in <code>evaluate()</code>. They are importable
+      from the public namespace. <code>Maximum.__init__</code> also sets <code>self.eventdates</code>
+      at construction time — the wrong lifecycle phase — rather than in <code>set_valuation_date</code>,
+      inconsistent with every other payoff in the codebase. Any caller who accidentally instantiates either
+      class gets a runtime error deep inside the pricing engine with no indication at the call site.
     </p>
     <p>
-      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty, initialise
-      <code>current_fixing</code> to the current spot from market data, or expose a
-      <code>set_current_fixing(spot)</code> method and document that it must be called before pricing.
+      <strong>Fix:</strong> Until fully implemented, rename to <code>_Maximum</code> /
+      <code>_BarrierDown</code> (underscore-prefix = not public API), or add
+      <code>raise NotImplementedError</code> in <code>__init__</code> so the failure is immediate and
+      clearly labelled at construction time, not at pricing time.
     </p>
   </div>
 
@@ -306,100 +302,103 @@
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>ThetaScheme.roll_forward</code> y-vector still built with a Python loop — first half not yet vectorized</span>
+      <span class="issue-title"><code>test_localvol_calib.py</code> duplicates 8 tests verbatim from <code>test_localvol.py</code>, one regressing to rounded references</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/pde/pdeschemes.py · lines 56–65</span>
+    <span class="loc">sdevpy/tests/test_localvol_calib.py · lines 23–164 &nbsp;·&nbsp; sdevpy/tests/test_localvol.py · lines 155–433</span>
     <p>
-      <strong>Why it's bad:</strong> The band-matrix assembly for <code>ThetaScheme</code>
-      (lines 74–77) was vectorized this cycle, but the preceding <em>y</em>-vector construction —
-      which builds the right-hand side of the linear system — remains a Python loop with
-      conditional branches. This runs at Python speed for every time step:
+      <strong>Why it's bad:</strong> The new file copies <code>test_calib_dupire</code>,
+      <code>test_dupire_impliedvol</code>, <code>test_dupire_output_shape</code>,
+      <code>test_dupire_scalar_input</code>, <code>test_dupire_ts_near_zero_returns_spot_vol</code>,
+      <code>test_dupire_flat_surface_recovers_constant_vol</code>, <code>test_lv_calib_black</code>, and
+      <code>test_lv_calib_black_constant</code> unchanged from <code>test_localvol.py</code>. Every future
+      change to a shared helper must now be reflected in two places. Worse, <code>test_dupire_pdf</code>
+      regressed: the original uses precise references (<code>0.20000181, 0.20001192, 0.1999994</code>) while
+      the copy rounds to (<code>0.20, 0.20, 0.20</code>), which would not catch a regression of up to
+      180 basis points.
     </p>
-    <pre><span class="c"># Current (slow) — lines 56–65</span>
-<span class="kw">for</span> j <span class="kw">in</span> range(n_x):
-    p_tmp = (<span class="fn">1.0</span> - one_m_theta_dt_2 * b * lv[j]**<span class="fn">2</span>) * p[j]
-    <span class="kw">if</span> j &lt; n_x - <span class="fn">1</span>:
-        p_tmp += one_m_theta_dt_2 * a * lv[j + <span class="fn">1</span>]**<span class="fn">2</span> * p[j + <span class="fn">1</span>]
-    <span class="kw">if</span> j &gt; <span class="fn">0</span>:
-        p_tmp += one_m_theta_dt_2 * c * lv[j - <span class="fn">1</span>]**<span class="fn">2</span> * p[j - <span class="fn">1</span>]
-    y[j] = p_tmp</pre>
-    <p><strong>Fix — replace with NumPy slices matching the band-matrix pattern immediately below:</strong></p>
-    <pre><span class="ok">y      = (1.0 - one_m_theta_dt_2 * b * lv**2) * p
-y[:-1] += one_m_theta_dt_2 * a * lv[1:]**2  * p[1:]
-y[1:]  += one_m_theta_dt_2 * c * lv[:-1]**2 * p[:-1]</span></pre>
+    <p>
+      <strong>Fix:</strong> Delete the 8 duplicated tests from <code>test_localvol_calib.py</code> — they
+      already run from <code>test_localvol.py</code>. Retain only the two new
+      <code>test_calibrate_lv_bysections_*</code> tests, which are the genuine addition. Restore the
+      precise references in <code>test_dupire_pdf</code>.
+    </p>
   </div>
 
   <!-- 3 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>ExplicitScheme.roll_forward</code> is entirely a Python loop — no vectorization applied</span>
+      <span class="issue-title">Per-strike price loops in <code>forwardpde.py</code> and <code>lvsection_calib.py</code> are the remaining hot-path Python loops</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/pde/pdeschemes.py · lines 142–153</span>
+    <span class="loc">sdevpy/pde/forwardpde.py · line 196 &nbsp;·&nbsp; sdevpy/volatility/localvol/lvsection_calib.py · line 191</span>
     <p>
-      <strong>Why it's bad:</strong> While <code>ImplicitScheme</code> was fully vectorized this
-      cycle, <code>ExplicitScheme</code> retains the original pure-Python loop structure.
-      For a 250-point grid and 50 time steps this is ~12,500 Python loop iterations per pricing
-      call, compared to the three NumPy slice operations that would replace it. Although the
-      Rannacher scheme delegates to <code>ThetaScheme(0.5)</code> after the initial implicit steps
-      (not to <code>ExplicitScheme</code>), the class remains in the public API.
+      <strong>Why it's bad:</strong> Both sites iterate over strikes in pure Python and accumulate
+      <code>np.trapezoid</code> calls one-by-one — the same pattern just vectorized in the PDE scheme
+      matrices. In <code>lvsection_calib.py</code>, this inner loop runs inside the optimizer's
+      objective function, which is called thousands of times per calibration. Both sites carry
+      existing <em>"ToDo: can this be vectorized?"</em> comments.
     </p>
-    <p><strong>Fix — vectorize matching the ImplicitScheme pattern:</strong></p>
-    <pre><span class="ok">y      = (1.0 - b * lv**2) * p
-y[:-1] += a * lv[1:]**2  * p[1:]
-y[1:]  += c * lv[:-1]**2 * p[:-1]</span></pre>
+    <pre><span class="c"># lvsection_calib.py:191 — current</span>
+<span class="kw">for</span> k <span class="kw">in</span> self.strikes:
+    payoff = np.maximum(s - k, <span class="fn">0.0</span>)
+    pde_prices.append(np.trapezoid(payoff * p, x))
+
+<span class="c"># Vectorized replacement</span>
+<span class="ok">k_2d = np.asarray(self.strikes)[:, None]   # (n_strikes, 1)
+payoffs = np.maximum(s[None, :] - k_2d, 0.0)  # (n_strikes, n_x)
+pde_prices = np.trapezoid(payoffs * p[None, :], x)  # (n_strikes,)</span></pre>
+    <p>The same broadcast pattern removes the <code>for k</code> loop in <code>forwardpde.py</code>, where straddles can be expressed as <code>np.abs(s[None,:] - k_2d)</code>.</p>
   </div>
 
   <!-- 4 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP stubs exported in the public API</span>
+      <span class="issue-title"><code>build_spotgrid</code> fills a NumPy array with a Python <code>for</code> loop</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
+    <span class="loc">sdevpy/pde/forwardpde.py · lines 74–81</span>
     <p>
-      <strong>Why it's bad:</strong> Both classes carry a <em>"Warning: work in progress"</em>
-      docstring and raise <code>NotImplementedError</code> in <code>evaluate()</code>, yet they
-      are importable from the public <code>sdevpy.montecarlo.payoffs.exotics</code> namespace.
-      <code>Maximum.__init__</code> sets <code>self.eventdates</code> at construction time —
-      violating the payoff lifecycle contract where this belongs in <code>set_valuation_date</code>.
-      <code>BarrierDown</code> stores a raw integer index instead of using the name-resolution
-      system. Any caller who instantiates either class gets a <code>NotImplementedError</code>
-      deep inside the pricing engine with no clear indication of why.
+      <strong>Why it's bad:</strong> The spot grid is a simple symmetric linspace around zero.
+      The current implementation allocates <code>x_grid</code> with <code>np.zeros</code> and fills
+      it element-by-element with a Python loop. This function is called at the start of every density
+      step when <code>rescale_x=True</code> — once per time section per calibration iteration.
     </p>
-    <p>
-      <strong>Fix:</strong> Prefix with underscore (<code>_Maximum</code>, <code>_BarrierDown</code>)
-      to remove them from the public namespace until fully implemented, or move
-      <code>raise NotImplementedError</code> into <code>__init__</code> so the failure is
-      immediate at construction time.
-    </p>
+    <pre><span class="c"># Current (lines 74–81)</span>
+x_grid = np.zeros(<span class="fn">2</span> * n_half + <span class="fn">1</span>)
+x = <span class="fn">0.0</span>
+<span class="kw">for</span> i <span class="kw">in</span> range(n_half):
+    x = x + dx
+    x_grid[n_half + <span class="fn">1</span> + i] = x
+    x_grid[n_half - <span class="fn">1</span> - i] = -x
+
+<span class="c"># Vectorized replacement — one line, identical result</span>
+<span class="ok">x_grid = np.arange(-n_half, n_half + 1) * dx</span></pre>
   </div>
 
   <!-- 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title">No tests for <code>TsIvCalibrator.calibrate</code> or the Dupire end-to-end calibration path</span>
+      <span class="issue-title"><code>TsIvCalibrator.calibrate</code> end-to-end pipeline still has no pytest test</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/ · codebase-wide</span>
+    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · lines 68–94</span>
     <p>
-      <strong>Why it's bad:</strong> The end-to-end implied vol calibration pipeline
-      (<code>TsIvCalibrator.calibrate → prepare_target_data → TsIvObjectiveBuilder.objective</code>)
-      is exercised only by notebooks, never by <code>pytest</code>. Similarly,
-      <code>calib_lv_dupire</code> / <code>calibrate_lv_interp</code> are imported in
-      <code>test_localvol.py</code> but the full calibration loop is not run against a reference
-      surface. The 9th-review critical notional bug would have been caught immediately by a
-      smoke test that priced a known trade against a trivially calibrated surface.
+      <strong>Why it's bad:</strong> The new <code>test_localvol_calib.py</code> covers LvSection
+      calibration but leaves the IV surface calibration pipeline
+      (<code>TsIvCalibrator.calibrate → prepare_target_data → TsIvObjectiveBuilder.objective → model.calculate</code>)
+      untested end-to-end. <code>test_impliedvol.py</code> tests the objective in isolation but never
+      calls <code>calibrate()</code>. Regressions in data parsing (<code>prepare_target_data</code>),
+      optimizer wiring, or model post-calibration state would be invisible to CI. The test data for
+      "ABC" / 2025-12-15 is already in place; a smoke test is a few lines.
     </p>
     <p>
-      <strong>Fix:</strong> Add (1) a <code>test_tssvi1_calibrate</code> that calls
-      <code>TsIvCalibrator.calibrate</code> against sample data and asserts RMSE &lt; threshold;
-      (2) a <code>test_dupire_calibrate</code> that runs <code>calib_lv_dupire</code> and
-      prices a vanilla to verify density normalisation.
+      <strong>Fix:</strong> Add one integration test that calls
+      <code>TsIvCalibrator(TsSvi1(), config).calibrate(mkt_data)</code> and asserts RMSE &lt; threshold
+      and that the model parameters are finite and match <code>calibrator.sol</code>.
     </p>
   </div>
 
@@ -407,25 +406,28 @@ y[1:]  += c * lv[:-1]**2 * p[:-1]</span></pre>
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title"><code>black.implied_vol</code> uses Brent with <code>xtol=1e-4</code> — limits precision to ~1 bp</span>
+      <span class="issue-title">New variance swap (start ≥ valdate) crashes at pricing — <code>current_fixing</code> never set</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py · line 30</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 452, 497–501</span>
     <p>
-      <strong>Why it's bad:</strong> <code>implied_vol</code> calls
-      <code>minimize_scalar(..., options={'xtol': 1e-4, 'maxiter': 100})</code>.
-      The tolerance is on the vol argument directly, so the returned vol may be wrong by up to 1 bp.
-      This function is used during vol-to-price and price-to-vol conversions in calibration: a
-      solver set to <code>tol=1e-10</code> fed targets accurate only to <code>1e-4</code> will
-      plateau early. Additionally, <code>xmax = 1.0</code> silently caps at 100%, which fails
-      for short-dated or high-vol options. A vectorized Newton-Raphson implementation
-      (<code>implied_vol_newton</code>) already exists in the same file and is both faster and
-      more accurate.
+      <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets <code>self.current_fixing = None</code>.
+      In <code>set_valuation_date</code>, when <code>start &ge; valdate</code> (a brand-new swap),
+      <code>hist_fixing_dates = []</code>, so <code>get_fixings</code> returns nothing, the guard
+      <code>if hist_fixings is not None and len(hist_fixings) >= 1</code> is never met, and
+      <code>current_fixing</code> stays <code>None</code>. Then <code>evaluate()</code> raises:
+    </p>
+    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
+    <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
+    <p>
+      The existing test always uses <code>start = 2025-11-15</code>, <code>valdate = 2025-12-15</code>
+      (historical fixings exist) — the failing case is never covered.
     </p>
     <p>
-      <strong>Fix:</strong> Replace the Brent call with <code>implied_vol_newton</code>, or at
-      minimum tighten <code>xtol</code> from <code>1e-4</code> to <code>1e-8</code> and raise
-      <code>xmax</code> to <code>10.0</code>.
+      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty, seed
+      <code>current_fixing</code> from the current spot (via market data), or expose a
+      <code>set_current_fixing(spot)</code> method and document it as required before pricing a
+      brand-new swap.
     </p>
   </div>
 
@@ -433,41 +435,47 @@ y[1:]  += c * lv[:-1]**2 * p[:-1]</span></pre>
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title">Stale commented-out Python loops remain in <code>pdeschemes.py</code> after vectorization</span>
+      <span class="issue-title"><code>PdeConfig.shift_forward</code> defaults to <code>True</code> but the function docstring says "not using this for now"</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/pde/pdeschemes.py · lines 79–85 (ThetaScheme) &nbsp;·&nbsp; lines 115–121 (ImplicitScheme)</span>
+    <span class="loc">sdevpy/pde/pdeschemes.py · line 20 &nbsp;·&nbsp; sdevpy/pde/forwardpde.py · lines 102–103, 171</span>
     <p>
-      <strong>Why it's bad:</strong> After vectorizing the band-matrix assembly in
-      <code>ThetaScheme</code> and all of <code>ImplicitScheme</code>, the original Python loops
-      were left as large commented-out blocks labeled <em>"# Original"</em>. Commented-out code
-      rots — after further edits it diverges from the live logic and becomes actively misleading.
-      Git history preserves the original code if ever needed for reference.
+      <strong>Why it's bad:</strong> <code>PdeConfig</code> declares <code>shift_forward: bool = True</code>,
+      meaning any caller who constructs a bare <code>PdeConfig()</code> silently runs the forward-shift
+      correction. But <code>shift_forward()</code> carries the docstring
+      <em>"Shift the density to match the forward. We are not using this for now."</em>
+      And <code>price_vanillas</code> (the only production caller) explicitly overrides to
+      <code>shift_forward=False</code>. A contributor adding a new caller with default config would
+      silently exercise code the author labelled as unused.
     </p>
-    <p><strong>Fix:</strong> Delete lines 79–85 and 115–121 entirely.</p>
+    <p>
+      <strong>Fix:</strong> Change the default to <code>False</code> to match actual production usage,
+      and rewrite the docstring to describe what the function does (not its usage status).
+    </p>
   </div>
 
   <!-- 8 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>PdeConfig.shift_forward</code> defaults to <code>True</code> but the docstring says "not using this for now"</span>
+      <span class="issue-title"><code>LvObjectiveBuilder</code> infeasibility penalty scales with expiry level, making it inconsistent across sections</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/pde/pdeschemes.py · line 20 &nbsp;·&nbsp; sdevpy/pde/forwardpde.py · lines 102–103, 171</span>
+    <span class="loc">sdevpy/volatility/localvol/lvsection_calib.py · line 211</span>
     <p>
-      <strong>Why it's bad:</strong> <code>PdeConfig</code> declares
-      <code>shift_forward: bool = True</code>, meaning any caller constructing a bare
-      <code>PdeConfig()</code> silently runs the forward-shift correction. Yet
-      <code>shift_forward()</code> in <code>forwardpde.py</code> carries the docstring
-      <em>"We are not using this for now"</em>, and the only production caller
-      (<code>price_vanillas</code> at line 171) explicitly overrides to
-      <code>shift_forward=False</code>. A new contributor creating a <code>PdeConfig()</code>
-      unknowingly runs a path the author labelled as unused.
+      <strong>Why it's bad:</strong> When parameters fail the validity check, the objective returns
+      <code>self.cf_prices.sum()</code> — the total call option price across all strikes at the current
+      expiry. Longer-dated options are worth more (higher forward prices), so the penalty grows with
+      expiry. The optimizer at section 5 (2y) faces a much larger "infeasible" signal than at section
+      1 (1m), making step-size control and tolerance comparisons inconsistent across sections. The
+      in-code comment explicitly acknowledges this uncertainty.
     </p>
     <p>
-      <strong>Fix:</strong> Change the default to <code>False</code> to match actual usage,
-      and update the docstring to describe what the function does.
+      <strong>Fix:</strong> Use a fixed, large constant penalty independent of price level —
+      e.g. <code>constants.FLOAT_INFTY</code> or a hard-coded value like <code>1.0</code>
+      (prices are normalised forward prices, so this is already large). The old concern about
+      <code>FLOAT_INFTY</code> causing optimizer issues should be tested directly rather than
+      replaced with a moving penalty.
     </p>
   </div>
 
@@ -475,53 +483,53 @@ y[1:]  += c * lv[:-1]**2 * p[:-1]</span></pre>
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title">Duplicate commented-out lines in <code>dupire_calib.py</code> — same two assignments repeated</span>
+      <span class="issue-title"><code>TsIvObjectiveBuilder</code> silently accepts <code>mkt_prices=None</code>, crashing only at optimization time for <code>ForwardPremium</code> models</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/dupire_calib.py · lines 168–171</span>
+    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · lines 14–34</span>
     <p>
-      <strong>Why it's bad:</strong> Lines 170–171 are exact copies of the live lines 168–169,
-      left behind after an edit:
+      <strong>Why it's bad:</strong> In <code>__init__</code>, when <code>calculate_type</code> is
+      <code>ForwardPremium</code>, <code>self.target_values = self.market_prices</code>. Test code
+      passes <code>mkt_prices=None</code> for <code>LogNormalVol</code> models (which take the vol
+      branch), so the bug is latent. If a <code>ForwardPremium</code> model is ever passed with
+      <code>mkt_prices=None</code>, the objective silently stores <code>None</code> and crashes with a
+      confusing <code>TypeError</code> inside <code>rmse()</code> deep in the optimizer, not at the
+      constructor call.
     </p>
-    <pre>moneynesses[i] = m
-lv[i] = <span class="fn">dupire_formula</span>(surface, ts, te, m)
-<span class="c"># moneynesses[i] = m                            ← identical to line 168</span>
-<span class="c"># lv[i] = dupire_formula(surface, ts, te, m)    ← identical to line 169</span></pre>
     <p>
-      Redundant commented-out duplicates of live lines serve no purpose and create noise for
-      anyone reading the file. <strong>Fix:</strong> Delete lines 170–171.
+      <strong>Fix:</strong> Validate eagerly in <code>__init__</code>:
     </p>
+    <pre><span class="kw">if</span> self.model.calculate_type == OptionQuoteType.ForwardPremium <span class="kw">and</span> mkt_prices <span class="kw">is</span> <span class="kw">None</span>:
+    <span class="ok">raise ValueError("mkt_prices is required when calculate_type is ForwardPremium")</span></pre>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>[[None]] * n_times</code> creates aliased inner lists — misleading pattern even though it is safe</span>
+      <span class="issue-title"><code>ImpliedVol.taylor_dx</code> uses hardcoded <code>hr = 0.05</code> with no documentation of known accuracy limits</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/dupire_calib.py · lines 153–154</span>
+    <span class="loc">sdevpy/volatility/impliedvol/impliedvol.py · lines 62–73</span>
     <p>
-      <strong>Why it's bad:</strong> <code>[[None]] * n_times</code> creates a list where
-      every slot holds a reference to the <em>same</em> inner <code>[None]</code> object.
-      In the actual code each slot is immediately replaced by whole-slot assignment
-      (<code>lv[i] = dupire_formula(...)</code>), so the aliasing is never exploited and the
-      code is correct. But any reader unfamiliar with the Python aliasing rule will spend time
-      verifying there is no hidden mutation bug. The same pattern appears on line 154 for
-      <code>moneynesses</code>.
+      <strong>Why it's bad:</strong> The finite-difference bump size <code>hr = 0.05</code> (5% relative)
+      is a magic number shared across the Dupire formula, the probability density, and the calibration
+      objective. The code shows two commented-out alternatives (<code>0.01</code> and <code>0.10</code>),
+      implying empirical tuning. At very deep OTM moneyness (x ≈ 0), the bump <code>0.05 * x</code>
+      becomes negligible and the finite-difference quotient becomes numerically noisy, silently
+      contaminating Dupire local vol and density calculations. No test verifies gradient accuracy as
+      a function of moneyness or expiry.
     </p>
     <p>
-      <strong>Fix:</strong> Use a flat list to make intent unambiguous:
+      <strong>Fix:</strong> Document why <code>0.05</code> was chosen and its known accuracy limits.
+      Consider blending absolute and relative sizing: <code>dx = max(hr * abs(x), x_min_abs)</code>
+      with a floor like <code>1e-4</code>. Models with closed-form derivatives (SVI has analytic
+      <code>d&sigma;/dx</code>) should use them instead of finite differences.
     </p>
-    <pre><span class="rm">lv          = [[None]] * n_times</span>
-<span class="rm">moneynesses = [[None]] * n_times</span>
-<span class="ok">lv          = [None] * n_times</span>
-<span class="ok">moneynesses = [None] * n_times</span></pre>
-    <p>Since each slot is overwritten by assignment, the inner list serves no purpose.</p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #10 &nbsp;·&nbsp; 2026-05-10 (full scan)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #10 &nbsp;·&nbsp; 2026-05-16 (full scan, 165 .py files + 17 notebooks)
   </footer>
 </div>
 </body>
