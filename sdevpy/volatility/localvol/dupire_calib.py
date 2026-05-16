@@ -150,8 +150,10 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
     n_times = len(t_grid)
 
     # Calculate Dupire for suitable dates
-    lv = [[None]] * n_times
-    moneynesses = [[None]] * n_times
+    lv = [None] * n_times
+    moneynesses = [None] * n_times
+    # lv = [[None]] * n_times
+    # moneynesses = [[None]] * n_times
     for i in range(0, n_times - 1):
         ts = t_grid[i]
         te = t_grid[i + 1]
@@ -167,8 +169,6 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
 
         moneynesses[i] = m
         lv[i] = dupire_formula(surface, ts, te, m)
-        # moneynesses[i] = m
-        # lv[i] = dupire_formula(surface, ts, te, m)
 
         if verbose:
             log.info(f"Iteration {i} from {ts} to {te}")

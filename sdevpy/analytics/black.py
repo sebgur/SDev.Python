@@ -27,9 +27,12 @@ def price_straddles(expiry: npt.ArrayLike, strike: npt.ArrayLike, fwd: npt.Array
 def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
     """ Direct method by numerical inversion using Brent.
         Non-vectorized due to solver. """
-    options = {'xtol': 1e-4, 'maxiter': 100, 'disp': False}
+    options = {'xtol': 1e-8, 'maxiter': 100, 'disp': False}
     xmin = 1e-6
-    xmax = 1.0
+    xmax = 10.0
+    # options = {'xtol': 1e-4, 'maxiter': 100, 'disp': False}
+    # xmin = 1e-6
+    # xmax = 1.0
 
     def error(vol):
         premium = price(expiry, strike, is_call, fwd, vol)

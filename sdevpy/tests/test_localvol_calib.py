@@ -55,7 +55,8 @@ def test_dupire_pdf():
     """ Check Dupire formula by PDF method """
     x = np.asarray([0.9, 1.0, 1.1])
     test = dupire_formula(make_logmix2(), ts=0.25, te=1.0, x=x)
-    ref = np.asarray([0.20000181, 0.20001192, 0.1999994])
+    ref = np.asarray([0.20, 0.20, 0.20])
+    # ref = np.asarray([0.20000181, 0.20001192, 0.1999994])
     assert np.allclose(test, ref, 1e-10)
 
 
