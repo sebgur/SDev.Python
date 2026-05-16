@@ -59,8 +59,8 @@ def density(maturity: float, local_vol, config: PdeConfig):
     return x, dx, p
 
 
-def build_spotgrid(maturity: float, config: PdeConfig):
-    """ Built spot grid for PDEs """
+def build_spotgrid(maturity: float, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
+    """ Build spot grid for PDEs """
     mesh_percentile = config.percentile
     if config.iv_surface is None:
         mesh_vol = config.mesh_vol
@@ -100,7 +100,9 @@ def roll_forward(p: npt.NDArray[np.float64], x: npt.NDArray[np.float64], dx: flo
 
 
 def shift_forward(x: npt.NDArray[np.float64], p: npt.NDArray[np.float64], tol: float=1e-6) -> npt.NDArray[np.float64]:
-    """ Shift the density to match the forward """
+    """ Shift the density to match the forward.
+        Bad results have been observed when this is turned on for very short expiries.
+        We keep it to False at configuration level, but leave it available by choice. """
     ex = np.exp(x)
     pde_forward_m = np.trapezoid(ex * p, x) # If perfect, would be 1.0
     target_forward_m = 1.0

@@ -14,7 +14,7 @@ def check_forward_pde(rescale_x: bool, scheme: str='rannacher'):
 
     # PDE config
     pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme=scheme,
-                           rescale_x=rescale_x, rescale_p=True)
+                           rescale_x=rescale_x, rescale_p=True, shift_forward=True)
 
     # Run PDE
     density_reports = calculate_densities(maturities, my_lv, pde_config)

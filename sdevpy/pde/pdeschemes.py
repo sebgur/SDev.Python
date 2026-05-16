@@ -17,7 +17,7 @@ class PdeConfig:
     rannacher_time: float = 7.0 / 365.0
     rescale_x: bool = True
     rescale_p: bool = True
-    shift_forward: bool = True
+    shift_forward: bool = False
     iv_surface: ImpliedVol = None
 
 
