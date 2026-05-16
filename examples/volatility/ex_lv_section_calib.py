@@ -14,10 +14,11 @@ verbose, n_digits = False, 6
 np.set_printoptions(suppress=True, precision=n_digits)
 name = "ABC"
 valdate = dt.datetime(2025, 12, 15)
+model_name = 'BiExp'
 
 # Calibration config
 lv_data_folder = lvf.test_data_folder()
-config = {'start_new': True, 'model': 'CubicVol', 'store_date': valdate, 'optimizer': 'SLSQP',
+config = {'start_new': True, 'model': model_name, 'store_date': valdate, 'optimizer': 'SLSQP',
             'tol': 1e-6, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
             'sol_as_init': False}
 
@@ -28,8 +29,9 @@ lv = calib_result['lv']
 
 # Dump LV result to file
 out_folder = lvf.test_data_folder()
-fname = valdate.strftime(dts.DATE_FILE_FORMAT) + "." + name + "." + config['model']
-out_file = Path(out_folder) / (fname + ".json")
+fname = dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + "." + config['model']
+# fname = valdate.strftime(dts.DATE_FILE_FORMAT) + "." + config['model']
+out_file = Path(out_folder) / name / (fname + ".json")
 print(f"Dumping LV result to file: {out_file}")
 lv.dump(out_file)
 
