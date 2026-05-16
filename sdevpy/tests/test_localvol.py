@@ -2,6 +2,7 @@ import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
+from sdevpy.volatility.impliedvol.models.biexp import BiExpSection
 from sdevpy.volatility.impliedvol.models.svi import SviSection
 from sdevpy.volatility.localvol.dupire_calib import dupire_formula, calib_lv_dupire
 from sdevpy.volatility.localvol.black_calib import calib_lv_black
@@ -24,16 +25,20 @@ FLAT_VOL = 0.20
 # s0, sinf, chi, tau, alpha, beta, r, x0star, lambda0, gamma, delta
 FLAT_TSSVI1_PARAMS = [FLAT_VOL, FLAT_VOL, 0.0, 1.0, 0.0, 0.5, 0.0, 0.0, 0.1, 1.0, 1.0]
 
-_T_GRID  = np.array([0.5, 1.0])
+LV_T_GRID  = np.array([0.0, 0.5])
+IV_T_GRID  = np.array([0.5, 1.0])
 FWD     = 100.0
 FWDS    = [FWD, FWD]
 STRIKES = [np.array([90.0, 100.0, 110.0]),
            np.array([90.0, 100.0, 110.0])]
 
 # a=0.04, b=0.001>0, rho=0, m=0, sigma=0.1>0 — all svi_check_params constraints satisfied
-VALID_SVI   = np.array([0.04, 0.001, 0.0, 0.0, 0.10])
+# VALID_SVI   = np.array([0.04, 0.001, 0.0, 0.0, 0.10])
 # b < 0 — fails svi_check_params immediately
 INVALID_SVI = np.array([0.04, -0.10, 0.0, 0.0, 0.10])
+
+VALID_BIEXP   = np.array([0.22, 0.32, 0.34, 0.05, 0.04, -0.8])
+
 
 def make_lv_by_sections(t_grid: list[float]=None, params: npt.ArrayLike=None):
     if t_grid is None:
@@ -82,24 +87,24 @@ def make_logmix2():
     s.update_params(s.initial_point())
     return s
 
-def make_iplv(params=VALID_SVI):
+def make_iplv(params=VALID_BIEXP):
     """ Make InterpolatedParamLocalVol """
-    sections = [SviSection(t) for t in _T_GRID]
+    sections = [BiExpSection(t) for t in LV_T_GRID]
     lv = InterpolatedParamLocalVol(sections)
-    for i in range(len(_T_GRID)):
+    for i in range(len(LV_T_GRID)):
         lv.update_params(i, params)
     return lv
 
 def make_prices():
     return [black.price(exp, STRIKES[i], True, FWD, FLAT_VOL)
-            for i, exp in enumerate(_T_GRID)]
+            for i, exp in enumerate(IV_T_GRID)]
 
 def make_pde_config():
     return fpde.PdeConfig(n_timesteps=5, n_meshes=30, mesh_vol=FLAT_VOL,
                           scheme='rannacher', rescale_x=True, rescale_p=True)
 
 def make_builder():
-    return LvObjectiveBuilder(make_iplv(), FWDS, STRIKES, make_prices(), make_pde_config())
+    return LvObjectiveBuilder(make_iplv(), IV_T_GRID, FWDS, STRIKES, make_prices(), make_pde_config())
 
 
 ##################### LV calib by sections ########################################################
@@ -127,7 +132,7 @@ def test_lv_bysections_builder_objective_feasible_params_returns_finite_nonneg()
     old_x, old_dx, old_p = builder.initialize()
     builder.set_expiry(0, old_x, old_dx, old_p)
 
-    result = builder.objective(VALID_SVI)
+    result = builder.objective(VALID_BIEXP)
 
     assert np.isfinite(result)
     assert result >= 0.0
@@ -138,9 +143,10 @@ def test_lv_bysections_builder_calculate_vols_has_correct_length_and_positive_va
     builder = make_builder()
     old_x, old_dx, old_p = builder.initialize()
     builder.set_expiry(0, old_x, old_dx, old_p)
-    builder.objective(VALID_SVI) # Populates pde_prices
+    builder.objective(VALID_BIEXP) # Populates pde_prices
 
     vols = builder.calculate_vols()
+    print(vols)
 
     assert len(vols) == len(STRIKES[0])
     assert all(v > 0.0 for v in vols)
@@ -426,7 +432,8 @@ def test_lv_calib_black_constant():
     assert isequal(lv.vol, calib_lvol, 1e-10)
 
 if __name__ == "__main__":
-    test_calib_dupire()
+    test_lv_bysections_builder_calculate_vols_has_correct_length_and_positive_values()
+    # test_calib_dupire()
     # test_lv_by_section_values()
     # test_lv_calib_black()
     # test_lv_bymatrix_dump()

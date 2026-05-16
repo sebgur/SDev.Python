@@ -3,6 +3,7 @@ import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities import timegrids, dates
+from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import LocalVolSection
 from sdevpy.volatility.impliedvol.optionsurface import calibration_targets, IS_CALL
@@ -36,24 +37,22 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     # Set calibration time grid
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
-    # ToDo: set up time grid for LV to interpolate on (lower bound)
-    lv_t_grid = [0.0]
-    lv_t_grid.extend(expiry_grid[:-1])
-
     # Set calibration targets
     cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
 
     # Initial LV: either from scratch or from existing
+    lv_t_grid = [0.0] # LV time grid
+    lv_t_grid.extend(expiry_grid[:-1])
+    # print(f"LV construct. time grid: {lv_t_grid}")
     if config['start_new']:
         print("Starting from new LV")
-        lv = lvf.load_lv_new(expiry_grid, config['model'])
+        lv = lvf.load_lv_new(lv_t_grid, config['model'])
     else:
         print("Reading LV from folder")
-        lv = lvf.load_lv_from_folder(expiry_grid, valdate, name, config['lv_folder'])
+        lv = lvf.load_lv_from_folder(lv_t_grid, valdate, name, config['lv_folder'])
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
 
-    print(f"LV init: {lv}")
-    print(f"IV time grid: {}")
+    print(f"IV time grid: {expiry_grid}")
     print(f"LV time grid: {lv.t_grid}")
 
     # Set forward PDE
@@ -63,7 +62,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
                                 shift_forward=False)
 
     # Set objective
-    obj_builder = LvObjectiveBuilder(lv, fwds, strike_surface, cf_price_surface, pde_config)
+    obj_builder = LvObjectiveBuilder(lv, expiry_grid, fwds, strike_surface, cf_price_surface, pde_config)
     objective = obj_builder.objective
 
     # Optimizer settings
@@ -136,8 +135,27 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
 
 
 class LvObjectiveBuilder:
-    def __init__(self, lv: LocalVolSection, fwds, strike_surface, cf_price_surface, pde_config: PdeConfig):
-        self.expiry_grid = lv.t_grid
+    def __init__(self, lv: LocalVolSection, expiry_grid: list[float], fwds: list[float],
+                 strike_surface: list[list[float]], cf_price_surface:list[list[float]], pde_config: PdeConfig):
+        # ToDo: do we really need to store lv_t_grid as member data?
+        self.expiry_grid = expiry_grid
+        self.lv_t_grid = lv.t_grid
+
+        # Check consistency of time grids
+        if len(self.lv_t_grid) <= 1:
+            raise ValueError("LV time grid only has 1 point: it must contain at least 2")
+
+        if len(self.lv_t_grid) != len(self.expiry_grid):
+            raise ValueError("Inconsistent sizes between LV time grid and expiries")
+
+        if not isequal(self.lv_t_grid[0], 0.0):
+            raise ValueError("LV time grid does not start at 0")
+
+        for i in range(len(self.expiry_grid) - 1):
+            if not isequal(self.expiry_grid[i], self.lv_t_grid[i + 1]):
+                raise ValueError("Inconsistent time values between LV time grid and expiries")
+
+        # Global variables
         self.cf_price_surface = cf_price_surface
         self.strike_surface = strike_surface
         self.fwds = fwds
@@ -145,7 +163,7 @@ class LvObjectiveBuilder:
         self.pde_config = pde_config
         self.start_time = 0.0
 
-        # Slice variable
+        # Slice variables
         self.exp_idx = 0
         self.step_grid = None
         self.old_p, self.old_x, self.old_dx = None, None, 0.0
@@ -179,6 +197,7 @@ class LvObjectiveBuilder:
             rmse = metrics.rmse(pde_prices, self.cf_prices)
             self.pde_prices = pde_prices
             self.rmse = rmse
+            # print(self.rmse)
             return rmse
         else:
             # In principle we should return a penalty number. However, it is not clear at the moment if
@@ -193,13 +212,13 @@ class LvObjectiveBuilder:
 
     def set_expiry(self, exp_idx, old_x, old_dx, old_p):
         self.exp_idx = exp_idx
-        ts = self.start_time if exp_idx == 0 else self.expiry_grid[exp_idx - 1]
-        te = self.expiry_grid[exp_idx]
+        ts = self.start_time if self.exp_idx == 0 else self.expiry_grid[self.exp_idx - 1]
+        te = self.expiry_grid[self.exp_idx]
         self.step_grid = timegrids.build_timegrid(ts, te, self.pde_config)
 
-        self.fwd = self.fwds[exp_idx]
-        self.strikes = self.strike_surface[exp_idx]
-        self.cf_prices = self.cf_price_surface[exp_idx]
+        self.fwd = self.fwds[self.exp_idx]
+        self.strikes = self.strike_surface[self.exp_idx]
+        self.cf_prices = self.cf_price_surface[self.exp_idx]
 
         self.old_x = old_x
         self.old_dx = old_dx
@@ -237,8 +256,8 @@ if __name__ == "__main__":
 
     # Calibration config
     lv_data_folder = lvf.test_data_folder()
-    config = {'start_new': False, 'model': 'CubicVol', 'store_date': valdate, 'optimizer': 'SLSQP',
-              'tol': 1e-4, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
+    config = {'start_new': False, 'model': 'BiExp', 'store_date': valdate, 'optimizer': 'SLSQP',
+              'tol': 1e-6, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
               'sol_as_init': False}
 
     # Calibrate LV
@@ -250,6 +269,7 @@ if __name__ == "__main__":
     out_folder = lvf.test_data_folder()
     fname = valdate.strftime(dates.DATE_FILE_FORMAT) + "." + name + "." + config['model']
     out_file = os.path.join(out_folder, fname + ".json")
+    print(f"Dumping LV result to file: {out_file}")
     lv.dump(out_file)
 
     # ################ DIAGNOSTICS ################################################################

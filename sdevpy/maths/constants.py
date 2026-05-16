@@ -1,4 +1,5 @@
 import sys
+import math
 
 
 FLOAT_INFTY = float('inf')
@@ -16,6 +17,8 @@ C_PI = 3.141592653589793238462643383280
 C_SQRT2PI = 2.50662827459518
 C_2_SQRTPI = 1.12837916709551257390
 k_2powneg32 = 2.3283064365387e-10 # Normalization factor for Sobol
+
+TWO_PI = 2.0 * math.pi
 
 
 if __name__ == "__main__":
