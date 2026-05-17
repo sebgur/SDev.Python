@@ -12,7 +12,8 @@ import datetime as dt
 import logging
 from scipy.stats import norm
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.impliedvol import ParametricImpliedVol, LvMethod, data_file
+from sdevpy.volatility.impliedvol.impliedvol import LvMethod, data_file
+from sdevpy.volatility.impliedvol.parametric_impliedvol import ParametricImpliedVol
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.market.eqforward import get_forward_curves

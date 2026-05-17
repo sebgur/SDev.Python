@@ -5,7 +5,7 @@ from sdevpy.utilities import timegrids, dates
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import LocalVolSection
-from sdevpy.volatility.impliedvol.optionsurface import calibration_targets, IS_CALL
+from sdevpy.volatility.impliedvol.optionsurface import calibration_targets#, IS_CALL
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
@@ -139,9 +139,8 @@ class LvObjectiveBuilder:
     def __init__(self, lv: LocalVolSection, expiry_grid: list[float], fwds: list[float],
                  strike_surface: list[list[float]], cf_price_surface:list[list[float]],
                  pde_config: PdeConfig, option_type: str='straddle'):
-        # ToDo: do we really need to store lv_t_grid as member data?
         self.expiry_grid = expiry_grid
-        self.lv_t_grid = lv.t_grid
+        # self.lv_t_grid = lv.t_grid
         match option_type.lower(): # Use integers (enum) to avoid repeated string comparisons
             case 'call':
                 self.option_type = 0
@@ -151,17 +150,17 @@ class LvObjectiveBuilder:
                 self.option_type = 2
 
         # Check consistency of time grids
-        if len(self.lv_t_grid) <= 1:
+        if len(lv.t_grid) <= 1:
             raise ValueError("LV time grid only has 1 point: it must contain at least 2")
 
-        if len(self.lv_t_grid) != len(self.expiry_grid):
+        if len(lv.t_grid) != len(self.expiry_grid):
             raise ValueError("Inconsistent sizes between LV time grid and expiries")
 
-        if not isequal(self.lv_t_grid[0], 0.0):
+        if not isequal(lv.t_grid[0], 0.0):
             raise ValueError("LV time grid does not start at 0")
 
         for i in range(len(self.expiry_grid) - 1):
-            if not isequal(self.expiry_grid[i], self.lv_t_grid[i + 1]):
+            if not isequal(self.expiry_grid[i], lv.t_grid[i + 1]):
                 raise ValueError("Inconsistent time values between LV time grid and expiries")
 
         # Global variables

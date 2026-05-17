@@ -130,7 +130,7 @@ def expectation(payoff: npt.NDArray[np.float64], p_grid: npt.NDArray[np.float64]
     return np.trapezoid(payoff * p_grid, x_grid)
 
 
-def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: PdeConfig, **kwargs) -> dict:
+def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: PdeConfig) -> dict:
     """ Calculate densities at specified maturities """
     # Initialize spot grid: first maturity if rescaling on x, last maturity otherwise
     spotgrid_tmax = maturities[0] if pde_config.rescale_x else maturities[-1]

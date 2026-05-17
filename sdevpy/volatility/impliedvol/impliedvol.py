@@ -22,11 +22,9 @@ class ImpliedVol(ABC):
     def __init__(self):
         self.calculate_type = OptionQuoteType.LogNormalVol
         self.shift = 0.0 # In Math format, i.e. 0.01 for 1%
-        # self.allow_negative_variables = False
-        self.calculable_at_zero = True
+        # self.calculable_at_zero = True
         self.lv_method = LvMethod.ImpliedVol
-        # self.daycount = None
-        self.expiry_times = []
+        # self.expiry_times = []
         self.eps = constants.EPS
         self.time_epsilon = 0.000001
         self.base_date = None
@@ -199,32 +197,6 @@ class ImpliedVol(ABC):
         else:
             price = self.to_price(t, k, f, is_call, value)
             return black.implied_vol(t, k + self.shift, is_call, f + self.shift, price)
-
-
-class ParametricImpliedVol(ImpliedVol):
-    def __init__(self):
-        super().__init__()
-        self.n_params = None
-        self.params = None
-
-    def update_params(self, x: list[float]) -> None:
-        """ Update the current parameters """
-        self.params = np.asarray(x, dtype=float)
-        # self.params = x
-
-    def check_params(self) -> tuple[bool, float]:
-        """ Check validity of the parameters, return is_ok state and penalty value (0.0 if is_ok) """
-        return True, 0.0
-
-    @abstractmethod
-    def bounds(self, keep_feasible: bool=False):
-        """ Recommended bounds for optimization on parameters """
-        pass
-
-    @abstractmethod
-    def initial_point(self) -> list[float]:
-        """ Recommended initial point for optimization on parameters """
-        pass
 
 
 def data_file(name: str, date: dt.datetime, model_name: str, **kwargs) -> str:
