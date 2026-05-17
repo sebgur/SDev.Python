@@ -11,6 +11,12 @@ from sdevpy.utilities.tools import isequal
 DFLT_PDE_CONFIG = PdeConfig()
 
 
+########### TODO ################################
+# * Write some tests for build_step_grid
+# * Test in Jupyter
+# * Pass simpler than PdeConfig by estimating mesh_vol using LV?
+
+
 class NumericalImpliedVol(ImpliedVol):
     def __init__(self, lv: LocalVol, pde_config: PdeConfig=DFLT_PDE_CONFIG, **kwargs):
         super().__init__()
