@@ -30,7 +30,7 @@ class OptionTarget:
 
 
 def calibration_targets(expiries: list[float], fwds: list[float], strike_surface: list[list[float]],
-                        vol_surface: list[list[float]]):
+                        vol_surface: list[list[float]], option_type: str='straddle'):
     """ Prepare surface of targets for calibration with estimate of tolerance """
     cf_price_surface = []
     ftols = []
@@ -39,10 +39,20 @@ def calibration_targets(expiries: list[float], fwds: list[float], strike_surface
         fwd = fwds[exp_idx]
         strikes = strike_surface[exp_idx]
         vols = vol_surface[exp_idx]
-        cf_price = black.price(expiry, strikes, IS_CALL, fwd, vols)
+        if option_type.lower() == 'call':
+            cf_price = black.price(expiry, strikes, True, fwd, vols)
+            cf_price_bump = black.price(expiry, strikes, True, fwd, vols)
+        elif option_type.lower() == 'put':
+            cf_price = black.price(expiry, strikes, False, fwd, vols)
+            cf_price_bump = black.price(expiry, strikes, False, fwd, vols)
+        else: # Assumed straddle
+            cf_price = black.price(expiry, strikes, True, fwd, vols)
+            cf_price_bump = black.price(expiry, strikes, True, fwd, vols)
+            cf_price += black.price(expiry, strikes, False, fwd, vols)
+            cf_price_bump += black.price(expiry, strikes, False, fwd, vols)
+
         cf_price_surface.append(cf_price)
         vols = vols + itol
-        cf_price_bump = black.price(expiry, strikes, IS_CALL, fwd, vols)
         ftols.append(metrics.rmse(cf_price, cf_price_bump))
 
     return cf_price_surface, ftols

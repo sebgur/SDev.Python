@@ -50,8 +50,8 @@ class VSviSection(ParamLocalVolSection):
 
     def constraints(self):
         # vstar, b, rho, xstar, lambda
-        lw_bounds = [0.01, -0.1, -0.99, -0.1, 0.01]
-        up_bounds = [1.0, 0.1, 0.99, 0.1, 1.0]
+        lw_bounds = [0.0, -1.0, -1.0, -1.0, 0.0]
+        up_bounds = [1.0,  1.0,  1.0,  1.0, 1.0]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
         return bounds
 

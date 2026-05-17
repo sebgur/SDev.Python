@@ -37,7 +37,9 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Set calibration targets
-    cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface)
+    option_type = 'straddle'
+    cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface,
+                                                  option_type=option_type)
 
     # Initial LV: either from scratch or from existing
     lv_t_grid = [0.0] # LV time grid
@@ -135,10 +137,18 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
 
 class LvObjectiveBuilder:
     def __init__(self, lv: LocalVolSection, expiry_grid: list[float], fwds: list[float],
-                 strike_surface: list[list[float]], cf_price_surface:list[list[float]], pde_config: PdeConfig):
+                 strike_surface: list[list[float]], cf_price_surface:list[list[float]],
+                 pde_config: PdeConfig, option_type: str='straddle'):
         # ToDo: do we really need to store lv_t_grid as member data?
         self.expiry_grid = expiry_grid
         self.lv_t_grid = lv.t_grid
+        match option_type.lower(): # Use integers (enum) to avoid repeated string comparisons
+            case 'call':
+                self.option_type = 0
+            case 'put':
+                self.option_type = 1
+            case _:
+                self.option_type = 2
 
         # Check consistency of time grids
         if len(self.lv_t_grid) <= 1:
@@ -189,7 +199,13 @@ class LvObjectiveBuilder:
             s = self.fwd * np.exp(x)
             pde_prices = []
             for k in self.strikes: # ToDo: can we do this vectorially over the strikes?
-                payoff = np.maximum(s - k, 0.0) # ToDo: accept calls and puts
+                if self.option_type == 0:
+                    payoff = np.maximum(s - k, 0.0) # Call
+                elif self.option_type == 1:
+                    payoff = np.maximum(k - s, 0.0) # Put
+                else:
+                    payoff = np.abs(s - k) # Straddle
+
                 weighted_payoff = payoff * p
                 pde_prices.append(np.trapezoid(weighted_payoff, x))
 
@@ -244,7 +260,13 @@ class LvObjectiveBuilder:
         expiry = self.expiry_grid[self.exp_idx]
         pde_vols = []
         for k, p in zip(self.strikes, self.pde_prices, strict=True):
-            pde_vols.append(black.implied_vol(expiry, k, IS_CALL, self.fwd, p))
+            if self.option_type == 0:
+                pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, p))
+            elif self.option_type == 1:
+                pde_vols.append(black.implied_vol(expiry, k, False, self.fwd, p))
+            else:
+                call = (p - k + self.fwd) / 2.0
+                pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, call))
 
         return pde_vols
 
