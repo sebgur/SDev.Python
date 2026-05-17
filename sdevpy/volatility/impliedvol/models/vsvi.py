@@ -2,7 +2,7 @@
     inspiration, as opposed to its original SVI. This model simply gives an SVI-like
     parametric shape to the volatility, as opposed to the variance in the original paper
     by J. Gatheral. We re-parameterize it here in terms of the true minimum vstar located
-    at xstar, see justifications in 
+    at xstar, see justifications in
     Gurrieri, 'A Class of Term Structures for SVI Implied Volatility', 2010,
     https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1779463
 """
@@ -19,7 +19,7 @@ DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
 
 
 def create_section(time: float, param_config: dict=None, fill_sample: bool=True) -> ParamLocalVolSection:
-    """ Create a vSVI section """
+    """ Create a VSVI section """
     section = VSviSection(time)
     if param_config is None and fill_sample:
         params = sample_params(time) # Fill with sample
@@ -115,12 +115,12 @@ def vsvi_formula(t: float, x: npt.ArrayLike, params: list[float]) -> npt.ArrayLi
 
 def sample_params(t: float, vol: float=0.25) -> npt.ArrayLike:
     """ Guess parameters for display or optimization initial point """
-    a = vol
-    b = 0.1 / t
+    vstar = vol
+    b = 0.1 #/ t
     rho = -0.25
-    m = 0.0
-    sigma = 0.25 * t
-    return np.array([a, b, rho, m, sigma])
+    xstar = 0.0
+    lambda_ = 0.25 * t
+    return np.array([vstar, b, rho, xstar, lambda_])
 
 
 def generate_sample_data(valdate: dt.datetime, terms, base_vol: float=0.25,

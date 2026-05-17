@@ -14,13 +14,14 @@ verbose, n_digits = False, 6
 np.set_printoptions(suppress=True, precision=n_digits)
 name = "ABC"
 valdate = dt.datetime(2025, 12, 15)
-model_name = 'BiExp'
+model_name = 'VSVI'
+# model_name = 'BiExp'
 
 # Calibration config
 lv_data_folder = lvf.test_data_folder()
 config = {'start_new': True, 'model': model_name, 'store_date': valdate, 'optimizer': 'SLSQP',
-            'tol': 1e-6, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
-            'sol_as_init': False}
+          'tol': 1e-6, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
+          'sol_as_init': False}
 
 # Calibrate LV
 print("Launching calibration")

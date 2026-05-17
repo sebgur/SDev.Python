@@ -3,6 +3,7 @@ from pathlib import Path
 import datetime as dt
 from sdevpy.volatility.impliedvol.models import biexp, vsvi, cubicvol
 from sdevpy.volatility.localvol import localvol
+from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, LocalVolSection
 from sdevpy.utilities import dates
 from sdevpy.maths import interpolation as itp
 
@@ -37,7 +38,8 @@ def get_local_vols(names: list[str], valdate: dt.datetime, **kwargs) -> list[loc
     return lvs
 
 
-def create_sections(t_grid: list[float], model):
+def create_sections(t_grid: list[float], model: str) -> list[LocalVolSection]:
+    """ Create sections along the time grid for the chosen model """
     sections = []
     for t in t_grid:
         config = {'time': t, 'model': model, 'params': None}
@@ -47,7 +49,7 @@ def create_sections(t_grid: list[float], model):
     return sections
 
 
-def create_section(config: dict):
+def create_section(config: dict) -> LocalVolSection:
     """ Section factory: create a LocalVolSection from a config dictionary """
     time = config.get('time', None)
     model = config.get('model', None)
@@ -63,20 +65,20 @@ def create_section(config: dict):
         case 'vsvi':
             section = vsvi.create_section(time, param_config)
         case _:
-            # section = None
             raise ValueError(f"Unknown section type: {model}")
 
     return section
 
 
-def load_lv_new(t_grid: list[float], model: str):
+def load_lv_new(t_grid: list[float], model: str) -> InterpolatedParamLocalVol:
     """ Load new LV by sections of given model on given time grid """
     sections = create_sections(t_grid, model)
     lv = localvol.InterpolatedParamLocalVol(sections)
     return lv
 
 
-def load_lv_from_folder(t_grid: list[float], store_date: dt.datetime, name: str, folder: str) -> localvol.LocalVol:
+def load_lv_from_folder(t_grid: list[float], store_date: dt.datetime, name: str,
+                        folder: str) -> InterpolatedParamLocalVol:
     """ Create InterpolatedLocalVol from folder """
     file = Path(folder) / name
     file.mkdir(parents=True, exist_ok=True)
