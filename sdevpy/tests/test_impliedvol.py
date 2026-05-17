@@ -181,13 +181,14 @@ def test_cubicvol_formula():
 
 def test_vsvi_formula():
     t = 1.5
-    base_vol = 0.25
-    a, b, rho, m, sigma = base_vol, 0.1 / t, -0.25, 0.0, 0.25 * t # a, b, rho, m, sigma
+    vstar, b, rho, xstar, lambda_ = 0.25, 0.1 / t, -0.25, 0.0, 0.25 * t
     mx = np.asarray([0.5, 1.0, 2.0]) # Moneyness
     log_m = np.log(mx) # Log-moneyness
 
-    test = vsvi.vsvi(log_m, a, b, rho, m, sigma)
-    ref = np.asarray([0.31409145, 0.275, 0.29098655])
+    test = vsvi.vsvi(log_m, vstar, b, rho, xstar, lambda_)
+    print(test)
+    ref = np.asarray([0.28327209, 0.25, 0.27122271])
+    # ref = np.asarray([0.31409145, 0.275, 0.29098655])
     assert np.allclose(test, ref, 1e-10)
 
 
@@ -203,7 +204,7 @@ def test_sabr():
 
 
 if __name__ == "__main__":
-    test_logmix_from_file()
+    # test_logmix_from_file()
     # test_logmix_pdf_integrates_to_one()
     # test_logmix_pdf()
     # test_sabr()
@@ -212,4 +213,4 @@ if __name__ == "__main__":
     # test_svi_formula()
     # test_biexp_formula()
     # test_cubicvol_formula()
-    # test_vsvi_formula()
+    test_vsvi_formula()

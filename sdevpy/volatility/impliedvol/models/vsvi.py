@@ -1,7 +1,11 @@
 """ VSVI stands for 'Vol SVI'. It is purely a parametric model, without strong financial
     inspiration, as opposed to its original SVI. This model simply gives an SVI-like
     parametric shape to the volatility, as opposed to the variance in the original paper
-    by J. Gatheral. """
+    by J. Gatheral. We re-parameterize it here in terms of the true minimum vstar located
+    at xstar, see justifications in 
+    Gurrieri, 'A Class of Term Structures for SVI Implied Volatility', 2010,
+    https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1779463
+"""
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
@@ -21,37 +25,37 @@ def create_section(time: float, param_config: dict=None, fill_sample: bool=True)
         params = sample_params(time) # Fill with sample
     else:
         params = []
-        params.append(param_config['a'])
+        params.append(param_config['vstar'])
         params.append(param_config['b'])
         params.append(param_config['rho'])
-        params.append(param_config['m'])
-        params.append(param_config['sigma'])
+        params.append(param_config['xstar'])
+        params.append(param_config['lambda'])
 
     section.update_params(params)
     return section
 
 
 class VSviSection(ParamLocalVolSection):
-    def __init__(self, time):
+    def __init__(self, time: float):
         super().__init__(time, vsvi_formula)
-        self.model = 'vSVI'
+        self.model = 'VSVI'
 
     def check_params(self):
         return vsvi_check_params(self.params)
 
     def dump_params(self):
-        data = {'a': self.params[0], 'b': self.params[1], 'rho': self.params[2],
-                'm': self.params[3], 'sigma': self.params[4]}
+        data = {'vstar': self.params[0], 'b': self.params[1], 'rho': self.params[2],
+                'xstar': self.params[3], 'lambda': self.params[4]}
         return data
 
     def constraints(self):
-        # a, b, rho, m, sigma
+        # vstar, b, rho, xstar, lambda
         lw_bounds = [0.01, -0.1, -0.99, -0.1, 0.01]
         up_bounds = [1.0, 0.1, 0.99, 0.1, 1.0]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
         return bounds
 
-def vsvi(x, *params):
+def vsvi(x: npt.ArrayLike, *params: npt.ArrayLike) -> npt.ArrayLike:
     """ SVI-like formula but applied to the vol directly. This no longer has
         the original features of no-arbitrage and the interpretation as a limit
         of Heston. It is purely used for its parametric shape here.
@@ -60,11 +64,11 @@ def vsvi(x, *params):
     if len(params) != 5:
         raise ValueError(f"Incorrect parameter size in vSVI: {len(params)}")
 
-    a = params[0]
+    vstar = params[0]
     b = params[1]
     rho = params[2]
-    m = params[3]
-    sigma = params[4]
+    xstar = params[3]
+    lambda_ = params[4]
 
     # Check constraints
     is_ok, _ = vsvi_check_params(params)
@@ -72,30 +76,31 @@ def vsvi(x, *params):
         raise ValueError("Invalid vSVI parameters")
 
     # Calculate
-    xm = x - m # x is the log-moneyness
-    vol = a + b * (rho * xm + np.sqrt(xm**2 + sigma**2))
+    xm = x - xstar # x is the log-moneyness
+    eta = np.sqrt(xm**2 - 2.0 * rho * lambda_ * xm + lambda_**2)
+    vol = vstar + b * (rho * xm + eta - lambda_)
     if np.any(vol < 0.0):
         raise ValueError("Negative variance in vSVI formula")
 
     return vol
 
 
-def vsvi_check_params(params: list[float]):
+def vsvi_check_params(params: list[float]) -> tuple[bool, float]:
     """ Check parameters of the vSVI model """
-    a = params[0]
+    vstar = params[0]
     b = params[1]
     rho = params[2]
-    # m = params[3] # No constraints on m
-    sigma = params[4]
+    # xstar = params[3] # No constraints on xstar
+    lambda_ = params[4]
 
     is_ok = True
     # Check constraints
-    if a < 0.0 or b < 0.0 or abs(rho) >= 1 or sigma < 0.0:
+    if vstar < 0.0 or b < 0.0 or abs(rho) >= 1.0 or lambda_ < 0.0:
         is_ok = False
 
-    if is_ok:
-        if a + b * sigma * np.sqrt(1.0 - rho**2) < 0.0:
-            is_ok = False
+    # if is_ok:
+    #     if a + b * sigma * np.sqrt(1.0 - rho**2) < 0.0:
+    #         is_ok = False
 
     # Sudden death for now
     penalty = 0.0 if is_ok else constants.FLOAT_INFTY
