@@ -76,26 +76,30 @@ class NumericalImpliedVol(ImpliedVol):
         return result
 
     @staticmethod
-    def build_step_grid(t: float) -> list[float]:
-        """ Construct PDE time step grid with minimum granularity """
+    def build_step_grid(t: float, term_tol: float=1.0/52.0) -> list[float]:
+        """ Construct PDE time step grid with minimum granularity up to the specified cut-off time.
+            If the last granular point is within term_tol of the cut-off time, it is ignored and
+            the cut-off time is taken instead. """
         if t < 0.0:
             raise ValueError(f"Negative time requested in PDE time step grid building: {t}")
 
         coarse_grid = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0]
-        term_tol = 1.0 / 52.0
-        long_term_size = 1.0 # In years
-        step_grid = [point for point in coarse_grid if point < t]
-        current_t = step_grid[-1] + long_term_size
-        cut_off_years = 100.0
-        while current_t < t:
-            step_grid.append(current_t)
-            current_t += long_term_size
-            if current_t > cut_off_years:
-                raise ValueError("Unexpected large step grid built for PDE")
-
-        if step_grid[-1] > t - term_tol:
-            step_grid[-1] = t
+        if t < coarse_grid[0]:
+            step_grid = [t]
         else:
-            step_grid.append(t)
+            long_term_size = 1.0 # In years
+            step_grid = [point for point in coarse_grid if point < t]
+            current_t = step_grid[-1] + long_term_size
+            cut_off_years = 100.0
+            while current_t < t:
+                step_grid.append(current_t)
+                current_t += long_term_size
+                if current_t > cut_off_years:
+                    raise ValueError("Unexpected large step grid built for PDE")
+
+            if step_grid[-1] > t - term_tol:
+                step_grid[-1] = t
+            else:
+                step_grid.append(t)
 
         return step_grid

@@ -9,6 +9,7 @@ from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
+from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
 
 
 # n_mix=1, flat vol term structure: beta=1, a=b=0.2, c=0, d=1 → stdev(t=1)=0.2
@@ -203,7 +204,38 @@ def test_sabr():
     assert np.allclose(test, ref, 1e-10)
 
 
+########### NumericalImpliedVol ###################################################################
+
+def test_build_step_grid_short_term():
+    # t=0.15 is before first granularity point
+    result = NumericalImpliedVol.build_step_grid(0.15)
+    print(result)
+    assert result == [0.15]
+
+
+def test_build_step_grid_mid_term():
+    # t=0.3 is far enough from 0.25 that a new point is added
+    result = NumericalImpliedVol.build_step_grid(0.3)
+    assert result == [0.25, 0.3]
+
+
+def test_build_step_grid_term_tol():
+    # t=0.26 is within term_tol of 0.25, so 0.25 is replaced
+    result = NumericalImpliedVol.build_step_grid(0.26)
+    assert result == [0.26]
+
+
+def test_build_step_grid_exact_point():
+    assert NumericalImpliedVol.build_step_grid(1.0) == [0.25, 0.5, 0.75, 1.0]
+
+
+def test_build_step_grid_long_term():
+    assert NumericalImpliedVol.build_step_grid(5.0) == [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]
+
+
+
 if __name__ == "__main__":
+    test_build_step_grid_short_term()
     # test_logmix_from_file()
     # test_logmix_pdf_integrates_to_one()
     # test_logmix_pdf()
@@ -213,4 +245,4 @@ if __name__ == "__main__":
     # test_svi_formula()
     # test_biexp_formula()
     # test_cubicvol_formula()
-    test_vsvi_formula()
+    # test_vsvi_formula()
