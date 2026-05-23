@@ -4,7 +4,7 @@ import numpy.typing as npt
 from sdevpy.utilities import timegrids, dates
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.localvol import localvol_factory as lvf
-from sdevpy.volatility.localvol.localvol import LocalVolSection
+from sdevpy.volatility.localvol.localvol import TimeInterpolatedLocalVol
 from sdevpy.volatility.impliedvol.optionsurface import calibration_targets
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.pde import forwardpde as fpde
@@ -14,6 +14,7 @@ from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.instruments.constants import OptionType, string_to_optiontype
+
 
 def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
     """ Calibrate InterpolatedParamLocalVol type to market data """
@@ -136,18 +137,11 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
 
 
 class LvObjectiveBuilder:
-    def __init__(self, lv: LocalVolSection, expiry_grid: list[float], fwds: list[float],
+    def __init__(self, lv: TimeInterpolatedLocalVol, expiry_grid: list[float], fwds: list[float],
                  strike_surface: list[list[float]], cf_price_surface:list[list[float]],
                  pde_config: PdeConfig, option_type: str='straddle'):
         self.expiry_grid = expiry_grid
         self.option_type = string_to_optiontype(option_type)
-        # match option_type.lower(): # Use integers (enum) to avoid repeated string comparisons
-        #     case 'call':
-        #         self.option_type = 0
-        #     case 'put':
-        #         self.option_type = 1
-        #     case _:
-        #         self.option_type = 2
 
         # Check consistency of time grids
         if len(lv.t_grid) <= 1:
@@ -189,7 +183,7 @@ class LvObjectiveBuilder:
 
         if is_ok:
             x, dx, p = fpde.density_step(self.old_p, self.old_x, self.old_dx,
-                                         self.step_grid, self.lv.value, self.pde_config)
+                                         self.step_grid, self.lv, self.pde_config)
             self.new_x = x
             self.new_p = p
             self.new_dx = dx

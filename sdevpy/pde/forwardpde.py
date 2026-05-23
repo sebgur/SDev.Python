@@ -16,7 +16,7 @@ FWD_PDE_START_TIME = 1.0 / 365.0
 
 
 def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64], old_dx: float,
-                 t_grid: npt.NDArray[np.float64], local_vol, config: PdeConfig):
+                 t_grid: npt.NDArray[np.float64], local_vol: LocalVol, config: PdeConfig):
     """ Forward PDE evolution along t_grid, with optional rescaling of meshes at
         beginning of the step, optional shifting of the density along its x-axis
         to mach the forward, and optional rescaling of density to integrated to 1
@@ -44,7 +44,7 @@ def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64],
     return x, dx, p
 
 
-def density(maturity: float, local_vol, config: PdeConfig):
+def density(maturity: float, local_vol: LocalVol, config: PdeConfig):
     """ Simple forward PDE for density, without any rescaling """
     # Build time grid
     t_grid = timegrids.build_timegrid(0.0, maturity, config)
@@ -95,7 +95,7 @@ def lognormal_density(x: npt.NDArray[np.float64], t: float, vol: float) -> npt.N
 
 
 def roll_forward(p: npt.NDArray[np.float64], x: npt.NDArray[np.float64], dx: float, ts: float, te: float,
-                 local_vol, pde_config: PdeConfig) -> npt.NDArray[np.float64]:
+                 local_vol: LocalVol, pde_config: PdeConfig) -> npt.NDArray[np.float64]:
     """ Roll the density forward from time ts to te (ts < te) """
     scheme = pdeschemes.scheme(pde_config, ts)
     scheme.local_vol = local_vol
@@ -134,15 +134,18 @@ def expectation(payoff: npt.NDArray[np.float64], p_grid: npt.NDArray[np.float64]
     return np.trapezoid(payoff * p_grid, x_grid)
 
 
-def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: PdeConfig) -> dict:
+def calculate_densities(maturities: npt.NDArray[np.float64], lv: LocalVol, pde_config: PdeConfig) -> dict:
     """ Calculate densities at specified maturities """
     # Initialize spot grid: first maturity if rescaling on x, last maturity otherwise
     spotgrid_tmax = maturities[0] if pde_config.rescale_x else maturities[-1]
     x, dx, spot_idx = build_spotgrid(spotgrid_tmax, pde_config)
 
     # Initialize density
-    start_time = FWD_PDE_START_TIME # Make sure no payoff is required before that
-    p = lognormal_density(x, start_time, pde_config.mesh_vol)
+    start_time = FWD_PDE_START_TIME #/ 10.0 # Make sure no payoff is required before that
+    lnvol = pde_config.mesh_vol
+    # lnvol = lv.path_vol(start_time, [0.0], 2)[0]
+    print(f"Mollifier vol: {lnvol}")
+    p = lognormal_density(x, start_time, lnvol)
 
     # Run PDE batches for each maturity
     reports = []
@@ -228,7 +231,7 @@ def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], str
     #                            iv_surface=iv_surface)
 
     # Run PDE to calculate densities at each maturity
-    density_reports = calculate_densities(expiry_times, lv.value, pde_config)
+    density_reports = calculate_densities(expiry_times, lv, pde_config)
 
     # Calculate PDE prices (forward)
     pde_prices = []
@@ -294,7 +297,7 @@ def price_vanillas(valdate: dt.datetime, expiry: dt.datetime, strikes: list[floa
         raise ValueError(f"{msg}: {sparse_timegrid[-1]}/{expiry_time}")
 
     # Calculate PDE density at maturity
-    dens_report = calculate_densities(sparse_timegrid, lv.value, pde_config)[-1]
+    dens_report = calculate_densities(sparse_timegrid, lv, pde_config)[-1]
     dens_t, dens_p, dens_x = dens_report['end_time'], dens_report['p_grid'], dens_report['x_grid']
 
     # Check time consistency

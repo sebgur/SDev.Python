@@ -8,10 +8,12 @@ def check_forward_pde(rescale_x: bool, scheme: str='rannacher'):
     spot, r, q, atm_vol = 100.0, 0.04, 0.01, 0.20
     maturities = np.array([0.1, 0.5, 1.0, 2.5, 5.0, 10.0])
 
-    def my_lv(t, x_grid):
-        """ As a function of log forward moneyness """
-        return np.asarray([atm_vol for x in x_grid])
+    class TestLocalVol:
+        def value(self, t, x_grid):
+            """ As a function of log forward moneyness """
+            return np.asarray([atm_vol for x in x_grid])
 
+    my_lv = TestLocalVol()
     # PDE config
     pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme=scheme,
                            rescale_x=rescale_x, rescale_p=True, shift_forward=True)
@@ -98,9 +100,12 @@ def test_forward_pde_implicit():
 def test_forward_pde_explicit():
     spot, r, q, atm_vol, maturity = 100.0, 0.04, 0.01, 0.20, 1.5
 
-    def my_lv(t, x_grid):
-        """ As a function of log forward moneyness """
-        return np.asarray([atm_vol for x in x_grid])
+    class TestLocalVol:
+        def value(self, t, x_grid):
+            """ As a function of log forward moneyness """
+            return np.asarray([atm_vol for x in x_grid])
+
+    my_lv = TestLocalVol()
 
     # PDE config
     pde_config = PdeConfig(n_timesteps=100, n_meshes=25, mesh_vol=atm_vol, scheme='explicit',
@@ -134,9 +139,12 @@ def test_forward_pde_explicit():
 def test_forward_pde_simple():
     spot, r, q, atm_vol, maturity = 100.0, 0.04, 0.01, 0.20, 1.5
 
-    def my_lv(t, x_grid):
-        """ As a function of log forward moneyness """
-        return np.asarray([atm_vol for x in x_grid])
+    class TestLocalVol:
+        def value(self, t, x_grid):
+            """ As a function of log forward moneyness """
+            return np.asarray([atm_vol for x in x_grid])
+
+    my_lv = TestLocalVol()
 
     # PDE config
     pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher',

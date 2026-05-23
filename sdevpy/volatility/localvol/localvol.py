@@ -50,7 +50,8 @@ class LocalVol(ABC):
             at given log-moneynesses. Cut the time interval into given number of steps.
         """
         var_t_grid = np.linspace(0.0, t, n_steps + 1)
-        var = np.zeros(shape=np.asarray(logm).shape)
+        logm = np.asarray(logm)
+        var = np.zeros(shape=logm.shape)
         for i in range(n_steps):
             ts = var_t_grid[i]
             te = var_t_grid[i + 1]

@@ -50,8 +50,8 @@ class ThetaScheme(PdeScheme):
         c = 1.0 / dx**2 - 0.5 / dx
 
         # Calculate result vector using previous probabilities
-        lv = self.local_vol(ts, x) # Called twice in consecutive steps
-        print(f"ts={ts}, lv={lv}")
+        lv = self.local_vol.value(ts, x) # Called twice in consecutive steps
+        # print(f"ts={ts}, lv={lv}")
         one_m_theta_dt_2 = self.one_m_theta * dt / 2.0
         y = np.zeros(n_x)
 
@@ -70,7 +70,7 @@ class ThetaScheme(PdeScheme):
         #     y[j] = p_tmp
 
         # Calculate band vectors for tridiagonal system
-        # lv = self.local_vol(te, x) # Use only the one at ts for lower_bound LV
+        # lv = self.local_vol.value(te, x) # Use only the one at ts for lower_bound LV
         theta_dt_2 = self.theta * dt / 2.0
         upper = np.zeros(n_x - 1)
         main = np.zeros(n_x)
@@ -106,9 +106,9 @@ class ImplicitScheme(PdeScheme):
         b = dt / dx**2
         c = dt / 2.0 * (1.0 / dx**2 - 0.5 / dx)
 
-        lv = self.local_vol(ts, x) # Use the one at ts for lower_bound LV
-        print(f"ts={ts}, lv={lv}")
-        # lv = self.local_vol(te, x) # Original
+        lv = self.local_vol.value(ts, x) # Use the one at ts for lower_bound LV
+        # print(f"ts={ts}, lv={lv}")
+        # lv = self.local_vol.value(te, x) # Original
         upper = np.zeros(n_x - 1)
         main = np.zeros(n_x)
         lower = np.zeros(n_x - 1)
@@ -143,7 +143,7 @@ class ExplicitScheme(PdeScheme):
         b = dt / dx**2
         c = dt / 2.0 * (1.0 / dx**2 - 0.5 / dx)
 
-        lv = self.local_vol(ts, x)
+        lv = self.local_vol.value(ts, x)
         y = np.zeros(n_x)
 
         # Vectorized
