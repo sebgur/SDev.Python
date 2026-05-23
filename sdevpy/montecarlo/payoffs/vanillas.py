@@ -1,18 +1,18 @@
 import datetime as dt
 import numpy as np
 from sdevpy.montecarlo.payoffs.basic import Max, Abs, Terminal
-from sdevpy.instruments.constants import VanillaOptionType, string_to_optiontype
+from sdevpy.instruments.constants import OptionType, string_to_optiontype
 
 
 def make_vanilla_option_payoff(payoff, strike: float, optiontype: str):
     """ Create a vanilla option on top of a given payoff """
     optiontype_ = string_to_optiontype(optiontype)
     match optiontype_:
-        case VanillaOptionType.CALL:
+        case OptionType.CALL:
             option_payoff = Max([payoff - strike, 0.0])
-        case VanillaOptionType.PUT:
+        case OptionType.PUT:
             option_payoff = Max([strike - payoff, 0.0])
-        case VanillaOptionType.STRADDLE:
+        case OptionType.STRADDLE:
             option_payoff = Abs(payoff - strike)
         case _:
             raise ValueError(f"Invalid option type: {optiontype}")
@@ -24,11 +24,11 @@ def make_vanilla_option(name: str, strike: float, optiontype: str, expiry: dt.da
     """ Create a vanilla option on a simple index. ToDo: can't we merge? """
     optiontype_ = string_to_optiontype(optiontype)
     match optiontype_:
-        case VanillaOptionType.CALL:
+        case OptionType.CALL:
             payoff = Max([Terminal(name, expiry) - strike, 0.0])
-        case VanillaOptionType.PUT:
+        case OptionType.PUT:
             payoff = Max([strike - Terminal(name, expiry), 0.0])
-        case VanillaOptionType.STRADDLE:
+        case OptionType.STRADDLE:
             payoff = Abs(Terminal(name, expiry) - strike)
         case _:
             raise ValueError(f"Invalid option type: {optiontype}")
@@ -39,11 +39,11 @@ def make_vanilla_option(name: str, strike: float, optiontype: str, expiry: dt.da
 def vanilla_option(spot, strike: float, optiontype):
     """ Vanilla option given spot. ToDo: explain more """
     match optiontype:
-        case VanillaOptionType.CALL:
+        case OptionType.CALL:
             payoff = np.maximum(spot - strike, 0.0)
-        case VanillaOptionType.PUT:
+        case OptionType.PUT:
             payoff = np.maximum(strike - spot, 0.0)
-        case VanillaOptionType.STRADDLE:
+        case OptionType.STRADDLE:
             payoff = np.abs(spot - strike)
         case _:
             raise ValueError("Invalid option type")

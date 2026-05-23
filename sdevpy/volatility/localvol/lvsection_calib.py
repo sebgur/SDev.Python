@@ -5,7 +5,7 @@ from sdevpy.utilities import timegrids, dates
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import LocalVolSection
-from sdevpy.volatility.impliedvol.optionsurface import calibration_targets#, IS_CALL
+from sdevpy.volatility.impliedvol.optionsurface import calibration_targets
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
@@ -13,7 +13,7 @@ from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.market.eqforward import get_forward_curves
-
+from sdevpy.instruments.constants import OptionType, string_to_optiontype
 
 def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
     """ Calibrate InterpolatedParamLocalVol type to market data """
@@ -140,14 +140,14 @@ class LvObjectiveBuilder:
                  strike_surface: list[list[float]], cf_price_surface:list[list[float]],
                  pde_config: PdeConfig, option_type: str='straddle'):
         self.expiry_grid = expiry_grid
-        # self.lv_t_grid = lv.t_grid
-        match option_type.lower(): # Use integers (enum) to avoid repeated string comparisons
-            case 'call':
-                self.option_type = 0
-            case 'put':
-                self.option_type = 1
-            case _:
-                self.option_type = 2
+        self.option_type = string_to_optiontype(option_type)
+        # match option_type.lower(): # Use integers (enum) to avoid repeated string comparisons
+        #     case 'call':
+        #         self.option_type = 0
+        #     case 'put':
+        #         self.option_type = 1
+        #     case _:
+        #         self.option_type = 2
 
         # Check consistency of time grids
         if len(lv.t_grid) <= 1:
@@ -198,12 +198,15 @@ class LvObjectiveBuilder:
             s = self.fwd * np.exp(x)
             pde_prices = []
             for k in self.strikes: # ToDo: can we do this vectorially over the strikes?
-                if self.option_type == 0:
-                    payoff = np.maximum(s - k, 0.0) # Call
-                elif self.option_type == 1:
-                    payoff = np.maximum(k - s, 0.0) # Put
-                else:
-                    payoff = np.abs(s - k) # Straddle
+                match self.option_type:
+                    case OptionType.CALL:
+                        payoff = np.maximum(s - k, 0.0)
+                    case OptionType.PUT:
+                        payoff = np.maximum(k - s, 0.0)
+                    case OptionType.STRADDLE:
+                        payoff = np.abs(s - k)
+                    case _:
+                        raise ValueError(f"Unsupported option type: {self.option_type}")
 
                 weighted_payoff = payoff * p
                 pde_prices.append(np.trapezoid(weighted_payoff, x))

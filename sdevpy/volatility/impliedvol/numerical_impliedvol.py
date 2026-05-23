@@ -6,13 +6,13 @@ from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.utilities.tools import isequal
+from sdevpy.utilities import timegrids
 
 
 DFLT_PDE_CONFIG = PdeConfig()
 
 
 ########### TODO ################################
-# * Test in Jupyter
 # * Pass simpler than PdeConfig by estimating mesh_vol using LV?
 #   Impl. generic integrated variance calculation
 
@@ -30,8 +30,8 @@ class NumericalImpliedVol(ImpliedVol):
         if t < start_time:
             raise ValueError(f"Numerical method not supported for use before 1D, used with t = {t}")
 
-        # Create a step grid to run the density steps
-        step_grid = self.build_step_grid(t)
+        # Build sparse time grid to run the density steps on
+        step_grid = timegrids.build_sparse_timegrid(t)
         # print(f"Maturity: {t}")
         # print(f"Step grid: {step_grid}")
         if len(step_grid) < 1:
@@ -61,34 +61,34 @@ class NumericalImpliedVol(ImpliedVol):
         result = {'lv': self.lv.dump_data()}
         return result
 
-    @staticmethod
-    def build_step_grid(t: float, term_tol: float=1.0/52.0) -> list[float]:
-        """ Construct PDE time step grid with minimum granularity up to the specified cut-off time.
-            If the last granular point is within term_tol of the cut-off time, it is ignored and
-            the cut-off time is taken instead. """
-        if t < 0.0:
-            raise ValueError(f"Negative time requested in PDE time step grid building: {t}")
+    # @staticmethod
+    # def build_step_grid(t: float, term_tol: float=1.0/52.0) -> list[float]:
+    #     """ Construct PDE time step grid with minimum granularity up to the specified cut-off time.
+    #         If the last granular point is within term_tol of the cut-off time, it is ignored and
+    #         the cut-off time is taken instead. """
+    #     if t < 0.0:
+    #         raise ValueError(f"Negative time requested in PDE time step grid building: {t}")
 
-        coarse_grid = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0]
-        if t < coarse_grid[0]:
-            step_grid = [t]
-        else:
-            long_term_size = 1.0 # In years
-            step_grid = [point for point in coarse_grid if point < t]
-            current_t = step_grid[-1] + long_term_size
-            cut_off_years = 100.0
-            while current_t < t:
-                step_grid.append(current_t)
-                current_t += long_term_size
-                if current_t > cut_off_years:
-                    raise ValueError("Unexpected large step grid built for PDE")
+    #     coarse_grid = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0]
+    #     if t < coarse_grid[0]:
+    #         step_grid = [t]
+    #     else:
+    #         long_term_size = 1.0 # In years
+    #         step_grid = [point for point in coarse_grid if point < t]
+    #         current_t = step_grid[-1] + long_term_size
+    #         cut_off_years = 100.0
+    #         while current_t < t:
+    #             step_grid.append(current_t)
+    #             current_t += long_term_size
+    #             if current_t > cut_off_years:
+    #                 raise ValueError("Unexpected large step grid built for PDE")
 
-            if step_grid[-1] > t - term_tol:
-                step_grid[-1] = t
-            else:
-                step_grid.append(t)
+    #         if step_grid[-1] > t - term_tol:
+    #             step_grid[-1] = t
+    #         else:
+    #             step_grid.append(t)
 
-        return np.asarray(step_grid)
+    #     return np.asarray(step_grid)
 
 
 if __name__ == "__main__":
