@@ -1,13 +1,7 @@
 import datetime as dt
 import numpy as np
-from enum import Enum
 from sdevpy.montecarlo.payoffs.basic import Max, Abs, Terminal
-
-
-class VanillaOptionType(Enum):
-    CALL = 0
-    PUT = 1
-    STRADDLE = 2
+from sdevpy.instruments.constants import VanillaOptionType, string_to_optiontype
 
 
 def make_vanilla_option_payoff(payoff, strike: float, optiontype: str):
@@ -55,19 +49,6 @@ def vanilla_option(spot, strike: float, optiontype):
             raise ValueError("Invalid option type")
 
     return payoff
-
-
-def string_to_optiontype(s: str) -> VanillaOptionType:
-    """ Convert string to VanillaOptionType """
-    match s.lower():
-        case 'call':
-            return VanillaOptionType.CALL
-        case 'put':
-            return VanillaOptionType.PUT
-        case 'straddle':
-            return VanillaOptionType.STRADDLE
-        case _:
-            raise ValueError(f"Invalid option type: {s}")
 
 
 if __name__ == "__main__":

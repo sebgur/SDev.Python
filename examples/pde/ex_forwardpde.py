@@ -118,8 +118,8 @@ for r_idx, density_report in enumerate(density_reports):
 runtime = time.time() - start_timer
 for r in reports:
     print(f"Maturity: {r['maturity']}")
-    # print(f"PDE prices: {r['pde_prices']}")
-    # print(f"CF prices: {r['cf_prices']}")
+    print(f"PDE prices: {r['pde_prices']}")
+    print(f"CF prices: {r['cf_prices']}")
     print(f"Accuracy(dens): {r['acc(dens)']:.3f}")
     print(f"Accuracy(price): {r['acc(price)']:.3f}%")
 

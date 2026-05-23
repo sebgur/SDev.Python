@@ -208,29 +208,35 @@ def test_sabr():
 
 def test_build_step_grid_short_term():
     # t=0.15 is before first granularity point
-    result = NumericalImpliedVol.build_step_grid(0.15)
-    print(result)
-    assert result == [0.15]
+    test = NumericalImpliedVol.build_step_grid(0.15)
+    ref = np.asarray([0.15])
+    assert np.allclose(test, ref, 1e-10)
 
 
 def test_build_step_grid_mid_term():
     # t=0.3 is far enough from 0.25 that a new point is added
-    result = NumericalImpliedVol.build_step_grid(0.3)
-    assert result == [0.25, 0.3]
+    test = NumericalImpliedVol.build_step_grid(0.3)
+    ref = np.asarray([0.25, 0.3])
+    assert np.allclose(test, ref, 1e-10)
 
 
 def test_build_step_grid_term_tol():
     # t=0.26 is within term_tol of 0.25, so 0.25 is replaced
-    result = NumericalImpliedVol.build_step_grid(0.26)
-    assert result == [0.26]
+    test = NumericalImpliedVol.build_step_grid(0.26)
+    ref = np.asarray([0.26])
+    assert np.allclose(test, ref, 1e-10)
 
 
 def test_build_step_grid_exact_point():
-    assert NumericalImpliedVol.build_step_grid(1.0) == [0.25, 0.5, 0.75, 1.0]
+    test = NumericalImpliedVol.build_step_grid(1.0)
+    ref = np.asarray([0.25, 0.5, 0.75, 1.0])
+    assert np.allclose(test, ref, 1e-10)
 
 
 def test_build_step_grid_long_term():
-    assert NumericalImpliedVol.build_step_grid(5.0) == [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0]
+    test = NumericalImpliedVol.build_step_grid(5.0)
+    ref = np.asarray([0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0])
+    assert np.allclose(test, ref, 1e-10)
 
 
 

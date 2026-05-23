@@ -12,9 +12,9 @@ DFLT_PDE_CONFIG = PdeConfig()
 
 
 ########### TODO ################################
-# * Write some tests for build_step_grid
 # * Test in Jupyter
 # * Pass simpler than PdeConfig by estimating mesh_vol using LV?
+#   Impl. generic integrated variance calculation
 
 
 class NumericalImpliedVol(ImpliedVol):
@@ -32,40 +32,26 @@ class NumericalImpliedVol(ImpliedVol):
 
         # Create a step grid to run the density steps
         step_grid = self.build_step_grid(t)
-        print(f"Maturity: {t}")
-        print(f"Step grid: {step_grid}")
+        # print(f"Maturity: {t}")
+        # print(f"Step grid: {step_grid}")
         if len(step_grid) < 1:
             raise ValueError("Invalid step grid for PDE")
 
         if np.abs(step_grid[-1] - t) > self.time_epsilon:
             raise ValueError(f"Invalid PDE time step grid, last point not equal to maturity: {step_grid[-1]}/{t}")
 
-        dens_report = fpde.calculate_densities(step_grid, self.lv, self.pde_config)[-1]
+        dens_report = fpde.calculate_densities(step_grid, self.lv.value, self.pde_config)[-1]
         dens_t, dens_p, dens_x = dens_report['end_time'], dens_report['p_grid'], dens_report['x_grid']
         if not isequal(dens_t, t):
             raise ValueError(f"Unexpected time for final density not equal to maturity: {dens_t}/{t}")
-
-        # # Build first spot grid
-        # old_x, old_dx, old_spot_idx = fpde.build_spotgrid(step_grid[0], self.pde_config)
-
-        # # Initialize density
-        # old_p = fpde.lognormal_density(old_x, start_time, self.pde_config.mesh_vol)
-
-        # # Evolve density until maturity
-        # for i in range(len(step_grid)):
-        #     ts = (start_time if i == 0 else step_grid[i - 1])
-        #     te = step_grid[i]
-        #     print(f"Evolving PDE from {ts} to {te}")
-
-        #     # Evolve density
-        #     t_grid = timegrids.build_timegrid(ts, te, self.pde_config)
-        #     old_x, old_dx, old_p = fpde.density_step(old_p, old_x, old_dx, t_grid, self.lv.value, self.pde_config)
 
         # Calculate prices
         prices = []
         spot = f * np.exp(dens_x)
         for strike in k:
-            payoff = np.max(spot - strike, 0.0) if is_call else np.max(strike - spot, 0.0)
+            # print(spot)
+            # print(strike)
+            payoff = np.maximum(spot - strike, 0.0) if is_call else np.maximum(strike - spot, 0.0)
             prices.append(fpde.expectation(payoff, dens_p, dens_x))
 
         return np.asarray(prices)
@@ -102,4 +88,84 @@ class NumericalImpliedVol(ImpliedVol):
             else:
                 step_grid.append(t)
 
-        return step_grid
+        return np.asarray(step_grid)
+
+
+if __name__ == "__main__":
+    import datetime as dt
+    import numpy as np
+    from sdevpy.market import eqvolsurface as vsurf
+    from sdevpy.market.eqforward import get_forward_curves
+    from sdevpy.utilities import timegrids
+    from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
+    from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol, DFLT_PDE_CONFIG
+
+
+    name, valdate = "ABC", dt.datetime(2025, 12, 15)
+
+    # Retrieve forward curve
+    fwd_curve = get_forward_curves([name], valdate)[0]
+
+    # Retrieve option data
+    file = vsurf.data_file(name, valdate)
+    option_data = vsurf.eqvolsurfacedata_from_file(file)
+    mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
+    print(f"Retrieved market data from file {file}")
+
+    # Access data in object
+    expiries = option_data.expiries
+    fwds = fwd_curve.value(expiries)
+    mkt_strikes = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
+    mkt_vols = option_data.vols
+
+    # Quick check of size consistency
+    print(f"Number of expiries: {len(expiries)}")
+    print(f"Number of forwards: {len(fwds)}")
+    print(f"Number of strike sections: {len(mkt_strikes)}")
+    print(f"Number of vol sections: {len(mkt_vols)}")
+    for i in range(len(expiries)):
+        print(f"Expiry {i+1} number of strikes/vols: {len(mkt_strikes[i])}/{len(mkt_vols[i])}")
+
+
+
+    # Choose model
+    section_model = 'BiExp' # SVI, CubicVol, BiExp
+
+    # Calibration config
+    # lv_data_folder = lvf.test_data_folder()
+    config = {'start_new': True, 'model': section_model, 'store_date': valdate, 'optimizer': 'SLSQP',
+            'tol': 1e-6, 'pde_timesteps': 50,  'pde_spotsteps': 100, #'lv_folder': lv_data_folder,
+            'sol_as_init': False}
+
+    # Calibrate LV
+    print("Launching calibration")
+    calib_result = calibrate_lv_bysections(valdate, name, config, verbose=True, calc_pde_vols=True)
+    lv = calib_result['lv']
+    print(lv)
+
+
+    pde_config = DFLT_PDE_CONFIG
+    num_iv = NumericalImpliedVol(lv, pde_config=pde_config)
+
+    # Retrieve data
+    surface_data = calib_result['iv_data'] # Get from inputs instead? Better check.
+    expiries = surface_data.expiries
+    expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
+
+    # Retrieve forward curve
+    fwd_curve = get_forward_curves([name], valdate)[0]
+
+    # fwds = surface_data.forwards
+    fwds = fwd_curve.value(expiries)
+    strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
+    vol_surface = surface_data.vols
+
+    is_call = True
+    num_iv_prices, num_iv_vols = [], []
+    for exp_idx, expiry in enumerate(expiry_grid):
+        f = fwds[exp_idx]
+        strikes = strike_surface[exp_idx]
+        num_iv_prices.append(num_iv.calculate(expiry, strikes, is_call, f))
+        num_iv_vols.append(['ToDo'])
+
+    print(f"Num. IV prices: {num_iv_prices}")
