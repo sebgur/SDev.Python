@@ -12,6 +12,9 @@ from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.instruments.constants import OptionType, string_to_optiontype
 
 
+FWD_PDE_START_TIME = 1.0 / 365.0
+
+
 def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64], old_dx: float,
                  t_grid: npt.NDArray[np.float64], local_vol, config: PdeConfig):
     """ Forward PDE evolution along t_grid, with optional rescaling of meshes at
@@ -51,7 +54,7 @@ def density(maturity: float, local_vol, config: PdeConfig):
     x, dx, spot_idx = build_spotgrid(maturity, config)
 
     # Initial probability
-    p = lognormal_density(x, 1.0 / 365.0, config.mesh_vol)
+    p = lognormal_density(x, FWD_PDE_START_TIME, config.mesh_vol)
 
     # Forward reduction
     for i in range(n_timegrid - 1):
@@ -138,7 +141,7 @@ def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: Pde
     x, dx, spot_idx = build_spotgrid(spotgrid_tmax, pde_config)
 
     # Initialize density
-    start_time = 1.0 / 365.0 # Make sure no payoff is required before that
+    start_time = FWD_PDE_START_TIME # Make sure no payoff is required before that
     p = lognormal_density(x, start_time, pde_config.mesh_vol)
 
     # Run PDE batches for each maturity
@@ -155,27 +158,74 @@ def calculate_densities(maturities: npt.NDArray[np.float64], lv, pde_config: Pde
     return reports
 
 
-def price_vanillas(valdate: dt.datetime, expiries: list[dt.datetime], strikes: list[list[float]],
-                   fwd_curve: EqForwardCurve, iv_surface: ImpliedVol, lv: LocalVol,
-                   **kwargs) -> list[npt.NDArray[np.float64]]:
-    """ Helper to price vanillas by PDE on LV process.
+def get_pde_config(t: float=None, **kwargs) -> PdeConfig:
+    """ Inspect the kwargs and retrieve PDE config.
+        The time argument is only used if the volatility surface is passed too (iv_surface),
+        in which case it is used to estimate the mesh vol at ATM.
+    """
+    pde_config = kwargs.get('pde_config', None)
+    # Set PDE config
+    if pde_config is None: # Set using the other arguments
+        n_timesteps = kwargs.get('n_timesteps', 100)
+        n_meshes = kwargs.get('n_meshes', 250)
+        scheme = kwargs.get('scheme', 'rannacher')
+        iv_surface = kwargs.get('iv_surface', None)
+        if iv_surface is None:
+            mesh_vol = kwargs.get('mesh_vol', 0.20)
+        else:
+            if t is None:
+                raise ValueError("Time argument needed to estimate mesh vol from the IV surface")
+            mesh_vol = iv_surface.black_volatility(t, 1.0, 1.0)
+
+        pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, mesh_vol=mesh_vol, scheme=scheme,
+                               rescale_x=True, rescale_p=True, shift_forward=False,
+                               iv_surface=iv_surface)
+
+    return pde_config
+
+
+def vanilla_expectation(fwd, p, x, strikes, option_type):
+    spot = fwd * np.exp(x)
+    pde_price = []
+    for k in strikes: # ToDo: can this be vectorized?
+        match option_type:
+            case OptionType.CALL:
+                payoff = np.maximum(spot - k, 0.0)
+            case OptionType.PUT:
+                payoff = np.maximum(k - spot, 0.0)
+            case OptionType.STRADDLE:
+                payoff = np.abs(spot - k)
+            case _:
+                raise ValueError(f"Unsupported option type: {option_type}")
+
+        pde_price.append(expectation(payoff, p, x))
+
+    return pde_price
+
+
+def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], strikes: list[list[float]],
+                          fwd_curve: EqForwardCurve, lv: LocalVol, **kwargs) -> list[npt.NDArray[np.float64]]:
+    """ Price a surface of vanillas by PDE on LV process.
         The strikes are a matrix along the expiry direction.
         Return a list of forward prices per expiry, corresponding to each strike.
         The PDE time grid is refined between expiries (the expiries provide the sparse grid).
     """
-    n_timesteps = kwargs.get('n_timesteps', 100)
-    n_meshes = kwargs.get('n_meshes', 250)
-    scheme = kwargs.get('scheme', 'rannacher')
     option_type = string_to_optiontype(kwargs.get('option_type', 'straddle'))
 
-    # Calculate expiry times and forwards
+    # Calculate expiry times
     expiry_times = timegrids.model_time(valdate, expiries)
 
-    # PDE config
-    mesh_vol = iv_surface.black_volatility(expiry_times[0], 1.0, 1.0)
-    pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, mesh_vol=mesh_vol, scheme=scheme,
-                           rescale_x=True, rescale_p=True, shift_forward=False,
-                           iv_surface=iv_surface)
+    # Set PDE config
+    pde_config = get_pde_config(expiry_times[0], **kwargs)
+    # if pde_config is None: # Set using the other arguments
+    #     n_timesteps = kwargs.get('n_timesteps', 100)
+    #     n_meshes = kwargs.get('n_meshes', 250)
+    #     scheme = kwargs.get('scheme', 'rannacher')
+    #     iv_surface = kwargs.get('iv_surface', None)
+    #     mesh_vol = (0.20 if iv_surface is None else iv_surface.black_volatility(expiry_times[0], 1.0, 1.0))
+    #     pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, mesh_vol=mesh_vol, scheme=scheme,
+    #                            rescale_x=True, rescale_p=True, shift_forward=False,
+    #                            iv_surface=iv_surface)
 
     # Run PDE to calculate densities at each maturity
     density_reports = calculate_densities(expiry_times, lv.value, pde_config)
@@ -188,34 +238,81 @@ def price_vanillas(valdate: dt.datetime, expiries: list[dt.datetime], strikes: l
         p = density_report['p_grid']
         fwd = fwd_curve.value(expiries[r_idx])
 
-        # # Check density
-        # print(f"Density: {mass(p, x):.6f}")
-
         # Check timing consistency
         if not isequal(dens_mty, expiry_times[r_idx]):
             raise ValueError(f"Inconsistent times between closed-form and densities at density time {dens_mty}")
 
         # Calculate PDE prices
-        s = fwd * np.exp(x)
         exp_strikes = strikes[r_idx]
-        pde_price = []
-        for k in exp_strikes: # ToDo: can this be vectorized?
-            match option_type:
-                case OptionType.CALL:
-                    payoff = np.maximum(s - k, 0.0)
-                case OptionType.PUT:
-                    payoff = np.maximum(k - s, 0.0)
-                case OptionType.STRADDLE:
-                    payoff = np.abs(s - k)
-                case _:
-                    raise ValueError(f"Unsupported option type: {option_type}")
+        pde_price = vanilla_expectation(fwd, p, x, exp_strikes, option_type)
+        # pde_price = []
+        # s = fwd * np.exp(x)
+        # for k in exp_strikes: # ToDo: can this be vectorized?
+        #     match option_type:
+        #         case OptionType.CALL:
+        #             payoff = np.maximum(s - k, 0.0)
+        #         case OptionType.PUT:
+        #             payoff = np.maximum(k - s, 0.0)
+        #         case OptionType.STRADDLE:
+        #             payoff = np.abs(s - k)
+        #         case _:
+        #             raise ValueError(f"Unsupported option type: {option_type}")
 
-
-            pde_price.append(expectation(payoff, p, x))
+        #     pde_price.append(expectation(payoff, p, x))
 
         pde_prices.append(np.asarray(pde_price))
 
     return pde_prices
+
+
+def price_vanillas(valdate: dt.datetime, expiry: dt.datetime, strikes: list[float],
+                   fwd_curve: EqForwardCurve, lv: LocalVol, **kwargs) -> npt.NDArray[np.float64]:
+    """ Price a list of vanillas by PDE on LV process.
+        Return a list of forward prices, corresponding to each strike.
+        The PDE time grid is sparse grid to expiry, refined between points on the sparse grid.
+    """
+    option_type = string_to_optiontype(kwargs.get('option_type', 'straddle'))
+
+    # Calculate expiry time
+    expiry_time = timegrids.model_time(valdate, expiry)
+
+    # Set PDE config
+    pde_config = get_pde_config(expiry_time, **kwargs)
+
+    # Build sparse grid
+    start_time = FWD_PDE_START_TIME
+    if expiry_time < start_time:
+        raise ValueError(f"Numerical method not supported before 1D, used with t = {expiry_time}")
+
+    # Build sparse time grid to run the density steps on
+    sparse_timegrid = timegrids.build_sparse_timegrid(expiry_time)
+    if len(sparse_timegrid) < 1:
+        raise ValueError("Invalid step grid for PDE")
+
+    if not isequal(sparse_timegrid[-1], expiry_time):
+        msg = "Invalid sparse time grid, last point not matching maturity"
+        raise ValueError(f"{msg}: {sparse_timegrid[-1]}/{expiry_time}")
+
+    # Calculate PDE density at maturity
+    dens_report = calculate_densities(sparse_timegrid, lv.value, pde_config)[-1]
+    dens_t, dens_p, dens_x = dens_report['end_time'], dens_report['p_grid'], dens_report['x_grid']
+
+    # Check time consistency
+    if not isequal(dens_t, expiry_time):
+        msg = "Unexpected time for final density not equal to maturity"
+        raise ValueError(f"{msg}: {dens_t}/{expiry_time}")
+
+    # Calculate prices
+    fwd = fwd_curve.value(expiry)
+    prices = vanilla_expectation(fwd, dens_p, dens_x, strikes, option_type)
+
+    # spot = fwd * np.exp(dens_x)
+    # for strike in strikes:
+    #     payoff = np.maximum(spot - strike, 0.0) if is_call else np.maximum(strike - spot, 0.0)
+    #     prices.append(expectation(payoff, dens_p, dens_x))
+
+    return np.asarray(prices)
+
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ class NumericalImpliedVol(ImpliedVol):
 
     def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
         """ Calculate the forward prices using a numerical method (typically forward PDE) """
-        start_time = 1.0 / 365.0
+        start_time = fpde.FWD_PDE_START_TIME
         if t < start_time:
             raise ValueError(f"Numerical method not supported for use before 1D, used with t = {t}")
 

@@ -45,6 +45,28 @@ class LocalVol(ABC):
         section = self.section(t)
         return section.value(logm)
 
+    def path_variance(self, t:float, logm: npt.ArrayLike, n_steps=16) -> npt.ArrayLike:
+        """ Get a rought estimate of the implied variance by integrating the square of LV along time
+            at given log-moneynesses. Cut the time interval into given number of steps.
+        """
+        var_t_grid = np.linspace(0.0, t, n_steps + 1)
+        var = np.zeros(shape=np.asarray(logm).shape)
+        for i in range(n_steps):
+            ts = var_t_grid[i]
+            te = var_t_grid[i + 1]
+            lv = self.value(ts, logm)
+            var = var + lv**2 * (te - ts)
+
+        return var
+
+    def path_vol(self, t:float, logm: npt.ArrayLike, n_steps=16):
+        """ Get a rought estimate of the implied vol by integrating the square of LV along time
+            at given log-moneynesses. Cut the time interval into given number of steps.
+            This is just the vol equivalent of path_variance() i.e. sqrt(path_variance / t)
+        """
+        path_var = self.path_variance(t, logm, n_steps=n_steps)
+        return np.sqrt(path_var / t)
+
     @abstractmethod
     def section(self, t: float) -> LocalVolSection:
         """ Retrieve LV section at given time t, i.e. a function of the log-moneyness log_m.

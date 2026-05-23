@@ -243,10 +243,10 @@ class LvObjectiveBuilder:
         self.old_dx = old_dx
         self.old_p = old_p
 
-    def initialize(self, start_time: float=1.0/365.0) -> tuple[npt.ArrayLike, float, npt.ArrayLike]:
+    def initialize(self) -> tuple[npt.ArrayLike, float, npt.ArrayLike]:
         """ Initialize calibrator to first expiry by calculating the initial density at start_time """
-        self.start_time = start_time
-        if self.expiry_grid[0] <= start_time:
+        self.start_time = fpde.FWD_PDE_START_TIME
+        if self.expiry_grid[0] <= self.start_time:
             raise RuntimeError("First expiry too early to use analytical start in forward PDE")
 
         # First spot grid

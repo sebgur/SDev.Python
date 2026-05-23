@@ -51,6 +51,7 @@ class ThetaScheme(PdeScheme):
 
         # Calculate result vector using previous probabilities
         lv = self.local_vol(ts, x) # Called twice in consecutive steps
+        print(f"ts={ts}, lv={lv}")
         one_m_theta_dt_2 = self.one_m_theta * dt / 2.0
         y = np.zeros(n_x)
 
@@ -106,6 +107,7 @@ class ImplicitScheme(PdeScheme):
         c = dt / 2.0 * (1.0 / dx**2 - 0.5 / dx)
 
         lv = self.local_vol(ts, x) # Use the one at ts for lower_bound LV
+        print(f"ts={ts}, lv={lv}")
         # lv = self.local_vol(te, x) # Original
         upper = np.zeros(n_x - 1)
         main = np.zeros(n_x)
