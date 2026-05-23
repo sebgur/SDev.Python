@@ -50,7 +50,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         lv = lvf.load_lv_new(lv_t_grid, config['model'])
     else:
         print("Reading LV from folder")
-        lv = lvf.load_lv_from_folder(lv_t_grid, valdate, name, config['lv_folder'])
+        lv = lvf.load_lv_from_folder(valdate, name, config['lv_folder'], t_grid=lv_t_grid)
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
 
     print(f"IV time grid: {expiry_grid}")

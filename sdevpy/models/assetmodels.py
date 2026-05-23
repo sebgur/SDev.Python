@@ -68,8 +68,7 @@ if __name__ == "__main__":
 
     # Load
     store_date = valdate
-    new_expiries = None
-    lv = lvf.load_lv_from_folder(new_expiries, store_date, name, folder)
+    lv = lvf.load_lv_from_folder(store_date, name, folder)
     lv.name = name
     lv.valdate = valdate
 

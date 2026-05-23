@@ -9,6 +9,7 @@ from sdevpy.utilities.tools import isequal
 from sdevpy.market.eqforward import EqForwardCurve
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol
 from sdevpy.volatility.localvol.localvol import LocalVol
+from sdevpy.instruments.constants import OptionType, string_to_optiontype
 
 
 def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64], old_dx: float,
@@ -158,11 +159,14 @@ def price_vanillas(valdate: dt.datetime, expiries: list[dt.datetime], strikes: l
                    fwd_curve: EqForwardCurve, iv_surface: ImpliedVol, lv: LocalVol,
                    **kwargs) -> list[npt.NDArray[np.float64]]:
     """ Helper to price vanillas by PDE on LV process.
+        The strikes are a matrix along the expiry direction.
         Return a list of forward prices per expiry, corresponding to each strike.
-        The option type is straddle (cannot be changed at the moment). """
+        The PDE time grid is refined between expiries (the expiries provide the sparse grid).
+    """
     n_timesteps = kwargs.get('n_timesteps', 100)
     n_meshes = kwargs.get('n_meshes', 250)
     scheme = kwargs.get('scheme', 'rannacher')
+    option_type = string_to_optiontype(kwargs.get('option_type', 'straddle'))
 
     # Calculate expiry times and forwards
     expiry_times = timegrids.model_time(valdate, expiries)
@@ -170,8 +174,8 @@ def price_vanillas(valdate: dt.datetime, expiries: list[dt.datetime], strikes: l
     # PDE config
     mesh_vol = iv_surface.black_volatility(expiry_times[0], 1.0, 1.0)
     pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, mesh_vol=mesh_vol, scheme=scheme,
-                            rescale_x=True, rescale_p=True, shift_forward=False,
-                            iv_surface=iv_surface)
+                           rescale_x=True, rescale_p=True, shift_forward=False,
+                           iv_surface=iv_surface)
 
     # Run PDE to calculate densities at each maturity
     density_reports = calculate_densities(expiry_times, lv.value, pde_config)
@@ -196,7 +200,17 @@ def price_vanillas(valdate: dt.datetime, expiries: list[dt.datetime], strikes: l
         exp_strikes = strikes[r_idx]
         pde_price = []
         for k in exp_strikes: # ToDo: can this be vectorized?
-            payoff = np.maximum(s - k, 0.0) + np.maximum(k - s, 0.0)
+            match option_type:
+                case OptionType.CALL:
+                    payoff = np.maximum(s - k, 0.0)
+                case OptionType.PUT:
+                    payoff = np.maximum(k - s, 0.0)
+                case OptionType.STRADDLE:
+                    payoff = np.abs(s - k)
+                case _:
+                    raise ValueError(f"Unsupported option type: {option_type}")
+
+
             pde_price.append(expectation(payoff, p, x))
 
         pde_prices.append(np.asarray(pde_price))

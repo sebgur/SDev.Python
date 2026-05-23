@@ -21,12 +21,12 @@ from sdevpy.maths import interpolation as itp
 
 def get_local_vols(names: list[str], valdate: dt.datetime, **kwargs) -> list[localvol.LocalVol]:
     """ Retrieve local vols assuming calibration has already been done """
-    folder = kwargs.get('folder', test_data_folder())
     lv_map = kwargs.get('lv_map', None)
     lvs = []
     if lv_map is None: # Then read from folder
+        folder = kwargs.get('folder', test_data_folder())
         for name in names:
-            lvs.append(load_lv_from_folder(None, valdate, name, folder))
+            lvs.append(load_lv_from_folder(valdate, name, folder))
     else: # Read from map
         for name in names:
             name_lv = lv_map.get(name, None)
@@ -71,14 +71,14 @@ def create_section(config: dict) -> LocalVolSection:
 
 
 def load_lv_new(t_grid: list[float], model: str) -> InterpolatedParamLocalVol:
-    """ Load new LV by sections of given model on given time grid """
+    """ Load new LV by sections of given model on time grid """
     sections = create_sections(t_grid, model)
     lv = localvol.InterpolatedParamLocalVol(sections)
     return lv
 
 
-def load_lv_from_folder(t_grid: list[float], store_date: dt.datetime, name: str,
-                        folder: str) -> InterpolatedParamLocalVol:
+def load_lv_from_folder(store_date: dt.datetime, name: str, folder: str,
+                        t_grid: list[float]=None) -> InterpolatedParamLocalVol:
     """ Create InterpolatedLocalVol from folder """
     file = Path(folder) / name
     file.mkdir(parents=True, exist_ok=True)
@@ -93,11 +93,11 @@ def load_lv_from_folder(t_grid: list[float], store_date: dt.datetime, name: str,
         data = json.load(f)
 
     # Load LV
-    lv = load_lv_from_data(t_grid, data)
+    lv = load_lv_from_data(data, t_grid)
     return lv
 
 
-def load_lv_from_data(new_t_grid: list[float], data: dict) -> localvol.LocalVol:
+def load_lv_from_data(data: dict, new_t_grid: list[float]=None) -> localvol.LocalVol:
     """ Create InterpolatedLocalVol from data """
     # Create sections
     sections = data['sections']
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     store_date = valdate
     # new_date = valdate
     new_expiries = None # [1.0, 2.0]# [dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)]
-    lv = load_lv_from_folder(new_expiries, store_date, name, folder)
+    lv = load_lv_from_folder(store_date, name, folder, t_grid=new_expiries)
     lv.name = name
     lv.valdate = valdate
 
