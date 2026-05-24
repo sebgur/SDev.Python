@@ -70,40 +70,40 @@ def create_section(config: dict) -> LocalVolSection:
     return section
 
 
-def load_lv_new(t_grid: list[float], model: str) -> InterpolatedParamLocalVol:
-    """ Load new LV by sections of given model on time grid """
-    sections = create_sections(t_grid, model)
-    lv = localvol.InterpolatedParamLocalVol(sections)
-    return lv
+# def load_lv_new(t_grid: list[float], model: str) -> InterpolatedParamLocalVol:
+#     """ Load new LV by sections of given model on time grid """
+#     sections = create_sections(t_grid, model)
+#     lv = localvol.InterpolatedParamLocalVol(sections)
+#     return lv
 
 
-def load_lv_from_folder(store_date: dt.datetime, name: str, folder: str,
-                        t_grid: list[float]=None, model_name: str=None) -> InterpolatedParamLocalVol:
-    """ Create InterpolatedLocalVol from folder.
-        If t_grid is specified, we interpolate the model parameters from their
-        stored grid to t_grid. If it is not specified, we use the stored grid.
-        If model_name is specified, we retrieve the file for that model. If it
-        is not specified, we get the model name from the (name x model) map.
-    """
-    file = Path(folder) / name
-    file.mkdir(parents=True, exist_ok=True)
-    store_date_str = store_date.strftime(dates.DATE_FILE_FORMAT)
-    eff_name = (name_model_map.get(name, None) if model_name is None else model_name)
-    if eff_name is None:
-        raise ValueError(f"No model name specified for name: {eff_name}")
-    file = file / (store_date_str + "." + eff_name + ".json")
+# def load_lv_from_folder(store_date: dt.datetime, name: str, folder: str,
+#                         t_grid: list[float]=None, model_name: str=None) -> InterpolatedParamLocalVol:
+#     """ Create InterpolatedLocalVol from folder.
+#         If t_grid is specified, we interpolate the model parameters from their
+#         stored grid to t_grid. If it is not specified, we use the stored grid.
+#         If model_name is specified, we retrieve the file for that model. If it
+#         is not specified, we get the model name from the (name x model) map.
+#     """
+#     file = Path(folder) / name
+#     file.mkdir(parents=True, exist_ok=True)
+#     store_date_str = store_date.strftime(dates.DATE_FILE_FORMAT)
+#     eff_name = (name_model_map.get(name, None) if model_name is None else model_name)
+#     if eff_name is None:
+#         raise ValueError(f"No model name specified for name: {eff_name}")
+#     file = file / (store_date_str + "." + eff_name + ".json")
 
-    # Check file existence
-    if not file.exists():
-        raise FileNotFoundError(f"Local vol file not found: {file}")
+#     # Check file existence
+#     if not file.exists():
+#         raise FileNotFoundError(f"Local vol file not found: {file}")
 
-    # Retrieve LV definition
-    with open(file) as f:
-        data = json.load(f)
+#     # Retrieve LV definition
+#     with open(file) as f:
+#         data = json.load(f)
 
-    # Load LV
-    lv = load_lv_from_data(data, t_grid)
-    return lv
+#     # Load LV
+#     lv = load_lv_from_data(data, t_grid)
+#     return lv
 
 
 def load_param_lv(date: dt.datetime, name: str, folder: str=None, model_name: str=None,

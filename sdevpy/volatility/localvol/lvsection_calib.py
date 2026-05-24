@@ -46,16 +46,9 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     lv_t_grid = [0.0] # LV time grid
     lv_t_grid.extend(expiry_grid[:-1])
     lv = lvf.load_param_lv(valdate, name, t_grid=lv_t_grid, folder=config.get('lv_folder', None))
-    # if config['start_new']:
-    #     print("Starting from new LV")
-    #     lv = lvf.load_lv_new(lv_t_grid, config['model'])
-    # else:
-    #     print("Reading LV from folder")
-    #     lv = lvf.load_lv_from_folder(valdate, name, config['lv_folder'], t_grid=lv_t_grid)
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
-
-    print(f"IV time grid: {expiry_grid}")
-    print(f"LV time grid: {lv.t_grid}")
+    # print(f"IV time grid: {expiry_grid}")
+    # print(f"LV time grid: {lv.t_grid}")
 
     # Set forward PDE
     pde_config = fpde.PdeConfig(n_timesteps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],

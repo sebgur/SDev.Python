@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     # Calibration config
     # lv_data_folder = lvf.test_data_folder()
-    config = {'start_new': True, 'model': section_model, 'store_date': valdate, 'optimizer': 'SLSQP',
+    config = {'model': section_model, 'store_date': valdate, 'optimizer': 'SLSQP',
             'tol': 1e-6, 'pde_timesteps': 50,  'pde_spotsteps': 100, #'lv_folder': lv_data_folder,
             'sol_as_init': False}
 

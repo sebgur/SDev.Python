@@ -19,7 +19,7 @@ model_name = 'BiExp'
 
 # Calibration config
 lv_data_folder = lvf.test_data_folder()
-config = {'start_new': False, 'model': model_name, 'store_date': valdate, 'optimizer': 'SLSQP',
+config = {'model': model_name, 'store_date': valdate, 'optimizer': 'SLSQP',
           'tol': 1e-6, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
           'sol_as_init': False}
 
