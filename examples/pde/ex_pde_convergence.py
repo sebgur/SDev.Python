@@ -50,10 +50,8 @@ strikes = fwd * np.exp(-0.5 * lv_stdev**2 + strike_conf * lv_stdev)
 # print(f"Strikes: {strikes}")
 
 # Specify 2 different PDE configs
-pde_config1 = PdeConfig(n_timesteps=200, n_meshes=1000, mesh_vol=0.30, scheme='Rannacher',
-                        percentile=1e-8)
-pde_config2 = PdeConfig(n_timesteps=200, n_meshes=500, mesh_vol=0.44, scheme='Rannacher',
-                        percentile=1e-12)
+pde_config1 = PdeConfig(n_timesteps=200, n_meshes=1000, scheme='Rannacher')
+pde_config2 = PdeConfig(n_timesteps=200, n_meshes=500, scheme='Rannacher')
 
 print(f"Mesh vol: {lv.path_vol(expiry_time, [0])[0]}")
 

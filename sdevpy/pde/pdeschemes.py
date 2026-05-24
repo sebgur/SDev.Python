@@ -3,14 +3,12 @@ import numpy as np
 import numpy.typing as npt
 from abc import ABC, abstractmethod
 from sdevpy.maths import tridiag
-# from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol
 
 
 @dataclass
 class PdeConfig:
     n_timesteps: int = 25
     n_meshes: int = 100
-    mesh_vol: float = 0.20
     n_stdevs: float = 4.753424309
     scheme: str = 'Implicit'
     theta: float = 0.5
@@ -18,7 +16,6 @@ class PdeConfig:
     rescale_x: bool = True
     rescale_p: bool = True
     shift_forward: bool = False
-    # iv_surface: ImpliedVol = None
 
 
 class PdeScheme(ABC):

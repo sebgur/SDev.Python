@@ -44,30 +44,29 @@ def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64],
     return x, dx, p
 
 
-def density(maturity: float, local_vol: LocalVol, config: PdeConfig):
+def density(maturity: float, lv: LocalVol, config: PdeConfig):
     """ Simple forward PDE for density, without any rescaling """
     # Build time grid
     t_grid = timegrids.build_timegrid(0.0, maturity, config)
     n_timegrid = t_grid.shape[0]
 
     # Build spot grid
-    x, dx, spot_idx = build_spotgrid(maturity, local_vol, config)
+    x, dx, spot_idx = build_spotgrid(maturity, lv, config)
 
     # Initial probability
-    lnvol = local_vol.ivol_guess(maturity)
+    lnvol = lv.ivol_guess(maturity)
     p = lognormal_density(x, FWD_PDE_START_TIME, lnvol)
-    # p = lognormal_density(x, FWD_PDE_START_TIME, config.mesh_vol)
 
     # Forward reduction
     for i in range(n_timegrid - 1):
-        p = roll_forward(p, x, dx, t_grid[i], t_grid[i + 1], local_vol, config)
+        p = roll_forward(p, x, dx, t_grid[i], t_grid[i + 1], lv, config)
 
     return x, dx, p
 
 
-def build_spotgrid(maturity: float, local_vol: LocalVol, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
+def build_spotgrid(maturity: float, lv: LocalVol, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
     """ Build spot grid for PDEs """
-    iv_guess = local_vol.ivol_guess(maturity)
+    iv_guess = lv.ivol_guess(maturity)
     # print(f"Mesh vol(build): {iv_guess}")
     n_meshes = config.n_meshes
     x_max = iv_guess * np.sqrt(maturity) * config.n_stdevs

@@ -46,25 +46,17 @@ print(f"LV time grid: {np.asarray(lv.t_grid)}")
 # lvs = lv_value(0.5, [-0.5, 0, 0.5])
 # print(f"Check used lvs: {lvs}")
 
-# # Local Vol
-# def my_lv(t, x_grid):
-#     """ As a function of log forward moneyness """
-#     return np.asarray([atm_vol for x in x_grid])
-
 # PDE config
 print("Define PDE config")
-mesh_vol = calib_vols[0]
-pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=mesh_vol, scheme='rannacher',
+pde_config = PdeConfig(n_timesteps=50, n_meshes=250, scheme='rannacher',
                         rescale_x=True, rescale_p=True)
 print(f"Time steps: {pde_config.n_timesteps}")
 print(f"Spot steps: {pde_config.n_meshes}")
-print(f"Mesh vol: {mesh_vol*100:.2f}%")
 
 start_timer = time.time()
 
 # Run PDE to calculate densities at each maturity
-density_reports = calculate_densities(maturities, lv.value, pde_config)
-# density_reports = calculate_densities(maturities, my_lv, pde_config)
+density_reports = calculate_densities(maturities, lv, pde_config)
 
 # Calculate PDE option prices and compare against closed-form
 reports = []
