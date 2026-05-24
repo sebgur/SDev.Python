@@ -47,8 +47,6 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     lv_t_grid.extend(expiry_grid[:-1])
     lv = lvf.load_param_lv(valdate, name, t_grid=lv_t_grid, folder=config.get('lv_folder', None))
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
-    # print(f"IV time grid: {expiry_grid}")
-    # print(f"LV time grid: {lv.t_grid}")
 
     # Set forward PDE
     pde_config = fpde.PdeConfig(n_timesteps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],
@@ -99,6 +97,10 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         # Optimize
         optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx])
         # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
+
+        print(f"params_init: {params_init}")
+        print(f"bounds: {bounds}")
+
         result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
         sol = result.x # Optimum parameters
 
@@ -166,12 +168,105 @@ class LvObjectiveBuilder:
         self.strikes, self.cf_prices, self.pde_prices = None, None, None
         self.rmse = 0.0
 
+    def pde_prices(self, params: npt.ArrayLike) -> npt.ArrayLike:
+        """ Evolve the PDE and return the price vector """
+        # Update params first so they're available to check. Alternatively we could pass them
+        # to check_params() and only set them if they're ok.
+        self.lv.update_params(self.exp_idx, params)
+        is_ok, penalty = self.lv.check_params(self.exp_idx)
+
+        if not is_ok:
+            return None
+
+        # Need to distinguish if it's the first expiry or not, because if it's the first
+        # expiry, we need to initialize the density.
+        # The reason this is needed as that the initialization of the density uses a
+        # mollifier whose volatility is estimated from the Local Vol. So different LVs
+        # lead to a different initial density.
+        if self.exp_idx == 0: # Do the initialization step, otherwise used already stored
+            self.old_x, self.old_dx, self.old_p = self.initialize()
+
+        x, dx, p = fpde.density_step(self.old_p, self.old_x, self.old_dx,
+                                        self.step_grid, self.lv, self.pde_config)
+        self.new_x, self.new_p, self.new_dx = x, p, dx
+        # self.new_p = p
+        # self.new_dx = dx
+
+        # Calculate the PDE options at the next expiry
+        s = self.fwd * np.exp(x)
+        pde_prices = []
+        for k in self.strikes: # ToDo: can we do this vectorially over the strikes?
+            match self.option_type:
+                case OptionType.CALL:
+                    payoff = np.maximum(s - k, 0.0)
+                case OptionType.PUT:
+                    payoff = np.maximum(k - s, 0.0)
+                case OptionType.STRADDLE:
+                    payoff = np.abs(s - k)
+                case _:
+                    raise ValueError(f"Unsupported option type: {self.option_type}")
+
+            # ToDo: use expectation()
+            weighted_payoff = payoff * p
+            pde_prices.append(np.trapezoid(weighted_payoff, x))
+
+        # Calculate the objective function at the next expiry
+        self.rmse = metrics.rmse(pde_prices, self.cf_prices)
+        self.pde_prices = pde_prices
+        return pde_prices
+
+    def residuals(self, params: npt.ArrayLike) -> npt.NDArray[np.float64]:
+        """ Residual vector for least_squares: pde_price - cf_price per strike.
+            ToDo: call the common pde_prices
+        """
+        self.lv.update_params(self.exp_idx, params)
+        is_ok, penalty = self.lv.check_params(self.exp_idx)
+
+        if not is_ok:
+            # Same penalty fallback as objective(), but vector-valued
+            return np.full_like(self.cf_prices, np.sqrt(self.cf_prices.sum()))
+
+        x, dx, p = fpde.density_step(self.old_p, self.old_x, self.old_dx,
+                                    self.step_grid, self.lv, self.pde_config)
+        self.new_x, self.new_p, self.new_dx = x, p, dx
+
+        s = self.fwd * np.exp(x)
+        pde_prices = []
+        for k in self.strikes:
+            match self.option_type:
+                case OptionType.CALL:     payoff = np.maximum(s - k, 0.0)
+                case OptionType.PUT:      payoff = np.maximum(k - s, 0.0)
+                case OptionType.STRADDLE: payoff = np.abs(s - k)
+                case _: raise ValueError(f"Unsupported option type: {self.option_type}")
+            pde_prices.append(np.trapezoid(payoff * p, x))
+
+        pde_prices = np.asarray(pde_prices)
+        self.pde_prices = pde_prices
+        self.rmse = metrics.rmse(pde_prices, self.cf_prices)   # keep for logging
+        return pde_prices - np.asarray(self.cf_prices)
+
+    def main_solver_code(self):
+        from scipy.optimize import least_squares
+        result = least_squares(
+            obj_builder.residuals,
+            x0=params_init,
+            bounds=(bounds.lb, bounds.ub),       # least_squares wants a 2-tuple, not Bounds()
+            method="trf",                         # "trf" handles bounds; "lm" is faster but unbounded
+            xtol=tol,
+            ftol=ftols[exp_idx],
+        )
+        sol = result.x
+
     def objective(self, params: npt.ArrayLike) -> float:
         """ Objective function for LvSection calibration """
         # Update params first so they're available to check. Alternatively we could pass them
         # to check_params() and only set them if they're ok.
         self.lv.update_params(self.exp_idx, params)
         is_ok, penalty = self.lv.check_params(self.exp_idx)
+
+        # print(f"params: {params}")
+        # print("params: %s", np.array2string(np.asarray(params), precision=12))
+        # print(f"is_ok/penalty: {is_ok}/{penalty}")
 
         if is_ok:
             # Need to distinguish if it's the first expiry or not, because if it's the first

@@ -8,7 +8,8 @@ from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, Local
 from sdevpy.utilities import dates
 from sdevpy.maths import interpolation as itp
 from sdevpy.utilities import jsonmanager as jsm
-log = logging.getLogger(Path(__file__).stem)
+log = logging.getLogger(__name__)
+# log = logging.getLogger(Path(__file__).stem)
 
 
 ############ TODO #######################################################

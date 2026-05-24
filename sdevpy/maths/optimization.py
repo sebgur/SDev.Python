@@ -46,7 +46,8 @@ class Optimizer(ABC):
 
 
 class SciPyOptimizer(Optimizer):
-    """ Wrapper for SciPy optimizers, including differential_evolution """
+    """ Wrapper for SciPy optimizers, including differential_evolution.
+        Non-derivative based (ex. DE): Nelder-Mead, Powell, COBYLA """
     def __init__(self, method = 'Powell', **kwargs):
         self.method_ = method
         self.std_minimizers = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA',

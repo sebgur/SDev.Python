@@ -8,6 +8,15 @@ from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.maths import metrics
+from sdevpy import logsetup
+logsetup.configure()
+
+
+############ ToDo ###############################################################
+# * SQLSP having problems with gradients near minimum, COBYLA works better.
+# * Try using the least_squares as Claude says. If it works well, try and
+#   understand how it works. Abdel suggested using it for curve construction,
+#   maybe that was because it works better with AAD?
 
 
 verbose, n_digits = False, 6
@@ -19,8 +28,8 @@ model_name = 'BiExp'
 
 # Calibration config
 lv_data_folder = lvf.test_data_folder()
-config = {'model': model_name, 'store_date': valdate, 'optimizer': 'SLSQP',
-          'tol': 1e-6, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
+config = {'model': model_name, 'store_date': valdate, 'optimizer': 'COBYLA', # COBYLA, SLSQP
+          'tol': 1e-4, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
           'sol_as_init': False}
 
 # Calibrate LV
@@ -31,7 +40,6 @@ lv = calib_result['lv']
 # Dump LV result to file
 out_folder = lvf.test_data_folder()
 fname = dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + "." + config['model']
-# fname = valdate.strftime(dts.DATE_FILE_FORMAT) + "." + config['model']
 out_file = Path(out_folder) / name / (fname + ".json")
 print(f"Dumping LV result to file: {out_file}")
 lv.dump(out_file)
