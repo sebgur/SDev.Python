@@ -58,9 +58,8 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     print(f"LV time grid: {lv.t_grid}")
 
     # Set forward PDE
-    mesh_vol = vol_surface[0].mean()
     pde_config = fpde.PdeConfig(n_timesteps=config['pde_timesteps'], n_meshes=config['pde_spotsteps'],
-                                mesh_vol=mesh_vol, scheme='rannacher', rescale_x=True, rescale_p=True,
+                                scheme='rannacher', rescale_x=True, rescale_p=True,
                                 shift_forward=False)
 
     # Set objective
@@ -78,7 +77,6 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         print(f"Val date: {valdate.strftime(dates.DATE_FORMAT)}")
         print("Vol surface information")
         surface_data.pretty_print()
-        print(f"Mesh vol: {mesh_vol*100:.2f}%")
         print(f"PDE time steps: {pde_config.n_timesteps}")
         print(f"PDE spot steps: {pde_config.n_meshes}")
         print(f"Optimizer: {method}")

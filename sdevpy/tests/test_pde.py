@@ -13,7 +13,7 @@ def check_forward_pde(rescale_x: bool, scheme: str='rannacher'):
     my_lv = ConstantLocalVol(atm_vol)
 
     # PDE config
-    pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme=scheme,
+    pde_config = PdeConfig(n_timesteps=50, n_meshes=250, scheme=scheme,
                            rescale_x=rescale_x, rescale_p=True, shift_forward=True)
 
     # Run PDE

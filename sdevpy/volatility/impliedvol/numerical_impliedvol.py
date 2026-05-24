@@ -12,11 +12,6 @@ from sdevpy.utilities import timegrids
 DFLT_PDE_CONFIG = PdeConfig()
 
 
-########### TODO ################################
-# * Pass simpler than PdeConfig by estimating mesh_vol using LV?
-#   Impl. generic integrated variance calculation
-
-
 class NumericalImpliedVol(ImpliedVol):
     def __init__(self, lv: LocalVol, pde_config: PdeConfig=DFLT_PDE_CONFIG, **kwargs):
         super().__init__()
