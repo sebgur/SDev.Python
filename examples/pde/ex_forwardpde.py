@@ -55,7 +55,7 @@ print(f"LV time grid: {np.asarray(lv.t_grid)}")
 print("Define PDE config")
 mesh_vol = calib_vols[0]
 pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=mesh_vol, scheme='rannacher',
-                        rescale_x=True, rescale_p=True, iv_surface=iv_surface)
+                        rescale_x=True, rescale_p=True)
 print(f"Time steps: {pde_config.n_timesteps}")
 print(f"Spot steps: {pde_config.n_meshes}")
 print(f"Mesh vol: {mesh_vol*100:.2f}%")

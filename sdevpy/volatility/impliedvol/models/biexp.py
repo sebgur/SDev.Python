@@ -91,15 +91,17 @@ def biexp(x, *params):
     if isequal(taur, 0.0):
         raise ValueError("taur=0 is not an acceptable parameter")
 
+    xm_r = np.maximum(xm, 0.0)
     ar = fp + (f0 - fr) / taur
-    volr = fr + (ar * xm + f0 - fr) * np.exp(-xm / taur)
+    volr = fr + (ar * xm_r + f0 - fr) * np.exp(-xm_r / taur)
 
     # Left case
     if isequal(taur, 0.0):
         raise ValueError("taul=0 is not an acceptable parameter")
 
+    xm_l = np.minimum(xm, 0.0)
     al = fp - (f0 - fl) / taul
-    voll = fl + (al * xm + f0 - fl) * np.exp(xm / taul)
+    voll = fl + (al * xm_l + f0 - fl) * np.exp(xm_l / taul)
 
     return np.where(xm >= 0.0, volr, voll)
 

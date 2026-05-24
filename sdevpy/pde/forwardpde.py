@@ -65,11 +65,6 @@ def density(maturity: float, local_vol: LocalVol, config: PdeConfig):
 
 def build_spotgrid(maturity: float, local_vol: LocalVol, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
     """ Build spot grid for PDEs """
-    # if config.iv_surface is None:
-    #     mesh_vol = config.mesh_vol
-    # else:
-    #     mesh_vol = config.iv_surface.black_volatility(maturity, 1.0, 1.0)
-
     mesh_vol = local_vol.ivol_guess(maturity)
     # print(f"Mesh vol(build): {mesh_vol}")
 
@@ -173,17 +168,16 @@ def get_pde_config(t: float=None, **kwargs) -> PdeConfig:
         n_timesteps = kwargs.get('n_timesteps', 100)
         n_meshes = kwargs.get('n_meshes', 250)
         scheme = kwargs.get('scheme', 'rannacher')
-        iv_surface = kwargs.get('iv_surface', None)
-        if iv_surface is None:
-            mesh_vol = kwargs.get('mesh_vol', 0.20)
-        else:
-            if t is None:
-                raise ValueError("Time argument needed to estimate mesh vol from the IV surface")
-            mesh_vol = iv_surface.black_volatility(t, 1.0, 1.0)
+        # iv_surface = kwargs.get('iv_surface', None)
+        # if iv_surface is None:
+        mesh_vol = kwargs.get('mesh_vol', 0.20)
+        # else:
+        #     if t is None:
+        #         raise ValueError("Time argument needed to estimate mesh vol from the IV surface")
+        #     mesh_vol = iv_surface.black_volatility(t, 1.0, 1.0)
 
         pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, mesh_vol=mesh_vol, scheme=scheme,
-                               rescale_x=True, rescale_p=True, shift_forward=False,
-                               iv_surface=iv_surface)
+                               rescale_x=True, rescale_p=True, shift_forward=False)
 
     return pde_config
 

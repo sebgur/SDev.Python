@@ -3,7 +3,7 @@ import numpy as np
 import numpy.typing as npt
 from abc import ABC, abstractmethod
 from sdevpy.maths import tridiag
-from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol
+# from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol
 
 
 @dataclass
@@ -18,7 +18,7 @@ class PdeConfig:
     rescale_x: bool = True
     rescale_p: bool = True
     shift_forward: bool = False
-    iv_surface: ImpliedVol = None
+    # iv_surface: ImpliedVol = None
 
 
 class PdeScheme(ABC):
