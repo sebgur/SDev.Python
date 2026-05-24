@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LV calibration with nonlinear least squares</title>
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    max-width: 900px;
+    margin: 2em auto;
+    padding: 0 1em;
+    line-height: 1.55;
+    color: #1c1c1c;
+    background: #fafafa;
+  }
+  h1 { border-bottom: 2px solid #333; padding-bottom: 0.3em; }
+  h2 { margin-top: 2em; border-bottom: 1px solid #ccc; padding-bottom: 0.2em; }
+  h3 { margin-top: 1.5em; color: #333; }
+  code {
+    background: #eef;
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #f8f8f2;
+    padding: 1em;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.88em;
+    line-height: 1.45;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  .keyword { color: #ff79c6; }
+  .string  { color: #f1fa8c; }
+  .comment { color: #6272a4; font-style: italic; }
+  .funcname{ color: #50fa7b; }
+  .builtin { color: #8be9fd; }
+  blockquote {
+    border-left: 4px solid #999;
+    margin: 1em 0;
+    padding: 0.3em 1em;
+    background: #f0f0f0;
+    color: #333;
+  }
+  table {
+    border-collapse: collapse;
+    margin: 1em 0;
+  }
+  th, td {
+    border: 1px solid #bbb;
+    padding: 0.4em 0.8em;
+    text-align: left;
+  }
+  th { background: #e8e8e8; }
+  .callout {
+    background: #fffbe6;
+    border-left: 4px solid #f0c000;
+    padding: 0.6em 1em;
+    margin: 1em 0;
+    border-radius: 4px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Local-vol calibration via nonlinear least squares</h1>
+
+<p>This note collects the full set of changes needed to switch
+<code>calibrate_lv_bysections</code> from
+<code>scipy.optimize.minimize(SLSQP)</code> on a scalar RMSE
+to <code>scipy.optimize.least_squares</code> on a residual vector,
+and explains the mathematics of why this is the right choice for a
+calibration objective.</p>
+
+<h2>1. Why this change matters</h2>
+
+<p>Your current setup minimises a single scalar:</p>
+
+<p>$$
+f(\boldsymbol{\theta}) \;=\;
+\sqrt{\tfrac{1}{m}\sum_{i=1}^{m}\bigl(\text{pde}_i(\boldsymbol{\theta}) - \text{cf}_i\bigr)^2}
+$$</p>
+
+<p>with $\boldsymbol{\theta}\in\mathbb{R}^n$ (here $n=6$ for BiExp) and $m$ strikes per
+expiry.  SLSQP receives this single number, computes a finite-difference gradient
+$\nabla f \in \mathbb{R}^n$ (costing $n{+}1$ extra objective evaluations per step),
+and proceeds by line search.</p>
+
+<p>This throws away an essential piece of structure: the objective is
+<em>quadratic in residuals</em>.  Reformulating it as</p>
+
+<p>$$
+\boldsymbol{r}(\boldsymbol{\theta}) \;=\;
+\bigl(\text{pde}_i(\boldsymbol{\theta}) - \text{cf}_i\bigr)_{i=1\ldots m}
+\;\in\;\mathbb{R}^m,
+\qquad
+\min_{\boldsymbol{\theta}} \; \tfrac{1}{2}\,\|\boldsymbol{r}(\boldsymbol{\theta})\|^2
+$$</p>
+
+<p>lets us use specialised <em>nonlinear least squares</em> methods
+(Levenberg&ndash;Marquardt / trust-region reflective) that exploit
+this structure to converge in <strong>roughly 3&ndash;10&times; fewer
+PDE evaluations</strong>.</p>
+
+<h2>2. From linear regression to nonlinear least squares</h2>
+
+<h3>2.1 The case you already know: linear regression</h3>
+
+<p>Classical least-squares regression fits a model that is
+<em>linear in its parameters</em>:</p>
+
+<p>$$
+y_i \approx \boldsymbol{\phi}(x_i)^{\!\top}\boldsymbol{\beta},
+\qquad i=1,\ldots,m
+$$</p>
+
+<p>where $\boldsymbol{\phi}(x_i)\in\mathbb{R}^n$ is a vector of basis-function evaluations and
+$\boldsymbol{\beta}\in\mathbb{R}^n$ are parameters.  Stacking the rows
+$\boldsymbol{\phi}(x_i)^{\!\top}$ into a design matrix $\boldsymbol{X}\in\mathbb{R}^{m\times n}$:</p>
+
+<p>$$
+\min_{\boldsymbol{\beta}} \;\tfrac{1}{2}\,\|\boldsymbol{y} - \boldsymbol{X}\boldsymbol{\beta}\|^2
+\;\;\Longrightarrow\;\;
+\boldsymbol{X}^{\!\top}\boldsymbol{X}\,\boldsymbol{\beta}^{*} = \boldsymbol{X}^{\!\top}\boldsymbol{y}
+$$</p>
+
+<p>This is closed-form: one linear solve, done. The reason it works is that the
+residual $\boldsymbol{r}(\boldsymbol{\beta}) = \boldsymbol{y} - \boldsymbol{X}\boldsymbol{\beta}$
+depends <em>linearly</em> on the parameters.</p>
+
+<h3>2.2 Your case: nonlinear in the parameters</h3>
+
+<p>In your problem each residual is the output of a forward PDE for given LV
+parameters $\boldsymbol{\theta}$:</p>
+
+<p>$$
+r_i(\boldsymbol{\theta}) \;=\; \text{pde}_i(\boldsymbol{\theta}) - \text{cf}_i.
+$$</p>
+
+<p>There is no design matrix.  $\text{pde}_i$ is a highly nonlinear functional of
+$\boldsymbol{\theta}$ (LV section $\to$ PDE coefficients $\to$ density evolution
+$\to$ expectation).  The closed-form normal equations no longer apply.</p>
+
+<h3>2.3 The key idea: linearise locally, iterate</h3>
+
+<p>Even though $\boldsymbol{r}$ is nonlinear, near any iterate
+$\boldsymbol{\theta}_k$ we can take a first-order Taylor expansion:</p>
+
+<p>$$
+\boldsymbol{r}(\boldsymbol{\theta}_k + \boldsymbol{\delta})
+\;\approx\;
+\boldsymbol{r}(\boldsymbol{\theta}_k) + \boldsymbol{J}_k\,\boldsymbol{\delta},
+\qquad
+\boldsymbol{J}_k \;=\; \frac{\partial \boldsymbol{r}}{\partial \boldsymbol{\theta}}\bigg|_{\boldsymbol{\theta}_k}
+\;\in\;\mathbb{R}^{m\times n}.
+$$</p>
+
+<p>Substituting this approximation into the objective gives a <strong>linear</strong>
+least-squares problem in the step $\boldsymbol{\delta}$:</p>
+
+<p>$$
+\min_{\boldsymbol{\delta}}
+\;\tfrac{1}{2}\,\|\boldsymbol{r}(\boldsymbol{\theta}_k) + \boldsymbol{J}_k\,\boldsymbol{\delta}\|^2
+\;\;\Longrightarrow\;\;
+\boldsymbol{J}_k^{\!\top}\boldsymbol{J}_k\,\boldsymbol{\delta}
+\;=\;
+-\,\boldsymbol{J}_k^{\!\top}\boldsymbol{r}(\boldsymbol{\theta}_k).
+$$</p>
+
+<p>You solve this small linear system, update
+$\boldsymbol{\theta}_{k+1} = \boldsymbol{\theta}_k + \boldsymbol{\delta}$,
+re-linearise, and repeat. <strong>This is the Gauss&ndash;Newton method.</strong></p>
+
+<div class="callout">
+<strong>One-line summary.</strong>
+Nonlinear least squares = a sequence of linear least squares problems on the
+local linearisation of the residual. The "regression" you know is doing the
+same thing &mdash; just once, because for linear $\boldsymbol{r}$ the linearisation
+is exact.
+</div>
+
+<h3>2.4 Why Gauss&ndash;Newton beats general gradient descent</h3>
+
+<p>Consider the gradient and Hessian of
+$f(\boldsymbol{\theta}) = \tfrac{1}{2}\|\boldsymbol{r}(\boldsymbol{\theta})\|^2$:</p>
+
+<p>$$
+\nabla f \;=\; \boldsymbol{J}^{\!\top}\boldsymbol{r},
+\qquad
+\nabla^2 f \;=\; \underbrace{\boldsymbol{J}^{\!\top}\boldsymbol{J}}_{\text{cheap, p.s.d.}}
+\;+\;
+\underbrace{\sum_{i=1}^{m} r_i\,\nabla^2 r_i}_{\text{expensive, small near optimum}}.
+$$</p>
+
+<p>The first piece $\boldsymbol{J}^{\!\top}\boldsymbol{J}$ is free once you have
+$\boldsymbol{J}$, and it is positive semi-definite. The second piece involves
+second derivatives of each residual but is multiplied by $r_i$, which
+become small near a good fit. <strong>Gauss&ndash;Newton just drops it</strong>:</p>
+
+<p>$$
+\boldsymbol{H}_{\text{GN}} \;:=\; \boldsymbol{J}^{\!\top}\boldsymbol{J}
+\;\approx\; \nabla^2 f.
+$$</p>
+
+<p>Compared to a generic minimiser of $f$:</p>
+
+<ul>
+  <li><strong>Hessian for free.</strong>  Generic methods either don't use a Hessian
+      (Nelder&ndash;Mead, Powell) or pay $O(n^2)$ extra evaluations to estimate it
+      (BFGS builds it up; finite-difference Hessian is quadratic).
+      Gauss&ndash;Newton's Hessian approximation costs you nothing extra.</li>
+  <li><strong>Better information from the Jacobian.</strong>  Finite-differencing
+      $\boldsymbol{r}$ to get $\boldsymbol{J} \in \mathbb{R}^{m\times n}$ costs the
+      same $n{+}1$ evaluations as finite-differencing the scalar $f$ to get
+      $\nabla f \in \mathbb{R}^n$ &mdash; but you get $m$ times more numerical
+      information per call.</li>
+  <li><strong>Quadratic convergence near the optimum.</strong>  When residuals are
+      small, Gauss&ndash;Newton's Hessian approximation becomes accurate and the method
+      converges quadratically &mdash; just like full Newton, but without the
+      Hessian cost.</li>
+</ul>
+
+<h3>2.5 Levenberg&ndash;Marquardt: making it robust far from the optimum</h3>
+
+<p>The bare Gauss&ndash;Newton step</p>
+
+<p>$$
+\boldsymbol{\delta}_{\text{GN}} \;=\; -(\boldsymbol{J}^{\!\top}\boldsymbol{J})^{-1}\boldsymbol{J}^{\!\top}\boldsymbol{r}
+$$</p>
+
+<p>can be far too aggressive when $\boldsymbol{J}^{\!\top}\boldsymbol{J}$ is
+ill-conditioned or when $\boldsymbol{\theta}_k$ is far from a minimum.
+<strong>Levenberg&ndash;Marquardt</strong> adds a damping term:</p>
+
+<p>$$
+(\boldsymbol{J}^{\!\top}\boldsymbol{J} + \lambda\,\boldsymbol{D})\,\boldsymbol{\delta}
+\;=\;
+-\,\boldsymbol{J}^{\!\top}\boldsymbol{r}
+$$</p>
+
+<p>where $\boldsymbol{D}$ is a positive-definite scaling matrix (often $\boldsymbol{I}$
+or $\text{diag}(\boldsymbol{J}^{\!\top}\boldsymbol{J})$) and $\lambda\ge 0$ is adapted
+each iteration:</p>
+
+<ul>
+  <li>$\lambda \to 0$: step approaches Gauss&ndash;Newton (fast, possibly wild).</li>
+  <li>$\lambda \to \infty$: step approaches scaled steepest descent
+      $-\frac{1}{\lambda}\boldsymbol{D}^{-1}\boldsymbol{J}^{\!\top}\boldsymbol{r}$
+      (slow but safe).</li>
+</ul>
+
+<p>The algorithm increases $\lambda$ when a trial step <em>worsens</em> the objective
+(retreat toward steepest descent), and decreases it when steps succeed
+(advance toward Gauss&ndash;Newton). This is what <code>scipy.optimize.least_squares</code>
+does internally when you pass <code>method="lm"</code>.</p>
+
+<h3>2.6 Trust-region reflective: bounds for free</h3>
+
+<p>Levenberg&ndash;Marquardt is unbounded. Your LV parameters live in a box, so
+you need a bounded variant. <code>method="trf"</code> (trust-region reflective)
+keeps the Gauss&ndash;Newton spirit but instead of $\lambda$-damping it constrains
+each step to a <strong>trust region</strong> $\|\boldsymbol{\delta}\|\le \Delta_k$
+that shrinks/grows based on whether the linearised model accurately predicted
+the actual residual reduction.</p>
+
+<p>Bounds are enforced by <em>reflection</em>: if a proposed step would cross a
+bound at face $\theta_j = \text{lb}_j$, the component $\delta_j$ is reflected
+back into the feasible region, and the Jacobian column $\boldsymbol{J}_{:,j}$ is
+rescaled so the optimizer doesn't keep proposing infeasible directions there.
+All iterates $\boldsymbol{\theta}_k$ stay strictly inside the box.</p>
+
+<table>
+<tr><th>Method</th><th>Bounds</th><th>Notes</th></tr>
+<tr><td><code>"trf"</code></td><td>yes</td><td>Trust-region + reflection. Your default for this problem.</td></tr>
+<tr><td><code>"dogbox"</code></td><td>yes</td><td>Trust region with rectangular trust regions; less common.</td></tr>
+<tr><td><code>"lm"</code></td><td>no</td><td>Pure Levenberg&ndash;Marquardt; fastest if unbounded, otherwise errors out.</td></tr>
+</table>
+
+<h2>3. Why this beats <code>minimize(rmse, SLSQP)</code> on your problem</h2>
+
+<table>
+<tr>
+  <th></th>
+  <th><code>minimize(rmse, SLSQP)</code></th>
+  <th><code>least_squares(residuals, trf)</code></th>
+</tr>
+<tr>
+  <td>Gradient</td>
+  <td>$\nabla f \in \mathbb{R}^n$ from finite differences ($n{+}1$ evals).</td>
+  <td>$\boldsymbol{J} \in \mathbb{R}^{m\times n}$ from finite differences ($n{+}1$ evals). <em>Same cost, far more information.</em></td>
+</tr>
+<tr>
+  <td>Hessian</td>
+  <td>BFGS approximation built over many iterations.</td>
+  <td>$\boldsymbol{J}^{\!\top}\boldsymbol{J}$ for free, accurate near optimum.</td>
+</tr>
+<tr>
+  <td>Convergence near minimum</td>
+  <td>Linear (quasi-Newton).</td>
+  <td>Quadratic.</td>
+</tr>
+<tr>
+  <td>Bounds</td>
+  <td>Active-set, can chatter.</td>
+  <td>Reflection, always feasible.</td>
+</tr>
+<tr>
+  <td>Typical PDE-eval count</td>
+  <td>Hundreds.</td>
+  <td>Tens.</td>
+</tr>
+</table>
+
+<h2>4. Code changes</h2>
+
+<h3>4.1 Refactor <code>LvObjectiveBuilder</code></h3>
+
+<p>Inside <code>lvsection_calib.py</code>, extract a private helper that performs
+the single expensive operation (one PDE step + price evaluation) and have
+both <code>objective</code> and the new <code>residuals</code> route through it.
+This avoids duplicating the PDE code.</p>
+
+<pre><code><span class="keyword">def</span> <span class="funcname">_pde_prices</span>(<span class="builtin">self</span>, params):
+    <span class="string">"""Run the PDE for given params and return the PDE prices vector.</span>
+<span class="string">       Returns None if check_params rejects the parameters."""</span>
+    <span class="builtin">self</span>.lv.update_params(<span class="builtin">self</span>.exp_idx, params)
+    is_ok, _ = <span class="builtin">self</span>.lv.check_params(<span class="builtin">self</span>.exp_idx)
+    <span class="keyword">if not</span> is_ok:
+        <span class="keyword">return</span> <span class="builtin">None</span>
+
+    x, dx, p = fpde.density_step(<span class="builtin">self</span>.old_p, <span class="builtin">self</span>.old_x, <span class="builtin">self</span>.old_dx,
+                                 <span class="builtin">self</span>.step_grid, <span class="builtin">self</span>.lv, <span class="builtin">self</span>.pde_config)
+    <span class="builtin">self</span>.new_x, <span class="builtin">self</span>.new_p, <span class="builtin">self</span>.new_dx = x, p, dx
+
+    s = <span class="builtin">self</span>.fwd * np.exp(x)
+    prices = []
+    <span class="keyword">for</span> k <span class="keyword">in</span> <span class="builtin">self</span>.strikes:
+        <span class="keyword">match</span> <span class="builtin">self</span>.option_type:
+            <span class="keyword">case</span> OptionType.CALL:     payoff = np.maximum(s - k, <span class="string">0.0</span>)
+            <span class="keyword">case</span> OptionType.PUT:      payoff = np.maximum(k - s, <span class="string">0.0</span>)
+            <span class="keyword">case</span> OptionType.STRADDLE: payoff = np.abs(s - k)
+            <span class="keyword">case</span> _:
+                <span class="keyword">raise</span> <span class="builtin">ValueError</span>(f<span class="string">"Unsupported option type: {self.option_type}"</span>)
+        prices.append(np.trapezoid(payoff * p, x))
+
+    prices = np.asarray(prices)
+    <span class="builtin">self</span>.pde_prices = prices
+    <span class="builtin">self</span>.rmse = metrics.rmse(prices, <span class="builtin">self</span>.cf_prices)
+    <span class="keyword">return</span> prices
+
+
+<span class="keyword">def</span> <span class="funcname">objective</span>(<span class="builtin">self</span>, params):
+    <span class="string">"""Scalar RMSE objective (kept for back-compat with minimize-based code)."""</span>
+    prices = <span class="builtin">self</span>._pde_prices(params)
+    <span class="keyword">if</span> prices <span class="keyword">is</span> <span class="builtin">None</span>:
+        <span class="keyword">return</span> <span class="builtin">self</span>.cf_prices.sum()
+    <span class="keyword">return</span> <span class="builtin">self</span>.rmse
+
+
+<span class="keyword">def</span> <span class="funcname">residuals</span>(<span class="builtin">self</span>, params):
+    <span class="string">"""Residual vector (pde - cf) for scipy.optimize.least_squares."""</span>
+    prices = <span class="builtin">self</span>._pde_prices(params)
+    <span class="keyword">if</span> prices <span class="keyword">is</span> <span class="builtin">None</span>:
+        <span class="comment"># Vector-valued penalty: large ||r||^2 steers the trust region away.</span>
+        <span class="keyword">return</span> np.full_like(<span class="builtin">self</span>.cf_prices, np.sqrt(<span class="builtin">self</span>.cf_prices.sum()))
+    <span class="keyword">return</span> prices - np.asarray(<span class="builtin">self</span>.cf_prices)
+</code></pre>
+
+<h3>4.2 Update the calibration loop</h3>
+
+<p>Inside <code>calibrate_lv_bysections</code>, replace the optimizer call
+in the per-expiry loop:</p>
+
+<pre><code><span class="keyword">from</span> scipy.optimize <span class="keyword">import</span> least_squares
+
+<span class="comment"># ... inside the for exp_idx in range(...) loop ...</span>
+
+bounds = lv.section(exp_idx).constraints()       <span class="comment"># a scipy Bounds object</span>
+
+result = least_squares(
+    obj_builder.residuals,
+    x0=params_init,
+    bounds=(bounds.lb, bounds.ub),               <span class="comment"># least_squares wants a 2-tuple</span>
+    method=<span class="string">"trf"</span>,                              <span class="comment"># trust-region reflective; supports bounds</span>
+    xtol=tol,
+    ftol=ftols[exp_idx],
+    <span class="comment"># max_nfev=200,                              # optional safety cap</span>
+)
+sol = result.x
+
+<span class="comment"># Sync the LV with the final solution and refresh cached density / rmse</span>
+lv.update_params(exp_idx, sol)
+rmse = obj_builder.objective(sol)
+</code></pre>
+
+<h3>4.3 What about the existing <code>create_optimizer</code> factory?</h3>
+
+<p>For now, bypass it for the least-squares path &mdash; the cleanest minimum-change
+edit. Once you've verified the speedup on your real calibration set,
+you can extend <code>create_optimizer</code> in <code>optimization.py</code> to
+recognise <code>"lm"</code> / <code>"trf"</code> and route them to a
+wrapper whose <code>.minimize(residuals_fn, x0, bounds)</code> calls
+<code>least_squares</code> under the hood.  That preserves the existing
+config-driven optimizer selection.</p>
+
+<h2>5. Practical notes</h2>
+
+<h3>5.1 Bounds carry over cleanly</h3>
+
+<ul>
+  <li>Your existing <code>Bounds(lw_bounds, up_bounds)</code> from the BiExp model
+      transfers verbatim &mdash; just unpack it as <code>(bounds.lb, bounds.ub)</code>.</li>
+  <li><code>"trf"</code> keeps every iterate strictly inside the box via reflection.
+      <code>"lm"</code> doesn't support bounds and will raise an error if you pass them.</li>
+</ul>
+
+<h3>5.2 <code>check_params</code> penalty still works</h3>
+
+<p>The "invalid parameters &rArr; large penalty" trick translates directly:
+return a constant <em>vector</em> of large values instead of a large scalar.
+Trust-region reflective sees the large $\|\boldsymbol{r}\|^2$, shrinks the
+trust region, and steers the next iterate away from the offending region.</p>
+
+<h3>5.3 Tolerances</h3>
+
+<ul>
+  <li><code>ftol</code>: stop when relative reduction in $\|\boldsymbol{r}\|^2$ falls below this.
+      Set it to the price-noise floor of your PDE (likely $10^{-5}$ to $10^{-4}$
+      in normalised units).  No point converging tighter than your prices are accurate.</li>
+  <li><code>xtol</code>: stop when relative change in $\boldsymbol{\theta}$ falls below this.
+      Typically the same order as <code>ftol</code>.</li>
+  <li><code>gtol</code> (default $10^{-8}$): first-order optimality test on
+      $\boldsymbol{J}^{\!\top}\boldsymbol{r}$. Rarely the binding criterion in practice.</li>
+</ul>
+
+<h3>5.4 Don't supply <code>jac=</code></h3>
+
+<p>Unless you want to derive analytical $\partial \text{pde}_i / \partial \theta_j$
+through your PDE (hard), let <code>least_squares</code> finite-difference it.
+The Jacobian is computed in $n{+}1$ PDE calls per iteration &mdash; the same cost
+as finite-differencing the scalar objective with SLSQP, but the resulting linear
+algebra extracts far more information.</p>
+
+<h3>5.5 Validation</h3>
+
+<p>Before fully replacing SLSQP in production, run both side-by-side on one
+expiry and check that:</p>
+<ol>
+  <li>final $\|\boldsymbol{r}\|$ is comparable or better;</li>
+  <li>final $\boldsymbol{\theta}$ is similar (or, if different, gives equivalent
+      market fit &mdash; calibration objectives often have flat optima);</li>
+  <li>number of PDE evaluations (<code>result.nfev</code>) is significantly lower.</li>
+</ol>
+
+<h2>6. Recap</h2>
+
+<ul>
+  <li><strong>Mathematically.</strong> Nonlinear least squares solves
+      $\min \tfrac{1}{2}\|\boldsymbol{r}(\boldsymbol{\theta})\|^2$ as a sequence of
+      <em>linear</em> least-squares subproblems on the local linearisation of
+      $\boldsymbol{r}$. This is Gauss&ndash;Newton; LM and TRF are robustified
+      variants. The "Hessian-for-free" property
+      $\boldsymbol{H}\approx\boldsymbol{J}^{\!\top}\boldsymbol{J}$ is what makes it
+      so much more efficient than a generic scalar minimiser on the same problem.</li>
+  <li><strong>Practically.</strong> Add a <code>residuals</code> method to
+      <code>LvObjectiveBuilder</code> returning the per-strike price differences,
+      and call <code>scipy.optimize.least_squares(..., method="trf",
+      bounds=(lb, ub))</code> in the calibration loop. Your bounds, your
+      <code>check_params</code> penalty, and your existing per-expiry density
+      passing all stay unchanged.</li>
+</ul>
+
+</body>
+</html>
