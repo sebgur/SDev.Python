@@ -138,8 +138,9 @@ def calculate_densities(maturities: npt.NDArray[np.float64], lv: LocalVol, pde_c
 
     # Initialize density
     start_time = FWD_PDE_START_TIME #/ 10.0 # Make sure no payoff is required before that
-    lnvol = pde_config.mesh_vol
+    # lnvol = pde_config.mesh_vol
     # lnvol = lv.path_vol(start_time, [0.0], 2)[0]
+    lnvol = lv.ivol_guess(start_time)
     print(f"Mollifier vol: {lnvol}")
     p = lognormal_density(x, start_time, lnvol)
 
@@ -163,18 +164,11 @@ def get_pde_config(t: float=None, **kwargs) -> PdeConfig:
         in which case it is used to estimate the mesh vol at ATM.
     """
     pde_config = kwargs.get('pde_config', None)
-    # Set PDE config
     if pde_config is None: # Set using the other arguments
         n_timesteps = kwargs.get('n_timesteps', 100)
         n_meshes = kwargs.get('n_meshes', 250)
         scheme = kwargs.get('scheme', 'rannacher')
-        # iv_surface = kwargs.get('iv_surface', None)
-        # if iv_surface is None:
         mesh_vol = kwargs.get('mesh_vol', 0.20)
-        # else:
-        #     if t is None:
-        #         raise ValueError("Time argument needed to estimate mesh vol from the IV surface")
-        #     mesh_vol = iv_surface.black_volatility(t, 1.0, 1.0)
 
         pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, mesh_vol=mesh_vol, scheme=scheme,
                                rescale_x=True, rescale_p=True, shift_forward=False)
@@ -215,15 +209,6 @@ def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], str
 
     # Set PDE config
     pde_config = get_pde_config(expiry_times[0], **kwargs)
-    # if pde_config is None: # Set using the other arguments
-    #     n_timesteps = kwargs.get('n_timesteps', 100)
-    #     n_meshes = kwargs.get('n_meshes', 250)
-    #     scheme = kwargs.get('scheme', 'rannacher')
-    #     iv_surface = kwargs.get('iv_surface', None)
-    #     mesh_vol = (0.20 if iv_surface is None else iv_surface.black_volatility(expiry_times[0], 1.0, 1.0))
-    #     pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, mesh_vol=mesh_vol, scheme=scheme,
-    #                            rescale_x=True, rescale_p=True, shift_forward=False,
-    #                            iv_surface=iv_surface)
 
     # Run PDE to calculate densities at each maturity
     density_reports = calculate_densities(expiry_times, lv, pde_config)
@@ -243,21 +228,6 @@ def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], str
         # Calculate PDE prices
         exp_strikes = strikes[r_idx]
         pde_price = vanilla_expectation(fwd, p, x, exp_strikes, option_type)
-        # pde_price = []
-        # s = fwd * np.exp(x)
-        # for k in exp_strikes: # ToDo: can this be vectorized?
-        #     match option_type:
-        #         case OptionType.CALL:
-        #             payoff = np.maximum(s - k, 0.0)
-        #         case OptionType.PUT:
-        #             payoff = np.maximum(k - s, 0.0)
-        #         case OptionType.STRADDLE:
-        #             payoff = np.abs(s - k)
-        #         case _:
-        #             raise ValueError(f"Unsupported option type: {option_type}")
-
-        #     pde_price.append(expectation(payoff, p, x))
-
         pde_prices.append(np.asarray(pde_price))
 
     return pde_prices

@@ -247,7 +247,8 @@ class LvObjectiveBuilder:
         old_x, old_dx, old_spot_idx = fpde.build_spotgrid(self.expiry_grid[0], self.lv, self.pde_config)
 
         # First density
-        old_p = fpde.lognormal_density(old_x, self.start_time, self.pde_config.mesh_vol)
+        lnvol = self.lv.ivol_guess(self.start_time)
+        old_p = fpde.lognormal_density(old_x, self.start_time, lnvol)
 
         return old_x, old_dx, old_p
 
