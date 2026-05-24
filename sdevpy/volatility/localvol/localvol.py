@@ -45,8 +45,8 @@ class LocalVol(ABC):
         section = self.section(t)
         return section.value(logm)
 
-    def path_variance(self, t:float, logm: npt.ArrayLike, n_steps=16) -> npt.ArrayLike:
-        """ Get a rought estimate of the implied variance by integrating the square of LV along time
+    def path_variance(self, t: float, logm: npt.ArrayLike, n_steps=16) -> npt.ArrayLike:
+        """ Get a rough estimate of the implied variance by integrating the square of LV along time
             at given log-moneynesses. Cut the time interval into given number of steps.
         """
         var_t_grid = np.linspace(0.0, t, n_steps + 1)
@@ -60,13 +60,30 @@ class LocalVol(ABC):
 
         return var
 
-    def path_vol(self, t:float, logm: npt.ArrayLike, n_steps=16):
-        """ Get a rought estimate of the implied vol by integrating the square of LV along time
+    def path_vol(self, t: float, logm: npt.ArrayLike, n_steps=16):
+        """ Get a rough estimate of the implied vol by integrating the square of LV along time
             at given log-moneynesses. Cut the time interval into given number of steps.
             This is just the vol equivalent of path_variance() i.e. sqrt(path_variance / t)
         """
         path_var = self.path_variance(t, logm, n_steps=n_steps)
         return np.sqrt(path_var / t)
+
+    def average_vol(self, t: float):
+        """ Rough estimate of the implied vol by averaging over the vols of the integrated LV
+            variances along 3 log-moneynesses at ATM and +/- 6 atm stdevs.
+        """
+        # Get ATM LV
+        atm_lv = self.value(t, [0.0])[0]
+        atm_stdev = atm_lv * np.sqrt(t)
+
+        # Get 3 logm strikes
+        n_stdev = 6.0
+        logm = [-n_stdev * atm_stdev, 0.0, n_stdev * atm_stdev]
+
+        # Get LVs
+        lvs = self.value(t, logm)
+
+        return lvs.mean()
 
     @abstractmethod
     def section(self, t: float) -> LocalVolSection:

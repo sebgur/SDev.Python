@@ -23,7 +23,7 @@ def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64],
         at end of the step """
     # Rescale spot grid
     if config.rescale_x:
-        x, dx, spot_idx = build_spotgrid(t_grid[-1], config)
+        x, dx, spot_idx = build_spotgrid(t_grid[-1], local_vol, config)
         p = np.interp(x, old_x, old_p, left=0.0, right=0.0)
     else:
         x, dx, p = old_x, old_dx, old_p
@@ -51,7 +51,7 @@ def density(maturity: float, local_vol: LocalVol, config: PdeConfig):
     n_timegrid = t_grid.shape[0]
 
     # Build spot grid
-    x, dx, spot_idx = build_spotgrid(maturity, config)
+    x, dx, spot_idx = build_spotgrid(maturity, local_vol, config)
 
     # Initial probability
     p = lognormal_density(x, FWD_PDE_START_TIME, config.mesh_vol)
@@ -63,19 +63,15 @@ def density(maturity: float, local_vol: LocalVol, config: PdeConfig):
     return x, dx, p
 
 
-def build_spotgrid(maturity: float, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
+def build_spotgrid(maturity: float, local_vol: LocalVol, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
     """ Build spot grid for PDEs """
-    mesh_percentile = config.percentile
     if config.iv_surface is None:
         mesh_vol = config.mesh_vol
     else:
         mesh_vol = config.iv_surface.black_volatility(maturity, 1.0, 1.0)
 
     n_meshes = config.n_meshes
-    p = config.n_stdevs
-    # p = norm.ppf(1.0 - mesh_percentile)
-    print(f"n_stdev: {p}")
-    x_max = mesh_vol * np.sqrt(maturity) * p
+    x_max = mesh_vol * np.sqrt(maturity) * config.n_stdevs
     n_half = int(n_meshes / 2)
     dx = x_max / n_half
     x_grid = np.zeros(2 * n_half + 1)
@@ -140,7 +136,7 @@ def calculate_densities(maturities: npt.NDArray[np.float64], lv: LocalVol, pde_c
     """ Calculate densities at specified maturities """
     # Initialize spot grid: first maturity if rescaling on x, last maturity otherwise
     spotgrid_tmax = maturities[0] if pde_config.rescale_x else maturities[-1]
-    x, dx, spot_idx = build_spotgrid(spotgrid_tmax, pde_config)
+    x, dx, spot_idx = build_spotgrid(spotgrid_tmax, lv, pde_config)
 
     # Initialize density
     start_time = FWD_PDE_START_TIME #/ 10.0 # Make sure no payoff is required before that

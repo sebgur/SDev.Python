@@ -11,7 +11,7 @@ class PdeConfig:
     n_timesteps: int = 25
     n_meshes: int = 100
     mesh_vol: float = 0.20
-    percentile: float = 1e-6
+    n_stdevs: float = 4.753424309
     scheme: str = 'Implicit'
     theta: float = 0.5
     rannacher_time: float = 7.0 / 365.0
@@ -19,7 +19,6 @@ class PdeConfig:
     rescale_p: bool = True
     shift_forward: bool = False
     iv_surface: ImpliedVol = None
-    n_stdevs: float = 4.753424309
 
 
 class PdeScheme(ABC):

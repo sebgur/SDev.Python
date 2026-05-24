@@ -244,7 +244,7 @@ class LvObjectiveBuilder:
             raise RuntimeError("First expiry too early to use analytical start in forward PDE")
 
         # First spot grid
-        old_x, old_dx, old_spot_idx = fpde.build_spotgrid(self.expiry_grid[0], self.pde_config)
+        old_x, old_dx, old_spot_idx = fpde.build_spotgrid(self.expiry_grid[0], self.lv, self.pde_config)
 
         # First density
         old_p = fpde.lognormal_density(old_x, self.start_time, self.pde_config.mesh_vol)
