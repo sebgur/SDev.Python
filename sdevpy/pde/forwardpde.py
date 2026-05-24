@@ -16,21 +16,21 @@ FWD_PDE_START_TIME = 1.0 / 365.0 # 1.0 / 52.0
 
 
 def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64], old_dx: float,
-                 t_grid: npt.NDArray[np.float64], local_vol: LocalVol, config: PdeConfig):
+                 t_grid: npt.NDArray[np.float64], lv: LocalVol, config: PdeConfig):
     """ Forward PDE evolution along t_grid, with optional rescaling of meshes at
         beginning of the step, optional shifting of the density along its x-axis
         to mach the forward, and optional rescaling of density to integrated to 1
         at end of the step """
     # Rescale spot grid
     if config.rescale_x:
-        x, dx, spot_idx = build_spotgrid(t_grid[-1], local_vol, config)
+        x, dx, spot_idx = build_spotgrid(t_grid[-1], lv, config)
         p = np.interp(x, old_x, old_p, left=0.0, right=0.0)
     else:
         x, dx, p = old_x, old_dx, old_p
 
     # Forward reduction
     for i in range(t_grid.shape[0] - 1):
-        p = roll_forward(p, x, dx, t_grid[i], t_grid[i + 1], local_vol, config)
+        p = roll_forward(p, x, dx, t_grid[i], t_grid[i + 1], lv, config)
 
     # Shift to match forward
     if config.shift_forward:
@@ -38,8 +38,9 @@ def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64],
 
     # Rescale density
     if config.rescale_p: # Rescale mass to 1.0 at te
-        #mass = mass(p, x) # np.trapezoid(p, x)
-        p /=  mass(p, x)
+        mass_ = mass(p, x)
+        # print(f"Mass: {mass_}")
+        p /= mass_
 
     return x, dx, p
 
@@ -66,7 +67,7 @@ def density(maturity: float, lv: LocalVol, config: PdeConfig):
 
 def build_spotgrid(maturity: float, lv: LocalVol, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
     """ Build spot grid for PDEs """
-    iv_guess = lv.ivol_guess(maturity)
+    iv_guess = lv.ivol_guess(maturity) * 1.2 # Conservative factor of 1.2 is common
     # print(f"Mesh vol(build): {iv_guess}")
     n_meshes = config.n_meshes
     x_max = iv_guess * np.sqrt(maturity) * config.n_stdevs

@@ -9,7 +9,7 @@ from sdevpy.maths import tridiag
 class PdeConfig:
     n_timesteps: int = 25
     n_meshes: int = 100
-    n_stdevs: float = 4.753424309
+    n_stdevs: float = 7.0 # Number of stdevs to extend the grid # 4.753424309
     scheme: str = 'Implicit'
     theta: float = 0.5
     rannacher_time: float = 7.0 / 365.0
