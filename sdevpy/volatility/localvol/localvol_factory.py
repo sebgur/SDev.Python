@@ -6,6 +6,7 @@ from sdevpy.volatility.localvol import localvol
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, LocalVolSection
 from sdevpy.utilities import dates
 from sdevpy.maths import interpolation as itp
+from sdevpy.utilities import jsonmanager as jsm
 
 
 ############ TODO #######################################################
@@ -17,6 +18,8 @@ from sdevpy.maths import interpolation as itp
 #   different local vol types between InterpolateSection and Matrix?
 # * Maybe we try to find a file and use it if it's there, and if it's not
 #   there then we trigger the calibration? And then the calibration dumps?
+
+name_model_map = {'ABC': 'BiExp', 'KLM': 'VSVI', 'XYZ': 'Matrix'}
 
 
 def get_local_vols(names: list[str], valdate: dt.datetime, **kwargs) -> list[localvol.LocalVol]:
@@ -78,11 +81,20 @@ def load_lv_new(t_grid: list[float], model: str) -> InterpolatedParamLocalVol:
 
 
 def load_lv_from_folder(store_date: dt.datetime, name: str, folder: str,
-                        t_grid: list[float]=None) -> InterpolatedParamLocalVol:
-    """ Create InterpolatedLocalVol from folder """
+                        t_grid: list[float]=None, model_name: str=None) -> InterpolatedParamLocalVol:
+    """ Create InterpolatedLocalVol from folder.
+        If t_grid is specified, we interpolate the model parameters from their
+        stored grid to t_grid. If it is not specified, we use the stored grid.
+        If model_name is specified, we retrieve the file for that model. If it
+        is not specified, we get the model name from the (name x model) map.
+    """
     file = Path(folder) / name
     file.mkdir(parents=True, exist_ok=True)
-    file = file / (store_date.strftime(dates.DATE_FILE_FORMAT) + ".json")
+    store_date_str = store_date.strftime(dates.DATE_FILE_FORMAT)
+    eff_name = (name_model_map.get(name, None) if model_name is None else model_name)
+    if eff_name is None:
+        raise ValueError(f"No model name specified for name: {eff_name}")
+    file = file / (store_date_str + "." + eff_name + ".json")
 
     # Check file existence
     if not file.exists():
@@ -94,6 +106,35 @@ def load_lv_from_folder(store_date: dt.datetime, name: str, folder: str,
 
     # Load LV
     lv = load_lv_from_data(data, t_grid)
+    return lv
+
+
+def load_param_lv(date: dt.datetime, name: str, folder: str=None, model_name: str=None,
+                  t_grid: list[float]=None) -> InterpolatedParamLocalVol:
+    """ Load InterpolatedParamLocalVol for given date and name.
+        If the model name is not given, we infer it from the (name, model) map.
+        t_grid, if given, is used to define the time grid of the model, interpolating
+        from the stored grid if a stored model is present.
+        If t_grid is not given and there is a stored model, the grid of the stored model
+        is used. If t_grid is not given and there is no stored model, an error is thrown.
+    """
+    folder = (test_data_folder() if folder is None else folder)
+    model_name = (name_model_map.get(name, None) if model_name is None else model_name)
+    if model_name is None:
+        raise ValueError(f"No model name specified for name: {name}")
+
+    # Look for an existing model file
+    file = Path(folder) / name
+    file.mkdir(parents=True, exist_ok=True)
+    store_date_str = store_date.strftime(dates.DATE_FILE_FORMAT)
+    file = file / (store_date_str + "." + model_name + ".json")
+    if file.exists():
+        lv_data = jsm.deserialize(file)
+        lv = load_lv_from_data(lv_data, t_grid)
+    else:
+        sections = create_sections(t_grid, model_name)
+        lv = localvol.InterpolatedParamLocalVol(sections)
+
     return lv
 
 
