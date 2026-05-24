@@ -15,7 +15,7 @@ from sdevpy.utilities.tools import isequal
 CALIB_VALDATE = dt.datetime(2025, 12, 15)
 CALIB_NAME = "ABC"
 CALIB_CONFIG = {'start_new': True, 'model': 'BiExp', 'optimizer': 'SLSQP',
-                'tol': 1e-6, 'pde_timesteps': 10, 'pde_spotsteps': 30, 'sol_as_init': False}
+                'tol': 1e-4, 'pde_timesteps': 10, 'pde_spotsteps': 30, 'sol_as_init': False}
 
 
 

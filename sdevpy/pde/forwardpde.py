@@ -65,10 +65,13 @@ def density(maturity: float, local_vol: LocalVol, config: PdeConfig):
 
 def build_spotgrid(maturity: float, local_vol: LocalVol, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
     """ Build spot grid for PDEs """
-    if config.iv_surface is None:
-        mesh_vol = config.mesh_vol
-    else:
-        mesh_vol = config.iv_surface.black_volatility(maturity, 1.0, 1.0)
+    # if config.iv_surface is None:
+    #     mesh_vol = config.mesh_vol
+    # else:
+    #     mesh_vol = config.iv_surface.black_volatility(maturity, 1.0, 1.0)
+
+    mesh_vol = local_vol.ivol_guess(maturity)
+    # print(f"Mesh vol(build): {mesh_vol}")
 
     n_meshes = config.n_meshes
     x_max = mesh_vol * np.sqrt(maturity) * config.n_stdevs

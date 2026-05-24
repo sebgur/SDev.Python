@@ -15,6 +15,7 @@ import numpy as np
 import scipy.optimize as opt
 from scipy.stats import norm
 from sdevpy.volatility.localvol.localvol import ParamLocalVolSection
+from sdevpy.utilities.tools import isequal
 
 
 DFLT_PERCENTS = [0.10, 0.25, 0.50, 0.75, 0.90]
@@ -87,10 +88,16 @@ def biexp(x, *params):
     xm = x - m
 
     # Right case
+    if isequal(taur, 0.0):
+        raise ValueError("taur=0 is not an acceptable parameter")
+
     ar = fp + (f0 - fr) / taur
     volr = fr + (ar * xm + f0 - fr) * np.exp(-xm / taur)
 
     # Left case
+    if isequal(taur, 0.0):
+        raise ValueError("taul=0 is not an acceptable parameter")
+
     al = fp - (f0 - fl) / taul
     voll = fl + (al * xm + f0 - fl) * np.exp(xm / taul)
 
@@ -133,8 +140,9 @@ def sample_params(t: float, vol: float=0.25):
     f0 = vol
     fl = vol + 0.05
     fr = vol + 0.03
-    taul = 0.5 * vol * np.sqrt(t)
-    taur = 0.25 * vol * np.sqrt(t)
+    floored_t = max(t, 1.0 / 365.0)
+    taul = 0.5 * vol * np.sqrt(floored_t)
+    taur = 0.25 * vol * np.sqrt(floored_t)
     fp = 0.0
     return np.array([f0, fl, fr, taul, taur, fp])
 

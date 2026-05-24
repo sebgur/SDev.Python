@@ -8,6 +8,9 @@ from sdevpy.utilities import algos, dates
 from sdevpy.maths.interpolation import create_interpolation
 
 
+INT_START_TIME = 1.0 / 365.0
+
+
 class LocalVolSection(ABC):
     """ Base class for Local Vol time sections, i.e. functions that return the local volatility at a certain
         point in time t, for a list of log-moneynesses x. These sections are used by numerical methods,
@@ -55,7 +58,7 @@ class LocalVol(ABC):
         for i in range(n_steps):
             ts = var_t_grid[i]
             te = var_t_grid[i + 1]
-            lv = self.value(ts, logm)
+            lv = self.value(max(ts, INT_START_TIME), logm)
             var = var + lv**2 * (te - ts)
 
         return var
@@ -68,22 +71,23 @@ class LocalVol(ABC):
         path_var = self.path_variance(t, logm, n_steps=n_steps)
         return np.sqrt(path_var / t)
 
-    def average_vol(self, t: float):
+    def ivol_guess(self, t: float):
         """ Rough estimate of the implied vol by averaging over the vols of the integrated LV
-            variances along 3 log-moneynesses at ATM and +/- 6 atm stdevs.
+            variances along 3 log-moneynesses at ATM and +/- 6 atm stdevs. Primarily used by
+            numerical methods such as PDE to decide the extend of the spot grid.
         """
         # Get ATM LV
-        atm_lv = self.value(t, [0.0])[0]
-        atm_stdev = atm_lv * np.sqrt(t)
+        atm_path_lv = self.path_vol(t, [0.0])[0]
+        atm_stdev = atm_path_lv * np.sqrt(t)
 
         # Get 3 logm strikes
-        n_stdev = 6.0
-        logm = [-n_stdev * atm_stdev, 0.0, n_stdev * atm_stdev]
+        n_stdev = 3.0
+        otm_logm = [-n_stdev * atm_stdev, n_stdev * atm_stdev]
 
         # Get LVs
-        lvs = self.value(t, logm)
+        otm_path_lvs = self.path_vol(t, otm_logm)
 
-        return lvs.mean()
+        return np.max(np.asarray([otm_path_lvs[0], atm_path_lv, otm_path_lvs[1]]))
 
     @abstractmethod
     def section(self, t: float) -> LocalVolSection:

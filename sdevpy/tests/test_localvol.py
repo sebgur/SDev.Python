@@ -287,7 +287,8 @@ def test_lv_bysections_dump_data_keys():
 
 
 if __name__ == "__main__":
-    test_lv_bysections_builder_calculate_vols_has_correct_length_and_positive_values()
+    test_lv_bysections_builder_set_expiry_updates_slice_state()
+    # test_lv_bysections_builder_calculate_vols_has_correct_length_and_positive_values()
     # test_calib_dupire()
     # test_lv_by_section_values()
     # test_lv_calib_black()
