@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 import logging
 from sdevpy.analytics import black, bachelier
 from sdevpy.maths import metrics
 from sdevpy.utilities.tools import isequal
-log = logging.getLogger(__name__)
+log = logging.getLogger(Path(__file__).stem)
 
 
 IS_CALL = True

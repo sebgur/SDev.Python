@@ -62,13 +62,13 @@ if __name__ == "__main__":
     print(f"Path: {path.shape}")
 
     # Get LV
-    name = "CalibIndex" # "MyIndex"
+    name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
     folder = lvf.test_data_folder()
 
     # Load
     store_date = valdate
-    lv = lvf.load_lv_from_folder(store_date, name, folder)
+    lv = lvf.load_param_lv(store_date, name, folder=folder)
     lv.name = name
     lv.valdate = valdate
 

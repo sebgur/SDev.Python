@@ -18,7 +18,6 @@ CALIB_CONFIG = {'start_new': True, 'model': 'BiExp', 'optimizer': 'SLSQP',
                 'tol': 1e-4, 'pde_timesteps': 10, 'pde_spotsteps': 30, 'sol_as_init': False}
 
 
-
 ##################### Dupire formula ##############################################################
 def test_calib_dupire():
     """ Calibrate LV with Dupire """
@@ -165,18 +164,6 @@ def test_lv_calib_black_constant():
 
 
 ##################### Calib LvSection #############################################################
-# def test_calibrate_lv_bysections_output_structure():
-#     """ Output must have lv with correct section count, iv_data matching the vol surface, empty pde_vols """
-#     result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, CALIB_CONFIG)
-#     lv, iv_data, pde_vols = result['lv'], result['iv_data'], result['pde_vols']
-
-#     n_expiries = len(iv_data.expiries)  # 6 for ABC 2025-12-15
-#     assert isinstance(lv, InterpolatedParamLocalVol)
-#     assert len(lv.t_grid) == n_expiries
-#     assert lv.name == CALIB_NAME
-#     assert lv.valdate == CALIB_VALDATE
-#     assert pde_vols == []
-
 
 def test_calibrate_lv_bysections_fit_quality():
     """ Calibrated LV must reproduce market vols within 200 bps RMSE at each expiry """
@@ -185,7 +172,7 @@ def test_calibrate_lv_bysections_fit_quality():
     # iv_data, pde_vols = result['iv_data'], result['pde_vols']
 
     # Check output consistency
-    n_expiries = len(iv_data.expiries)  # 6 for ABC 2025-12-15
+    n_expiries = len(iv_data.expiries) # 6 for ABC 2025-12-15
     assert isinstance(lv, InterpolatedParamLocalVol)
     assert len(lv.t_grid) == n_expiries
     assert lv.name == CALIB_NAME
@@ -199,4 +186,4 @@ def test_calibrate_lv_bysections_fit_quality():
 
 if __name__ == "__main__":
     print("Hello")
-    # test_calibrate_lv_bysections_output_structure()
+    test_calibrate_lv_bysections_fit_quality()

@@ -1,4 +1,5 @@
 """ Smile generator for classic and shifted Hagan SABR models """
+from pathlib import Path
 import os, logging
 import numpy as np
 import pandas as pd
@@ -12,7 +13,7 @@ from sdevpy.utilities import filemanager
 from sdevpy.utilities import constants
 from sdevpy.maths import metrics
 from sdevpy.maths import optimization as opt
-log = logging.getLogger(__name__)
+log = logging.getLogger(Path(__file__).stem)
 
 
 class SabrGenerator(SmileGenerator):

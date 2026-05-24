@@ -7,7 +7,7 @@ from sdevpy.utilities import dates
 from sdevpy.utilities import timegrids
 from sdevpy.analytics import black
 from sdevpy.market.eqforward import EqForwardCurve, get_forward_curves
-log = logging.getLogger(__name__)
+log = logging.getLogger(Path(__file__).stem)
 
 
 class EqVolSurfaceData:

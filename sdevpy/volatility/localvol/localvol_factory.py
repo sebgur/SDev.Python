@@ -1,23 +1,20 @@
 import json
 from pathlib import Path
 import datetime as dt
+import logging
 from sdevpy.volatility.impliedvol.models import biexp, vsvi, cubicvol
 from sdevpy.volatility.localvol import localvol
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, LocalVolSection
 from sdevpy.utilities import dates
 from sdevpy.maths import interpolation as itp
 from sdevpy.utilities import jsonmanager as jsm
+log = logging.getLogger(Path(__file__).stem)
 
 
 ############ TODO #######################################################
-# * Plug in matrix local vols. But how do we do that? Can we also implement
-#   a calibration on the fly? We need to plug the two sides of the design.
-# * Maybe we can do that by an intermediate step where we dump the matrices
-#   in text files?
-# * So maybe here we need to implement that reading and start unifying the
-#   different local vol types between InterpolateSection and Matrix?
+# * Plug in matrix local vols. Should we implement calibration on the fly?
 # * Maybe we try to find a file and use it if it's there, and if it's not
-#   there then we trigger the calibration? And then the calibration dumps?
+#   there then we trigger the calibration?
 
 name_model_map = {'ABC': 'BiExp', 'KLM': 'VSVI', 'XYZ': 'Matrix'}
 
@@ -29,7 +26,7 @@ def get_local_vols(names: list[str], valdate: dt.datetime, **kwargs) -> list[loc
     if lv_map is None: # Then read from folder
         folder = kwargs.get('folder', test_data_folder())
         for name in names:
-            lvs.append(load_lv_from_folder(valdate, name, folder))
+            lvs.append(load_param_lv(valdate, name, folder=folder))
     else: # Read from map
         for name in names:
             name_lv = lv_map.get(name, None)
@@ -126,12 +123,14 @@ def load_param_lv(date: dt.datetime, name: str, folder: str=None, model_name: st
     # Look for an existing model file
     file = Path(folder) / name
     file.mkdir(parents=True, exist_ok=True)
-    store_date_str = store_date.strftime(dates.DATE_FILE_FORMAT)
-    file = file / (store_date_str + "." + model_name + ".json")
+    date_str = date.strftime(dates.DATE_FILE_FORMAT)
+    file = file / (date_str + "." + model_name + ".json")
     if file.exists():
+        log.info(f"Loading existing LV for {name} from file: {file}")
         lv_data = jsm.deserialize(file)
         lv = load_lv_from_data(lv_data, t_grid)
     else:
+        log.info(f"Initializing new LV for {name}")
         sections = create_sections(t_grid, model_name)
         lv = localvol.InterpolatedParamLocalVol(sections)
 
@@ -231,7 +230,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import numpy as np
 
-    name = "XYZ" # "ABC"
+    name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
     folder = test_data_folder()
 
@@ -242,7 +241,7 @@ if __name__ == "__main__":
     store_date = valdate
     # new_date = valdate
     new_expiries = None # [1.0, 2.0]# [dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)]
-    lv = load_lv_from_folder(store_date, name, folder, t_grid=new_expiries)
+    lv = load_param_lv(store_date, name, folder=folder, t_grid=new_expiries)
     lv.name = name
     lv.valdate = valdate
 
