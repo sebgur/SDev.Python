@@ -71,7 +71,8 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     tol = config['tol']
 
     # Initialize PDE
-    old_x, old_dx, old_p = obj_builder.initialize()
+    # old_x, old_dx, old_p = obj_builder.initialize()
+    old_x, old_dx, old_p = None, None, None
 
     if verbose:
         print(f"Val date: {valdate.strftime(dates.DATE_FORMAT)}")
@@ -180,6 +181,14 @@ class LvObjectiveBuilder:
         is_ok, penalty = self.lv.check_params(self.exp_idx)
 
         if is_ok:
+            # Need to distinguish if it's the first expiry or not, because if it's the first
+            # expiry, we need to initialize the density.
+            # The reason this is needed as that the initialization of the density uses a
+            # mollifier whose volatility is estimated from the Local Vol. So different LVs
+            # lead to a different initial density.
+            if self.exp_idx == 0: # Do the initialization step, otherwise used already stored
+                self.old_x, self.old_dx, self.old_p = self.initialize()
+
             x, dx, p = fpde.density_step(self.old_p, self.old_x, self.old_dx,
                                          self.step_grid, self.lv, self.pde_config)
             self.new_x = x
