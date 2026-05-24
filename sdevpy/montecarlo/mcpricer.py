@@ -193,16 +193,12 @@ class McConfig:
     """
     def __init__(self, **kwargs):
         self.n_timesteps = kwargs.get('n_timesteps', 50)
-        # self.n_paths = kwargs.get('n_paths', 10 * 1000)
-        # self.constr_type = kwargs.get('constr_type', 'brownianbridge')
-        # self.rng_type = kwargs.get('rng_type', 'sobol')
-        # self.scramble = kwargs.get('scramble', False)
 
 
-def price_vanillas(valdate: dt.datetime, expiries: list[dt.datetime], strikes: list[list[float]],
-                   name: str, lv: LocalVol, **kwargs) -> list[npt.NDArray[np.float64]]:
-    """ Helper to price vanillas by Monte-Carlo simulation on LV process.
-        Return a list of forward prices per expiry, corresponding to each strike.
+def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], strikes: list[list[float]],
+                          name: str, lv: LocalVol, **kwargs) -> list[npt.NDArray[np.float64]]:
+    """ Price a surface of vanillas by Monte-Carlo simulation on LV process.
+        Return a list of forward prices per expiry, corresponding to each strike (expiries x strikes).
         The option type is straddle by default but can be changed to call or put. """
     option_type = kwargs.get('option_type', 'Straddle')
 

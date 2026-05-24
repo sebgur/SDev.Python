@@ -11,6 +11,7 @@ from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
 from sdevpy.maths import metrics
 from sdevpy.analytics import black
+from sdevpy.montecarlo import mcpricer as mc
 
 
 #################### TODO ###########################################
@@ -36,9 +37,9 @@ fwd_curve = get_forward_curves([name], valdate)[0]
 fwd = fwd_curve.value(expiry)
 
 # Retrieve local volatility
-lv = lvf.get_local_vols([name], valdate)[0]
 cvol = 0.40
-lv = ConstantLocalVol(cvol)
+# lv = ConstantLocalVol(cvol)
+lv = lvf.get_local_vols([name], valdate)[0]
 
 # Estimate strikes using LV variance at ATM
 lv_vol = lv.path_vol(expiry_time, 0.0)
@@ -51,8 +52,10 @@ strikes = fwd * np.exp(-0.5 * lv_stdev**2 + strike_conf * lv_stdev)
 # Specify 2 different PDE configs
 pde_config1 = PdeConfig(n_timesteps=200, n_meshes=1000, mesh_vol=0.30, scheme='Rannacher',
                         percentile=1e-8)
-pde_config2 = PdeConfig(n_timesteps=200, n_meshes=500, mesh_vol=0.50, scheme='Rannacher',
-                        percentile=1e-6)
+pde_config2 = PdeConfig(n_timesteps=200, n_meshes=500, mesh_vol=0.44, scheme='Rannacher',
+                        percentile=1e-12)
+
+print(f"Mesh vol: {lv.path_vol(expiry_time, [0])[0]}")
 
 # # Set up 2 different NumericalImpliedVol
 # num_iv1 = NumericalImpliedVol(lv, pde_config=pde_config1)
@@ -73,11 +76,26 @@ rmse1 = metrics.rmse(ivol1, [cvol]*16) * 10000.0
 rmse2 = metrics.rmse(ivol2, [cvol]*16) * 10000.0
 
 # Monte-Carlo simulation
+n_steps, n_paths = 500, 100000
+# mc_prices = mc.price_vanilla_surface(valdate, [expiry], [strikes], name, lv=lv, n_paths=n_paths,
+#                                      n_timesteps=n_steps, constr_type='brownianbridge', rng_type='sobol')
+# mc_prices = mc_prices[0]
+# print(np.asarray(mc_prices))
+# mc_prices = [64.970893, 50.252192, 43.791968, 39.453254, 36.317645, 34.06612, 32.573497, 31.810085,
+#              31.814460, 32.695429, 34.657992, 38.071986, 43.645423, 52.94587, 70.678862, 137.537688]
+mc_prices = [45.7008027,  33.89507105, 29.38515816, 26.55443066, 24.59816048, 23.23010422,
+ 22.33134773, 21.86353393, 21.8346015,  22.33448606, 23.4916185,  25.46680935,
+ 28.55667517, 33.44972718, 42.23371524, 72.28982854]
 
 # Compare 6 smiles
+print(price1 / fwd)
+print(price2 / fwd)
+print(mc_prices / fwd)
 print(ivol1)
 print(ivol2)
 print(f"Diff: {10000.0 * (ivol2 - ivol1)}")
 print(f"RMSE: {rmse}")
-print(f"RMSE1 {rmse1}")
-print(f"RMSE2 {rmse2}")
+print(f"RMSE(PDE1-CF): {rmse1}")
+print(f"RMSE(PDE2-CF) {rmse2}")
+print(f"RMSE(PDE2-PDE1): {metrics.rmse(price1/fwd, price2/fwd) * 10000.0}")
+print(f"RMSE(PDE2-MC): {metrics.rmse(price2/fwd, mc_prices/fwd) * 10000.0}")

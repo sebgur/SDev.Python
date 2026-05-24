@@ -12,7 +12,7 @@ from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.instruments.constants import OptionType, string_to_optiontype
 
 
-FWD_PDE_START_TIME = 1.0 / 365.0
+FWD_PDE_START_TIME = 1.0 / 365.0 # 1.0 / 52.0
 
 
 def density_step(old_p: npt.NDArray[np.float64], old_x: npt.NDArray[np.float64], old_dx: float,
@@ -73,6 +73,7 @@ def build_spotgrid(maturity: float, config: PdeConfig) -> tuple[npt.ArrayLike, f
 
     n_meshes = config.n_meshes
     p = norm.ppf(1.0 - mesh_percentile)
+    print(f"n_stdev: {p}")
     x_max = mesh_vol * np.sqrt(maturity) * p
     n_half = int(n_meshes / 2)
     dx = x_max / n_half
