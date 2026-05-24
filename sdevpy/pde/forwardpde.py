@@ -54,7 +54,9 @@ def density(maturity: float, local_vol: LocalVol, config: PdeConfig):
     x, dx, spot_idx = build_spotgrid(maturity, local_vol, config)
 
     # Initial probability
-    p = lognormal_density(x, FWD_PDE_START_TIME, config.mesh_vol)
+    lnvol = local_vol.ivol_guess(maturity)
+    p = lognormal_density(x, FWD_PDE_START_TIME, lnvol)
+    # p = lognormal_density(x, FWD_PDE_START_TIME, config.mesh_vol)
 
     # Forward reduction
     for i in range(n_timegrid - 1):
@@ -65,11 +67,10 @@ def density(maturity: float, local_vol: LocalVol, config: PdeConfig):
 
 def build_spotgrid(maturity: float, local_vol: LocalVol, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
     """ Build spot grid for PDEs """
-    mesh_vol = local_vol.ivol_guess(maturity)
-    # print(f"Mesh vol(build): {mesh_vol}")
-
+    iv_guess = local_vol.ivol_guess(maturity)
+    # print(f"Mesh vol(build): {iv_guess}")
     n_meshes = config.n_meshes
-    x_max = mesh_vol * np.sqrt(maturity) * config.n_stdevs
+    x_max = iv_guess * np.sqrt(maturity) * config.n_stdevs
     n_half = int(n_meshes / 2)
     dx = x_max / n_half
     x_grid = np.zeros(2 * n_half + 1)
@@ -138,8 +139,6 @@ def calculate_densities(maturities: npt.NDArray[np.float64], lv: LocalVol, pde_c
 
     # Initialize density
     start_time = FWD_PDE_START_TIME #/ 10.0 # Make sure no payoff is required before that
-    # lnvol = pde_config.mesh_vol
-    # lnvol = lv.path_vol(start_time, [0.0], 2)[0]
     lnvol = lv.ivol_guess(start_time)
     print(f"Mollifier vol: {lnvol}")
     p = lognormal_density(x, start_time, lnvol)
@@ -168,7 +167,6 @@ def get_pde_config(t: float=None, **kwargs) -> PdeConfig:
         n_timesteps = kwargs.get('n_timesteps', 100)
         n_meshes = kwargs.get('n_meshes', 250)
         scheme = kwargs.get('scheme', 'rannacher')
-        # mesh_vol = kwargs.get('mesh_vol', 0.20)
 
         pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, scheme=scheme,
                                rescale_x=True, rescale_p=True, shift_forward=False)
