@@ -102,7 +102,7 @@ def test_forward_pde_explicit():
     my_lv = ConstantLocalVol(atm_vol)
 
     # PDE config
-    pde_config = PdeConfig(n_timesteps=100, n_meshes=25, mesh_vol=atm_vol, scheme='explicit',
+    pde_config = PdeConfig(n_timesteps=100, n_meshes=25, scheme='explicit',
                            rescale_x=True, rescale_p=True)
 
     # Run PDE
@@ -137,7 +137,7 @@ def test_forward_pde_simple():
     my_lv = ConstantLocalVol(atm_vol)
 
     # PDE config
-    pde_config = PdeConfig(n_timesteps=50, n_meshes=250, mesh_vol=atm_vol, scheme='rannacher',
+    pde_config = PdeConfig(n_timesteps=50, n_meshes=250, scheme='rannacher',
                            rescale_x=True, rescale_p=True)
 
     # Run PDE
