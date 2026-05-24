@@ -95,7 +95,7 @@ def make_prices():
             for i, exp in enumerate(IV_T_GRID)]
 
 def make_pde_config():
-    return fpde.PdeConfig(n_timesteps=5, n_meshes=30, mesh_vol=FLAT_VOL,
+    return fpde.PdeConfig(n_timesteps=5, n_meshes=30,
                           scheme='rannacher', rescale_x=True, rescale_p=True)
 
 def make_builder():

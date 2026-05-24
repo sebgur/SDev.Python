@@ -168,9 +168,9 @@ def get_pde_config(t: float=None, **kwargs) -> PdeConfig:
         n_timesteps = kwargs.get('n_timesteps', 100)
         n_meshes = kwargs.get('n_meshes', 250)
         scheme = kwargs.get('scheme', 'rannacher')
-        mesh_vol = kwargs.get('mesh_vol', 0.20)
+        # mesh_vol = kwargs.get('mesh_vol', 0.20)
 
-        pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, mesh_vol=mesh_vol, scheme=scheme,
+        pde_config = PdeConfig(n_timesteps=n_timesteps, n_meshes=n_meshes, scheme=scheme,
                                rescale_x=True, rescale_p=True, shift_forward=False)
 
     return pde_config
