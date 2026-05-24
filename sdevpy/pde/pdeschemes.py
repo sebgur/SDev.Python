@@ -19,6 +19,7 @@ class PdeConfig:
     rescale_p: bool = True
     shift_forward: bool = False
     iv_surface: ImpliedVol = None
+    n_stdevs: float = 4.753424309
 
 
 class PdeScheme(ABC):

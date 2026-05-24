@@ -72,7 +72,8 @@ def build_spotgrid(maturity: float, config: PdeConfig) -> tuple[npt.ArrayLike, f
         mesh_vol = config.iv_surface.black_volatility(maturity, 1.0, 1.0)
 
     n_meshes = config.n_meshes
-    p = norm.ppf(1.0 - mesh_percentile)
+    p = config.n_stdevs
+    # p = norm.ppf(1.0 - mesh_percentile)
     print(f"n_stdev: {p}")
     x_max = mesh_vol * np.sqrt(maturity) * p
     n_half = int(n_meshes / 2)
