@@ -9,7 +9,6 @@ from sdevpy.utilities import dates
 from sdevpy.maths import interpolation as itp
 from sdevpy.utilities import jsonmanager as jsm
 log = logging.getLogger(__name__)
-# log = logging.getLogger(Path(__file__).stem)
 
 
 ############ TODO #######################################################

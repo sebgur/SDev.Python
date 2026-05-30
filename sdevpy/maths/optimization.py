@@ -60,12 +60,18 @@ class SciPyOptimizer(Optimizer):
         ftol = kwargs.get('ftol', None)
         xtol = kwargs.get('xtol', None)
         gtol = kwargs.get('gtol', None)
+        maxiter = kwargs.get('maxiter', None)
+        eps = kwargs.get('eps', None)
         if ftol is not None: # Tolerance on objective
             self.options['ftol'] = ftol
         if xtol is not None: # Tolerance on parameters
             self.options['xtol'] = xtol
         if gtol is not None: # Tolerance on gradient
             self.options['gtol'] = gtol
+        if maxiter is not None:
+            self.options['maxiter'] = maxiter
+        if eps is not None: # Finite difference step
+            self.options['eps'] = eps
 
         if self.method_ not in self.std_minimizers and self.method_ not in self.other_minimizers:
             raise ValueError(f"Method {self.method_} not found in SciPy")
@@ -81,8 +87,13 @@ class SciPyOptimizer(Optimizer):
             popsize = self.kwargs.get('popsize', 15)
             strategy = self.kwargs.get('strategy', 'best1bin')
             recombination = self.kwargs.get('recombination', 0.7)
+            tol = self.kwargs.get('tol', None)
+            if tol is None:
+                tol = 0.0
+            maxiter = self.kwargs.get('maxiter', 1000)
             # mutation = self.kwargs.get('mutation', (0.5, 1.0)) # ToDo: parameter not used
-            result = opt.differential_evolution(func, x0=x0, args=args, bounds=bounds, atol=atol,
+            result = opt.differential_evolution(func, x0=x0, args=args, bounds=bounds,
+                                                tol=tol, maxiter=maxiter, atol=atol,
                                                 popsize=popsize, strategy=strategy,
                                                 recombination=recombination)
         else:

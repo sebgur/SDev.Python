@@ -1,6 +1,7 @@
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
+import logging
 from sdevpy.utilities import timegrids, dates
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.localvol import localvol_factory as lvf
@@ -14,6 +15,7 @@ from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.instruments.constants import OptionType, string_to_optiontype
+log = logging.getLogger(__name__)
 
 
 def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
@@ -40,7 +42,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     # Set calibration targets
     option_type = 'straddle'
     cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface,
-                                                  option_type=option_type)
+                                                  option_type=option_type, voltol=1e-6)
 
     # Initial LV: either from scratch or from existing
     lv_t_grid = [0.0] # LV time grid
@@ -54,12 +56,15 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
                                 shift_forward=False)
 
     # Set objective
-    obj_builder = LvObjectiveBuilder(lv, expiry_grid, fwds, strike_surface, cf_price_surface, pde_config)
+    obj_builder = LvObjectiveBuilder(lv, expiry_grid, fwds, strike_surface, cf_price_surface, pde_config,
+                                     verbose=verbose)
     objective = obj_builder.objective
 
     # Optimizer settings
-    method = config['optimizer']
-    tol = config['tol']
+    method = config.get('optimizer', 'COBYLA')
+    tol = config.get('tol', None)
+    maxiter = config.get('maxiter', 100)
+    popsize = config.get('popsize', 5)
 
     # Initialize PDE
     # old_x, old_dx, old_p = obj_builder.initialize()
@@ -73,6 +78,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         print(f"PDE spot steps: {pde_config.n_meshes}")
         print(f"Optimizer: {method}")
         print(f"Tolerance: {tol}")
+        print("-"*50)
 
     # Loop over expiries
     pde_vols = []
@@ -95,7 +101,8 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         bounds = lv.section(exp_idx).constraints()
 
         # Optimize
-        optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx])
+        optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx], maxiter=maxiter,
+                                     popsize=popsize, atol=ftols[exp_idx])
         # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
 
         print(f"params_init: {params_init}")
@@ -117,6 +124,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         if verbose:
             print(f"Result x: {sol}")
             print(f"RMSE(prices): {rmse:.4f}")
+            print(f"Number obj. evals: {obj_builder.n_evals}")
             if disp_opt:
                 print(f"Result f: {result.fun}")
                 print(f"Func evals: {result['nfev']}")
@@ -133,9 +141,10 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
 class LvObjectiveBuilder:
     def __init__(self, lv: TimeInterpolatedLocalVol, expiry_grid: list[float], fwds: list[float],
                  strike_surface: list[list[float]], cf_price_surface:list[list[float]],
-                 pde_config: PdeConfig, option_type: str='straddle'):
+                 pde_config: PdeConfig, option_type: str='straddle', verbose: bool=False):
         self.expiry_grid = expiry_grid
         self.option_type = string_to_optiontype(option_type)
+        self.verbose = verbose
 
         # Check consistency of time grids
         if len(lv.t_grid) <= 1:
@@ -167,6 +176,7 @@ class LvObjectiveBuilder:
         self.fwd = 0.0
         self.strikes, self.cf_prices, self.pde_prices = None, None, None
         self.rmse = 0.0
+        self.n_evals = 0 # Keep track of number of objective evaluations
 
     def pde_prices(self, params: npt.ArrayLike) -> npt.ArrayLike:
         """ Evolve the PDE and return the price vector """
@@ -176,6 +186,8 @@ class LvObjectiveBuilder:
         is_ok, penalty = self.lv.check_params(self.exp_idx)
 
         if not is_ok:
+            if self.verbose:
+                print(f"Trial parameters rejected: {params}")
             return None
 
         # Need to distinguish if it's the first expiry or not, because if it's the first
@@ -189,8 +201,6 @@ class LvObjectiveBuilder:
         x, dx, p = fpde.density_step(self.old_p, self.old_x, self.old_dx,
                                         self.step_grid, self.lv, self.pde_config)
         self.new_x, self.new_p, self.new_dx = x, p, dx
-        # self.new_p = p
-        # self.new_dx = dx
 
         # Calculate the PDE options at the next expiry
         s = self.fwd * np.exp(x)
@@ -212,6 +222,9 @@ class LvObjectiveBuilder:
 
         # Calculate the objective function at the next expiry
         self.rmse = metrics.rmse(pde_prices, self.cf_prices)
+        if self.verbose:
+            print(f"Trial parameters accepted/objective: {params}/{self.rmse}")
+
         self.pde_prices = pde_prices
         return pde_prices
 
@@ -234,10 +247,14 @@ class LvObjectiveBuilder:
         pde_prices = []
         for k in self.strikes:
             match self.option_type:
-                case OptionType.CALL:     payoff = np.maximum(s - k, 0.0)
-                case OptionType.PUT:      payoff = np.maximum(k - s, 0.0)
-                case OptionType.STRADDLE: payoff = np.abs(s - k)
-                case _: raise ValueError(f"Unsupported option type: {self.option_type}")
+                case OptionType.CALL:
+                    payoff = np.maximum(s - k, 0.0)
+                case OptionType.PUT:
+                    payoff = np.maximum(k - s, 0.0)
+                case OptionType.STRADDLE:
+                    payoff = np.abs(s - k)
+                case _:
+                    raise ValueError(f"Unsupported option type: {self.option_type}")
             pde_prices.append(np.trapezoid(payoff * p, x))
 
         pde_prices = np.asarray(pde_prices)
@@ -245,28 +262,30 @@ class LvObjectiveBuilder:
         self.rmse = metrics.rmse(pde_prices, self.cf_prices)   # keep for logging
         return pde_prices - np.asarray(self.cf_prices)
 
-    def main_solver_code(self):
-        from scipy.optimize import least_squares
-        result = least_squares(
-            obj_builder.residuals,
-            x0=params_init,
-            bounds=(bounds.lb, bounds.ub),       # least_squares wants a 2-tuple, not Bounds()
-            method="trf",                         # "trf" handles bounds; "lm" is faster but unbounded
-            xtol=tol,
-            ftol=ftols[exp_idx],
-        )
-        sol = result.x
+    # def main_solver_code(self):
+    #     from scipy.optimize import least_squares
+    #     result = least_squares(
+    #         obj_builder.residuals,
+    #         x0=params_init,
+    #         bounds=(bounds.lb, bounds.ub),       # least_squares wants a 2-tuple, not Bounds()
+    #         method="trf",                         # "trf" handles bounds; "lm" is faster but unbounded
+    #         xtol=tol,
+    #         ftol=ftols[exp_idx],
+    #     )
+    #     sol = result.x
 
     def objective(self, params: npt.ArrayLike) -> float:
         """ Objective function for LvSection calibration """
         # Update params first so they're available to check. Alternatively we could pass them
         # to check_params() and only set them if they're ok.
+        self.n_evals += 1
         self.lv.update_params(self.exp_idx, params)
         is_ok, penalty = self.lv.check_params(self.exp_idx)
 
-        # print(f"params: {params}")
-        # print("params: %s", np.array2string(np.asarray(params), precision=12))
-        # print(f"is_ok/penalty: {is_ok}/{penalty}")
+        if self.verbose:
+            print(f"> Trial{self.n_evals}: {np.array2string(np.asarray(params), precision=8)}")
+            if not is_ok:
+                print(f" Rejected, penalty = {penalty}")
 
         if is_ok:
             # Need to distinguish if it's the first expiry or not, because if it's the first
@@ -304,7 +323,9 @@ class LvObjectiveBuilder:
             rmse = metrics.rmse(pde_prices, self.cf_prices)
             self.pde_prices = pde_prices
             self.rmse = rmse
-            # print(self.rmse)
+            if self.verbose:
+                print(f"Objective: {self.rmse}")
+
             return rmse
         else:
             # In principle we should return a penalty number. However, it is not clear at the moment if
@@ -314,8 +335,8 @@ class LvObjectiveBuilder:
             # were 0, assuming that should be much bigger than at any reasonable solution.
             # ToDo: Claude recommends using constants.FLOAT_INFTY. But didn't we use it before and
             #       it led to some problems and that's why we're doing this now? To be tested again.
-            # return constants.FLOAT_INFTY
-            return self.cf_prices.sum()
+            return constants.FLOAT_INFTY
+            # return self.cf_prices.sum()
 
     def set_expiry(self, exp_idx: int, old_x: npt.ArrayLike, old_dx: float, old_p: npt.ArrayLike) -> None:
         """ Set calibration targets and previous density for next calibration expiry """
@@ -331,6 +352,8 @@ class LvObjectiveBuilder:
         self.old_x = old_x
         self.old_dx = old_dx
         self.old_p = old_p
+
+        self.n_evals = 0
 
     def initialize(self) -> tuple[npt.ArrayLike, float, npt.ArrayLike]:
         """ Initialize calibrator to first expiry by calculating the initial density at start_time """

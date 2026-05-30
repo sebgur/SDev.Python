@@ -13,7 +13,6 @@ logsetup.configure()
 
 
 ############ ToDo ###############################################################
-# * SQLSP having problems with gradients near minimum, COBYLA works better.
 # * Try using the least_squares as Claude says. If it works well, try and
 #   understand how it works. Abdel suggested using it for curve construction,
 #   maybe that was because it works better with AAD?
@@ -26,11 +25,12 @@ valdate = dt.datetime(2025, 12, 15)
 # model_name = 'VSVI'
 model_name = 'BiExp'
 
-# Calibration config
+# Calibration config (COBYLA, SLSQP)
 lv_data_folder = lvf.test_data_folder()
-config = {'model': model_name, 'store_date': valdate, 'optimizer': 'COBYLA', # COBYLA, SLSQP
-          'tol': 1e-4, 'pde_timesteps': 50,  'pde_spotsteps': 100, 'lv_folder': lv_data_folder,
-          'sol_as_init': False}
+config = {'model': model_name, 'store_date': valdate, 'lv_folder': lv_data_folder,
+          'pde_timesteps': 50,  'pde_spotsteps': 100,
+          'optimizer': 'COBYLA', 'tol': None, 'maxiter': 1000, 'sol_as_init': False,
+          'popsize': 5}
 
 # Calibrate LV
 print("Launching calibration")
