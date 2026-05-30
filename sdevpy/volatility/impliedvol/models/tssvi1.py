@@ -157,54 +157,48 @@ class TsSvi1(ParametricImpliedVol):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    name = "ABC"
-    valdate = dt.datetime(2025, 12, 15)
 
-    # Retrieve forward curve
-    fwd_curve = get_forward_curves([name], valdate)[0]
+    params = [0.2277, 0.22491, 0.000126, 1.7, 0.069, 0.0001, -0.22, 0.002,
+              0.0021, 0.36, 0.012]
 
-    # Retrieve target market option data
-    file = vsurf.data_file(name, valdate)
-    option_data = vsurf.eqvolsurfacedata_from_file(file)
-    expiries = option_data.expiries
-    fwds = fwd_curve.value(expiries)
-    strike_surface = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
-    vol_surface = option_data.vols
-    mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
-
-    # Initialize model
     model = TsSvi1()
-    # model.update_params(model.initial_point())
-    # print(model.check_params())
+    model.update_params(params)
 
-    # Calibrate model
-    calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
-    calibrator.calibrate(mkt_data)
-    model.dump(data_file(name, valdate, 'TsSvi1'))
+    # Get differentials
+    t = 1.5
+    x = np.asarray([1.0])
+    theta, dtheta_dx, d2theta_dx2 = model.taylor_dx(t, x)
+    print(theta)
 
-    # Estimate model on points and calculate RMSE, plot comparison
-    n_rows, n_cols = 3, 2
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
-    for i in range(n_rows):
-        for j in range(n_cols):
-            ax = axes[i, j]
-            exp_idx = n_cols * i + j
-            # expiry = expiry_grid[exp_idx]
-            expiry = timegrids.model_time(valdate, expiries[exp_idx])
-            fwd = fwds[exp_idx]
-            strikes = strike_surface[exp_idx]
-            min_k, max_k = strikes[0], strikes[-1]
-            m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
-            m_vols = model.calculate(expiry, m_strikes, True, fwd)
-            ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
-            ax.plot(m_strikes, m_vols, label="model", color='green')
-            model_vols = model.calculate(expiry, strikes, True, fwd)
-            vol_rmse = rmse(vol_surface[exp_idx], model_vols)
-            ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
-            ax.set_xlabel('strike')
-            ax.set_ylabel('vol')
-            ax.legend()
+    # hr = 0.01 # Relative bump
+    hr = 0.05 # Relative bump
+    # hr = 0.10 # Relative bump
+    dx = hr * x
 
-    fig.suptitle('Option vols, Model vs Market', fontsize=16, fontweight='bold')
-    plt.tight_layout()
-    plt.show()
+    vol = model.volatility(t, x)
+    vol_up = model.volatility(t, x + dx)
+    vol_dn = model.volatility(t, x - dx)
+    dvol_dx = (vol_up - vol_dn) / (2.0 * dx)
+    d2vol_dx2 = (vol_up + vol_dn - 2.0 * vol) / np.power(dx, 2)
+
+    print(dtheta_dx)
+    print(dvol_dx)
+
+    smile_params = model.smile_parameters(t, params)
+    print(smile_params)
+    a, b, r, m, s = smile_params
+    print(a)
+    print(b)
+
+    log_x = np.log(x) # log-moneyness
+    vol = svi.svi_formula(t, log_x, smile_params)
+    print(vol)
+
+    # Calculate
+    xm = log_x - m # x is the log-moneyness
+    var = a + b * (r * xm + np.sqrt(xm**2 + s**2))
+
+    vol = np.sqrt(var / t)
+    print(vol)
+
+
