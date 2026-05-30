@@ -12,12 +12,6 @@ from sdevpy import logsetup
 logsetup.configure()
 
 
-############ ToDo ###############################################################
-# * Try using the least_squares as Claude says. If it works well, try and
-#   understand how it works. Abdel suggested using it for curve construction,
-#   maybe that was because it works better with AAD?
-
-
 verbose, n_digits = False, 6
 np.set_printoptions(suppress=True, precision=n_digits)
 name = "ABC"
