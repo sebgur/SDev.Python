@@ -87,9 +87,6 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     sol_as_init = config['sol_as_init']
     sol = None
     for exp_idx in range(len(expiry_grid)):
-        if verbose:
-            print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
-
         # Set expiry
         obj_builder.set_expiry(exp_idx, old_x, old_dx, old_p)
 
@@ -102,18 +99,18 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         # Constraints
         bounds = lv.section(exp_idx).constraints()
 
-        # Switch between Least-Squares or regular optimization
+        if verbose:
+            print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
+            print(f"Initial params: {params_init}")
+            print(f"Bounds: {bounds}")
+
+        # Optimize: Least-Squares or regular optimization
         if use_least_squares:
             result = least_squares(obj_builder.residuals, x0=params_init, bounds=(bounds.lb, bounds.ub),
                                    method="trf", max_nfev=maxiter, xtol=tol, ftol=ftols[exp_idx])
         else:
-            # Optimize
             optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx], maxiter=maxiter,
                                          popsize=popsize, atol=ftols[exp_idx])
-            # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
-
-            print(f"params_init: {params_init}")
-            print(f"bounds: {bounds}")
 
             result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
 
@@ -312,21 +309,22 @@ class LvObjectiveBuilder:
             self.new_dx = dx
 
             # Calculate the PDE options at the next expiry
-            s = self.fwd * np.exp(x)
-            pde_prices = []
-            for k in self.strikes: # ToDo: can we do this vectorially over the strikes?
-                match self.option_type:
-                    case OptionType.CALL:
-                        payoff = np.maximum(s - k, 0.0)
-                    case OptionType.PUT:
-                        payoff = np.maximum(k - s, 0.0)
-                    case OptionType.STRADDLE:
-                        payoff = np.abs(s - k)
-                    case _:
-                        raise ValueError(f"Unsupported option type: {self.option_type}")
+            pde_prices = fpde.vanilla_expectation(self.fwd, p, x, self.strikes, self.option_type)
+            # s = self.fwd * np.exp(x)
+            # pde_prices = []
+            # for k in self.strikes: # ToDo: can we do this vectorially over the strikes?
+            #     match self.option_type:
+            #         case OptionType.CALL:
+            #             payoff = np.maximum(s - k, 0.0)
+            #         case OptionType.PUT:
+            #             payoff = np.maximum(k - s, 0.0)
+            #         case OptionType.STRADDLE:
+            #             payoff = np.abs(s - k)
+            #         case _:
+            #             raise ValueError(f"Unsupported option type: {self.option_type}")
 
-                weighted_payoff = payoff * p
-                pde_prices.append(np.trapezoid(weighted_payoff, x))
+            #     weighted_payoff = payoff * p
+            #     pde_prices.append(np.trapezoid(weighted_payoff, x))
 
             # Calculate the objective function at the next expiry
             rmse = metrics.rmse(pde_prices, self.cf_prices)
