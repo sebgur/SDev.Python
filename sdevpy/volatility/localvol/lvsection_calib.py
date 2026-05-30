@@ -2,6 +2,7 @@ import datetime as dt
 import numpy as np
 import numpy.typing as npt
 import logging
+from scipy.optimize import least_squares
 from sdevpy.utilities import timegrids, dates
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.localvol import localvol_factory as lvf
@@ -65,6 +66,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     tol = config.get('tol', None)
     maxiter = config.get('maxiter', 100)
     popsize = config.get('popsize', 5)
+    use_least_squares = (method.lower() == 'leastsquares')
 
     # Initialize PDE
     # old_x, old_dx, old_p = obj_builder.initialize()
@@ -100,15 +102,21 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         # Constraints
         bounds = lv.section(exp_idx).constraints()
 
-        # Optimize
-        optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx], maxiter=maxiter,
-                                     popsize=popsize, atol=ftols[exp_idx])
-        # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
+        # Switch between Least-Squares or regular optimization
+        if use_least_squares:
+            result = least_squares(obj_builder.residuals, x0=params_init, bounds=(bounds.lb, bounds.ub),
+                                   method="trf", max_nfev=maxiter, xtol=tol, ftol=ftols[exp_idx])
+        else:
+            # Optimize
+            optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx], maxiter=maxiter,
+                                         popsize=popsize, atol=ftols[exp_idx])
+            # optimizer = MultiOptimizer(methods = ['L-BFGS-B', 'SLSQP'], mtol=1e-2, ftol=ftols[exp_idx])
 
-        print(f"params_init: {params_init}")
-        print(f"bounds: {bounds}")
+            print(f"params_init: {params_init}")
+            print(f"bounds: {bounds}")
 
-        result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+            result = optimizer.minimize(objective, x0=params_init, bounds=bounds)
+
         sol = result.x # Optimum parameters
 
         # Set local vol to optimum
@@ -232,12 +240,22 @@ class LvObjectiveBuilder:
         """ Residual vector for least_squares: pde_price - cf_price per strike.
             ToDo: call the common pde_prices
         """
+        self.n_evals += 1
         self.lv.update_params(self.exp_idx, params)
         is_ok, penalty = self.lv.check_params(self.exp_idx)
 
+        if self.verbose:
+            print(f"> Trial{self.n_evals}: {np.array2string(np.asarray(params), precision=8)}")
+
         if not is_ok:
             # Same penalty fallback as objective(), but vector-valued
+            if self.verbose:
+                print(f" Rejected, penalty = {penalty}")
             return np.full_like(self.cf_prices, np.sqrt(self.cf_prices.sum()))
+
+        # Initialization at first expiry
+        if self.exp_idx == 0: # Do the initialization step, otherwise used already stored
+            self.old_x, self.old_dx, self.old_p = self.initialize()
 
         x, dx, p = fpde.density_step(self.old_p, self.old_x, self.old_dx,
                                     self.step_grid, self.lv, self.pde_config)
@@ -259,20 +277,10 @@ class LvObjectiveBuilder:
 
         pde_prices = np.asarray(pde_prices)
         self.pde_prices = pde_prices
-        self.rmse = metrics.rmse(pde_prices, self.cf_prices)   # keep for logging
+        self.rmse = metrics.rmse(pde_prices, self.cf_prices) # keep for logging
+        if self.verbose:
+            print(f"Objective: {self.rmse}")
         return pde_prices - np.asarray(self.cf_prices)
-
-    # def main_solver_code(self):
-    #     from scipy.optimize import least_squares
-    #     result = least_squares(
-    #         obj_builder.residuals,
-    #         x0=params_init,
-    #         bounds=(bounds.lb, bounds.ub),       # least_squares wants a 2-tuple, not Bounds()
-    #         method="trf",                         # "trf" handles bounds; "lm" is faster but unbounded
-    #         xtol=tol,
-    #         ftol=ftols[exp_idx],
-    #     )
-    #     sol = result.x
 
     def objective(self, params: npt.ArrayLike) -> float:
         """ Objective function for LvSection calibration """
@@ -288,6 +296,7 @@ class LvObjectiveBuilder:
                 print(f" Rejected, penalty = {penalty}")
 
         if is_ok:
+            # Initialization at first expiry
             # Need to distinguish if it's the first expiry or not, because if it's the first
             # expiry, we need to initialize the density.
             # The reason this is needed as that the initialization of the density uses a

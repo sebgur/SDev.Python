@@ -28,8 +28,8 @@ model_name = 'BiExp'
 # Calibration config (COBYLA, SLSQP)
 lv_data_folder = lvf.test_data_folder()
 config = {'model': model_name, 'store_date': valdate, 'lv_folder': lv_data_folder,
-          'pde_timesteps': 50,  'pde_spotsteps': 100,
-          'optimizer': 'COBYLA', 'tol': None, 'maxiter': 1000, 'sol_as_init': False,
+          'pde_timesteps': 50, 'pde_spotsteps': 100,
+          'optimizer': 'LeastSquares', 'tol': None, 'maxiter': 100, 'sol_as_init': False,
           'popsize': 5}
 
 # Calibrate LV
