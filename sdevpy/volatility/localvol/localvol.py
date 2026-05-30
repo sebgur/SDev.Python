@@ -36,7 +36,7 @@ class LocalVol(ABC):
     """ Base class for Local Vol """
     def __init__(self, **kwargs):
         self.valdate = kwargs.get('valdate', dt.datetime.now())
-        self.name = kwargs.get('name', 'MyIndex')
+        self.name = kwargs.get('name', 'Unknown')
         self.snapdate = kwargs.get('snapdate', self.valdate)
 
     def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
@@ -220,9 +220,16 @@ class InterpolatedLocalVolSection(LocalVolSection):
 
     def dump(self) -> dict:
         """ Dump to dictionary """
-        data = {'time': self.time, 'model': self.interp_type, 'logm': self.logm_list,
-                'vol': self.vol_list}
+        data = {'time': self.time, 'model': self.interp_type, 'logm': self.logm_list.tolist(),
+                'vol': self.vol_list.tolist()}
         return data
+
+
+def create_interpolated_section(time: float, config: dict) -> LocalVolSection:
+    """ Create InterpolatedLocalVolSection from dictionary """
+    logm_list, vol_list = config['logm'], config['vol']
+    section = InterpolatedLocalVolSection(time, logm_list, vol_list)
+    return section
 
 
 class MatrixLocalVol(TimeInterpolatedLocalVol):

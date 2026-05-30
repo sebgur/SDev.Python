@@ -1,10 +1,9 @@
+from pathlib import Path
 import datetime as dt
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
-import sdevpy as sd
-from sdevpy.maths.metrics import rmse
-from sdevpy.analytics import black
+from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.localvol.dupire_calib import calib_lv_dupire
@@ -12,8 +11,6 @@ from sdevpy.utilities import timegrids
 from sdevpy.utilities.timegrids import TimeGridBucket
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities.algos import upper_bound
-from sdevpy.montecarlo import mcpricer as mc
-from sdevpy.pde import forwardpde as pde
 
 
 name, valdate, model_name = "ABC", dt.datetime(2025, 12, 15), 'TsSvi1'
@@ -71,7 +68,14 @@ lv_calib = calib_lv_dupire(iv_surface, points_per_year=points_per_year, n_strike
 lv_t = lv_calib['t_grid']
 lv_moneyness = lv_calib['moneyness']
 lv_matrix = lv_calib['lv_matrix']
-lv_obj = lv_calib['lv']
+lv = lv_calib['lv']
+
+# Dump LV result to file
+out_folder = lvf.test_data_folder()
+fname = dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + ".Matrix"
+out_file = Path(out_folder) / name / (fname + ".json")
+print(f"Dumping LV result to file: {out_file}")
+lv.dump(out_file)
 
 # View the LV along the strike at several expiries
 t_idx = [upper_bound(lv_t, tp) for tp in test_times]

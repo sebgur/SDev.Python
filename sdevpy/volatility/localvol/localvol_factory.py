@@ -25,8 +25,9 @@ def get_local_vols(names: list[str], valdate: dt.datetime, **kwargs) -> list[loc
     lvs = []
     if lv_map is None: # Then read from folder
         folder = kwargs.get('folder', test_data_folder())
+        model_name = kwargs.get('model_name', None)
         for name in names:
-            lvs.append(load_param_lv(valdate, name, folder=folder))
+            lvs.append(load_param_lv(valdate, name, folder=folder, model_name=model_name))
     else: # Read from map
         for name in names:
             name_lv = lv_map.get(name, None)
@@ -54,7 +55,7 @@ def create_section(config: dict) -> LocalVolSection:
     time = config.get('time', None)
     model = config.get('model', None)
     param_config = config.get('params', None)
-    if time is None or model is None: # or param_config is None:
+    if time is None or model is None:
         raise ValueError("Invalid section input in local vol file")
 
     match model.lower():
@@ -64,46 +65,12 @@ def create_section(config: dict) -> LocalVolSection:
             section = cubicvol.create_section(time, param_config)
         case 'vsvi':
             section = vsvi.create_section(time, param_config)
+        case 'cubicspline' | 'linear':
+            section = localvol.create_interpolated_section(time, config)
         case _:
             raise ValueError(f"Unknown section type: {model}")
 
     return section
-
-
-# def load_lv_new(t_grid: list[float], model: str) -> InterpolatedParamLocalVol:
-#     """ Load new LV by sections of given model on time grid """
-#     sections = create_sections(t_grid, model)
-#     lv = localvol.InterpolatedParamLocalVol(sections)
-#     return lv
-
-
-# def load_lv_from_folder(store_date: dt.datetime, name: str, folder: str,
-#                         t_grid: list[float]=None, model_name: str=None) -> InterpolatedParamLocalVol:
-#     """ Create InterpolatedLocalVol from folder.
-#         If t_grid is specified, we interpolate the model parameters from their
-#         stored grid to t_grid. If it is not specified, we use the stored grid.
-#         If model_name is specified, we retrieve the file for that model. If it
-#         is not specified, we get the model name from the (name x model) map.
-#     """
-#     file = Path(folder) / name
-#     file.mkdir(parents=True, exist_ok=True)
-#     store_date_str = store_date.strftime(dates.DATE_FILE_FORMAT)
-#     eff_name = (name_model_map.get(name, None) if model_name is None else model_name)
-#     if eff_name is None:
-#         raise ValueError(f"No model name specified for name: {eff_name}")
-#     file = file / (store_date_str + "." + eff_name + ".json")
-
-#     # Check file existence
-#     if not file.exists():
-#         raise FileNotFoundError(f"Local vol file not found: {file}")
-
-#     # Retrieve LV definition
-#     with open(file) as f:
-#         data = json.load(f)
-
-#     # Load LV
-#     lv = load_lv_from_data(data, t_grid)
-#     return lv
 
 
 def load_param_lv(date: dt.datetime, name: str, folder: str=None, model_name: str=None,

@@ -2,6 +2,7 @@ import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
+from sdevpy.volatility.localvol import localvol_factory
 from sdevpy.volatility.impliedvol.models.biexp import BiExpSection
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
@@ -9,6 +10,7 @@ from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
+from sdevpy.utilities.tools import isequal
 
 
 ############### TEST HELPERS ######################################################################
@@ -215,6 +217,17 @@ def test_lv_bymatrix_dump():
     assert np.allclose(test_vol, ref_vol, 1e-10)
 
 
+def test_lv_matrix_read():
+    name, valdate = 'ABC', dt.datetime(2025, 12, 15)
+    lv = localvol_factory.get_local_vols([name], valdate, model_name='Matrix')[0]
+    section = lv.section_at_index(1)
+    time = section.time
+    assert isequal(time, 0.04081632653061224)
+    assert section.interp_type == 'cubicspline'
+    assert len(section.logm_list) == 100
+    assert len(section.vol_list) == 100
+
+
 ##################### LV by sections ##############################################################
 def test_lv_sections_sorted_by_time():
     """ Sections passed in reverse order should be stored sorted by time """
@@ -287,7 +300,8 @@ def test_lv_bysections_dump_data_keys():
 
 
 if __name__ == "__main__":
-    test_lv_bysections_builder_set_expiry_updates_slice_state()
+    test_lv_matrix_read()
+    # test_lv_bysections_builder_set_expiry_updates_slice_state()
     # test_lv_bysections_builder_calculate_vols_has_correct_length_and_positive_values()
     # test_calib_dupire()
     # test_lv_by_section_values()
