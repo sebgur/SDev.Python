@@ -43,3 +43,21 @@ def get_impliedvol(name: str, date: dt.datetime, model_name: str, **kwargs) -> I
 
     data = jsm.deserialize(file)
     return get_impliedvol_from_data(data)
+
+
+def get_new_model(model_name: str) -> ImpliedVol:
+    """ Create fresh model and initialize with sample parameters """
+    match model_name.lower():
+        case 'tssvi1':
+            model = TsSvi1()
+        case 'tssvi2':
+            model = TsSvi2()
+        case 'logmix2':
+            model = LogMix(n_mix=2)
+        case 'logmix3':
+            model = LogMix(n_mix=3)
+        case _:
+            raise ValueError(f"Unsupported implied volatility model: {model_name}")
+
+    model.update_params(model.initial_point())
+    return model
