@@ -71,9 +71,7 @@ lv_matrix = lv_calib['lv_matrix']
 lv = lv_calib['lv']
 
 # Dump LV result to file
-out_folder = lvf.test_data_folder()
-fname = dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + ".Matrix"
-out_file = Path(out_folder) / name / (fname + ".json")
+out_file = lvf.data_folder(name, valdate, 'Matrix')
 print(f"Dumping LV result to file: {out_file}")
 lv.dump(out_file)
 

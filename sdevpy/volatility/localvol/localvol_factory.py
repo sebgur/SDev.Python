@@ -5,16 +5,11 @@ import logging
 from sdevpy.volatility.impliedvol.models import biexp, vsvi, cubicvol
 from sdevpy.volatility.localvol import localvol
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, LocalVolSection
-from sdevpy.utilities import dates
+from sdevpy.utilities import dates as dts
 from sdevpy.maths import interpolation as itp
 from sdevpy.utilities import jsonmanager as jsm
 log = logging.getLogger(__name__)
 
-
-############ TODO #######################################################
-# * Plug in matrix local vols. Should we implement calibration on the fly?
-# * Maybe we try to find a file and use it if it's there, and if it's not
-#   there then we trigger the calibration?
 
 name_model_map = {'ABC': 'BiExp', 'KLM': 'VSVI', 'XYZ': 'Matrix'}
 
@@ -92,7 +87,7 @@ def load_param_lv(date: dt.datetime, name: str, folder: str=None, model_name: st
     # Look for an existing model file
     file = Path(folder) / name
     file.mkdir(parents=True, exist_ok=True)
-    date_str = date.strftime(dates.DATE_FILE_FORMAT)
+    date_str = date.strftime(dts.DATE_FILE_FORMAT)
     file = file / (date_str + "." + model_name + ".json")
     if file.exists() and not force_new:
         log.info(f"Loading existing LV for {name} from file: {file}")
@@ -171,7 +166,7 @@ def write_example(date: dt.datetime, name: str, folder: str) -> None:
     """ Write an example LocalVol to file """
     file = Path(folder) / name
     file.mkdir(parents=True, exist_ok=True)
-    file = file / (date.strftime(dates.DATE_FILE_FORMAT) + ".json")
+    file = file / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
     sections = []
     print(file)
     for i in range(4):
@@ -181,10 +176,19 @@ def write_example(date: dt.datetime, name: str, folder: str) -> None:
         section = {'time': time, 'model': model, 'params': params}
         sections.append(section)
 
-    obj = {'name': name, 'datetime': date.strftime(dates.DATE_FORMAT), 'sections': sections}
+    obj = {'name': name, 'datetime': date.strftime(dts.DATE_FORMAT), 'sections': sections}
 
     with open(file, 'w') as f:
         json.dump(obj, f, indent=2)
+
+
+def data_file(name: str, date: dt.datetime, model_name: str, **kwargs) -> str:
+    """ Data file for implied vol models """
+    folder = kwargs.get('folder', test_data_folder())
+    name_folder = folder / name
+    name_folder.mkdir(parents=True, exist_ok=True)
+    filename = date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json"
+    return name_folder / filename
 
 
 def test_data_folder() -> str:

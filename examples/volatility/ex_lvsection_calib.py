@@ -30,9 +30,7 @@ calib_result = calibrate_lv_bysections(valdate, name, config, calc_pde_vols=True
 lv = calib_result['lv']
 
 # Dump LV result to file
-out_folder = lvf.test_data_folder()
-fname = dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + "." + config['model_name']
-out_file = Path(out_folder) / name / (fname + ".json")
+out_file = lvf.data_folder(name, valdate, config['model_name'])
 print(f"Dumping LV result to file: {out_file}")
 lv.dump(out_file)
 

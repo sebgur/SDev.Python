@@ -44,6 +44,25 @@ class TsSvi2(ParametricImpliedVol):
         vol = svi.svi_formula(t, log_m, smile_params)
         return vol
 
+    def taylor_dx(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ Analytical differential of volatility against moneyness, order 1 and 2.
+            If this method is commented out, we will revert to the generic method
+            in the base class, going through finite differences.
+        """
+        # Get smile parameters
+        smile_params = self.smile_parameters(t, self.params)
+
+        # Calculate sensitivities to the log-moneyness
+        log_x = np.log(x) # log-moneyness
+        vol, dvol_dlog_x, d2vol_dlog_x2 = svi.taylor_dlog_x(t, log_x, smile_params)
+
+        # Calculate sensitivities to the moneyness
+        dlog_x_dx = 1.0 / x
+        dvol_dx = dvol_dlog_x * dlog_x_dx
+        d2vol_dx2 = d2vol_dlog_x2 * dlog_x_dx**2 - dvol_dlog_x / x**2
+
+        return vol, dvol_dx, d2vol_dx2
+
     def smile_parameters(self, t: npt.ArrayLike, params: list[float]) -> list[float]:
         """ Calculate smile parameters according to the TsSvi2 formulas """
         if np.any(t < self.eps):
@@ -52,11 +71,6 @@ class TsSvi2(ParametricImpliedVol):
         # Get parameters
         (v0, vinf, chi, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
          tau_m, s0, sinf, tau_s) = self.get_parameters(params)
-        # if rho0 < -1.0 or rho0 > 1.0:
-        #     raise ValueError("rho0 should be between -1 and 1 in TsSvi2")
-
-        # if rhoinf < -1.0 or rhoinf > 1.0:
-        #     raise ValueError("rhoinf should be between -1 and 1 in TsSvi2")
 
         # Calculate wstar as integral of Rebonato function
         f0 = v0 * v0

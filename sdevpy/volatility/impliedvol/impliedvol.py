@@ -202,7 +202,7 @@ def data_file(name: str, date: dt.datetime, model_name: str, **kwargs) -> str:
     folder = kwargs.get('folder', test_data_folder())
     name_folder = folder / name
     name_folder.mkdir(parents=True, exist_ok=True)
-    filename = date.strftime(dts.DATE_FILE_FORMAT) + "_" + model_name + ".json"
+    filename = date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json"
     return name_folder / filename
 
 

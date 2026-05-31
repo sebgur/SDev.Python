@@ -3,10 +3,10 @@ import numpy.typing as npt
 from sdevpy.maths import constants
 
 
-def svi(t: float, x: npt.ArrayLike, *params) -> npt.ArrayLike:
+def svi(t: float, log_x: npt.ArrayLike, *params) -> npt.ArrayLike:
     """ SVI formula. Original by J. Gatheral, modified here:
         Args:
-            - x is the log-moneyness, not just the moneyness as in the original
+            - log_x is the log-moneyness, not just the moneyness as in the original
     """
     # Retrieve parameters
     if len(params) != 5:
@@ -25,8 +25,8 @@ def svi(t: float, x: npt.ArrayLike, *params) -> npt.ArrayLike:
         raise ValueError("Invalid SVI parameters")
 
     # Calculate
-    xm = x - m # x is the log-moneyness
-    var = a + b * (rho * xm + np.sqrt(xm**2 + sigma**2))
+    log_xm = log_x - m # x is the log-moneyness
+    var = a + b * (rho * log_xm + np.sqrt(log_xm**2 + sigma**2))
     if np.any(var < 0.0):
         raise ValueError("Negative variance in SVI formula")
 
@@ -61,9 +61,52 @@ def svi_check_params(params: list[float], check_butterfly: bool=False) -> tuple[
     return is_ok, penalty
 
 
-def svi_formula(t: float, x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
-    """ Wrapper on SVI formula to take parameter vector as input """
-    return svi(t, x, *params)
+def svi_formula(t: float, log_x: npt.ArrayLike, params: list[float]) -> npt.ArrayLike:
+    """ Wrapper on SVI formula to take parameter vector as input.
+        log_x is the log-moneyness
+    """
+    return svi(t, log_x, *params)
+
+
+def taylor_dlog_x(t: float, log_x: npt.ArrayLike, params: list[float]) -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
+    """ Analytical differentiation along the log-moneyness """
+    # Retrieve parameters
+    if len(params) != 5:
+        raise ValueError(f"Incorrect parameter size in SVI: {len(params)}")
+
+    a = params[0]
+    b = params[1]
+    rho = params[2]
+    m = params[3]
+    sigma = params[4]
+
+    # Check constraints
+    is_ok, _ = svi_check_params(params)
+    if not is_ok:
+        # return np.full_like(np.asarray(x, dtype=float), np.nan)
+        raise ValueError("Invalid SVI parameters")
+
+    # Calculate vol
+    log_xm = log_x - m # x is the log-moneyness
+    log_xm2s2 = log_xm**2 + sigma**2
+    sqrt_ = np.sqrt(log_xm2s2)
+    var = a + b * (rho * log_xm + sqrt_)
+    if np.any(var < 0.0):
+        raise ValueError("Negative variance in SVI formula")
+
+    vol = np.sqrt(var / t)
+
+    # 1st diff
+    dvol_dvar = 0.5 / vol / t
+    dvar_dlog_xm = b * (rho + log_xm / sqrt_)
+    dvol_dlog_xm = dvol_dvar * dvar_dlog_xm
+
+    # 2nd diff
+    d2vol_dvar2 = -0.25 / np.power(vol, 3) / t**2
+    dvar2_dlog_xm2 = b * (1.0 - log_xm**2 / log_xm2s2) / sqrt_
+    d2vol_dlog_xm2 = d2vol_dvar2 * dvar_dlog_xm**2 + dvol_dvar * dvar2_dlog_xm2
+
+    return vol, dvol_dlog_xm, d2vol_dlog_xm2
 
 
 def sample_params(t: float) -> list[float]:
