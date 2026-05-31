@@ -16,7 +16,7 @@ from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.market.eqforward import get_forward_curves
-from sdevpy.instruments.constants import string_to_optiontype
+from sdevpy.instruments.constants import string_to_optiontype, OptionType
 log = logging.getLogger(__name__)
 
 
@@ -326,13 +326,23 @@ class LvObjectiveBuilder:
         expiry = self.expiry_grid[self.exp_idx]
         pde_vols = []
         for k, p in zip(self.strikes, self.pde_prices, strict=True):
-            if self.option_type == 0:
-                pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, p))
-            elif self.option_type == 1:
-                pde_vols.append(black.implied_vol(expiry, k, False, self.fwd, p))
-            else:
-                call = (p - k + self.fwd) / 2.0
-                pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, call))
+            match self.option_type:
+                case OptionType.CALL:
+                    pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, p))
+                case OptionType.PUT:
+                    pde_vols.append(black.implied_vol(expiry, k, False, self.fwd, p))
+                case OptionType.STRADDLE:
+                    call = (p - k + self.fwd) / 2.0
+                    pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, call))
+                case _:
+                    raise ValueError(f"Unknown option type: {self.option_type}")
+            # if self.option_type == 0:
+            #     pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, p))
+            # elif self.option_type == 1:
+            #     pde_vols.append(black.implied_vol(expiry, k, False, self.fwd, p))
+            # else:
+            #     call = (p - k + self.fwd) / 2.0
+            #     pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, call))
 
         return pde_vols
 

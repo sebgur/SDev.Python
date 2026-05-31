@@ -76,13 +76,13 @@ class InterpolatedYieldCurve(YieldCurve):
         # Set data in interpolation
         if self.interp_var == YieldCurveVariable.ZERORATE:
             times = timegrids.model_time(self.valdate, self.dates)
-            data_y = -np.log(dfs) / times
+            data_y = -np.log(self.dfs) / times
         elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOG_DISCOUNT]:
             times = [0.0]
             times.extend(timegrids.model_time(self.valdate, self.dates))
             times = np.asarray(times)
             ext_dfs = [1.0]
-            ext_dfs.extend(dfs)
+            ext_dfs.extend(self.dfs)
             ext_dfs = np.asarray(ext_dfs)
             if self.interp_var == YieldCurveVariable.DISCOUNT:
                 data_y = ext_dfs

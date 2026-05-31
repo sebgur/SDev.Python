@@ -2,7 +2,6 @@
 import numpy as np
 import numpy.typing as npt
 import scipy.interpolate as spi
-import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
 from sdevpy.maths import constants
 
@@ -266,6 +265,8 @@ class Interpolation:
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     # Sample points
     x = [0, 1, 2, 3, 4]
     y = [0.5, 0.8, 1.7, 1.4, 1.1]

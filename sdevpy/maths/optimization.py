@@ -7,7 +7,6 @@ import numpy as np
 from pathlib import Path
 import logging
 import scipy.optimize as opt
-import matplotlib.pyplot as plt
 log = logging.getLogger(Path(__file__).stem)
 
 
@@ -166,6 +165,8 @@ def record_history(enabled: bool=True, verbose: bool=False):
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     # Objective function
     @record_history(enabled=True, verbose=False)
     def f(x, *args):

@@ -43,7 +43,7 @@ def make_lv_by_sections(t_grid: list[float]=None, params: npt.ArrayLike=None):
     if params is None:
         params = VALID_PARAMS
     sections = [BiExpSection(t) for t in t_grid]
-    lv = InterpolatedParamLocalVol(sections)
+    lv = InterpolatedParamLocalVol(sections, valdate=dt.datetime(2025, 12, 15))
     for i in range(len(t_grid)):
         lv.update_params(i, params)
     return lv

@@ -1,5 +1,4 @@
 import json
-import datetime as dt
 from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
@@ -35,7 +34,7 @@ class LocalVolSection(ABC):
 class LocalVol(ABC):
     """ Base class for Local Vol """
     def __init__(self, **kwargs):
-        self.valdate = kwargs.get('valdate', dt.datetime.now())
+        self.valdate = kwargs.get('valdate', None) # dt.datetime.now())
         self.name = kwargs.get('name', 'Unknown')
         self.snapdate = kwargs.get('snapdate', self.valdate)
 

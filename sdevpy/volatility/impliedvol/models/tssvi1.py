@@ -12,17 +12,10 @@
 """
 import numpy as np
 import numpy.typing as npt
-import datetime as dt
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.impliedvol import data_file
 from sdevpy.volatility.impliedvol.parametric_impliedvol import ParametricImpliedVol
-from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 from sdevpy.volatility.impliedvol.models import svi
-from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.market.eqforward import get_forward_curves
-from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
-from sdevpy.maths.metrics import rmse
 from sdevpy.maths import constants
 
 
