@@ -71,12 +71,17 @@ def build_spotgrid(maturity: float, lv: LocalVol, config: PdeConfig) -> tuple[np
     x_max = iv_guess * np.sqrt(maturity) * config.n_stdevs
     n_half = int(n_meshes / 2)
     dx = x_max / n_half
-    x_grid = np.zeros(2 * n_half + 1)
-    x = 0.0
-    for i in range(n_half):
-        x = x + dx
-        x_grid[n_half + 1 + i] = x
-        x_grid[n_half - 1 - i] = -x
+
+    # Vectorized
+    x_grid = np.arange(-n_half, n_half + 1) * dx
+
+    # # Old non-vectorized
+    # x_grid = np.zeros(2 * n_half + 1)
+    # x = 0.0
+    # for i in range(n_half):
+    #     x = x + dx
+    #     x_grid[n_half + 1 + i] = x
+    #     x_grid[n_half - 1 - i] = -x
 
     return x_grid, dx, n_half
 
