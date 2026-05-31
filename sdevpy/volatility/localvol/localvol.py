@@ -71,7 +71,7 @@ class LocalVol(ABC):
         path_var = self.path_variance(t, logm, n_steps=n_steps)
         return np.sqrt(path_var / t)
 
-    def ivol_guess(self, t: float):
+    def ivol_guess(self, t: float, cap: float=1.5):
         """ Rough estimate of the implied vol by averaging over the vols of the integrated LV
             variances along 3 log-moneynesses at ATM and +/- 6 atm stdevs. Primarily used by
             numerical methods such as PDE to decide the extend of the spot grid.
@@ -87,7 +87,7 @@ class LocalVol(ABC):
         # Get LVs
         otm_path_lvs = self.path_vol(t, otm_logm)
 
-        return np.max(np.asarray([otm_path_lvs[0], atm_path_lv, otm_path_lvs[1]]))
+        return min(np.max(np.asarray([otm_path_lvs[0], atm_path_lv, otm_path_lvs[1]])), cap)
 
     @abstractmethod
     def section(self, t: float) -> LocalVolSection:

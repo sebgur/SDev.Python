@@ -120,7 +120,9 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
 
         # Optimize: Least-Squares or regular optimization
         if use_least_squares:
-            result = least_squares(obj_builder.residuals, x0=params_init, bounds=(bounds.lb, bounds.ub),
+            lb, ub = bounds.lb, bounds.ub
+            params_init_ls = np.clip(params_init, lb, ub) # Clip to bounds
+            result = least_squares(obj_builder.residuals, x0=params_init_ls, bounds=(lb, ub),
                                    method="trf", max_nfev=maxiter, xtol=tol, ftol=ftols[exp_idx])
         else:
             optimizer = create_optimizer(method, tol=tol, ftol=ftols[exp_idx], maxiter=maxiter,
@@ -155,7 +157,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         if calc_pde_vols:
             pde_vols.append(obj_builder.calculate_vols())
 
-    return {'lv': lv, 'iv_data': surface_data, 'pde_vols': pde_vols}
+    return {'lv': lv, 'iv_data': surface_data, 'pde_vols': pde_vols, 'history': obj_builder.get_history()}
 
 
 class PenaltyType(Enum):

@@ -50,8 +50,8 @@ class VSviSection(ParamLocalVolSection):
 
     def constraints(self):
         # vstar, b, rho, xstar, lambda
-        lw_bounds = [0.0, -1.0, -1.0, -1.0, 0.0]
-        up_bounds = [1.0,  1.0,  1.0,  1.0, 1.0]
+        lw_bounds = [0.0, -1.0, -1.0, -2.0, 0.0]
+        up_bounds = [1.0,  4.0,  1.0,  2.0, 1.0]
         bounds = opt.Bounds(lw_bounds, up_bounds, keep_feasible=False)
         return bounds
 
@@ -102,6 +102,13 @@ def vsvi_check_params(params: list[float]) -> tuple[bool, float]:
     #     if a + b * sigma * np.sqrt(1.0 - rho**2) < 0.0:
     #         is_ok = False
 
+    # Slope bounds
+    # slope_cap = 5.0
+    # right_slope = b * (1.0 + rho)
+    # left_slope = b * (1.0 - rho)
+    # if right_slope > slope_cap or left_slope > slope_cap:
+    #     is_ok = False
+
     # Sudden death for now
     penalty = 0.0 if is_ok else constants.FLOAT_INFTY
 
@@ -119,7 +126,7 @@ def sample_params(t: float, vol: float=0.25) -> npt.ArrayLike:
     b = 0.1 #/ t
     rho = -0.25
     xstar = 0.0
-    lambda_ = 0.25 * t
+    lambda_ = 0.05 * t
     return np.array([vstar, b, rho, xstar, lambda_])
 
 

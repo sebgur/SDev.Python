@@ -16,13 +16,13 @@ n_digits = 6
 np.set_printoptions(suppress=True, precision=n_digits)
 name = "ABC"
 valdate = dt.datetime(2025, 12, 15)
-model_name = 'VSVI'
-# model_name = 'BiExp'
+# model_name = 'VSVI'
+model_name = 'BiExp'
 
-# Calibration config (COBYLA, SLSQP)
-config = {'model': model_name, 'store_date': valdate, 'pde_timesteps': 100, 'pde_spotsteps': 250,
-          'optimizer': 'SLSQP', 'maxiter': 1000,
-          'force_restart': True, 'sol_as_init': False}
+# Calibration config (COBYLA, SLSQP, LeastSquares)
+config = {'model_name': model_name, 'store_date': valdate, 'pde_timesteps': 100, 'pde_spotsteps': 250,
+          'optimizer': 'LeastSquares', 'maxiter': 1000,
+          'force_restart': True, 'sol_as_init': True}
 
 # Calibrate LV
 print("Launching calibration")
@@ -31,7 +31,7 @@ lv = calib_result['lv']
 
 # Dump LV result to file
 out_folder = lvf.test_data_folder()
-fname = dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + "." + config['model']
+fname = dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + "." + config['model_name']
 out_file = Path(out_folder) / name / (fname + ".json")
 print(f"Dumping LV result to file: {out_file}")
 lv.dump(out_file)
@@ -92,6 +92,27 @@ for i in range(n_rows):
         ax.set_title(f"T:{expiry:.2f}, RMSE: {vol_rmses[exp_idx]:.4f}")
         ax.set_xlabel('strike')
         ax.set_ylabel('price')
+        ax.legend()
+
+fig.suptitle('Local Vol', fontsize=16, fontweight='bold')
+plt.tight_layout()
+plt.show()
+
+# Display optimization history
+history = calib_result['history']
+n_rows, n_cols = 3, 2
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+for i in range(n_rows):
+    for j in range(n_cols):
+        ax = axes[i, j]
+        exp_idx = n_cols * i + j
+        expiry = expiry_grid[exp_idx]
+        exp_history = history[exp_idx]
+        ax.plot(exp_history['evals'], exp_history['rmses'], label="Convergence", color='blue')
+        ax.set_title(f"T:{expiry:.2f}, RMSE: {vol_rmses[exp_idx]:.4f}")
+        ax.set_yscale('log')
+        ax.set_xlabel('Evaluation')
+        ax.set_ylabel('RMSE')
         ax.legend()
 
 fig.suptitle('Local Vol', fontsize=16, fontweight='bold')
