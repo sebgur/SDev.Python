@@ -152,8 +152,6 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
     # Calculate Dupire for suitable dates
     lv = [None] * n_times
     moneynesses = [None] * n_times
-    # lv = [[None]] * n_times
-    # moneynesses = [[None]] * n_times
     for i in range(0, n_times - 1):
         ts = t_grid[i]
         te = t_grid[i + 1]
@@ -176,7 +174,6 @@ def calib_lv_dupire(surface: ImpliedVol, **kwargs) -> dict:
             log.info(f"Local vol: {lv[i]}")
 
     # Set first and last slices to next/previous
-    # moneynesses[0], lv[0] = moneynesses[1], lv[1]
     moneynesses[-1], lv[-1] = moneynesses[-2], lv[-2]
 
     lv_obj = MatrixLocalVol(t_grid, np.log(moneynesses), lv)

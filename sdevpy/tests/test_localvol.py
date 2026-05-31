@@ -141,7 +141,7 @@ def test_lv_bysections_builder_calculate_vols_has_correct_length_and_positive_va
     builder.objective(VALID_BIEXP) # Populates pde_prices
 
     vols = builder.calculate_vols()
-    print(vols)
+    # print(vols)
 
     assert len(vols) == len(STRIKES[0])
     assert all(v > 0.0 for v in vols)

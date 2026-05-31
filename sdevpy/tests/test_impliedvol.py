@@ -187,7 +187,7 @@ def test_vsvi_formula():
     log_m = np.log(mx) # Log-moneyness
 
     test = vsvi.vsvi(log_m, vstar, b, rho, xstar, lambda_)
-    print(test)
+    # print(test)
     ref = np.asarray([0.28327209, 0.25, 0.27122271])
     # ref = np.asarray([0.31409145, 0.275, 0.29098655])
     assert np.allclose(test, ref, 1e-10)
