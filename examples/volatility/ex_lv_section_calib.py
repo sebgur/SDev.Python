@@ -115,6 +115,6 @@ for i in range(n_rows):
         ax.set_ylabel('RMSE')
         ax.legend()
 
-fig.suptitle('Local Vol', fontsize=16, fontweight='bold')
+fig.suptitle('Optimization History', fontsize=16, fontweight='bold')
 plt.tight_layout()
 plt.show()
