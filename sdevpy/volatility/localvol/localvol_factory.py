@@ -107,13 +107,15 @@ def create_section(config: dict) -> LocalVolSection:
 
 
 def load_param_lv(date: dt.datetime, name: str, folder: str=None, model_name: str=None,
-                  t_grid: list[float]=None) -> InterpolatedParamLocalVol:
+                  t_grid: list[float]=None, force_new: bool=False) -> InterpolatedParamLocalVol:
     """ Load InterpolatedParamLocalVol for given date and name.
         If the model name is not given, we infer it from the (name, model) map.
         t_grid, if given, is used to define the time grid of the model, interpolating
         from the stored grid if a stored model is present.
         If t_grid is not given and there is a stored model, the grid of the stored model
         is used. If t_grid is not given and there is no stored model, an error is thrown.
+        Args:
+            - force_new: force new initialization even if a suitable file exists
     """
     folder = (test_data_folder() if folder is None else folder)
     model_name = (name_model_map.get(name, None) if model_name is None else model_name)
@@ -125,7 +127,7 @@ def load_param_lv(date: dt.datetime, name: str, folder: str=None, model_name: st
     file.mkdir(parents=True, exist_ok=True)
     date_str = date.strftime(dates.DATE_FILE_FORMAT)
     file = file / (date_str + "." + model_name + ".json")
-    if file.exists():
+    if file.exists() and not force_new:
         log.info(f"Loading existing LV for {name} from file: {file}")
         lv_data = jsm.deserialize(file)
         lv = load_lv_from_data(lv_data, t_grid)

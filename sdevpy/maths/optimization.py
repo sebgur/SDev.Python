@@ -15,6 +15,8 @@ SCIPY_OPTIMIZERS = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'C
                     'SLSQP', 'trust-constr', 'Newton-CG', 'dogleg', 'trust-ncg',
                     'trust-exact', 'trust-krylov', 'DE']
 
+FTOL_METHODS = {'SLSQP', 'L-BFGS-B', 'Powell', 'TNC'}
+
 DFLT_METHODS = ['L-BFGS-B', 'DE']
 
 # Available strategies for DE
@@ -62,8 +64,10 @@ class SciPyOptimizer(Optimizer):
         gtol = kwargs.get('gtol', None)
         maxiter = kwargs.get('maxiter', None)
         eps = kwargs.get('eps', None)
-        if ftol is not None: # Tolerance on objective
+        if ftol is not None and self.method_ in FTOL_METHODS: # Tolerance on objective
             self.options['ftol'] = ftol
+        # if ftol is not None:
+        #     self.options['ftol'] = ftol
         if xtol is not None: # Tolerance on parameters
             self.options['xtol'] = xtol
         if gtol is not None: # Tolerance on gradient
@@ -80,8 +84,10 @@ class SciPyOptimizer(Optimizer):
         result = None
         if self.method_ in self.std_minimizers:
             tol = self.kwargs.get('tol', None)
+            ftol = self.kwargs.get('ftol', None)
+            effective_tol = ftol if ftol is not None else tol # ftol takes priority
             result = opt.minimize(func, x0, args, method=self.method_, bounds=bounds,
-                                  tol=tol, options=self.options)
+                                  tol=effective_tol, options=self.options)
         elif self.method_== 'DE':
             atol = self.kwargs.get('atol', 0)
             popsize = self.kwargs.get('popsize', 15)

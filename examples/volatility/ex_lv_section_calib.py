@@ -16,15 +16,13 @@ verbose, n_digits = False, 6
 np.set_printoptions(suppress=True, precision=n_digits)
 name = "ABC"
 valdate = dt.datetime(2025, 12, 15)
-# model_name = 'VSVI'
-model_name = 'BiExp'
+model_name = 'VSVI'
+# model_name = 'BiExp'
 
 # Calibration config (COBYLA, SLSQP)
-lv_data_folder = lvf.test_data_folder()
-config = {'model': model_name, 'store_date': valdate, 'lv_folder': lv_data_folder,
-          'pde_timesteps': 50, 'pde_spotsteps': 100,
-          'optimizer': 'LeastSquares', 'tol': None, 'maxiter': 100, 'sol_as_init': False,
-          'popsize': 5}
+config = {'model': model_name, 'store_date': valdate, 'pde_timesteps': 100, 'pde_spotsteps': 250,
+          'optimizer': 'SLSQP', 'maxiter': 1000,
+          'force_restart': True, 'sol_as_init': False}
 
 # Calibrate LV
 print("Launching calibration")

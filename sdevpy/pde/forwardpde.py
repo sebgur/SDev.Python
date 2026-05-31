@@ -1,13 +1,11 @@
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
-# from scipy.stats import norm
 from sdevpy.pde import pdeschemes
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
 from sdevpy.market.eqforward import EqForwardCurve
-# from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol
 from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.instruments.constants import OptionType, string_to_optiontype
 
@@ -140,7 +138,7 @@ def calculate_densities(maturities: npt.NDArray[np.float64], lv: LocalVol, pde_c
     # Initialize density
     start_time = FWD_PDE_START_TIME #/ 10.0 # Make sure no payoff is required before that
     lnvol = lv.ivol_guess(start_time)
-    print(f"Mollifier vol: {lnvol}")
+    # print(f"Mollifier vol: {lnvol}")
     p = lognormal_density(x, start_time, lnvol)
 
     # Run PDE batches for each maturity
@@ -278,7 +276,6 @@ def price_vanillas(valdate: dt.datetime, expiry: dt.datetime, strikes: list[floa
     #     prices.append(expectation(payoff, dens_p, dens_x))
 
     return np.asarray(prices)
-
 
 
 if __name__ == "__main__":

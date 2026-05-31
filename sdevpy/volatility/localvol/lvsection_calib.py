@@ -26,6 +26,8 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     verbose = kwargs.get('verbose', False)
     disp_opt = kwargs.get('disp_opt', False)
     calc_pde_vols = kwargs.get('calc_pde_vols', False)
+    force_restart = config.get('force_restart', False)
+    model_name = config.get('model_name', 'VSVI')
 
     # Retrieve forward curve
     fwd_curve = get_forward_curves([name], valdate)[0]
@@ -44,12 +46,13 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     # Set calibration targets
     option_type = 'straddle'
     cf_price_surface, ftols = calibration_targets(expiry_grid, fwds, strike_surface, vol_surface,
-                                                  option_type=option_type, voltol=1e-6)
+                                                  option_type=option_type, voltol=1e-5)
 
     # Initial LV: either from scratch or from existing
     lv_t_grid = [0.0] # LV time grid
     lv_t_grid.extend(expiry_grid[:-1])
-    lv = lvf.load_param_lv(valdate, name, t_grid=lv_t_grid, folder=config.get('lv_folder', None))
+    lv = lvf.load_param_lv(valdate, name, t_grid=lv_t_grid, folder=config.get('lv_folder', None),
+                           force_new=force_restart, model_name=model_name)
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
 
     # Set forward PDE
@@ -250,8 +253,8 @@ class LvObjectiveBuilder:
         self.lv.update_params(self.exp_idx, params)
         is_ok, mod_penalty = self.lv.check_params(self.exp_idx)
 
-        if self.verbose:
-            print(f"> Trial{self.n_evals}: {np.array2string(np.asarray(params), precision=8)}")
+        # if self.verbose:
+        #     print(f"> Trial{self.n_evals}: {np.array2string(np.asarray(params), precision=8)}")
 
         if is_ok:
             self.calculate_pde_prices()
@@ -271,8 +274,8 @@ class LvObjectiveBuilder:
                 case _:
                     raise ValueError(f"Unsupported penalty type: {self.penalty_type}")
 
-            if not is_ok:
-                print(f" Rejected, penalty = {eff_penalty}")
+            # if self.verbose:
+            #     print(f" Rejected, penalty = {eff_penalty}")
             return eff_penalty
 
     def set_expiry(self, exp_idx: int, old_x: npt.ArrayLike, old_dx: float, old_p: npt.ArrayLike) -> None:
