@@ -23,8 +23,8 @@ log = logging.getLogger(__name__)
 def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
     """ Calibrate InterpolatedParamLocalVol type to market data """
     # Arguments
-    verbose = kwargs.get('verbose', False)
-    disp_opt = kwargs.get('disp_opt', False)
+    # verbose = kwargs.get('verbose', False)
+    # disp_opt = kwargs.get('disp_opt', False)
     calc_pde_vols = kwargs.get('calc_pde_vols', False)
     force_restart = config.get('force_restart', False)
     model_name = config.get('model_name', 'VSVI')
@@ -74,7 +74,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
 
     # Set objective
     obj_builder = LvObjectiveBuilder(lv, expiry_grid, fwds, strike_surface, cf_price_surface, pde_config,
-                                     penalty_type=penalty_type, verbose=verbose)
+                                     penalty_type=penalty_type)#, verbose=verbose)
     objective = obj_builder.objective
 
     # Optimizer settings
@@ -88,15 +88,13 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
     # old_x, old_dx, old_p = obj_builder.initialize()
     old_x, old_dx, old_p = None, None, None
 
-    if verbose:
-        print(f"Val date: {valdate.strftime(dates.DATE_FORMAT)}")
-        print("Vol surface information")
-        surface_data.pretty_print()
-        print(f"PDE time steps: {pde_config.n_timesteps}")
-        print(f"PDE spot steps: {pde_config.n_meshes}")
-        print(f"Optimizer: {method}")
-        print(f"Tolerance: {tol}")
-        print("-"*50)
+    # if verbose:
+    log.info(f"Val date: {valdate.strftime(dates.DATE_FORMAT)}")
+    log.info(f"Model: {model_name}")
+    log.info(f"PDE time steps: {pde_config.n_timesteps}")
+    log.info(f"PDE spot steps: {pde_config.n_meshes}")
+    log.info(f"Optimizer: {method}")
+    log.info("-"*50)
 
     # Loop over expiries
     pde_vols = []
@@ -115,10 +113,10 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         # Constraints
         bounds = lv.section(exp_idx).constraints()
 
-        if verbose:
-            print(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
-            print(f"Initial params: {params_init}")
-            print(f"Bounds: {bounds}")
+        # if verbose:
+        log.info(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
+        log.info(f"Initial params: {params_init}")
+        log.info(f"Bounds: {bounds}")
 
         # Optimize: Least-Squares or regular optimization
         if use_least_squares:
@@ -142,15 +140,16 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
         old_x, old_dx, old_p = obj_builder.new_x, obj_builder.new_dx, obj_builder.new_p
 
         ## Optional for display and diagnostics ##
-        if verbose:
-            print(f"Result x: {sol}")
-            print(f"RMSE(prices): {rmse:.4f}")
-            print(f"Number obj. evals: {obj_builder.n_evals}")
-            if disp_opt:
-                print(f"Result f: {result.fun}")
-                print(f"Func evals: {result['nfev']}")
-                for key in result.keys():
-                    print(key + "\n", result[key])
+        # if verbose:
+        log.info(f"Result x: {sol}")
+        log.info(f"RMSE(prices): {rmse:.4f}")
+        log.info(f"Number evals: {obj_builder.n_evals}")
+        log.info("-"*50)
+        # if disp_opt:
+        # print(f"Result f: {result.fun}")
+        # print(f"Func evals: {result['nfev']}")
+        # for key in result.keys():
+        #     print(key + "\n", result[key])
 
         # Retrieve RMSE on vols
         if calc_pde_vols:
@@ -169,10 +168,10 @@ class LvObjectiveBuilder:
     def __init__(self, lv: TimeInterpolatedLocalVol, expiry_grid: list[float], fwds: list[float],
                  strike_surface: list[list[float]], cf_price_surface:list[list[float]],
                  pde_config: PdeConfig, option_type: str='straddle',
-                 penalty_type: PenaltyType=PenaltyType.INFINITY, verbose: bool=False):
+                 penalty_type: PenaltyType=PenaltyType.INFINITY):#, verbose: bool=False):
         self.expiry_grid = expiry_grid
         self.option_type = string_to_optiontype(option_type)
-        self.verbose = verbose
+        # self.verbose = verbose
 
         # Check consistency of time grids
         if len(lv.t_grid) <= 1:
@@ -206,6 +205,7 @@ class LvObjectiveBuilder:
         self.strikes, self.cf_prices, self.pde_prices = None, None, None
         self.rmse = 0.0
         self.n_evals = 0 # Keep track of number of objective evaluations
+        self.history = [None] * len(self.expiry_grid)
 
     def calculate_pde_prices(self) -> npt.ArrayLike:
         """ Evolve the PDE and return the price vector """
@@ -223,8 +223,10 @@ class LvObjectiveBuilder:
         pde_prices = fpde.vanilla_expectation(self.fwd, p, x, self.strikes, self.option_type)
         self.pde_prices = pde_prices
         self.rmse = metrics.rmse(pde_prices, self.cf_prices) # For logging
-        if self.verbose:
-            print(f"RMSE: {self.rmse}")
+        self.history[self.exp_idx]['evals'].append(self.n_evals)
+        self.history[self.exp_idx]['rmses'].append(self.rmse)
+        # if self.verbose:
+        log.debug(f"RMSE: {self.rmse}")
 
     def residuals(self, params: npt.ArrayLike) -> npt.NDArray[np.float64]:
         """ Residual vector for least_squares: pde_price - cf_price per strike """
@@ -234,15 +236,15 @@ class LvObjectiveBuilder:
         self.lv.update_params(self.exp_idx, params)
         is_ok, penalty = self.lv.check_params(self.exp_idx)
 
-        if self.verbose:
-            print(f"> Trial{self.n_evals}: {np.array2string(np.asarray(params), precision=8)}")
+        # if self.verbose:
+        log.debug(f"> Trial{self.n_evals}: {np.array2string(np.asarray(params), precision=8)}")
 
         if is_ok:
             self.calculate_pde_prices()
             return self.pde_prices - np.asarray(self.cf_prices)
         else:
-            if self.verbose:
-                print(" Rejected")
+            # if self.verbose:
+            log.debug(" Rejected")
             return np.full_like(self.cf_prices, np.sqrt(self.cf_prices.sum()))
 
     def objective(self, params: npt.ArrayLike) -> float:
@@ -254,7 +256,7 @@ class LvObjectiveBuilder:
         is_ok, mod_penalty = self.lv.check_params(self.exp_idx)
 
         # if self.verbose:
-        #     print(f"> Trial{self.n_evals}: {np.array2string(np.asarray(params), precision=8)}")
+        log.debug(f"> Trial{self.n_evals}: {np.array2string(np.asarray(params), precision=8)}")
 
         if is_ok:
             self.calculate_pde_prices()
@@ -275,7 +277,7 @@ class LvObjectiveBuilder:
                     raise ValueError(f"Unsupported penalty type: {self.penalty_type}")
 
             # if self.verbose:
-            #     print(f" Rejected, penalty = {eff_penalty}")
+            log.debug(f" Rejected, penalty = {eff_penalty}")
             return eff_penalty
 
     def set_expiry(self, exp_idx: int, old_x: npt.ArrayLike, old_dx: float, old_p: npt.ArrayLike) -> None:
@@ -294,6 +296,7 @@ class LvObjectiveBuilder:
         self.old_p = old_p
 
         self.n_evals = 0
+        self.history[self.exp_idx] = {'evals': [], 'rmses': []}
 
     def initialize(self) -> tuple[npt.ArrayLike, float, npt.ArrayLike]:
         """ Initialize calibrator to first expiry by calculating the initial density at start_time """
@@ -309,6 +312,12 @@ class LvObjectiveBuilder:
         old_p = fpde.lognormal_density(old_x, self.start_time, lnvol)
 
         return old_x, old_dx, old_p
+
+    # def reset_history(self) -> None:
+    #     self.history = [None] * len(self.expiry_grid)
+
+    def get_history(self) -> list[dict]:
+        return self.history
 
     def calculate_vols(self) -> npt.ArrayLike:
         """ Calculate Black implied vols for PDE prices """

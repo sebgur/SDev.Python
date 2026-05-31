@@ -9,10 +9,10 @@ from sdevpy.utilities import timegrids
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.maths import metrics
 from sdevpy import logsetup
-logsetup.configure()
+logsetup.configure(sdevpy_level='info')
 
 
-verbose, n_digits = False, 6
+n_digits = 6
 np.set_printoptions(suppress=True, precision=n_digits)
 name = "ABC"
 valdate = dt.datetime(2025, 12, 15)
@@ -26,7 +26,7 @@ config = {'model': model_name, 'store_date': valdate, 'pde_timesteps': 100, 'pde
 
 # Calibrate LV
 print("Launching calibration")
-calib_result = calibrate_lv_bysections(valdate, name, config, verbose=True, calc_pde_vols=True)
+calib_result = calibrate_lv_bysections(valdate, name, config, calc_pde_vols=True)
 lv = calib_result['lv']
 
 # Dump LV result to file
@@ -38,7 +38,7 @@ lv.dump(out_file)
 
 # ################ DIAGNOSTICS ################################################################
 # Retrieve results for diagnostics
-pde_vols = calib_result['pde_vols']
+calib_pde_vols = calib_result['pde_vols']
 surface_data = calib_result['iv_data']
 expiries = surface_data.expiries
 expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
@@ -54,7 +54,7 @@ vol_surface = surface_data.vols
 # Calculate RMSEs on vols
 vol_rmses = []
 for exp_idx in range(len(expiry_grid)):
-    vol_rmses.append(10000.0 * metrics.rmse(vol_surface[exp_idx], pde_vols[exp_idx]))
+    vol_rmses.append(10000.0 * metrics.rmse(vol_surface[exp_idx], calib_pde_vols[exp_idx]))
 
 # Display price results
 n_rows, n_cols = 3, 2
@@ -64,14 +64,14 @@ for i in range(n_rows):
         ax = axes[i, j]
         exp_idx = n_cols * i + j
         strikes = strike_surface[exp_idx]
-        ax.plot(strikes, pde_vols[exp_idx], label="PDE", color='red')
+        ax.plot(strikes, calib_pde_vols[exp_idx], label="PDE", color='red')
         ax.plot(strikes, vol_surface[exp_idx], label="CF", color='blue')
         ax.set_title(f"T:{expiry_grid[exp_idx]:.2f}, RMSE: {vol_rmses[exp_idx]:.4f}")
         ax.set_xlabel('strike')
         ax.set_ylabel('price')
         ax.legend()
 
-fig.suptitle('Option prices, PDE vs CF', fontsize=16, fontweight='bold')
+fig.suptitle('Option vols, PDE vs CF', fontsize=16, fontweight='bold')
 plt.tight_layout()
 plt.show()
 
@@ -89,14 +89,11 @@ for i in range(n_rows):
         xs = np.linspace(-3.0 * stdev, 3.0 * stdev, 100)
         lvs = lv.value(expiry, xs)
         ax.plot(xs, lvs, label="LV", color='blue')
-        # strikes = strike_surface[exp_idx]
-        # lvs = lv.value(expiry_grid[exp_idx], np.log(strikes / fwds[exp_idx]))
-        # ax.plot(strikes, lvs, label="LV", color='blue')
         ax.set_title(f"T:{expiry:.2f}, RMSE: {vol_rmses[exp_idx]:.4f}")
         ax.set_xlabel('strike')
         ax.set_ylabel('price')
         ax.legend()
 
-fig.suptitle('Option prices, PDE vs CF', fontsize=16, fontweight='bold')
+fig.suptitle('Local Vol', fontsize=16, fontweight='bold')
 plt.tight_layout()
 plt.show()
