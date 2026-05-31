@@ -47,7 +47,6 @@
     .grade-letter {
       font-size: 4.2rem;
       font-weight: 800;
-      color: var(--green);
       line-height: 1;
       min-width: 3.8rem;
       text-align: center;
@@ -187,37 +186,33 @@
 <div class="container">
 
   <header>
-    <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-05-16 &nbsp;·&nbsp; <strong>10th review</strong> (full scan)</p>
+    <h1>Claude's Code Review &mdash; <code>sdevpy</code></h1>
+    <p>Quantitative finance library &nbsp;&middot;&nbsp; Python &nbsp;&middot;&nbsp; Reviewed 2026-05-31 &nbsp;&middot;&nbsp; <strong>10th review</strong> (full scan)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter">B</div>
+    <div class="grade-letter" style="color:var(--yellow)">B</div>
     <div class="grade-details">
-      <h2>Six high-priority fixes landed — test file split introduced duplication, four issues persist</h2>
+      <h2>Strong calibration coverage landed; three new correctness bugs found in fresh scan</h2>
       <p>
-        Six of the ten issues from the 9th review are now resolved: <code>trade.notional</code> is correctly
-        applied, all three test-function <code>print()</code> calls are commented out, <code>check_consistency</code>
-        dead code is gone, <code>dump_data()</code> before <code>update_params()</code> is guarded in all three
-        models, PDE scheme matrix loops are fully vectorized, and <code>implied_vol</code> tolerance is now
-        <code>1e-8</code> with <code>xmax=10.0</code>. The new <code>test_localvol_calib.py</code> adds two
-        valuable calibration integration tests, but it also duplicates eight tests verbatim from
-        <code>test_localvol.py</code> — creating a maintenance split without clear ownership, and regressing
-        one reference to a rounded value. <code>Maximum</code>/<code>BarrierDown</code> WIP stubs, the
-        new-contract Variance crash, the <code>shift_forward</code> docstring, and the uncovered
-        <code>TsIvCalibrator.calibrate</code> path remain open.
+        The LV section calibration is now tested end-to-end (both SLSQP and LeastSquares paths),
+        <code>trade.notional</code> is correctly multiplied in <code>MonteCarloPricer.build()</code>,
+        and <code>dump_data()</code> guards against uninitialized params in <code>TsSvi1</code> and <code>LogMix</code>.
+        Three new correctness issues surfaced in this scan: a copy-paste bug in <code>biexp.py</code>
+        checks <code>taur == 0</code> twice instead of also checking <code>taul</code>;
+        <code>LogMix.update_params()</code> stores a raw list rather than a numpy array so
+        <code>dump_data()</code> crashes; and <code>calib_lv_dupire</code> leaves the first
+        time-slice as <code>None</code> before passing it to <code>MatrixLocalVol</code>.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since 9th review (6 of 10):</strong>
-    <code>trade.notional</code> now multiplied in at <code>mcpricer.py:177</code> &nbsp;·&nbsp;
-    all three test <code>print()</code> calls commented out &nbsp;·&nbsp;
-    <code>check_consistency</code> dead code removed from <code>impliedvol_calib.py</code> &nbsp;·&nbsp;
-    <code>dump_data()</code> guards added in <code>TsSvi1</code>, <code>TsSvi2</code>, <code>LogMix</code> &nbsp;·&nbsp;
-    PDE scheme matrix loops vectorized (old loops preserved as comments) &nbsp;·&nbsp;
-    <code>implied_vol</code> <code>xtol</code> tightened to <code>1e-8</code>, <code>xmax</code> raised to <code>10.0</code>
+    <strong>Fixed since 9th review:</strong>
+    <code>trade.notional</code> correctly multiplied in <code>MonteCarloPricer.build()</code> (line 177) &nbsp;&middot;&nbsp;
+    <code>TsSvi1.dump_data()</code> now raises <code>RuntimeError</code> if params are <code>None</code> &nbsp;&middot;&nbsp;
+    <code>LogMix.dump_data()</code> guards against uninitialized params with same pattern &nbsp;&middot;&nbsp;
+    end-to-end <code>calibrate_lv_bysections</code> tests added (SLSQP and LeastSquares paths)
   </div>
 
   <div class="scorecard">
@@ -231,42 +226,42 @@
         <tr>
           <td>Architecture</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy, solid PDE/MC/IV separation; no structural regressions</td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy, solid PDE/MC separation, LV section calib well-structured; hard-coded <code>name_model_map</code> in <code>localvol_factory</code> is a production hazard for real tickers</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>trade.notional</code> bug fixed; Variance new-contract crash still open; <code>build_spotgrid</code> loop is logically correct but inefficient</td>
+          <td>Correctness</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Copy-paste bug in <code>biexp.py</code> silently skips <code>taul</code> guard; <code>LogMix.update_params</code> stores raw list, crashes <code>dump_data</code>; <code>Variance</code> always raises for new contracts</td>
         </tr>
         <tr>
-          <td>Error Handling</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>dump_data</code> guards added, dead code removed; <code>TsIvObjectiveBuilder</code> silently accepts <code>mkt_prices=None</code> which crashes at optimization time</td>
+          <td>Error Handling</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>calib_lv_dupire</code> passes <code>None</code> in first time-slot directly to <code>MatrixLocalVol</code>; <code>implied_vol</code> returns wrong result silently for vols above 200%</td>
         </tr>
         <tr>
           <td>Testing</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Two new calibration integration tests; 8 tests duplicated verbatim from <code>test_localvol.py</code>; one reference regressed to rounded; <code>TsIvCalibrator.calibrate</code> still untested</td>
+          <td style="color:var(--muted);font-size:.83rem">137 test functions across 17 files; full calibration pipeline now covered; 2 live <code>print()</code> calls in test bodies still pollute CI</td>
         </tr>
         <tr>
-          <td>Code Quality</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">PDE scheme matrix loops now vectorized; <code>build_spotgrid</code> and per-strike price loops still use Python <code>for</code></td>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">PDE loops fully vectorized (good improvement); copy-paste error in <code>biexp.py</code> persists; several commented-out code blocks remain in production files</td>
         </tr>
         <tr>
           <td>Maintainability</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good overall module layout; new test duplication creates split ownership — a change to a shared helper must now be made in two files</td>
+          <td style="color:var(--muted);font-size:.83rem">Good module layout and docstrings; hard-coded ticker map is a maintenance hazard; <code>calculate_vols()</code> uses raw integer comparisons against an enum</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Runtime guards added for uninitialized <code>params</code>; <code>TsIvObjectiveBuilder</code> allows <code>None</code> price target to flow in silently</td>
-        </tr>
-        <tr>
-          <td>Documentation</td><td>6 / 10</td>
+          <td>Type Safety</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>shift_forward</code> docstring still says "not using this for now" while <code>PdeConfig</code> defaults it <code>True</code>; <code>build_spotgrid</code> docstring has "Built" typo</td>
+          <td style="color:var(--muted);font-size:.83rem"><code>LogMix.update_params</code> bypasses base-class coercion and stores whatever list is passed in; no static type checking enforced across the codebase</td>
+        </tr>
+        <tr>
+          <td>Documentation</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Docstrings present on most public methods; <code>calib_lv_dupire</code>'s first-slice <code>None</code> behavior undocumented; <code>Variance</code> docstring does not mention the new-contract limitation</td>
         </tr>
       </tbody>
     </table>
@@ -275,261 +270,298 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
-  <div class="issue high">
+  <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP stubs exported in the public API</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Copy-paste bug in <code>biexp.py</code>: left-branch guard checks <code>taur == 0</code> instead of <code>taul == 0</code></span>
+      <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/biexp.py &middot; lines 91, 99</span>
     <p>
-      <strong>Why it's bad:</strong> Both classes carry <em>"Warning: work in progress"</em> comments
-      and both raise <code>NotImplementedError</code> in <code>evaluate()</code>. They are importable
-      from the public namespace. <code>Maximum.__init__</code> also sets <code>self.eventdates</code>
-      at construction time — the wrong lifecycle phase — rather than in <code>set_valuation_date</code>,
-      inconsistent with every other payoff in the codebase. Any caller who accidentally instantiates either
-      class gets a runtime error deep inside the pricing engine with no indication at the call site.
+      <strong>Why it's bad:</strong> The <code>biexp()</code> function has two zero-checks &mdash; one
+      for the right branch (<code>taur</code>) and one for the left branch (<code>taul</code>). Both
+      accidentally check the same variable:
+    </p>
+    <pre><span class="c"># Right case</span>
+<span class="kw">if</span> isequal(taur, <span class="fn">0.0</span>):
+    <span class="kw">raise</span> ValueError(<span class="st">"taur=0 is not an acceptable parameter"</span>)
+...
+<span class="c"># Left case  --  BUG: checks taur again instead of taul</span>
+<span class="kw">if</span> isequal(<span class="rm">taur</span>, <span class="fn">0.0</span>):
+    <span class="kw">raise</span> ValueError(<span class="st">"taul=0 is not an acceptable parameter"</span>)</pre>
+    <p>
+      When <code>taul = 0</code> is passed in the left-branch guard is never triggered.
+      The expression <code>np.exp(xm_l / taul)</code> on line 104 then produces
+      <code>inf</code> or <code>nan</code> silently. The error message even says
+      <em>"taul=0"</em> while testing <code>taur</code>, confirming a copy-paste error.
+      It is not caught by <code>biexp_check_params</code> because that function only enforces
+      <code>taul &gt; 0</code> as a soft constraint, not a hard zero-check.
     </p>
     <p>
-      <strong>Fix:</strong> Until fully implemented, rename to <code>_Maximum</code> /
-      <code>_BarrierDown</code> (underscore-prefix = not public API), or add
-      <code>raise NotImplementedError</code> in <code>__init__</code> so the failure is immediate and
-      clearly labelled at construction time, not at pricing time.
+      <strong>Fix:</strong> Change line 99 from <code>isequal(taur, 0.0)</code> to
+      <code>isequal(taul, 0.0)</code>.
     </p>
   </div>
 
   <!-- 2 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>test_localvol_calib.py</code> duplicates 8 tests verbatim from <code>test_localvol.py</code>, one regressing to rounded references</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>LogMix.update_params()</code> stores raw input &mdash; <code>dump_data()</code> crashes with <code>AttributeError</code> when called after <code>initial_point()</code></span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/tests/test_localvol_calib.py · lines 23–164 &nbsp;·&nbsp; sdevpy/tests/test_localvol.py · lines 155–433</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/logmix.py &middot; lines 256&ndash;259, 365&ndash;369</span>
     <p>
-      <strong>Why it's bad:</strong> The new file copies <code>test_calib_dupire</code>,
-      <code>test_dupire_impliedvol</code>, <code>test_dupire_output_shape</code>,
-      <code>test_dupire_scalar_input</code>, <code>test_dupire_ts_near_zero_returns_spot_vol</code>,
-      <code>test_dupire_flat_surface_recovers_constant_vol</code>, <code>test_lv_calib_black</code>, and
-      <code>test_lv_calib_black_constant</code> unchanged from <code>test_localvol.py</code>. Every future
-      change to a shared helper must now be reflected in two places. Worse, <code>test_dupire_pdf</code>
-      regressed: the original uses precise references (<code>0.20000181, 0.20001192, 0.1999994</code>) while
-      the copy rounds to (<code>0.20, 0.20, 0.20</code>), which would not catch a regression of up to
-      180 basis points.
+      <strong>Why it's bad:</strong> <code>LogMix.update_params()</code> overrides the base class
+      and stores <code>self.params = x</code> without coercing to <code>ndarray</code>:
+    </p>
+    <pre><span class="kw">def</span> <span class="fn">update_params</span>(self, x):
+    self.params = x  <span class="c"># raw list stored; base class uses np.asarray(x, dtype=float)</span>
+    self.set_param_functions(self.params)</pre>
+    <p>
+      <code>dump_data()</code> then calls <code>self.params.tolist()</code>. When the caller
+      passes a plain Python list &mdash; as returned by <code>initial_point()</code> on line 363
+      which does <code>return init_params</code> (a plain list) &mdash; this crashes with
+      <code>AttributeError: 'list' object has no attribute 'tolist'</code>.
+      This is the standard usage pattern in the codebase (call <code>initial_point()</code>
+      then <code>update_params()</code> then <code>dump()</code>) and every other
+      <code>ParametricImpliedVol</code> subclass inherits the coercing base implementation.
     </p>
     <p>
-      <strong>Fix:</strong> Delete the 8 duplicated tests from <code>test_localvol_calib.py</code> — they
-      already run from <code>test_localvol.py</code>. Retain only the two new
-      <code>test_calibrate_lv_bysections_*</code> tests, which are the genuine addition. Restore the
-      precise references in <code>test_dupire_pdf</code>.
+      <strong>Fix:</strong> Either delete <code>LogMix.update_params()</code> entirely so the
+      base implementation is inherited, or coerce explicitly:
     </p>
+    <pre><span class="kw">def</span> <span class="fn">update_params</span>(self, x) -&gt; <span class="kw">None</span>:
+    <span class="ok">self.params = np.asarray(x, dtype=float)</span>
+    self.set_param_functions(self.params)</pre>
   </div>
 
   <!-- 3 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title">Per-strike price loops in <code>forwardpde.py</code> and <code>lvsection_calib.py</code> are the remaining hot-path Python loops</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>calib_lv_dupire</code> leaves <code>lv[0]</code> and <code>moneynesses[0]</code> as <code>None</code> &mdash; crash inside <code>MatrixLocalVol</code></span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/pde/forwardpde.py · line 196 &nbsp;·&nbsp; sdevpy/volatility/localvol/lvsection_calib.py · line 191</span>
+    <span class="loc">sdevpy/volatility/localvol/dupire_calib.py &middot; lines 153&ndash;182</span>
     <p>
-      <strong>Why it's bad:</strong> Both sites iterate over strikes in pure Python and accumulate
-      <code>np.trapezoid</code> calls one-by-one — the same pattern just vectorized in the PDE scheme
-      matrices. In <code>lvsection_calib.py</code>, this inner loop runs inside the optimizer's
-      objective function, which is called thousands of times per calibration. Both sites carry
-      existing <em>"ToDo: can this be vectorized?"</em> comments.
+      <strong>Why it's bad:</strong> The loop <code>for i in range(0, n_times - 1)</code> fills
+      indices 0 through <code>n_times&nbsp;&minus;&nbsp;2</code>. The <em>last</em> slot is then
+      patched to the penultimate: <code>moneynesses[-1], lv[-1] = moneynesses[-2], lv[-2]</code>.
+      But the <em>first</em> slot was also supposed to be patched &mdash; the line
+      <code># moneynesses[0], lv[0] = moneynesses[1], lv[1]</code> is commented out.
+      This leaves <code>moneynesses[0]</code> and <code>lv[0]</code> as <code>None</code>.
+      These are passed directly to <code>MatrixLocalVol(t_grid, np.log(moneynesses), lv)</code>,
+      where <code>np.log(None)</code> raises a <code>TypeError</code>. The function is therefore
+      broken for every standard time grid with two or more intervals.
     </p>
-    <pre><span class="c"># lvsection_calib.py:191 — current</span>
-<span class="kw">for</span> k <span class="kw">in</span> self.strikes:
-    payoff = np.maximum(s - k, <span class="fn">0.0</span>)
-    pde_prices.append(np.trapezoid(payoff * p, x))
-
-<span class="c"># Vectorized replacement</span>
-<span class="ok">k_2d = np.asarray(self.strikes)[:, None]   # (n_strikes, 1)
-payoffs = np.maximum(s[None, :] - k_2d, 0.0)  # (n_strikes, n_x)
-pde_prices = np.trapezoid(payoffs * p[None, :], x)  # (n_strikes,)</span></pre>
-    <p>The same broadcast pattern removes the <code>for k</code> loop in <code>forwardpde.py</code>, where straddles can be expressed as <code>np.abs(s[None,:] - k_2d)</code>.</p>
+    <p>
+      <strong>Fix:</strong> Uncomment the first-slot patch (or simply handle it inside the loop
+      when <code>i == 0</code>):
+    </p>
+    <pre><span class="c"># After the loop, patch both boundary slots:</span>
+<span class="ok">moneynesses[0], lv[0] = moneynesses[1], lv[1]</span>
+moneynesses[-1], lv[-1] = moneynesses[-2], lv[-2]</pre>
   </div>
 
   <!-- 4 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title"><code>build_spotgrid</code> fills a NumPy array with a Python <code>for</code> loop</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>Variance</code> payoff always raises at pricing when contract start &ge; valdate</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/pde/forwardpde.py · lines 74–81</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py &middot; lines 452, 496&ndash;501, 463&ndash;464</span>
     <p>
-      <strong>Why it's bad:</strong> The spot grid is a simple symmetric linspace around zero.
-      The current implementation allocates <code>x_grid</code> with <code>np.zeros</code> and fills
-      it element-by-element with a Python loop. This function is called at the start of every density
-      step when <code>rescale_x=True</code> — once per time section per calibration iteration.
+      <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets
+      <code>self.current_fixing = None</code>. In <code>set_valuation_date</code>, if
+      <code>start &ge; valdate</code> (a brand-new variance swap), all dates go into
+      <code>self.eventdates</code> and <code>hist_fixing_dates</code> is empty.
+      The guard on line 500 &mdash;
+      <code>if hist_fixings is not None and len(hist_fixings) &ge; 1</code> &mdash; is never
+      satisfied, so <code>current_fixing</code> stays <code>None</code>. Then
+      <code>evaluate()</code> unconditionally raises:
     </p>
-    <pre><span class="c"># Current (lines 74–81)</span>
-x_grid = np.zeros(<span class="fn">2</span> * n_half + <span class="fn">1</span>)
-x = <span class="fn">0.0</span>
-<span class="kw">for</span> i <span class="kw">in</span> range(n_half):
-    x = x + dx
-    x_grid[n_half + <span class="fn">1</span> + i] = x
-    x_grid[n_half - <span class="fn">1</span> - i] = -x
-
-<span class="c"># Vectorized replacement — one line, identical result</span>
-<span class="ok">x_grid = np.arange(-n_half, n_half + 1) * dx</span></pre>
+    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
+    <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
+    <p>
+      The only test in <code>test_mc.py</code> uses <code>start_date = 2025-11-15</code>
+      (one month before <code>valdate = 2025-12-15</code>), so historical fixings always exist
+      and this failing case is never exercised.
+    </p>
+    <p>
+      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty (new contract),
+      initialise <code>current_fixing</code> from the current spot in market data, or expose a
+      <code>set_current_fixing(spot)</code> method and document it as a pre-pricing requirement.
+    </p>
   </div>
 
   <!-- 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title"><code>TsIvCalibrator.calibrate</code> end-to-end pipeline still has no pytest test</span>
+      <span class="issue-title">Two live <code>print()</code> calls inside pytest test functions pollute CI output</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · lines 68–94</span>
+    <span class="loc">sdevpy/tests/test_impliedvol.py &middot; line 190 &nbsp;&middot;&nbsp; sdevpy/tests/test_localvol.py &middot; line 144</span>
     <p>
-      <strong>Why it's bad:</strong> The new <code>test_localvol_calib.py</code> covers LvSection
-      calibration but leaves the IV surface calibration pipeline
-      (<code>TsIvCalibrator.calibrate → prepare_target_data → TsIvObjectiveBuilder.objective → model.calculate</code>)
-      untested end-to-end. <code>test_impliedvol.py</code> tests the objective in isolation but never
-      calls <code>calibrate()</code>. Regressions in data parsing (<code>prepare_target_data</code>),
-      optimizer wiring, or model post-calibration state would be invisible to CI. The test data for
-      "ABC" / 2025-12-15 is already in place; a smoke test is a few lines.
+      <strong>Why it's bad:</strong> Both are inside actual <code>def test_*()</code> functions
+      (not guarded by <code>if __name__ == "__main__"</code>), so they fire on every
+      <code>pytest</code> run:
     </p>
+    <pre><span class="c"># test_impliedvol.py:190  inside test_vsvi_formula()</span>
+<span class="rm">print(test)</span>
+
+<span class="c"># test_localvol.py:144  inside test_lv_bysections_builder_calculate_vols_…()</span>
+<span class="rm">print(vols)</span></pre>
     <p>
-      <strong>Fix:</strong> Add one integration test that calls
-      <code>TsIvCalibrator(TsSvi1(), config).calibrate(mkt_data)</code> and asserts RMSE &lt; threshold
-      and that the model parameters are finite and match <code>calibrator.sol</code>.
+      In a CI pipeline the noise can obscure real failures. All other debug prints in the same
+      files are correctly commented out &mdash; these two were missed.
     </p>
+    <p><strong>Fix:</strong> Comment out both lines, matching the pattern already used in the same files.</p>
   </div>
 
   <!-- 6 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">New variance swap (start ≥ valdate) crashes at pricing — <code>current_fixing</code> never set</span>
+      <span class="issue-title">Hard-coded <code>name_model_map</code> in <code>localvol_factory.py</code> silently breaks for any real ticker</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 452, 497–501</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol_factory.py &middot; line 19</span>
     <p>
-      <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets <code>self.current_fixing = None</code>.
-      In <code>set_valuation_date</code>, when <code>start &ge; valdate</code> (a brand-new swap),
-      <code>hist_fixing_dates = []</code>, so <code>get_fixings</code> returns nothing, the guard
-      <code>if hist_fixings is not None and len(hist_fixings) >= 1</code> is never met, and
-      <code>current_fixing</code> stays <code>None</code>. Then <code>evaluate()</code> raises:
+      <strong>Why it's bad:</strong> The factory contains a module-level dict:
     </p>
-    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
-    <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
+    <pre>name_model_map = {<span class="st">'ABC'</span>: <span class="st">'BiExp'</span>, <span class="st">'KLM'</span>: <span class="st">'VSVI'</span>, <span class="st">'XYZ'</span>: <span class="st">'Matrix'</span>}</pre>
     <p>
-      The existing test always uses <code>start = 2025-11-15</code>, <code>valdate = 2025-12-15</code>
-      (historical fixings exist) — the failing case is never covered.
+      Any call to <code>load_param_lv(date, name)</code> or <code>get_local_vols(names, valdate)</code>
+      without an explicit <code>model_name</code> keyword falls back to this map. For any ticker
+      outside these three test fixtures, <code>model_name</code> becomes <code>None</code> and the
+      function raises <code>ValueError: No model name specified for name: …</code>. Since
+      <code>get_local_vols</code> is called from <code>price_book</code> in the MC pricer, any
+      production deployment pricing real instruments will fail immediately.
     </p>
     <p>
-      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty, seed
-      <code>current_fixing</code> from the current spot (via market data), or expose a
-      <code>set_current_fixing(spot)</code> method and document it as required before pricing a
-      brand-new swap.
+      <strong>Fix:</strong> Remove the hard-coded map and require callers to always supply
+      <code>model_name</code> explicitly, or drive the mapping from a runtime configuration file.
     </p>
   </div>
 
   <!-- 7 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title"><code>PdeConfig.shift_forward</code> defaults to <code>True</code> but the function docstring says "not using this for now"</span>
-      <span class="badge low">Low</span>
+      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are WIP stubs exported publicly with no early failure in <code>__init__</code></span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/pde/pdeschemes.py · line 20 &nbsp;·&nbsp; sdevpy/pde/forwardpde.py · lines 102–103, 171</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py &middot; lines 71&ndash;96</span>
     <p>
-      <strong>Why it's bad:</strong> <code>PdeConfig</code> declares <code>shift_forward: bool = True</code>,
-      meaning any caller who constructs a bare <code>PdeConfig()</code> silently runs the forward-shift
-      correction. But <code>shift_forward()</code> carries the docstring
-      <em>"Shift the density to match the forward. We are not using this for now."</em>
-      And <code>price_vanillas</code> (the only production caller) explicitly overrides to
-      <code>shift_forward=False</code>. A contributor adding a new caller with default config would
-      silently exercise code the author labelled as unused.
+      <strong>Why it's bad:</strong> Both classes are tagged <em>"ToDo: [Warning] work in progress"</em>
+      and both raise <code>NotImplementedError</code> only in <code>evaluate()</code>. They are
+      importable from the public <code>sdevpy.montecarlo.payoffs.exotics</code> namespace.
+      <code>Maximum.__init__</code> sets <code>self.eventdates</code> at construction time
+      (wrong lifecycle &mdash; should be deferred to <code>set_valuation_date</code>).
+      <code>BarrierDown</code> stores a raw integer index instead of a name, bypassing the
+      name-resolution system entirely. A caller who accidentally instantiates either class gets
+      a runtime error deep inside the pricing engine with no indication of why.
     </p>
     <p>
-      <strong>Fix:</strong> Change the default to <code>False</code> to match actual production usage,
-      and rewrite the docstring to describe what the function does (not its usage status).
+      <strong>Fix:</strong> Until fully implemented, prefix with an underscore
+      (<code>_Maximum</code>, <code>_BarrierDown</code>) to remove from the public API, or
+      add <code>raise NotImplementedError</code> in <code>__init__</code> itself for immediate
+      and clearly labelled failure.
     </p>
   </div>
 
   <!-- 8 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>LvObjectiveBuilder</code> infeasibility penalty scales with expiry level, making it inconsistent across sections</span>
-      <span class="badge low">Low</span>
+      <span class="issue-title"><code>black.implied_vol</code> caps at <code>xmax=2.0</code> &mdash; silently wrong for vols above 200%</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/lvsection_calib.py · line 211</span>
+    <span class="loc">sdevpy/analytics/black.py &middot; lines 35&ndash;48</span>
     <p>
-      <strong>Why it's bad:</strong> When parameters fail the validity check, the objective returns
-      <code>self.cf_prices.sum()</code> — the total call option price across all strikes at the current
-      expiry. Longer-dated options are worth more (higher forward prices), so the penalty grows with
-      expiry. The optimizer at section 5 (2y) faces a much larger "infeasible" signal than at section
-      1 (1m), making step-size control and tolerance comparisons inconsistent across sections. The
-      in-code comment explicitly acknowledges this uncertainty.
+      <strong>Why it's bad:</strong> <code>implied_vol</code> minimizes squared error on the interval
+      <code>[1e-6, 2.0]</code>. Any option whose true implied vol exceeds 200% &mdash;
+      short-dated deep OTM options, high-vol names, or variance swap component inversions &mdash;
+      returns the clipped value <code>2.0</code> without raising an error. This function is
+      called from <code>LvObjectiveBuilder.calculate_vols()</code> and
+      <code>optionsurface.convert_option()</code>, so calibration quality metrics can be silently
+      wrong. A vectorized Newton-Raphson implementation (<code>implied_vol_newton</code>) already
+      exists in the same file and handles this better.
     </p>
-    <p>
-      <strong>Fix:</strong> Use a fixed, large constant penalty independent of price level —
-      e.g. <code>constants.FLOAT_INFTY</code> or a hard-coded value like <code>1.0</code>
-      (prices are normalised forward prices, so this is already large). The old concern about
-      <code>FLOAT_INFTY</code> causing optimizer issues should be tested directly rather than
-      replaced with a moving penalty.
-    </p>
+    <pre><span class="rm">xmax = 2.0</span>
+<span class="ok">xmax = 10.0  # Raise cap; or replace call with implied_vol_newton</span></pre>
   </div>
 
   <!-- 9 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>TsIvObjectiveBuilder</code> silently accepts <code>mkt_prices=None</code>, crashing only at optimization time for <code>ForwardPremium</code> models</span>
-      <span class="badge low">Low</span>
+      <span class="issue-title"><code>LvObjectiveBuilder.calculate_vols()</code> compares an <code>OptionType</code> enum against raw integer literals</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · lines 14–34</span>
+    <span class="loc">sdevpy/volatility/localvol/lvsection_calib.py &middot; lines 328&ndash;335</span>
     <p>
-      <strong>Why it's bad:</strong> In <code>__init__</code>, when <code>calculate_type</code> is
-      <code>ForwardPremium</code>, <code>self.target_values = self.market_prices</code>. Test code
-      passes <code>mkt_prices=None</code> for <code>LogNormalVol</code> models (which take the vol
-      branch), so the bug is latent. If a <code>ForwardPremium</code> model is ever passed with
-      <code>mkt_prices=None</code>, the objective silently stores <code>None</code> and crashes with a
-      confusing <code>TypeError</code> inside <code>rmse()</code> deep in the optimizer, not at the
-      constructor call.
+      <strong>Why it's bad:</strong> <code>self.option_type</code> is set via
+      <code>string_to_optiontype(option_type)</code> which returns an <code>OptionType</code>
+      enum. The comparison then uses raw integer literals:
+    </p>
+    <pre><span class="kw">if</span> self.option_type == <span class="rm">0</span>:   <span class="c"># fragile: relies on OptionType.CALL.value == 0</span>
+    pde_vols.append(black.implied_vol(expiry, k, <span class="kw">True</span>, self.fwd, p))
+<span class="kw">elif</span> self.option_type == <span class="rm">1</span>:  <span class="c"># fragile: relies on OptionType.PUT.value == 1</span>
+    pde_vols.append(black.implied_vol(expiry, k, <span class="kw">False</span>, self.fwd, p))</pre>
+    <p>
+      This works today because <code>OptionType</code> is an <code>IntEnum</code>. If it is ever
+      changed to a plain <code>Enum</code>, both comparisons silently evaluate to <code>False</code>
+      and every call and put is routed to the straddle branch, producing wrong implied vols with
+      no error. The rest of the codebase (e.g. <code>forwardpde.py</code>) uses the correct
+      <code>case OptionType.CALL:</code> match syntax.
     </p>
     <p>
-      <strong>Fix:</strong> Validate eagerly in <code>__init__</code>:
+      <strong>Fix:</strong> Replace integer literals with enum members:
     </p>
-    <pre><span class="kw">if</span> self.model.calculate_type == OptionQuoteType.ForwardPremium <span class="kw">and</span> mkt_prices <span class="kw">is</span> <span class="kw">None</span>:
-    <span class="ok">raise ValueError("mkt_prices is required when calculate_type is ForwardPremium")</span></pre>
+    <pre><span class="ok">from sdevpy.instruments.constants import OptionType
+if self.option_type == OptionType.CALL:
+    ...
+elif self.option_type == OptionType.PUT:
+    ...</span></pre>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>ImpliedVol.taylor_dx</code> uses hardcoded <code>hr = 0.05</code> with no documentation of known accuracy limits</span>
+      <span class="issue-title"><code>InterpolatedYieldCurve.set_data()</code> uses the unsorted original <code>dfs</code> list in the zero-rate branch</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/impliedvol.py · lines 62–73</span>
+    <span class="loc">sdevpy/market/yieldcurve.py &middot; lines 69&ndash;79</span>
     <p>
-      <strong>Why it's bad:</strong> The finite-difference bump size <code>hr = 0.05</code> (5% relative)
-      is a magic number shared across the Dupire formula, the probability density, and the calibration
-      objective. The code shows two commented-out alternatives (<code>0.01</code> and <code>0.10</code>),
-      implying empirical tuning. At very deep OTM moneyness (x ≈ 0), the bump <code>0.05 * x</code>
-      becomes negligible and the finite-difference quotient becomes numerically noisy, silently
-      contaminating Dupire local vol and density calculations. No test verifies gradient accuracy as
-      a function of moneyness or expiry.
+      <strong>Why it's bad:</strong> <code>set_data()</code> sorts pillars by date into
+      <code>self.dates</code> and <code>self.dfs</code>. When building the zero-rate
+      interpolation grid, the code re-uses the original <em>unsorted</em> parameter name
+      <code>dfs</code> rather than the sorted <code>self.dfs</code>:
+    </p>
+    <pre><span class="kw">if</span> self.interp_var == YieldCurveVariable.ZERORATE:
+    times = timegrids.model_time(self.valdate, self.dates)  <span class="c"># sorted ✓</span>
+    data_y = -np.log(<span class="rm">dfs</span>) / times  <span class="c"># original unsorted parameter ✗</span></pre>
+    <p>
+      If pillar dates are passed in non-chronological order, <code>times</code> is sorted but
+      <code>data_y</code> retains the original order, producing a mismatched interpolation grid
+      that returns wrong discount factors silently. The <code>DISCOUNT</code> and
+      <code>LOG_DISCOUNT</code> branches correctly use <code>ext_dfs</code> (built from the
+      sorted <code>self.dfs</code>); only the default <code>ZERORATE</code> branch is affected.
     </p>
     <p>
-      <strong>Fix:</strong> Document why <code>0.05</code> was chosen and its known accuracy limits.
-      Consider blending absolute and relative sizing: <code>dx = max(hr * abs(x), x_min_abs)</code>
-      with a floor like <code>1e-4</code>. Models with closed-form derivatives (SVI has analytic
-      <code>d&sigma;/dx</code>) should use them instead of finite differences.
+      <strong>Fix:</strong>
     </p>
+    <pre><span class="rm">data_y = -np.log(dfs) / times</span>
+<span class="ok">data_y = -np.log(self.dfs) / times</span></pre>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #10 &nbsp;·&nbsp; 2026-05-16 (full scan, 165 .py files + 17 notebooks)
+    Generated by Claude Code &nbsp;&middot;&nbsp; sdevpy code review #10 &nbsp;&middot;&nbsp; 2026-05-31 (full scan)
   </footer>
 </div>
 </body>

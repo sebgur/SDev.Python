@@ -255,7 +255,7 @@ class LogMix(ParametricImpliedVol):
 
     def update_params(self, x: list[float]) -> None:
         """ Update the current parameters """
-        self.params = x
+        self.params = np.asarray(x, dtype=float)
         self.set_param_functions(self.params)
 
     def set_param_functions(self, params: list[float]) -> None:

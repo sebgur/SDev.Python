@@ -96,7 +96,7 @@ def biexp(x, *params):
     volr = fr + (ar * xm_r + f0 - fr) * np.exp(-xm_r / taur)
 
     # Left case
-    if isequal(taur, 0.0):
+    if isequal(taul, 0.0):
         raise ValueError("taul=0 is not an acceptable parameter")
 
     xm_l = np.minimum(xm, 0.0)
