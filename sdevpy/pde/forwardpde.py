@@ -175,18 +175,34 @@ def get_pde_config(t: float=None, **kwargs) -> PdeConfig:
 def vanilla_expectation(fwd, p, x, strikes, option_type):
     spot = fwd * np.exp(x)
     pde_price = []
-    for k in strikes: # ToDo: can this be vectorized?
-        match option_type:
-            case OptionType.CALL:
-                payoff = np.maximum(spot - k, 0.0)
-            case OptionType.PUT:
-                payoff = np.maximum(k - spot, 0.0)
-            case OptionType.STRADDLE:
-                payoff = np.abs(spot - k)
-            case _:
-                raise ValueError(f"Unsupported option type: {option_type}")
 
-        pde_price.append(expectation(payoff, p, x))
+    # Vectorized
+    k_2d = np.asarray(strikes)[:, None] # (n_strikes, 1)
+    match option_type:
+        case OptionType.CALL:
+            payoffs = np.maximum(spot[None, :] - k_2d, 0.0)
+        case OptionType.PUT:
+            payoffs = np.maximum(k_2d - spot[None, :], 0.0)
+        case OptionType.STRADDLE:
+            payoffs = np.abs(spot[None, :] - k_2d)
+        case _:
+            raise ValueError(f"Unsupported option type: {option_type}")
+
+    pde_price = expectation(payoffs, p, x)
+
+    # # Old non-vectorized
+    # for k in strikes:
+    #     match option_type:
+    #         case OptionType.CALL:
+    #             payoff = np.maximum(spot - k, 0.0)
+    #         case OptionType.PUT:
+    #             payoff = np.maximum(k - spot, 0.0)
+    #         case OptionType.STRADDLE:
+    #             payoff = np.abs(spot - k)
+    #         case _:
+    #             raise ValueError(f"Unsupported option type: {option_type}")
+
+    #     pde_price.append(expectation(payoff, p, x))
 
     return pde_price
 

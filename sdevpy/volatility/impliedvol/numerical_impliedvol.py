@@ -24,31 +24,6 @@ class NumericalImpliedVol(ImpliedVol):
         """ Calculate the forward prices using a numerical method (typically forward PDE) """
         option_type = 'call' if is_call else 'put'
         return self.calculate_prices(t, k, option_type, f)
-        # start_time = fpde.FWD_PDE_START_TIME
-        # if t < start_time:
-        #     raise ValueError(f"Numerical method not supported for use before 1D, used with t = {t}")
-
-        # # Build sparse time grid to run the density steps on
-        # step_grid = timegrids.build_sparse_timegrid(t)
-        # if len(step_grid) < 1:
-        #     raise ValueError("Invalid step grid for PDE")
-
-        # if np.abs(step_grid[-1] - t) > self.time_epsilon:
-        #     raise ValueError(f"Invalid PDE time step grid, last point not equal to maturity: {step_grid[-1]}/{t}")
-
-        # dens_report = fpde.calculate_densities(step_grid, self.lv, self.pde_config)[-1]
-        # dens_t, dens_p, dens_x = dens_report['end_time'], dens_report['p_grid'], dens_report['x_grid']
-        # if not isequal(dens_t, t):
-        #     raise ValueError(f"Unexpected time for final density not equal to maturity: {dens_t}/{t}")
-
-        # # Calculate prices
-        # prices = []
-        # spot = f * np.exp(dens_x)
-        # for strike in k:
-        #     payoff = np.maximum(spot - strike, 0.0) if is_call else np.maximum(strike - spot, 0.0)
-        #     prices.append(fpde.expectation(payoff, dens_p, dens_x))
-
-        # return np.asarray(prices)
 
     def calculate_prices(self, t: float, k: npt.ArrayLike, option_type: str, f: float) -> npt.ArrayLike:
         """ Calculate the forward prices using a numerical method (typically forward PDE) """
@@ -69,16 +44,8 @@ class NumericalImpliedVol(ImpliedVol):
         if not isequal(dens_t, t):
             raise ValueError(f"Unexpected time for final density not equal to maturity: {dens_t}/{t}")
 
-        # Calculate prices
-        # prices = []
-        # spot = f * np.exp(dens_x)
-        # for strike in k:
-        #     payoff = np.maximum(spot - strike, 0.0) if is_call else np.maximum(strike - spot, 0.0)
-        #     prices.append(fpde.expectation(payoff, dens_p, dens_x))
-
         option_type_ = string_to_optiontype(option_type)
         prices = fpde.vanilla_expectation(f, dens_p, dens_x, k, option_type_)
-
         return np.asarray(prices)
 
     def dump_data(self) -> dict:
