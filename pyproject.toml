@@ -49,6 +49,7 @@ omit = [
     "sdevpy/tests/test.py",
     "sdevpy/logsetup.py",
     "sdevpy/settings.py",
+    "sdevpy/utilities/constants.py",
     "sdevpy/utilities/pydotnet.py",
     "sdevpy/projects/raschka/*",
     "sdevpy/projects/stovol/*",
