@@ -35,7 +35,7 @@ class Tree(ABC):
                 spots = self.spot_vector(step, spot)
                 exer_v = payoff.exercise_value(spots)
                 if exer_v.shape != cont_v.shape:
-                    raise RuntimeError("Incompatible shapes between continuation and exercise values")
+                    raise RuntimeError("Incompatible shapes between continuation and exercise values") # pragma: no cov
 
                 pv_vector = np.maximum(exer_v, cont_v)
             else:
@@ -44,15 +44,15 @@ class Tree(ABC):
         return pv_vector[0]
 
     @abstractmethod
-    def spot_vector(self, step_idx, spot):
+    def spot_vector(self, step_idx, spot): # pragma: no cov
         pass
 
     @abstractmethod
-    def calculate_probabilities(self, dt, drift, vol):
+    def calculate_probabilities(self, dt, drift, vol): # pragma: no cov
         pass
 
     @abstractmethod
-    def roll_back(self, step_idx, payoff, pv_vector, spot, df):
+    def roll_back(self, step_idx, payoff, pv_vector, spot, df): # pragma: no cov
         pass
 
 

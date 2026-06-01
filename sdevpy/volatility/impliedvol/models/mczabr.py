@@ -15,7 +15,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     """ Calculate vanilla prices under ZABR model by Monte-Carlo simulation"""
     scale = fwd
     if scale < 0.0:
-        raise ValueError("Negative forward")
+        raise ValueError("Negative forward") # pragma: no cov
 
     # Temporarily turn off the warnings for division by 0. This is because on certain paths,
     # the spot becomes so close to 0 that Python effectively handles it as 0. This results in

@@ -12,7 +12,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
     """ Calculate vanilla prices under SABR model by Monte-Carlo simulation"""
     scale = fwd
     if scale < 0.0:
-        raise ValueError("Negative forward")
+        raise ValueError("Negative forward") # pragma: no cov
 
     # Temporarily turn off the warnings for division by 0. This is because on certain paths,
     # the spot becomes so close to 0 that Python effectively handles it as 0. This results in
@@ -96,7 +96,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
                 vole = vol
                 spot += alpha * np.abs(spot)**beta * (sqrtmrho2 * vols * dz0 + rho / nu * (vole - vols))
             else:
-                raise ValueError("Unknown scheme in MCSABR: " + scheme)
+                raise ValueError("Unknown scheme in MCSABR: " + scheme) # pragma: no cov
 
             # Calculate payoff
             if is_payoff[i]:

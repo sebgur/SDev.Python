@@ -33,7 +33,7 @@ def backtest_one_trade(from_date: str, trade_date: str, now_date: str, df_data: 
     max_10d_rtns_in_sd = min_max_res_10d['max']
 
     if math.isnan(returns10d_from_tdate):
-        raise Exception('Trade DATE is less than 10 days ago.')
+        raise Exception('Trade DATE is less than 10 days ago.') # pragma: no cov
 
     if zscore_trade_date > 0:
         # Flip the return sign if zscore is above 0, because we sell. The basket goes down and we earn

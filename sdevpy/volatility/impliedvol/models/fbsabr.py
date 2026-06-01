@@ -83,7 +83,7 @@ def price(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_calls: npt.ArrayL
                 vole = vol
                 spot = spot + alpha * abs_f**beta * (sqrtmrho2 * vols * dz0 + rho / nu * (vole - vols))
             else:
-                raise ValueError("Unknown scheme in FBSABR: " + scheme)
+                raise ValueError("Unknown scheme in FBSABR: " + scheme) # pragma: no cov
 
             # Calculate payoff
             if is_payoff[i]:
