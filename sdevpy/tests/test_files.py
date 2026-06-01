@@ -6,7 +6,6 @@ import zipfile
 from unittest.mock import patch, MagicMock
 from sdevpy.utilities import filemanager
 from sdevpy.utilities import xmlmanager, jsonmanager
-from sdevpy.projects.datafiles import merge_tsv
 
 
 def test_check_directory(tmp_path):
@@ -92,11 +91,3 @@ def test_xml_to_json(tmp_path):
 def _write_tsv(path, rows):
     df = pd.DataFrame(rows, columns=['a', 'b'])
     df.to_csv(path, sep='\t', index=False)
-
-
-def test_merge_tsv(tmp_path):
-    _write_tsv(tmp_path / "f1.tsv", [{'a': 1, 'b': 2}, {'a': 3, 'b': 4}])
-    _write_tsv(tmp_path / "f2.tsv", [{'a': 5, 'b': 6}])
-    merge_tsv(str(tmp_path))
-    merged = pd.read_csv(tmp_path / "merged.tsv", sep='\t')
-    assert len(merged) == 3

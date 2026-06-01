@@ -51,11 +51,6 @@ omit = [
     "sdevpy/settings.py",
     "sdevpy/utilities/constants.py",
     "sdevpy/utilities/pydotnet.py",
-    "sdevpy/projects/raschka/*",
-    "sdevpy/projects/stovol/*",
-    "sdevpy/projects/stovolinverse/*",
-    "sdevpy/projects/aad/*",
-    "sdevpy/projects/chat_gpt2.py",
     "sdevpy/tensorflow/*",
     "sdevpy/machinelearning/*",
     "sdevpy/volatility/mlsurfacegen/*"
