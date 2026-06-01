@@ -47,6 +47,7 @@
     .grade-letter {
       font-size: 4.2rem;
       font-weight: 800;
+      color: var(--green);
       line-height: 1;
       min-width: 3.8rem;
       text-align: center;
@@ -186,35 +187,37 @@
 <div class="container">
 
   <header>
-    <h1>Claude's Code Review &mdash; <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;&middot;&nbsp; Python &nbsp;&middot;&nbsp; Reviewed 2026-05-31 &nbsp;&middot;&nbsp; <strong>11th review</strong> (full scan)</p>
+    <h1>Claude's Code Review — <code>sdevpy</code></h1>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-01 &nbsp;·&nbsp; <strong>10th review</strong> (full scan)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--yellow)">B</div>
+    <div class="grade-letter">B</div>
     <div class="grade-details">
-      <h2>All five top issues from the 10th review resolved; three persistent medium-severity bugs remain</h2>
+      <h2>Seven fixes landed — new dupire bug found, variance swap and calibration gaps remain</h2>
       <p>
-        The BiExp copy-paste bug (<code>taur</code>/<code>taul</code>) is fixed, <code>LogMix.update_params()</code>
-        now correctly coerces to <code>ndarray</code>, the Dupire first-slot <code>None</code> is patched,
-        and both test-file <code>print()</code> calls are removed. The
-        <code>InterpolatedYieldCurve.set_data()</code> unsorted-<code>dfs</code> bug carries over unresolved
-        and is confirmed to affect all three interpolation variable branches. A new finding is that
-        <code>LvObjectiveBuilder.calculate_vols()</code> compares a plain <code>Enum</code> against integer
-        literals, causing the call and put branches to be permanently unreachable &mdash; all option types
-        silently fall through to the straddle branch. The two WIP public stubs (<code>Maximum</code>,
-        <code>BarrierDown</code>) and the hardcoded ticker map in <code>localvol_factory</code> also remain open.
+        Seven of the nine outstanding issues from the 9th review are now resolved: <code>trade.notional</code>
+        is correctly applied, all three test-function <code>print()</code> calls are commented out,
+        PDE matrix assembly is fully vectorized, <code>PdeConfig.shift_forward</code> defaults to <code>False</code>,
+        all three parametric models (<code>TsSvi1</code>, <code>TsSvi2</code>, <code>LogMix</code>) guard
+        <code>dump_data()</code> against uninitialized params, <code>check_consistency</code> dead code
+        is removed, and a new yield-curve sorting test was added. However, a new bug in the Dupire
+        calibration example passes wrong strikes to every closed-form query, the variance swap
+        <code>current_fixing</code> issue persists for new contracts, and the end-to-end calibration
+        pipeline remains untested.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since 10th review (5 of 10):</strong>
-    <code>biexp.py:99</code> now correctly checks <code>isequal(taul, 0.0)</code> (copy-paste bug resolved) &nbsp;&middot;&nbsp;
-    <code>LogMix.update_params()</code> now uses <code>np.asarray(x, dtype=float)</code> &nbsp;&middot;&nbsp;
-    <code>dupire_calib.py</code> first slot no longer <code>None</code> (loop fills indices 0..n_times&minus;2; last slot patched) &nbsp;&middot;&nbsp;
-    <code>test_impliedvol.py:190</code> and <code>test_localvol.py:144</code> <code>print()</code> calls removed &nbsp;&middot;&nbsp;
-    PDE matrix assembly fully vectorized in <code>pdeschemes.py</code> (all three schemes)
+    <strong>Fixed since 9th review (7 of 9):</strong>
+    <code>trade.notional</code> now multiplied in <code>mcpricer.py:177</code> &nbsp;·&nbsp;
+    3 live <code>print()</code> calls in test functions commented out &nbsp;·&nbsp;
+    PDE band-vector assembly vectorized in <code>pdeschemes.py</code> &nbsp;·&nbsp;
+    <code>PdeConfig.shift_forward</code> default changed to <code>False</code> &nbsp;·&nbsp;
+    <code>dump_data()</code> None-guard added to <code>TsSvi1</code>, <code>TsSvi2</code>, <code>LogMix</code> &nbsp;·&nbsp;
+    <code>check_consistency</code> dead code removed from <code>impliedvol_calib.py</code> &nbsp;·&nbsp;
+    <code>test_yieldcurve_sorted_regardless_of_input_order</code> added
   </div>
 
   <div class="scorecard">
@@ -228,42 +231,42 @@
         <tr>
           <td>Architecture</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy, solid PDE/MC separation; hardcoded <code>name_model_map</code> in <code>localvol_factory</code> is a production hazard for real tickers</td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy and PDE/MC separation maintained; example scripts are not isolated from library code and contain correctness bugs</td>
         </tr>
         <tr>
           <td>Correctness</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>calculate_vols()</code> Enum-vs-int comparison always falls through to straddle branch; <code>set_data()</code> uses unsorted <code>dfs</code>; <code>Variance</code> payoff raises for new contracts</td>
+          <td style="color:var(--muted);font-size:.83rem">Notional fixed; new bug in <code>ex_dupire_calib.py</code> passes wrong strikes; variance swap crashes for new contracts; <code>lvsection_calib</code> uses time-lookup with integer index</td>
         </tr>
         <tr>
-          <td>Error Handling</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>Maximum</code> and <code>BarrierDown</code> WIP stubs publicly exported with no early-failure in <code>__init__</code>; <code>implied_vol</code> silently clips at 200% vol</td>
+          <td>Error Handling</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">All three <code>dump_data()</code> guards added; <code>check_consistency</code> removed; <code>Cashflow</code> and <code>Trade</code> both carry notional — double-scaling if Cashflow notional &ne; 1</td>
         </tr>
         <tr>
           <td>Testing</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">137 test functions across 17 files; all calibration paths now covered; yield curve sort-order bug has no test; <code>Variance</code> new-contract case untested</td>
+          <td style="color:var(--muted);font-size:.83rem">New yield-curve sort test added; end-to-end calibration still untested; WIP stubs still export <code>NotImplementedError</code></td>
         </tr>
         <tr>
           <td>Code Quality</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">PDE loops vectorized; all test-body <code>print()</code> calls removed; <code>matplotlib</code> unconditionally imported at module level in two pure-math files</td>
+          <td style="color:var(--muted);font-size:.83rem">PDE loops vectorized; all production and test prints cleaned; minor dead code in <code>forwardpde.py</code> and <code>pdeschemes.py</code></td>
         </tr>
         <tr>
           <td>Maintainability</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good module layout and docstrings; hardcoded ticker map is a maintenance hazard; Enum-vs-int comparison in <code>calculate_vols()</code> is a silent fragility</td>
+          <td style="color:var(--muted);font-size:.83rem">Good module layout; example scripts contain bugs that mislead users; <code>black.py</code> solver config history is tangled across three dead comment blocks</td>
         </tr>
         <tr>
           <td>Type Safety</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Base-class coercion to <code>ndarray</code> now consistent including <code>LogMix</code>; no static type checking enforced; Enum comparisons rely on undocumented integer equality</td>
+          <td style="color:var(--muted);font-size:.83rem">Consistent <code>ndarray</code> coercion in parametric models; <code>lv.section(int)</code> type confusion in calibration; <code>yieldcurve.set_data</code> only validates <code>dates[0]</code></td>
         </tr>
         <tr>
           <td>Documentation</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Docstrings present on most public methods; <code>Variance</code> docstring does not mention the new-contract limitation; <code>set_data()</code> sort assumption undocumented</td>
+          <td style="color:var(--muted);font-size:.83rem"><code>shift_forward</code> docstring now accurately describes purpose; <code>black.py</code> solver comment ("we've observed instabilities") signals a known open issue without resolution</td>
         </tr>
       </tbody>
     </table>
@@ -275,136 +278,111 @@
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>LvObjectiveBuilder.calculate_vols()</code> compares a plain <code>Enum</code> to integer literals &mdash; call and put branches are permanently unreachable</span>
+      <span class="issue-title">Dupire example passes the wrong strikes to every closed-form price and IV query</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/lvsection_calib.py &middot; lines 329&ndash;335</span>
+    <span class="loc">examples/volatility/ex_dupire_calib.py · lines 41–46</span>
     <p>
-      <strong>Why it's bad:</strong> <code>self.option_type</code> is set by
-      <code>string_to_optiontype(option_type)</code> which returns a plain <code>OptionType</code>
-      enum member. <code>OptionType</code> inherits from <code>Enum</code>, not <code>IntEnum</code>.
-      In Python, a plain <code>Enum</code> member is never equal to its underlying integer value:
-      <code>OptionType.CALL == 0</code> evaluates to <code>False</code>. The guard conditions are:
+      <strong>Why it's bad:</strong> Inside the loop, <code>exp_strikes</code> is computed at line 40
+      but <code>strikes.append(exp_strikes)</code> happens at line 44 — after the calls that need it.
+      Lines 41–42 pass <code>strikes</code> (the outer accumulator: empty on the first iteration,
+      previous expiries' data on subsequent ones) to <code>iv_surface.forward_price()</code>.
+      Line 46 does the same for the IV query. Every iteration prices the wrong strikes, producing
+      a corrupted target surface fed into the Dupire calibration.
     </p>
-    <pre><span class="kw">if</span> self.option_type == <span class="rm">0</span>:   <span class="c"># Always False — OptionType.CALL != 0 for plain Enum</span>
-    pde_vols.append(black.implied_vol(expiry, k, <span class="kw">True</span>, self.fwd, p))
-<span class="kw">elif</span> self.option_type == <span class="rm">1</span>:  <span class="c"># Always False — OptionType.PUT != 1 for plain Enum</span>
-    pde_vols.append(black.implied_vol(expiry, k, <span class="kw">False</span>, self.fwd, p))
-<span class="kw">else</span>:                         <span class="c"># Always reached — straddle branch fires for ALL option types</span>
-    call = (p - k + self.fwd) / <span class="fn">2.0</span>
-    pde_vols.append(black.implied_vol(expiry, k, <span class="kw">True</span>, self.fwd, call))</pre>
-    <p>
-      When <code>option_type='call'</code> or <code>'put'</code>, the code silently executes the
-      straddle-to-call conversion on a non-straddle price, producing numerically wrong implied vols
-      with no error or warning. The rest of the codebase (e.g. <code>forwardpde.py:187</code>) uses
-      the correct <code>case OptionType.CALL:</code> match-statement syntax.
-    </p>
-    <p><strong>Fix:</strong> Replace integer comparisons with enum members:</p>
-    <pre><span class="kw">match</span> self.option_type:
-    <span class="kw">case</span> <span class="fn">OptionType.CALL</span>:
-        pde_vols.append(black.implied_vol(expiry, k, <span class="kw">True</span>, self.fwd, p))
-    <span class="kw">case</span> <span class="fn">OptionType.PUT</span>:
-        pde_vols.append(black.implied_vol(expiry, k, <span class="kw">False</span>, self.fwd, p))
-    <span class="kw">case</span> <span class="fn">OptionType.STRADDLE</span>:
-        call = (p - k + self.fwd) / <span class="fn">2.0</span>
-        pde_vols.append(black.implied_vol(expiry, k, <span class="kw">True</span>, self.fwd, call))</pre>
+    <pre><span class="c"># Current (broken):</span>
+<span class="kw">for</span> expiry, time <span class="kw">in</span> zip(test_expiries, test_times, strict=<span class="kw">True</span>):
+    fwd = fwd_curve.value(expiry)
+    atm = iv_surface.black_volatility(time, fwd, fwd)
+    stdev = atm * np.sqrt(time)
+    exp_strikes = fwd * np.exp(-<span class="fn">0.5</span> * stdev * stdev + stdev * n_quantiles)
+    call = iv_surface.forward_price(time, <span class="rm">strikes</span>, <span class="kw">True</span>, fwd)   <span class="c"># ← outer list</span>
+    put  = iv_surface.forward_price(time, <span class="rm">strikes</span>, <span class="kw">False</span>, fwd)  <span class="c"># ← outer list</span>
+    fwds.append(fwd)
+    strikes.append(exp_strikes)
+    cf_prices.append(call + put)
+    cf_ivs.append(iv_surface.black_volatility(time, <span class="rm">strikes</span>, fwd)) <span class="c"># ← outer list</span>
+
+<span class="c"># Fix — use exp_strikes in all three calls:</span>
+    call = iv_surface.forward_price(time, <span class="ok">exp_strikes</span>, <span class="kw">True</span>, fwd)
+    put  = iv_surface.forward_price(time, <span class="ok">exp_strikes</span>, <span class="kw">False</span>, fwd)
+    ...
+    cf_ivs.append(iv_surface.black_volatility(time, <span class="ok">exp_strikes</span>, fwd))</pre>
   </div>
 
   <!-- 2 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>InterpolatedYieldCurve.set_data()</code> uses unsorted <code>dfs</code> in all three interpolation branches &mdash; mismatched grid when pillars passed out of order</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">New variance swaps always crash at pricing — <code>current_fixing</code> never set when start &ge; valdate</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/market/yieldcurve.py &middot; lines 79, 85</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 480–501, 463–464</span>
     <p>
-      <strong>Why it's bad:</strong> <code>set_data()</code> sorts pillars by date into
-      <code>self.dates</code> and <code>self.dfs</code>. The interpolation grid is then built using
-      <code>times</code> derived from the <em>sorted</em> <code>self.dates</code>, but both the
-      <code>ZERORATE</code> and <code>DISCOUNT</code>/<code>LOG_DISCOUNT</code> branches use
-      the original <em>unsorted</em> parameter <code>dfs</code>:
+      <strong>Why it's bad:</strong> <code>Variance.set_valuation_date()</code> only assigns
+      <code>self.current_fixing</code> when <code>len(hist_fixings) &ge; 1</code> (line 500).
+      For a brand-new contract where <code>start &ge; valdate</code>, all dates fall into
+      <code>self.eventdates</code>, <code>hist_fixing_dates = []</code>, and
+      <code>get_fixings(name, [])</code> returns nothing — the condition is never met.
+      <code>current_fixing</code> stays <code>None</code> and <code>evaluate()</code> at line 463
+      raises <code>ValueError</code> on every pricing call. The existing test uses
+      <code>start = 2025-11-15</code> / <code>valdate = 2025-12-15</code> (always has historical
+      fixings) — the new-contract path is never exercised.
     </p>
-    <pre><span class="c"># ZERORATE branch (line 79)</span>
-times = timegrids.model_time(self.valdate, self.dates)  <span class="c"># sorted ✓</span>
-data_y = -np.log(<span class="rm">dfs</span>) / times                        <span class="c"># unsorted parameter ✗</span>
-
-<span class="c"># DISCOUNT / LOG_DISCOUNT branch (line 85)</span>
-ext_dfs = [<span class="fn">1.0</span>]
-ext_dfs.extend(<span class="rm">dfs</span>)  <span class="c"># unsorted parameter ✗</span></pre>
     <p>
-      When pillar dates arrive in non-chronological order, <code>times</code> is sorted but
-      <code>data_y</code> retains the original ordering, producing a mismatched interpolation grid
-      that returns wrong discount factors silently. The existing test only passes sorted dates, so the
-      bug is invisible in CI. The fix is one word in each branch: replace <code>dfs</code> with
-      <code>self.dfs</code>.
+      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty, set
+      <code>current_fixing</code> from market data (e.g. <code>fxgs.get_fixing(name, valdate)</code>),
+      or expose a <code>set_current_fixing(spot)</code> method and document that it must be called
+      before pricing a new contract.
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="c"># ZERORATE</span>
-<span class="rm">data_y = -np.log(dfs) / times</span>
-<span class="ok">data_y = -np.log(self.dfs) / times</span>
-
-<span class="c"># DISCOUNT / LOG_DISCOUNT</span>
-ext_dfs = [<span class="fn">1.0</span>]
-<span class="rm">ext_dfs.extend(dfs)</span>
-<span class="ok">ext_dfs.extend(self.dfs)</span></pre>
   </div>
 
   <!-- 3 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>Variance</code> payoff always raises at pricing when contract start &ge; valdate</span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>lv.section(exp_idx)</code> does a time-lookup with an integer — semantically wrong, latent bug</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py &middot; lines 452, 496&ndash;501, 463&ndash;464</span>
+    <span class="loc">sdevpy/volatility/localvol/lvsection_calib.py · line 114</span>
     <p>
-      <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets
-      <code>self.current_fixing = None</code>. In <code>set_valuation_date()</code>, when
-      <code>start &ge; valdate</code> (a brand-new variance swap), all dates go into
-      <code>self.eventdates</code> and <code>hist_fixing_dates</code> is empty.
-      The guard at line 500 &mdash;
-      <code>if hist_fixings is not None and len(hist_fixings) &ge; 1</code> &mdash;
-      is never satisfied, so <code>current_fixing</code> stays <code>None</code>.
-      Then <code>evaluate()</code> at line 463 unconditionally raises:
+      <strong>Why it's bad:</strong> <code>section(t: float)</code> finds the largest
+      <code>t_grid[i] &le; t</code>. When called as <code>lv.section(exp_idx)</code> with an
+      integer like <code>0, 1, 2…</code>, those integers are interpreted as time values in years.
+      For <code>exp_idx = 0</code> this accidentally returns <code>sections[0]</code>.
+      For <code>exp_idx = 1</code> it finds the last section with time &le; 1.0 year —
+      not necessarily <code>sections[1]</code>. The bug is currently silent because all
+      <code>BiExpSection</code> instances return identical bounds from <code>constraints()</code>.
+      If any future model uses per-section bounds, the calibration will silently apply wrong
+      constraints at every expiry beyond the first.
     </p>
-    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
-    <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
-    <p>
-      The only test in <code>test_mc.py</code> uses <code>start_date = 2025-11-15</code> (one month
-      before <code>valdate = 2025-12-15</code>), so historical fixings always exist and the
-      failing new-contract case is never exercised.
-    </p>
-    <p>
-      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty, initialise
-      <code>current_fixing</code> from the current spot in market data, or expose a
-      <code>set_current_fixing(spot)</code> method and document it as a pre-pricing requirement.
-    </p>
+    <pre><span class="rm">bounds = lv.section(exp_idx).constraints()</span>
+<span class="ok">bounds = lv.section_at_index(exp_idx).constraints()</span></pre>
   </div>
 
   <!-- 4 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title">Hard-coded <code>name_model_map</code> in <code>localvol_factory.py</code> silently breaks for any real ticker</span>
+      <span class="issue-title"><code>Cashflow.notional</code> and <code>Trade.notional</code> both applied — potential double-scaling</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol_factory.py &middot; line 19</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/cashflows.py · line 13 &nbsp;·&nbsp; sdevpy/montecarlo/mcpricer.py · line 177</span>
     <p>
-      <strong>Why it's bad:</strong> The factory contains a module-level dict:
-    </p>
-    <pre>name_model_map = {<span class="st">'ABC'</span>: <span class="st">'BiExp'</span>, <span class="st">'KLM'</span>: <span class="st">'VSVI'</span>, <span class="st">'XYZ'</span>: <span class="st">'Matrix'</span>}</pre>
-    <p>
-      Any call to <code>load_param_lv(date, name)</code> or <code>get_local_vols(names, valdate)</code>
-      without an explicit <code>model_name</code> keyword falls back to this map. For any ticker
-      outside these three test fixtures, <code>model_name</code> becomes <code>None</code> and the
-      function raises <code>ValueError: No model name specified for name: &hellip;</code>. Since
-      <code>get_local_vols</code> is called from <code>price_book</code> in the MC pricer, any
-      production deployment pricing real instruments fails immediately.
+      <strong>Why it's bad:</strong> <code>Cashflow.calculate()</code> returns
+      <code>payoff_amount * self.notional * self.accrual</code>. Then
+      <code>MonteCarloPricer.build()</code> multiplies the summed cashflows again by
+      <code>trade.notional</code>. Any cashflow constructed with <code>notional != 1.0</code>
+      produces a price scaled by both factors. The fix that correctly applied
+      <code>trade.notional</code> in the 9th review was right, but it exposed this pre-existing
+      design ambiguity: both levels carry a notional with no documented contract for which one
+      means what.
     </p>
     <p>
-      <strong>Fix:</strong> Remove the hard-coded map and require callers to always supply
-      <code>model_name</code> explicitly, or drive the mapping from a runtime configuration file.
+      <strong>Fix:</strong> Clarify the contract in docstrings — e.g. <code>Cashflow.notional</code>
+      is for day-count accrual fractions (default 1.0), <code>Trade.notional</code> is the face
+      amount. Verify that all factory functions (<code>make_vanilla_option</code>, etc.) create
+      cashflows with <code>notional = 1.0</code> unless there is an explicit accrual to model.
     </p>
   </div>
 
@@ -412,25 +390,24 @@ ext_dfs = [<span class="fn">1.0</span>]
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are WIP stubs exported publicly with no early failure in <code>__init__</code></span>
+      <span class="issue-title">No tests for <code>TsIvCalibrator.calibrate</code> or <code>calibrate_lv_bysections</code></span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py &middot; lines 71&ndash;96</span>
+    <span class="loc">sdevpy/tests/ · codebase-wide</span>
     <p>
-      <strong>Why it's bad:</strong> Both classes are tagged <em>"ToDo: [Warning] work in progress"</em>
-      and both raise <code>NotImplementedError</code> only in <code>evaluate()</code>. They are
-      importable from the public <code>sdevpy.montecarlo.payoffs.exotics</code> namespace.
-      <code>Maximum.__init__</code> sets <code>self.eventdates</code> at construction time (wrong
-      lifecycle &mdash; should be deferred to <code>set_valuation_date</code>). <code>BarrierDown</code>
-      stores a raw integer index instead of a name, bypassing the name-resolution system entirely.
-      A caller who accidentally instantiates either class gets a runtime error deep inside the pricing
-      engine with no indication of why.
+      <strong>Why it's bad:</strong> The two main calibration entry points —
+      <code>TsIvCalibrator.calibrate()</code> (<code>impliedvol_calib.py</code>) and
+      <code>calibrate_lv_bysections()</code> (<code>lvsection_calib.py</code>) — are exercised only
+      by notebooks and example scripts, never by <code>pytest</code>. Issue #3 above (wrong section
+      index) and the dupire example bug (#1) would both be immediately visible if a round-trip
+      calibration test existed. <code>test_localvol_calib.py</code> covers the builder internals
+      but stops short of the full calibration loop.
     </p>
     <p>
-      <strong>Fix:</strong> Until fully implemented, prefix with an underscore
-      (<code>_Maximum</code>, <code>_BarrierDown</code>) to remove from the public API, or add
-      <code>raise NotImplementedError</code> in <code>__init__</code> itself for immediate
-      and clearly labelled failure.
+      <strong>Fix:</strong> Add (1) a <code>test_tssvi1_calibrate</code> that calls
+      <code>TsIvCalibrator.calibrate()</code> against the existing ABC sample data and asserts
+      RMSE &lt; a generous threshold such as 10 bps; (2) a <code>test_calibrate_lv_bysections_smoke</code>
+      that runs one expiry slice of LV calibration and checks the returned LV is non-trivial.
     </p>
   </div>
 
@@ -438,145 +415,128 @@ ext_dfs = [<span class="fn">1.0</span>]
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title"><code>black.implied_vol</code> caps at <code>xmax=2.0</code> &mdash; silently wrong for vols above 200%</span>
+      <span class="issue-title">WIP stubs <code>Maximum</code> and <code>BarrierDown</code> still publicly exported with silent construction</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py &middot; lines 35&ndash;48</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
     <p>
-      <strong>Why it's bad:</strong> <code>implied_vol</code> minimizes squared error on the
-      interval <code>[1e-6,&nbsp;2.0]</code>. Any option whose true implied vol exceeds 200%
-      &mdash; short-dated deep OTM options, high-vol names, or variance swap component inversions
-      &mdash; returns the clipped value <code>2.0</code> without raising an error. This function is
-      called from <code>LvObjectiveBuilder.calculate_vols()</code> and
-      <code>optionsurface.convert_option()</code>, so calibration quality metrics can be silently wrong.
-      A vectorized Newton-Raphson implementation (<code>implied_vol_newton</code>) already exists in
-      the same file and handles this case correctly.
+      <strong>Why it's bad:</strong> Both classes are tagged <em>"work in progress"</em> and raise
+      <code>NotImplementedError</code> in <code>evaluate()</code>, but their <code>__init__</code>
+      succeeds silently. A caller instantiates them without error and only discovers the failure
+      deep inside the MC pricing engine with no indication of why.
+      <code>Maximum.__init__</code> also sets <code>self.eventdates</code> at construction —
+      the wrong lifecycle phase — bypassing the <code>set_valuation_date</code> contract followed
+      by every other payoff.
     </p>
-    <pre><span class="rm">xmax = 2.0</span>
-<span class="ok">xmax = 10.0  # or replace call with implied_vol_newton</span></pre>
+    <p>
+      <strong>Fix:</strong> Raise <code>NotImplementedError</code> in <code>__init__</code> itself,
+      or rename to <code>_Maximum</code> / <code>_BarrierDown</code> so they are excluded from the
+      public API until completed.
+    </p>
   </div>
 
   <!-- 7 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title"><code>matplotlib.pyplot</code> unconditionally imported at module level in two pure-math files</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>implied_vol</code> Brent solver: ongoing precision compromise left as three dead comment blocks</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/maths/optimization.py &middot; line 10 &nbsp;&middot;&nbsp; sdevpy/maths/interpolation.py &middot; line 5</span>
+    <span class="loc">sdevpy/analytics/black.py · lines 30–47</span>
     <p>
-      <strong>Why it's bad:</strong> Both files import <code>import matplotlib.pyplot as plt</code>
-      unconditionally at the top of the module, even though <code>plt</code> is only used inside
-      <code>if __name__ == "__main__":</code> blocks at the very bottom of each file. As a result,
-      any code that imports <code>sdevpy.maths.optimization</code> or
-      <code>sdevpy.maths.interpolation</code> &mdash; which is essentially the entire library &mdash;
-      immediately triggers a full matplotlib import. This imposes a hard runtime dependency on a
-      heavy plotting library for purely numeric code, increases import time noticeably in
-      headless/server environments, and can cause errors in environments where a display is not
-      available (e.g. CI, Docker without MPLBACKEND set).
+      <strong>Why it's bad:</strong> Three commented-out solver configs show the evolution:
+      original <code>xtol=1e-4</code> (flagged in the 8th review), Claude-recommended
+      <code>xtol=1e-8 / xmax=10.0</code> tried and rejected ("we've observed instabilities"),
+      current <code>xtol=1e-6 / xmax=2.0</code> as a middle ground. This history lives in dead
+      code rather than a commit message. The current tolerance still loses ~1 bp of precision
+      vs. 1e-8, and <code>xmax=2.0</code> silently fails for vols above 200%.
+      The vectorized <code>implied_vol_newton()</code> already exists in the same file and
+      avoids all of this without instabilities.
     </p>
     <p>
-      <strong>Fix:</strong> Move the import inside the <code>if __name__ == "__main__":</code>
-      guard in both files:
+      <strong>Fix:</strong> Replace the Brent call with <code>implied_vol_newton()</code>
+      (1e-8 precision, no upper-vol cap). Keep one short comment explaining Newton was preferred;
+      remove the three dead config blocks entirely.
     </p>
-    <pre><span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
-    <span class="ok">import matplotlib.pyplot as plt</span>
-    ...</pre>
   </div>
 
   <!-- 8 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>Variance</code> payoff has an off-by-one in its <code>n_returns</code> calculation when historical fixings are present</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Dead <code>pde_price = []</code> immediately overwritten in <code>vanilla_expectation</code></span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py &middot; lines 453&ndash;454, 466&ndash;471</span>
+    <span class="loc">sdevpy/pde/forwardpde.py · lines 183, 196</span>
     <p>
-      <strong>Why it's bad:</strong> <code>Variance.__init__</code> computes:
+      <strong>Why it's bad:</strong> <code>vanilla_expectation()</code> initializes
+      <code>pde_price = []</code> at line 183, then overwrites it at line 196 with the result
+      of the vectorized <code>expectation()</code> call. The initial list is a leftover from
+      the non-vectorized loop that was refactored out. It misleads a reader into expecting an
+      incremental list-append pattern.
     </p>
-    <pre>self.n_dates = len(self.alldates)
-self.n_returns = len(self.alldates) - <span class="fn">1</span></pre>
-    <p>
-      This sets <code>n_returns</code> to the total number of returns from <code>start</code> to
-      <code>end</code> using all fixing dates. However, when the trade is already live
-      (<code>start &lt; valdate</code>), some fixings become historical and some remain forward-looking.
-      In <code>evaluate()</code>, the normalization denominator <code>self.n_returns</code> remains
-      the full count. But the actual number of returns summed in <code>var_sum</code> is:
-      <code>len(hist_fixings) - 1</code> (historical log-returns) plus <code>1</code> (current increment
-      bridging historical to live) plus <code>len(self.varidxs)</code> (forward log-returns from paths).
-      These components add up correctly to <code>n_returns</code> only when the schedule is continuous &mdash;
-      any gap (e.g. skipped business days due to the calendar) silently miscounts, biasing the
-      realized variance estimate.
-    </p>
-    <p>
-      <strong>Fix:</strong> Track <code>n_hist_returns</code> in <code>set_valuation_date()</code>
-      and compute <code>n_fwd_returns = len(self.eventdates) - 1</code> (or use
-      <code>len(self.varidxs) - 1</code>), then assert
-      <code>n_hist_returns + n_fwd_returns + 1 == self.n_returns</code>.
-    </p>
+    <pre><span class="rm">pde_price = []             # ← dead; immediately overwritten</span>
+
+k_2d = np.asarray(strikes)[:, None]
+...
+pde_price = expectation(payoffs, p, x)</pre>
+    <p><strong>Fix:</strong> Remove the dead <code>pde_price = []</code> at line 183.</p>
   </div>
 
   <!-- 9 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title">No test for <code>InterpolatedYieldCurve.set_data()</code> with unsorted pillar dates</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Dead <code>np.zeros()</code> allocations immediately overwritten in both PDE schemes</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/tests/test_yieldcurves.py &middot; codebase-wide</span>
+    <span class="loc">sdevpy/pde/pdeschemes.py · lines 72–74 (ThetaScheme) &nbsp;·&nbsp; lines 109–111 (ImplicitScheme)</span>
     <p>
-      <strong>Why it's bad:</strong> The only two yield curve tests
-      (<code>test_yieldcurve_creation</code> and <code>test_yieldcurve_reading</code>) both pass
-      pillar dates in strictly chronological order. The sort logic in <code>set_data()</code> is
-      therefore never exercised. The unsorted-<code>dfs</code> bug described in issue&nbsp;#2 would
-      produce wrong discount factors for any out-of-order input, but it cannot be caught by the
-      current test suite. Real trading systems regularly update curves from unsorted data feeds.
+      <strong>Why it's bad:</strong> After vectorizing the band-matrix assembly, the original
+      <code>upper = np.zeros(n_x - 1)</code>, <code>main = np.zeros(n_x)</code>,
+      <code>lower = np.zeros(n_x - 1)</code> allocations were left in place but are immediately
+      overwritten by the vectorized expressions two lines later. Three unnecessary heap
+      allocations occur per time step, and the code suggests the arrays are subsequently
+      modified in-place when they are not.
     </p>
-    <p>
-      <strong>Fix:</strong> Add a test that passes pillars in reverse chronological order and
-      asserts that the resulting discount factors match those obtained from the same pillars in
-      sorted order:
-    </p>
-    <pre><span class="kw">def</span> <span class="fn">test_yieldcurve_sorted_regardless_of_input_order</span>():
-    <span class="c"># Pass same pillars in reverse order; result must be identical</span>
-    curve_fwd = make_curve(zdates, dfs)
-    curve_rev = make_curve(zdates[::-<span class="fn">1</span>], dfs[::-<span class="fn">1</span>])
-    <span class="kw">assert</span> np.allclose(curve_fwd.discount(test_dates), curve_rev.discount(test_dates))</pre>
+    <pre><span class="rm">upper = np.zeros(n_x - 1)   # ← dead</span>
+<span class="rm">main  = np.zeros(n_x)        # ← dead</span>
+<span class="rm">lower = np.zeros(n_x - 1)   # ← dead</span>
+main  = <span class="fn">1.0</span> + theta_dt_2 * b * lv**<span class="fn">2</span>
+upper = -theta_dt_2 * a * lv[<span class="fn">1</span>:]**<span class="fn">2</span>
+lower = -theta_dt_2 * c * lv[:-<span class="fn">1</span>]**<span class="fn">2</span></pre>
+    <p><strong>Fix:</strong> Remove the three <code>np.zeros()</code> lines in both <code>ThetaScheme</code> and <code>ImplicitScheme</code>.</p>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>LocalVol.__init__</code> defaults <code>valdate</code> to <code>dt.datetime.now()</code> &mdash; mutable default evaluated at import time</span>
+      <span class="issue-title"><code>log.info()</code> called with extra positional args — solution value silently dropped</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol.py &middot; line 38</span>
+    <span class="loc">sdevpy/maths/optimization.py · lines 216–220</span>
     <p>
-      <strong>Why it's bad:</strong> The base class <code>LocalVol.__init__</code> defaults
-      <code>valdate</code> to <code>dt.datetime.now()</code>:
+      <strong>Why it's bad:</strong> <code>log.info("Sol Point", x)</code> passes <code>x</code>
+      as a second positional argument. Python's logging API expects either a fully-formatted string
+      or <code>%s</code>-style message args (<code>log.info("Sol Point %s", x)</code>). The extra
+      arg is silently ignored; only <code>"Sol Point"</code> is logged and the solution value is
+      lost. Additionally, lines 218–220 iterate
+      <code>for key in result.keys(): if key in result:</code> — the inner check is always
+      <code>True</code> and is unreachable dead code. Both issues are in the <code>__main__</code>
+      block only, but they indicate this diagnostic path has never been successfully run.
     </p>
-    <pre><span class="kw">def</span> <span class="fn">__init__</span>(self, **kwargs):
-    self.valdate = kwargs.get(<span class="st">'valdate'</span>, <span class="rm">dt.datetime.now()</span>)</pre>
-    <p>
-      <code>dt.datetime.now()</code> is called at object construction time (inside <code>kwargs.get</code>),
-      not at class definition time, so there is no single frozen timestamp shared across all instances.
-      However, the practical consequence is that any <code>LocalVol</code> subclass instantiated without
-      an explicit <code>valdate</code> silently gets the current wall-clock time as its valuation date.
-      This makes <code>dump_data()</code> produce timestamps that differ between runs, which can cause
-      snapshot-test failures and makes reproducibility debugging difficult. The correct default for
-      a financial object is either <code>None</code> (explicit) or a well-known sentinel date.
-    </p>
-    <p>
-      <strong>Fix:</strong> Default to <code>None</code> and let callers provide the date explicitly:
-    </p>
-    <pre><span class="rm">self.valdate = kwargs.get('valdate', dt.datetime.now())</span>
-<span class="ok">self.valdate = kwargs.get('valdate', None)</span></pre>
+    <pre><span class="rm">log.info("Sol Point", x)      # x silently dropped</span>
+<span class="ok">log.info("Sol Point %s", x)</span>
+
+<span class="rm">for key in result.keys():
+    if key in result:           # always True — dead</span>
+<span class="ok">for key in result.keys():</span>
+        log.info(<span class="st">f"{key}: {result[key]}"</span>)</pre>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;&middot;&nbsp; sdevpy code review #11 &nbsp;&middot;&nbsp; 2026-05-31 (full scan)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #10 &nbsp;·&nbsp; 2026-06-01 (full scan)
   </footer>
 </div>
 </body>

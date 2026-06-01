@@ -26,7 +26,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
         num_factors = 2
 
         # Find payoff times
-        is_payoff = np.in1d(time_grid, expiries)
+        is_payoff = np.isin(time_grid, expiries)
 
         # Retrieve parameters
         lnvol = parameters['LnVol']

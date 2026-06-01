@@ -47,6 +47,8 @@ ignore = ["E401", "I001"]
 omit = [
     "sdevpy/**/__init__.py",
     "sdevpy/tests/test.py",
+    "sdevpy/logsetup.py",
+    "sdevpy/settings.py",
     "sdevpy/utilities/pydotnet.py",
     "sdevpy/projects/raschka/*",
     "sdevpy/projects/stovol/*",

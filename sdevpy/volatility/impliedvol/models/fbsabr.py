@@ -24,7 +24,7 @@ def price(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_calls: npt.ArrayL
         num_factors = 2
 
         # Find payoff times
-        is_payoff = np.in1d(time_grid, expiries)
+        is_payoff = np.isin(time_grid, expiries)
 
         # Retrieve parameters
         lnvol = parameters['LnVol']

@@ -9,7 +9,8 @@ from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
-# from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
+from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
+from sdevpy.volatility.localvol.localvol import ConstantLocalVol
 
 
 # n_mix=1, flat vol term structure: beta=1, a=b=0.2, c=0, d=1 → stdev(t=1)=0.2
@@ -205,10 +206,40 @@ def test_sabr():
 
 
 ########### NumericalImpliedVol ###################################################################
+LV = ConstantLocalVol(0.20, valdate=dt.datetime(2025, 12, 15))
+
+
+def test_numerical_impliedvol_dump_data_structure():
+    niv = NumericalImpliedVol(LV)
+    data = niv.dump_data()
+    assert 'lv' in data
+
+
+def test_numerical_impliedvol_calculate_prices_returns_array():
+    niv = NumericalImpliedVol(LV)
+    fwd = 100.0
+    strikes = np.array([90.0, 100.0, 110.0])
+    prices = niv.calculate_prices(1.0, strikes, 'call', fwd)
+    assert len(prices) == 3
+    assert np.all(prices >= 0.0)
+
+
+def test_numerical_impliedvol_calculate_call_put_parity():
+    # C - P = F - K for each strike (forward premium, no discounting)
+    niv = NumericalImpliedVol(LV)
+    fwd, t = 100.0, 5.0
+    strikes = np.array([95.0, 100.0, 105.0])
+    calls = niv.calculate_prices(t, strikes, 'call', fwd)
+    puts = niv.calculate_prices(t, strikes, 'put', fwd)
+    for i, k in enumerate(strikes):
+        # print(calls[i] - puts[i])
+        # print(fwd - k)
+        assert np.isclose(calls[i] - puts[i], fwd - k, atol=0.2)
 
 
 if __name__ == "__main__":
     print("Hello")
+    test_numerical_impliedvol_calculate_call_put_parity()
     # test_build_step_grid_short_term()
     # test_logmix_from_file()
     # test_logmix_pdf_integrates_to_one()

@@ -1,5 +1,6 @@
 import numpy as np
 from sdevpy.maths.specialfunctions import rebonato
+from sdevpy.montecarlo.smoothers import approx_cdf, smooth_max_diff
 
 
 def test_rebonato():
@@ -22,3 +23,21 @@ def test_rebonato():
     v = np.array([0.0, 1.0, 5.0, 10.0])
     expected = np.array([rebonato(vi) for vi in v])
     assert np.allclose(rebonato(v), expected)
+
+
+def test_approx_cdf():
+    assert np.isclose(approx_cdf(0.0), 0.5)
+    assert approx_cdf(100.0) > 0.999
+    assert approx_cdf(-100.0) < 0.001
+
+
+def test_smooth_max_diff():
+    # spot >> strike: smoothed call ≈ spot - strike
+    result = smooth_max_diff(10000.0, 100.0)
+    assert np.isclose(result, 10000.0 - 100.0, rtol=1e-4)
+    # spot << strike: smoothed call ≈ 0
+    result = smooth_max_diff(1.0, 100.0)
+    assert abs(result) < 1e-6
+    spots = np.array([80.0, 100.0, 120.0])
+    result = smooth_max_diff(spots, 100.0)
+    assert result.shape == (3,)

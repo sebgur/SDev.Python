@@ -1,7 +1,6 @@
 """ File management utilities """
 import os
 import csv
-# import datetime as dt
 import pathlib
 from io import BytesIO
 import zipfile as zf
@@ -36,17 +35,6 @@ def write_csv(file):
         writer = csv.writer(csv_file, delimiter=',')
         row = ['alpha', 'beta']
         writer.writerow(row)
-
-
-# def list_csv(path):
-#     """ List all csv files in a folder """
-#     files = []
-#     for r, d, f in os.walk(path):
-#         for file in f:
-#             if '.csv' in file:
-#                 files.append(os.path.join(r, file))
-
-#     return files
 
 
 def list_files(path, extensions=None):
