@@ -177,7 +177,7 @@ class LogMix(ParametricImpliedVol):
         self.calculate_type = OptionQuoteType.ForwardPremium
         self.lv_method = LvMethod.PDF
         self.check_fwd_var = kwargs.get('check_fwd_var', False)
-        self.shift_mean = kwargs.get('shift_mean', True)
+        # self.shift_mean = kwargs.get('shift_mean', True)
         self.calculable_at_zero = False
         self.n_params = 5 + 7 * (self.n_mix - 1)
         self.verbose = kwargs.get('verbose', False)
@@ -200,7 +200,8 @@ class LogMix(ParametricImpliedVol):
         for i in range(self.n_mix):
             w = self.weight[i].value(t)
             f = fwd * (1.0 + self.mean[i].value(t))
-            k = strike * (1.0 + self.strike[i].value(t))
+            k = strike
+            # k = strike * (1.0 + self.strike[i].value(t))
             stdev = np.sqrt(self.var[i].value(t))
             total += w * self.black(k, is_call, f, stdev)
 
@@ -219,7 +220,8 @@ class LogMix(ParametricImpliedVol):
             w = self.weight[i].value(t)
             stdev = np.sqrt(self.var[i].value(t))
             mu = 1.0 + self.mean[i].value(t)
-            nu = 1.0 + self.strike[i].value(t)
+            nu = 1.0
+            # nu = 1.0 + self.strike[i].value(t)
             d_minus = np.log(fwd * mu / strike / nu) / stdev - 0.5 * stdev
             delta_n_minus = np.exp(-0.5 * d_minus * d_minus) / constants.C_SQRT2PI
             prob += w * delta_n_minus / stdev * nu
@@ -239,7 +241,8 @@ class LogMix(ParametricImpliedVol):
             w = self.weight[i].value(t)
             stdev = np.sqrt(self.var[i].value(t))
             mu = 1.0 + self.mean[i].value(t)
-            nu = 1.0 + self.strike[i].value(t)
+            nu = 1.0
+            # nu = 1.0 + self.strike[i].value(t)
             d_minus = np.log(fwd * mu / strike / nu) / stdev - 0.5 * stdev
             prob += w * norm.cdf(-d_minus) * nu
 
@@ -268,16 +271,18 @@ class LogMix(ParametricImpliedVol):
         w, shift, beta = param_dic['w'], param_dic['shift'], param_dic['beta']
         a, b, c, d = param_dic['a'], param_dic['b'], param_dic['c'], param_dic['d']
 
-        self.weight, self.mean, self.strike, self.var = [], [], [], []
+        self.weight, self.mean, self.var = [], [], []
+        # self.strike = []
         for i in range(self.n_mix):
             self.weight.append(LogMixWeight(i, w, beta))
             self.var.append(LogMixVar(a[i], b[i], c[i], d[i]))
-            if self.shift_mean:
-                self.mean.append(LogMixMean(shift[i], beta[i]))
-                self.strike.append(LogMixStrike(0.0, 1.0))
-            else:
-                self.mean.append(LogMixMean(0.0, 1.0))
-                self.strike.append(LogMixStrike(shift[i], beta[i]))
+            self.mean.append(LogMixMean(shift[i], beta[i]))
+            # if self.shift_mean:
+                # self.mean.append(LogMixMean(shift[i], beta[i]))
+            #     self.strike.append(LogMixStrike(0.0, 1.0))
+            # else:
+            #     self.mean.append(LogMixMean(0.0, 1.0))
+            #     self.strike.append(LogMixStrike(shift[i], beta[i]))
 
     def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters """
