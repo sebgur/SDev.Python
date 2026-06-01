@@ -4,8 +4,6 @@ Give a score, a rating and brief notes for the following categories: Architectur
 
 List the 10 most serious issues and bad practices, explain why they are bad and make suggestions to fix them. For each issue you point out, give a severity assessment. If there are more than 10 critical or high severity issues, just least the 10 highest severity issues.
 
-Add a section just above the Top 10 Issues to give general advice to reach a better library, especially in terms of recommended practices or directions the library could take to improve.
-
 Ignore the content of sdevpy/thirdparty as it is third-party and I have no intent of touching the code for now.
 
 Inspect all the *.py and *.ipynb files, not only the changes since the last review. Do not ignore the files excluded in pyproject.toml.
