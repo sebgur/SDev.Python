@@ -8,8 +8,8 @@ from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.maths import metrics
-from sdevpy import logsetup
-logsetup.configure(sdevpy_level='info')
+from sdevpy import logger
+logger.configure(sdevpy_level='info')
 
 
 n_digits = 6

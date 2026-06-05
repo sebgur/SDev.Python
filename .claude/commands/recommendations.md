@@ -1,6 +1,6 @@
 Analyse my code and make recommendations to bring it to the next level, as well as to a level that can be sold in the market place in Financial Technology.
 
-Recommendations may include code design, refactoring, re-arrangement of code structure, usage of third-party packages, or any other practices that you think could give a better quality to the library.
+Recommendations may include code design, refactoring, re-arrangement of file structure, usage of third-party packages, or any other practices that you think could give a better quality to the library.
 
 Rank your recommendations from highest materiality to lowest.
 
