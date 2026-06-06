@@ -47,6 +47,7 @@
     .grade-letter {
       font-size: 4.2rem;
       font-weight: 800;
+      color: var(--green);
       line-height: 1;
       min-width: 3.8rem;
       text-align: center;
@@ -100,6 +101,18 @@
       color: var(--muted);
     }
     .progress-banner strong { color: var(--text); }
+
+    .regression-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--orange);
+      border-radius: 8px;
+      padding: .9rem 1.2rem;
+      margin-bottom: 1.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .regression-banner strong { color: var(--text); }
 
     .issue {
       background: var(--surface);
@@ -187,34 +200,40 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-06 &nbsp;·&nbsp; <strong>10th review</strong> (full scan)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-06 &nbsp;·&nbsp; <strong>11th review</strong> (full scan)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--green)">B+</div>
+    <div class="grade-letter">B+</div>
     <div class="grade-details">
-      <h2>Six fixes landed — Variance new contract crash and two WIP stubs are the remaining priorities</h2>
+      <h2>4 issues closed, calibration testing now in place — one ruff-rename regression introduced</h2>
       <p>
-        Six of the nine actionable issues from the 9th review are resolved: <code>trade.notional</code> is now
-        correctly multiplied in, all three test-output <code>print()</code> calls are commented out,
-        <code>check_consistency</code> dead code is gone, <code>dump_data()</code> guards are in place across
-        TsSvi1, TsSvi2, and LogMix, PDE matrix assembly is fully vectorized, and <code>shift_forward</code>
-        now defaults to <code>False</code> with an accurate docstring. Two live <code>print()</code> calls
-        were discovered in <code>test_localvol_calib.py</code> — a test file not previously reviewed.
-        The Variance new contract crash and the two WIP stub classes remain from the 9th review.
+        Solid progress: the PDE commented-out loops are gone, <code>check_global_params()</code> is now guarded
+        in both TsSvi1 and TsSvi2, a full calibration smoke test has landed in <code>test_impliedvol.py</code>,
+        and test-output pollution in <code>test_localvol_calib.py</code> is cleaned up.
+        The ruff rename pass on <code>docs/stovol/products.py</code> introduced a silent
+        <code>NameError</code>: terminal lambda bodies reference <code>s</code> (lowercase)
+        while the lambda parameter is still <code>S</code> — docs-level but real.
+        The <code>Variance</code> new-contract crash, the two WIP payoff stubs, and the serial
+        implied-vol loop remain open from the previous review.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since 9th review (6 of 10):</strong>
-    <code>trade.notional</code> now multiplied in at <code>mcpricer.py:177</code> &nbsp;·&nbsp;
-    three <code>print()</code> calls in <code>test_pde.py:93</code>, <code>test_timegrids.py:19</code>,
-    <code>test_yieldcurves.py:48</code> commented out &nbsp;·&nbsp;
-    <code>check_consistency</code> dead code completely removed &nbsp;·&nbsp;
-    <code>dump_data()</code> None guard added in TsSvi1, TsSvi2, and LogMix &nbsp;·&nbsp;
-    PDE matrix loops vectorized in all three scheme classes (ThetaScheme, ImplicitScheme, ExplicitScheme) &nbsp;·&nbsp;
-    <code>shift_forward</code> default changed to <code>False</code> and docstring updated to match actual behaviour
+    <strong>Fixed since 10th review (4 of 10, 1 partial):</strong>
+    debug <code>print()</code> calls in <code>test_localvol_calib.py</code> cleaned up (#3) &nbsp;·&nbsp;
+    <code>TsIvCalibrator.calibrate</code> smoke test added to <code>test_impliedvol.py</code> (#4) &nbsp;·&nbsp;
+    all four commented-out original for-loops removed from <code>pdeschemes.py</code> (#6) &nbsp;·&nbsp;
+    <code>check_global_params()</code> now guarded for <code>params=None</code> in TsSvi1 and TsSvi2 (#8) &nbsp;·&nbsp;
+    one of two commented config blocks removed in <code>black.py</code> (#5 partial)
+  </div>
+
+  <div class="regression-banner">
+    <strong>Regression introduced (ruff rename pass):</strong>
+    <code>docs/stovol/products.py</code> terminal lambdas now reference undefined <code>s</code> — the lambda
+    parameter was left as <code>S</code> (uppercase) while the body was lowercased. Runtime
+    <code>NameError</code> on any call to <code>price_vanilla()</code>. See issue&nbsp;#2.
   </div>
 
   <div class="scorecard">
@@ -228,42 +247,42 @@
         <tr>
           <td>Architecture</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy, solid PDE/MC separation; no structural changes needed or made</td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy and solid PDE/MC separation unchanged; no structural regressions</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Notional fix eliminates a previously silent per-trade pricing error; Variance new contract crash (start &ge; valdate) still open</td>
+          <td>Correctness</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>Variance</code> still crashes for new contracts; <code>products.py</code> terminal conditions raise <code>NameError</code> after ruff rename</td>
         </tr>
         <tr>
           <td>Error Handling</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>dump_data()</code> guarded across all three parametric models; dead code removed; <code>check_global_params()</code> still unguarded for <code>params=None</code></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>check_global_params()</code> None guard now in place for TsSvi1 and TsSvi2; <code>Variance.evaluate()</code> still raises for new contracts</td>
         </tr>
         <tr>
-          <td>Testing</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Two live <code>print()</code> in <code>test_localvol_calib.py</code>; end-to-end calibration path still untested by pytest</td>
+          <td>Testing</td><td>8 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Calibration round-trip test now present; test output is clean in <code>test_localvol_calib.py</code>; <code>Average</code> and <code>Variance</code> payoffs still have no coverage</td>
         </tr>
         <tr>
-          <td>Code Quality</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">PDE loops fully vectorized; three commented-out config blocks accumulating in <code>black.py</code>; original for-loops still present as comments in <code>pdeschemes.py</code></td>
+          <td>Code Quality</td><td>8 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Commented-out PDE loops fully removed; one "Original config" block and stale Newton return code still in <code>black.py</code></td>
         </tr>
         <tr>
           <td>Maintainability</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good module layout and docstrings; arithmetic payoff classes repeat identical lifecycle boilerplate six times</td>
+          <td style="color:var(--muted);font-size:.83rem">Good module layout; arithmetic payoff boilerplate (~130 lines across <code>Add</code>/<code>Sub</code>/<code>Mul</code>/<code>Div</code>) still unaddressed</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>update_params</code> coerces to <code>ndarray</code> consistently; <code>check_global_params</code> not guarded against <code>None</code></td>
+          <td>Type Safety</td><td>8 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good annotation coverage across analytics and vol models; <code>Payoff</code> subclass lifecycle state has no type annotation</td>
         </tr>
         <tr>
           <td>Documentation</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>shift_forward</code> docstring updated to match actual behaviour; good docstrings on key classes throughout</td>
+          <td style="color:var(--muted);font-size:.83rem">Solid docstrings on key classes and methods; <code>Average</code> docstring still carries a "ToDo: test with inception date in the past" note</td>
         </tr>
       </tbody>
     </table>
@@ -272,161 +291,194 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
-  <div class="issue high">
+  <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title">New variance swaps (start &ge; valdate) always crash — <code>current_fixing</code> never set</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">New variance swaps always crash at pricing — <code>current_fixing</code> is never set when <code>start &ge; valdate</code></span>
+      <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 452, 496–501</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 452, 462–466</span>
     <p>
       <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets <code>self.current_fixing = None</code>.
-      In <code>set_valuation_date</code>, when <code>start &ge; valdate</code> (a brand-new swap with no
-      history), <code>hist_fixing_dates</code> is empty, <code>hist_fixings</code> returns <code>None</code>
-      or <code>[]</code>, and the condition <code>len(hist_fixings) &ge; 1</code> is never satisfied —
-      so <code>current_fixing</code> stays <code>None</code>. Then <code>evaluate()</code> raises on
-      every pricing call:
+      In <code>set_valuation_date</code>, when the trade has not yet started (<code>start &ge; valdate</code>),
+      all dates go into <code>self.eventdates</code> and <code>hist_fixing_dates</code> is empty.
+      <code>get_fixings</code> returns <code>None</code> or an empty list, so neither guard fires and
+      <code>current_fixing</code> stays <code>None</code>. Then <code>evaluate()</code> unconditionally
+      raises:
     </p>
     <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
     <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
     <p>
-      The only test in <code>test_mc.py</code> uses <code>start_date = 2025-11-15</code> and
-      <code>valdate = 2025-12-15</code>, which always has historical fixings. The failing case
-      (start = valdate, no history) is never covered.
+      Every new-issue variance swap is unrunnable. The existing test uses
+      <code>start_date = 2025-11-15</code> with <code>valdate = 2025-12-15</code>, ensuring historical
+      fixings are always present — the failing path (new contract) is never exercised by the test suite.
     </p>
     <p>
-      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty, seed
-      <code>current_fixing</code> from the current spot, or expose a
-      <code>set_current_fixing(spot)</code> method and document that it must be called before
-      pricing a new contract:
+      <strong>Fix:</strong> For a new contract the first simulated spot <em>is</em> the start fixing.
+      Expose a <code>set_current_fixing(spot)</code> method and call it from the pricing engine before
+      <code>evaluate()</code>, or document that the caller must supply it. An alternative is to have
+      <code>evaluate()</code> treat <code>current_fixing is None</code> as meaning the first path value
+      is the starting point:
     </p>
-    <pre><span class="kw">if</span> hist_fixings <span class="kw">is not None and</span> len(hist_fixings) &gt;= <span class="fn">1</span>:
-    self.current_fixing = hist_fixings[-<span class="fn">1</span>]
-<span class="ok">else:
-    self.current_fixing = fxgs.get_spot(self.name)  # new contract: use today's spot</span></pre>
+    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
+    <span class="c"># New contract: first simulated spot is the start fixing</span>
+    <span class="ok">first_spot = spot_paths[:, 0]
+    var_sum = var_sum + np.power(np.log(spot_paths[:, 1] / first_spot), 2)
+    spot_paths = spot_paths[:, 1:]  # shift window</span>
+<span class="kw">else</span>:
+    var_sum = var_sum + np.power(np.log(spot_paths[:, 0] / self.current_fixing), 2)</pre>
   </div>
 
   <!-- 2 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> WIP stubs still exported in the public API</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Ruff rename introduced <code>NameError</code> in <code>price_vanilla()</code> — lambda body uses <code>s</code> but parameter is still <code>S</code></span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
+    <span class="loc">docs/stovol/products.py · lines 25, 31</span>
     <p>
-      <strong>Why it's bad:</strong> Both classes are tagged <em>"Warning: work in progress"</em>
-      and raise <code>NotImplementedError</code> in <code>evaluate()</code>, yet they are importable
-      from the public <code>sdevpy.montecarlo.payoffs.exotics</code> namespace.
-      <code>Maximum.__init__</code> sets <code>self.eventdates</code> at construction time
-      (wrong lifecycle phase — this must be deferred to <code>set_valuation_date</code>).
-      <code>BarrierDown</code> stores a raw integer index, bypassing the name-resolution system.
-      Any caller who accidentally instantiates either class gets a runtime error deep inside the
-      pricing engine with no indication of why.
+      <strong>Why it's bad:</strong> The ruff lowercase rename pass changed the body of the terminal
+      lambdas from <code>S - K</code> / <code>K - S</code> to <code>s - k</code> / <code>k - s</code>,
+      but left the lambda <em>parameter</em> as uppercase <code>S</code>. The lowercase <code>s</code>
+      in the body refers to nothing in <code>price_vanilla</code>'s local scope — it is an undefined name.
+      Any call to <code>price_vanilla()</code> reaches the terminal condition and raises
+      <code>NameError: name 's' is not defined</code>.
     </p>
+    <pre><span class="c"># Current (broken) — S is the lambda param, s is undefined:</span>
+<span class="rm">terminal = lambda S, v: np.maximum(s - k, 0.0) # noqa</span>
+<span class="rm">terminal = lambda S, v: np.maximum(k - s, 0.0) # noqa</span>
+
+<span class="c"># Fix — lowercase the lambda parameter to match the body:</span>
+<span class="ok">terminal = lambda s, v: np.maximum(s - k, 0.0)  # noqa: E731
+terminal = lambda s, v: np.maximum(k - s, 0.0)  # noqa: E731</span></pre>
     <p>
-      <strong>Fix:</strong> Until fully implemented, prefix both with an underscore
-      (<code>_Maximum</code>, <code>_BarrierDown</code>) so they are excluded from the public
-      API, or add <code>raise NotImplementedError</code> in <code>__init__</code> itself for
-      an immediate, clearly labelled failure.
+      Note also that <code>smax_bc</code> at line 29 references <code>solver.s[-1]</code> — confirm
+      the <code>SLVPdeSolver</code> attribute was also renamed from <code>S</code> to <code>s</code>
+      in the same pass; if not, that will raise <code>AttributeError</code>.
     </p>
   </div>
 
   <!-- 3 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title">Two live <code>print()</code> calls inside pytest functions in <code>test_localvol_calib.py</code></span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP stubs in the public payoff API</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/tests/test_localvol_calib.py · line 49 &nbsp;·&nbsp; lines 188–189</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
     <p>
-      <strong>Why it's bad:</strong> Both are inside actual <code>def test_*()</code> functions,
-      not in <code>if __name__ == "__main__"</code> blocks, so they fire on every
-      <code>pytest</code> run. The three equivalent calls previously flagged in
-      <code>test_pde.py</code>, <code>test_timegrids.py</code>, and <code>test_yieldcurves.py</code>
-      are now correctly commented out — these two in the newer file were missed:
+      <strong>Why it's bad:</strong> Both classes carry <em>"ToDo: [Warning] work in progress"</em>
+      comments and both raise <code>NotImplementedError</code> unconditionally in <code>evaluate()</code>.
+      They are importable from the public <code>sdevpy.montecarlo.payoffs.exotics</code> namespace.
+      <code>Maximum.__init__</code> also incorrectly sets <code>self.eventdates</code> at construction
+      time — the lifecycle contract requires this to happen in <code>set_valuation_date()</code>.
+      <code>BarrierDown</code> takes a raw integer asset index rather than a name string, bypassing
+      the name-resolution system entirely. A caller who instantiates either class gets a
+      <code>NotImplementedError</code> deep inside the MC engine with no indication that the payoff
+      is simply unfinished.
     </p>
-    <pre><span class="c"># line 49 — inside test_dupire_impliedvol()</span>
-<span class="rm">print(test)</span>
-
-<span class="c"># lines 188–189 — inside test_calibrate_lv_bysections(), inside for-loop over expiries</span>
-<span class="rm">print(mkt_vols)
-print(exp_pde_vols)</span></pre>
-    <p><strong>Fix:</strong> Comment out all three, matching the pattern already used throughout the test suite.</p>
+    <p>
+      <strong>Fix:</strong> Move the <code>raise NotImplementedError</code> into <code>__init__</code>
+      so failure is immediate and clearly labelled, or prefix with an underscore to remove them from
+      the public API until they are complete:
+    </p>
+    <pre><span class="kw">class</span> <span class="ok">_Maximum</span>(Payoff):  <span class="c"># underscore = not public API yet</span>
+    ...</pre>
   </div>
 
   <!-- 4 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title">No pytest smoke test for <code>TsIvCalibrator.calibrate</code> end-to-end</span>
+      <span class="issue-title"><code>brownianbridge()</code> outer factor loop is pure Python — factor dimension not vectorized</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/ · codebase-wide</span>
+    <span class="loc">sdevpy/maths/rand/pathconstruction.py · line 43</span>
     <p>
-      <strong>Why it's bad:</strong> The objective function is tested in isolation
-      (<code>test_tssvi1_objective</code>, <code>test_tssvi2_objective</code>,
-      <code>test_logmix_objective</code>) and formula evaluation is tested
-      (<code>test_tssvi1</code>, <code>test_tssvi2</code>, <code>test_logmix</code>).
-      But the full calibration pipeline —
-      <code>calibrate → prepare_target_data → optimizer → update_params</code>
-      — is only exercised by the notebooks and the <code>if __name__ == "__main__"</code>
-      blocks. Any regression in the optimizer wiring, <code>prepare_target_data</code>, or
-      bounds configuration would go undetected by CI.
+      <strong>Why it's bad:</strong> The outer <code>for d in range(n_factors)</code> loop processes
+      one factor at a time in Python, while all inner operations (mean, variance, midpoint assignment)
+      are already fully vectorized over paths. With <code>n_factors</code> assets (e.g. a 5-asset
+      worst-of basket), the loop runs 5 times, each time issuing separate NumPy calls.
+      The incremental path builder has no such loop — both the path and factor dimensions are handled
+      in a single vectorized block.
     </p>
     <p>
-      <strong>Fix:</strong> Add a <code>test_tssvi1_calibrate</code> that loads the
-      <code>ABC / 2025-12-15</code> market data, calls
-      <code>TsIvCalibrator(model, config).calibrate(mkt_data)</code>, and asserts that
-      the cross-strike RMSE is below a threshold (e.g. 50 bps). One test covers the
-      entire prepare → optimize → update round trip.
+      <strong>Fix:</strong> Broadcast over the factor dimension by keeping <code>d</code> as a full
+      slice. All indexing into <code>w</code> and <code>z</code> already supports the factor axis;
+      removing the outer loop and replacing <code>[:, end, d]</code> with <code>[:, end, :]</code>
+      throughout should suffice:
     </p>
+    <pre><span class="rm">for d in range(n_factors):
+    w[:, -1, d] = np.sqrt(t) * z[:, 0, d]
+    ...
+    w[:, mid, d] = mean + np.sqrt(var) * z[:, z_index, d]</span>
+
+<span class="ok">w[:, -1, :] = np.sqrt(t) * z[:, 0, :]
+...
+mean = ((t_mid - t_start) * w[:, end, :] + (t_end - t_mid) * w[:, start, :]) / (t_end - t_start)
+var  = (t_mid - t_start) * (t_end - t_mid) / (t_end - t_start)
+w[:, mid, :] = mean + np.sqrt(var) * z[:, z_index, :]</span></pre>
   </div>
 
   <!-- 5 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title">Three commented-out config blocks accumulate inside <code>implied_vol()</code></span>
-      <span class="badge low">Low</span>
+      <span class="issue-title"><code>implied_vols()</code> iterates over strikes with a Python loop — vectorized <code>implied_vol_newton</code> exists but is never called</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py · lines 30–41</span>
+    <span class="loc">sdevpy/analytics/black.py · line 51</span>
     <p>
-      <strong>Why it's bad:</strong> The function now contains three sets of commented-out
-      configurations: the original (<code>xtol=1e-4</code>, <code>xmax=1.0</code>), a config
-      recommended by Claude but observed to cause instabilities (<code>xtol=1e-8</code>,
-      <code>xmax=10.0</code>), and the current active setting (<code>xtol=1e-6</code>,
-      <code>xmax=2.0</code>). A reader must work out which block is live and why the others
-      were abandoned. The instability observation is genuinely useful context — it belongs
-      in a commit message or a single inline comment, not as dead code.
+      <strong>Why it's bad:</strong> <code>implied_vols()</code> runs a serial Python list comprehension
+      calling the scalar Brent solver once per strike. For a 50-strike surface this is 50 sequential
+      Python → SciPy calls. <code>implied_vol_newton()</code> in the same file is a fully vectorized
+      Newton-Raphson solver that processes the whole strike array in one call, typically converging in
+      under 10 iterations. It is defined, but <code>implied_vols()</code> never delegates to it.
     </p>
+    <pre><span class="c"># Current (slow — one Brent call per strike):</span>
+<span class="rm">ivs = [implied_vol(expiry, k, is_call, fwd, p) for k, p in zip(strike, fwd_price, strict=True)]</span>
+
+<span class="c"># Drop-in replacement (vectorized Newton, ~10–100× faster):</span>
+<span class="ok">return implied_vol_newton(expiry, strike, is_call, fwd, fwd_price)</span></pre>
     <p>
-      <strong>Fix:</strong> Delete the two commented-out blocks; keep only the active three
-      lines. Add one comment if the instability note is worth preserving:
-      <code># 1e-8 / xmax=10 caused convergence issues on short-dated deep-OTM options</code>.
+      The <code>implied_vol_newton</code> docstring notes it may struggle near zero vega; a safe drop-in
+      would add a Brent fallback for those cases. As a first step, delegating unconditionally is a large
+      improvement with minimal risk.
     </p>
   </div>
 
   <!-- 6 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">Original for-loops remain as dead comments at four sites in <code>pdeschemes.py</code></span>
-      <span class="badge low">Low</span>
+      <span class="issue-title">Dead commented code in <code>black.py</code>: stale "Original config" block and abandoned Newton return code</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/pde/pdeschemes.py · lines 60–67, 81–87, 119–125, 152–159</span>
+    <span class="loc">sdevpy/analytics/black.py · lines 34–37, 80–84</span>
     <p>
-      <strong>Why it's bad:</strong> The vectorization of the PDE matrix assembly is complete,
-      correct, and covered by tests. However, the original pure-Python
-      <code>for j in range(n_x)</code> loops are still present as comments at four sites —
-      one per vectorized block — adding ~30 lines of noise and creating ambiguity about
-      whether they are a reference, a fallback, or a work-in-progress alternative.
+      <strong>Why it's bad:</strong> Two separate blocks of commented-out code remain in production
+      code. First, the "Original config" block at lines 34–37 was one of two such blocks — the other
+      was removed in the last pass, but this one survives:
     </p>
+    <pre><span class="rm"># # Original config
+# options = {'xtol': 1e-4, 'maxiter': 100, 'disp': False}
+# xmin = 1e-6
+# xmax = 1.0</span></pre>
     <p>
-      <strong>Fix:</strong> Delete all four commented-out loop blocks. If the index convention
-      (e.g. <code>upper = -a * lv[1:]**2</code> corresponds to <code>upper[j] = -a * lv[j+1]**2</code>)
-      needs clarification for a first-time reader, a single one-line comment per block is sufficient.
+      Second, <code>implied_vol_newton()</code> at lines 80–84 has four lines of stale exploration
+      code for conditionally returning a scalar vs. array:
+    </p>
+    <pre><span class="rm"># # if len(strike) == 1 and len(fwd_price) == 1 and len(vol) == 1: # Return a scalar if inputs are scalar
+# #     return vol[0]
+# # else:
+# #     return vol
+# return (vol.item() if vol.ndim == 0 or vol.size ==1 else vol)</span></pre>
+    <p>
+      <strong>Fix:</strong> Delete both blocks. If the "Original config" values may be needed again,
+      a code comment explaining the <em>reason</em> for the current choice is more useful than the old
+      values verbatim. The Newton scalar/array branching question is answered by always returning an
+      array — callers that need a scalar can call <code>.item()</code> themselves.
     </p>
   </div>
 
@@ -434,121 +486,114 @@ print(exp_pde_vols)</span></pre>
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title"><code>brownianbridge()</code> outer factor loop is pure Python — easily vectorized</span>
+      <span class="issue-title">Arithmetic payoff nodes repeat identical 4-method boilerplate across 4 classes (~130 lines)</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/maths/rand/pathconstruction.py · lines 43–72</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 514–619</span>
     <p>
-      <strong>Why it's bad:</strong> The function iterates <code>for d in range(n_factors)</code>
-      and runs the full midpoint-fill bridge construction for each factor column independently.
-      For a 10-asset book this is 10 Python iterations of a nested <code>while intervals</code>
-      loop. The terminal assignment and every bridge midpoint can be computed across all factors
-      simultaneously by replacing the integer index <code>d</code> with a slice <code>:</code>:
+      <strong>Why it's bad:</strong> <code>Add</code>, <code>Sub</code>, <code>Mul</code>, and
+      <code>Div</code> each implement the same four lifecycle methods
+      (<code>set_nameindexes</code>, <code>set_valuation_date</code>, <code>set_eventindexes</code>,
+      and <code>__init__</code>) with identical structure — only the operator in <code>evaluate()</code>
+      differs. A bug in one copy (e.g. a missing delegation to <code>right.set_eventindexes</code>)
+      would be silently inconsistent across the other three.
     </p>
-    <pre><span class="c"># Current — one factor column at a time:</span>
-<span class="kw">for</span> d <span class="kw">in</span> range(n_factors):
-    w[:, -<span class="fn">1</span>, d] = np.sqrt(t) * z[:, <span class="fn">0</span>, d]
-    <span class="c">...bridge fill for factor d...</span>
+    <p>
+      <strong>Fix:</strong> Extract a <code>BinaryPayoff</code> base class that handles all lifecycle
+      delegation and exposes an abstract <code>_combine(left_val, right_val)</code> method:
+    </p>
+    <pre><span class="kw">class</span> <span class="fn">BinaryPayoff</span>(Payoff):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, left, right):
+        <span class="fn">super()</span>.__init__()
+        self.left, self.right = left, right
+        self.names = list_payoff_names([left, right])
 
-<span class="c"># Vectorized — all factor columns at once:</span>
-<span class="ok">w[:, -1, :] = np.sqrt(t) * z[:, 0, :]
-...bridge fill across n_paths × n_factors simultaneously...</span></pre>
-    <p>
-      The <code>while intervals</code> loop itself is sequential (each midpoint depends on its
-      neighbours), but its body can act on the full <code>n_paths × n_factors</code> slice once
-      the outer factor loop is eliminated.
-    </p>
+    <span class="kw">def</span> <span class="fn">set_nameindexes</span>(self, names): ...   <span class="c"># delegate to both</span>
+    <span class="kw">def</span> <span class="fn">set_valuation_date</span>(self, valdate): ...  <span class="c"># delegate + gather eventdates</span>
+    <span class="kw">def</span> <span class="fn">set_eventindexes</span>(self, eventdates): ...  <span class="c"># delegate to both</span>
+
+<span class="kw">class</span> <span class="fn">Add</span>(BinaryPayoff):
+    <span class="kw">def</span> <span class="fn">evaluate</span>(self, mkt_state):
+        <span class="kw">return</span> self.left.evaluate(mkt_state) + self.right.evaluate(mkt_state)</pre>
   </div>
 
   <!-- 8 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>check_global_params()</code> not guarded for <code>params=None</code> — misleading crash</span>
+      <span class="issue-title"><code>Average</code> and <code>Variance</code> payoffs have no test coverage; known edge cases are documented but untested</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/models/tssvi1.py · line 123 &nbsp;·&nbsp; tssvi2.py · line 117</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 231–281, 434–510 &nbsp;·&nbsp; sdevpy/tests/</span>
     <p>
-      <strong>Why it's bad:</strong> <code>calculate()</code> and <code>dump_data()</code> both
-      raise a clear <code>RuntimeError</code> when <code>self.params is None</code>.
-      <code>check_params()</code> calls <code>check_global_params()</code>, which immediately
-      unpacks <code>self.params</code> without a guard. When <code>params</code> is
-      <code>None</code>, the caller gets:
-    </p>
-    <pre><span class="rm">TypeError: cannot unpack non-iterable NoneType object</span></pre>
-    <p>
-      In the normal optimiser flow <code>update_params</code> is always called first, so this
-      is not a production risk. But the inconsistency is a trap for anyone who constructs a
-      model and calls <code>check_params()</code> directly.
+      <strong>Why it's bad:</strong> Neither <code>Average</code> nor <code>Variance</code> appears
+      in any <code>test_*.py</code> file. <code>Average.__init__</code> carries the docstring note
+      <em>"ToDo: test with inception date in the past"</em> — an acknowledged gap. The critical
+      path for <code>Variance</code> (new contract, <code>start = valdate</code>) is issue&nbsp;#1
+      above and is entirely invisible to the test suite. The in-flight case (some historical fixings)
+      is exercised only through the MC smoke tests in <code>test_mc.py</code>, which do not isolate
+      the payoff lifecycle.
     </p>
     <p>
-      <strong>Fix:</strong> Add a one-line guard at the top of <code>check_global_params()</code>
-      in each model:
+      <strong>Fix:</strong> Add unit tests for <code>set_valuation_date</code> and
+      <code>set_eventindexes</code> covering: (1) all-future dates (new contract), (2) mixed
+      historical + future dates, (3) all-past dates (fully seasoned). These tests require only
+      a mock <code>get_fixings</code> and a stub <code>mkt_state</code> — no MC engine needed.
     </p>
-    <pre><span class="kw">def</span> <span class="fn">check_global_params</span>(self) -> tuple[bool, float]:
-    <span class="ok">if self.params is None:
-        return False, constants.FLOAT_INFTY</span>
-    ...</pre>
   </div>
 
   <!-- 9 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>implied_vols()</code> uses a serial Brent loop; the vectorized <code>implied_vol_newton()</code> is available but unused here</span>
+      <span class="issue-title">Stray commented-out <code>print</code> left inside <code>Mul.evaluate()</code></span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py · lines 51–60</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 578</span>
     <p>
-      <strong>Why it's bad:</strong> <code>implied_vols()</code> calls the scalar Brent solver
-      once per <code>(strike, price)</code> pair. <code>implied_vol_newton()</code> (line 63) is
-      a fully vectorized Newton–Raphson implementation that handles entire arrays in one call and
-      converges faster. Every calibration pass through <code>prepare_target_data</code> calls
-      <code>implied_vols()</code> for price-to-vol conversion, making this a serial per-option
-      bottleneck. The Brent tolerance was improved from <code>1e-4</code> to <code>1e-6</code>
-      but the structural inefficiency remains.
+      <strong>Why it's bad:</strong> A debug statement was commented out but never removed:
     </p>
+    <pre><span class="kw">def</span> <span class="fn">evaluate</span>(self, mkt_state: dict):
+    payoff = self.left.evaluate(mkt_state) * self.right.evaluate(mkt_state)
+    <span class="rm"># print(f"Mul: {payoff.shape}")</span>
+    <span class="kw">return</span> payoff</pre>
     <p>
-      <strong>Fix:</strong> Replace the loop in <code>implied_vols()</code> with a single call
-      to <code>implied_vol_newton()</code>. Retain the Brent path as a fallback for strikes
-      where Newton fails to converge (very OTM, very short-dated), as the existing docstring
-      already anticipates:
+      This is the only such leftover in the arithmetic node classes after the earlier cleanup passes;
+      it is trivially removed. The other arithmetic nodes (<code>Add</code>, <code>Sub</code>,
+      <code>Div</code>) are clean.
     </p>
-    <pre><span class="rm">ivs = [implied_vol(expiry, k, is_call, fwd, p) for k, p in zip(strike, fwd_price, strict=True)]
-return np.asarray(ivs)</span>
-<span class="ok">return implied_vol_newton(expiry, strike, is_call, fwd, fwd_price)</span></pre>
+    <p><strong>Fix:</strong> Delete the commented line.</p>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title">Arithmetic payoff classes repeat identical lifecycle boilerplate across six implementations</span>
+      <span class="issue-title"><code>implied_vol_newton()</code> has no vega guard — division by near-zero vega can diverge silently</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 514–641 (Add, Sub, Mul, Div, Neg, Basket)</span>
+    <span class="loc">sdevpy/analytics/black.py · lines 73–76</span>
     <p>
-      <strong>Why it's bad:</strong> <code>Add</code>, <code>Sub</code>, <code>Mul</code>,
-      <code>Div</code>, <code>Neg</code>, and <code>Basket</code> each implement
-      <code>set_nameindexes</code>, <code>set_valuation_date</code>, and
-      <code>set_eventindexes</code> with nearly identical bodies: iterate over children, delegate
-      the same method, then collect event dates via <code>list_payoff_eventdates</code>.
-      The pattern repeats ~18 times across ~130 lines. Adding a new binary combinator (e.g.
-      <code>Pow</code>) requires copying all four methods verbatim. Any future lifecycle change
-      (a new hook) must be applied in every class.
+      <strong>Why it's bad:</strong> The Newton loop computes <code>vol -= diff / vega</code> where
+      <code>vega = fwd * norm.pdf(d1) * sqrt_t</code>. For very deep in-the-money or out-of-the-money
+      options, <code>norm.pdf(d1)</code> underflows to zero and the Newton step overflows to
+      <code>±inf</code>. The clamp <code>np.maximum(vol, 1e-8)</code> on the next line saves negative
+      vols but not <code>+inf</code>, which propagates silently into downstream pricing. The returned
+      array can contain <code>inf</code> with no warning.
     </p>
+    <pre><span class="rm">vol -= diff / vega</span>
+<span class="ok">step = np.where(vega > 1e-12, diff / vega, 0.0)  # skip near-zero-vega points
+vol -= step</span></pre>
     <p>
-      <strong>Fix:</strong> Introduce a <code>BinaryOp(Payoff)</code> base class that holds
-      <code>self.left</code> / <code>self.right</code> and implements the three shared lifecycle
-      methods generically. <code>Add</code>, <code>Sub</code>, <code>Mul</code>, and
-      <code>Div</code> then only need to override <code>evaluate()</code>. A parallel
-      <code>UnaryOp</code> handles <code>Neg</code> and <code>Abs</code>.
-      This collapses ~130 lines of boilerplate to ~30.
+      Points skipped in a given iteration are re-evaluated on the next iteration; in practice they
+      converge once the vol estimate moves to a more sensible region. Alternatively, add a post-loop
+      sanity check: <code>vol = np.where(np.isfinite(vol), vol, np.nan)</code> and raise if any
+      NaNs remain.
     </p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #10 &nbsp;·&nbsp; 2026-06-06 (full scan)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #11 &nbsp;·&nbsp; 2026-06-06 (full scan)
   </footer>
 </div>
 </body>
