@@ -48,7 +48,6 @@ class ThetaScheme(PdeScheme):
 
         # Calculate result vector using previous probabilities
         lv = self.local_vol.value(ts, x) # Called twice in consecutive steps
-        # print(f"ts={ts}, lv={lv}")
         one_m_theta_dt_2 = self.one_m_theta * dt / 2.0
         y = np.zeros(n_x)
 
@@ -56,15 +55,6 @@ class ThetaScheme(PdeScheme):
         y = (1.0 - one_m_theta_dt_2 * b * lv**2) * p
         y[:-1] += one_m_theta_dt_2 * a * lv[1:]**2 * p[1:]
         y[1:] += one_m_theta_dt_2 * c * lv[:-1]**2 * p[:-1]
-
-        # # Original
-        # for j in range(n_x):
-        #     p_tmp = (1.0 - one_m_theta_dt_2 * b * lv[j]**2) * p[j]
-        #     if j < n_x - 1: # Beyond that the probability is 0
-        #         p_tmp += one_m_theta_dt_2 * a * lv[j + 1]**2 * p[j + 1]
-        #     if j > 0: # Before that the probability is 0
-        #         p_tmp += one_m_theta_dt_2 * c * lv[j - 1]**2 * p[j - 1]
-        #     y[j] = p_tmp
 
         # Calculate band vectors for tridiagonal system
         # lv = self.local_vol.value(te, x) # Use only the one at ts for lower_bound LV
@@ -77,14 +67,6 @@ class ThetaScheme(PdeScheme):
         main = 1.0 + theta_dt_2 * b * lv**2
         upper = -theta_dt_2 * a * lv[1:]**2
         lower = -theta_dt_2 * c * lv[:-1]**2
-
-        # # Original
-        # for j in range(n_x):
-        #     main[j] = (1.0 + theta_dt_2 * b * lv[j]**2)
-        #     if j < n_x - 1:
-        #         upper[j] = -theta_dt_2 * a * lv[j + 1]**2
-        #     if j > 0:
-        #         lower[j - 1] = -theta_dt_2 * c * lv[j - 1]**2
 
         # Solve tridiagonal system
         p_new = tridiag.solve(upper, main, lower, y)
@@ -104,7 +86,6 @@ class ImplicitScheme(PdeScheme):
         c = dt / 2.0 * (1.0 / dx**2 - 0.5 / dx)
 
         lv = self.local_vol.value(ts, x) # Use the one at ts for lower_bound LV
-        # print(f"ts={ts}, lv={lv}")
         # lv = self.local_vol.value(te, x) # Original
         upper = np.zeros(n_x - 1)
         main = np.zeros(n_x)
@@ -114,14 +95,6 @@ class ImplicitScheme(PdeScheme):
         main = 1.0 + b * lv**2
         upper = -a * lv[1:]**2
         lower = -c * lv[:-1]**2
-
-        # # Original
-        # for j in range(n_x):
-        #     main[j] = (1.0 + b * lv[j]**2)
-        #     if j < n_x - 1:
-        #         upper[j] = -a * lv[j + 1]**2
-        #     if j > 0:
-        #         lower[j - 1] = -c * lv[j - 1]**2
 
         # Solve tridiagonal system
         p_new = tridiag.solve(upper, main, lower, p)
@@ -147,15 +120,6 @@ class ExplicitScheme(PdeScheme):
         y = (1.0 - b * lv**2) * p
         y[:-1] += a * lv[1:]**2 * p[1:]
         y[1:] += c * lv[:-1]**2 * p[:-1]
-
-        # # Original
-        # for j in range(n_x):
-        #     p_tmp = (1.0 - b * lv[j]**2) * p[j]
-        #     if j < n_x - 1: # Beyond that the probability is 0
-        #         p_tmp += a * lv[j + 1]**2 * p[j + 1]
-        #     if j > 0: # Before that the probability is 0
-        #         p_tmp += c * lv[j - 1]**2 * p[j - 1]
-        #     y[j] = p_tmp
 
         return y
 

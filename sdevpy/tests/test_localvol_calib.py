@@ -46,7 +46,7 @@ def test_dupire_impliedvol():
     """ Check Dupire formula by implied vol method """
     x = np.asarray([0.9, 1.0, 1.1])
     test = dupire_formula(make_tssvi1(), ts=0.25, te=1.0, x=x)
-    print(test)
+    # print(test)
     ref = np.asarray([0.37100141, 0.24239379, 0.20644008])
     # ref = np.asarray([0.36949807, 0.2413907, 0.20621366])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
@@ -124,22 +124,6 @@ def test_lv_calib_black():
         fwd_vol2 = (ivole**2 * te - ivols**2 * ts) / (te - ts)
         calib_lvols.append(np.sqrt(np.maximum(fwd_vol2, 0.0)))
 
-    # # Create sampling grid
-    # print(lv.t_grid)
-    # print(lv.vol_grid)
-
-    # sample_t = [0.0]
-    # sample_t.append(calib_times[0] / 2.0)
-    # sample_t.append(calib_times[0])
-    # sample_t.append((calib_times[1] + calib_times[0]) / 2.0)
-    # sample_t.append(calib_times[1])
-    # sample_t.append((calib_times[2] + calib_times[1]) / 2.0)
-    # sample_t.append(calib_times[2])
-    # sample_t.append(calib_times[2] + 1.0)
-
-    # for t in sample_t:
-    #     print(f"{t}: {lv.value(t, [0.0])}")
-
     assert np.allclose(lv.t_grid, calib_times, rtol=0.0, atol=1e-8)
     assert np.allclose(lv.vol_grid, calib_lvols, rtol=0.0, atol=1e-8)
 
@@ -173,7 +157,6 @@ def test_calibrate_lv_bysections():
     calib_config['force_restart'] = True
     result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, calib_config, calc_pde_vols=True)
     lv, iv_data, pde_vols = result['lv'], result['iv_data'], result['pde_vols']
-    # iv_data, pde_vols = result['iv_data'], result['pde_vols']
 
     # Check output consistency
     n_expiries = len(iv_data.expiries) # 6 for ABC 2025-12-15
@@ -185,8 +168,6 @@ def test_calibrate_lv_bysections():
     # Check accuracy
     for mkt_vols, exp_pde_vols in zip(iv_data.vols, pde_vols, strict=True):
         assert all(v > 0.0 for v in exp_pde_vols)
-        print(mkt_vols)
-        print(exp_pde_vols)
         assert metrics.rmse(mkt_vols, exp_pde_vols) < 0.02
 
 
