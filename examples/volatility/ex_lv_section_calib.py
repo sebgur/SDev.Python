@@ -1,10 +1,8 @@
-from pathlib import Path
 import numpy as np
 import datetime as dt
 import matplotlib.pyplot as plt
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
-from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.maths import metrics
@@ -12,10 +10,12 @@ from sdevpy import logger
 logger.configure(sdevpy_level='info')
 
 
+# Choose underlying and date
 n_digits = 6
 np.set_printoptions(suppress=True, precision=n_digits)
-name = "ABC"
-valdate = dt.datetime(2025, 12, 15)
+name, valdate = "ABC", dt.datetime(2025, 12, 15)
+
+# Choose model
 # model_name = 'VSVI'
 model_name = 'BiExp'
 
@@ -30,7 +30,7 @@ calib_result = calibrate_lv_bysections(valdate, name, config, calc_pde_vols=True
 lv = calib_result['lv']
 
 # Dump LV result to file
-out_file = lvf.data_folder(name, valdate, config['model_name'])
+out_file = lvf.data_file(name, valdate, config['model_name'])
 print(f"Dumping LV result to file: {out_file}")
 lv.dump(out_file)
 

@@ -9,6 +9,8 @@ from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 from sdevpy.volatility.impliedvol import impliedvol
 from sdevpy.utilities import timegrids
+from sdevpy import logger
+logger.configure(sdevpy_level='info')
 
 
 # Choose underlying and date
