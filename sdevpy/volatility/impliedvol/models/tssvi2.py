@@ -113,6 +113,9 @@ class TsSvi2(ParametricImpliedVol):
 
     def check_global_params(self) -> tuple[bool, float]:
         """ Check validity of the global parameters """
+        if self.params is None:
+            return False, constants.FLOAT_INFTY
+
         # Get parameters
         (v0, vinf, chi, tau_v, alpha, beta, rho0, rhoinf, tau_rho, m0, minf,
          tau_m, s0, sinf, tau_s) = self.get_parameters(self.params)
