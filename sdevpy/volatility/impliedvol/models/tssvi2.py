@@ -31,6 +31,10 @@ class TsSvi2(ParametricImpliedVol):
     def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
         """ Calculate the smile parameters at given time and then calculate the Black implied vol
             using the SVI formula """
+        # Check initialization
+        if self.params is None:
+            raise RuntimeError("No parameters set in model yet: set with update_params()")
+
         # Check parameters
         is_ok, _ = self.check_global_params()
         if not is_ok:

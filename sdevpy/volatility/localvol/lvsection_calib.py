@@ -111,7 +111,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwa
             params_init = (sol if sol_as_init else lv.params(exp_idx))
 
         # Constraints
-        bounds = lv.section(exp_idx).constraints()
+        bounds = lv.section_at_index(exp_idx).constraints()
 
         # if verbose:
         log.info(f"Optimizing at expiry: {exp_idx}/{len(expiry_grid)}")
