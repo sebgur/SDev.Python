@@ -3,7 +3,7 @@ import datetime as dt
 from scipy.integrate import quad
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi
-from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder
+from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder, TsIvCalibrator
 from sdevpy.volatility.impliedvol.impliedvol_factory import get_impliedvol
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
@@ -11,10 +11,16 @@ from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
+from sdevpy.market import eqvolsurface as vsurf
+from sdevpy.market.eqforward import get_forward_curves
 
 
 # n_mix=1, flat vol term structure: beta=1, a=b=0.2, c=0, d=1 → stdev(t=1)=0.2
 _LOGMIX_PARAMS_1 = [1.0, 0.2, 0.2, 0.0, 1.0]
+
+_CALIB_NAME   = "ABC"
+_CALIB_DATE   = dt.datetime(2025, 12, 15)
+_CALIB_CONFIG = {'optimizer': 'SLSQP', 'tol': 1e-6}
 
 
 def make_logmix1():
@@ -235,6 +241,28 @@ def test_numerical_impliedvol_calculate_call_put_parity():
         # print(calls[i] - puts[i])
         # print(fwd - k)
         assert np.isclose(calls[i] - puts[i], fwd - k, atol=0.2)
+
+
+def test_tssvi1_calibrate():
+    """Full round-trip: load market data → calibrate → check RMSE and validity."""
+    fwd_curve = get_forward_curves([_CALIB_NAME], _CALIB_DATE)[0]
+    option_data = vsurf.eqvolsurfacedata_from_file(vsurf.data_file(_CALIB_NAME, _CALIB_DATE))
+    mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
+
+    model = TsSvi1()
+    calibrator = TsIvCalibrator(model, _CALIB_CONFIG)
+    calibrator.calibrate(mkt_data)
+
+    # Model must be set at the optimum after calibrate()
+    assert model.params is not None
+
+    # Cross-strike RMSE must be under 50 bps
+    assert calibrator.result.fun < 0.005
+
+    # All model vols must be finite and positive at the calibrated params
+    vols = model.calculate(calibrator.times, calibrator.strikes, True, calibrator.fwds)
+    assert np.all(np.isfinite(vols))
+    assert np.all(vols > 0)
 
 
 if __name__ == "__main__":

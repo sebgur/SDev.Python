@@ -4,14 +4,12 @@ from scipy.stats import norm
 from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
-from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol, DFLT_PDE_CONFIG
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
 from sdevpy.maths import metrics
 from sdevpy.analytics import black
-from sdevpy.montecarlo import mcpricer as mc
 
 
 #################### TODO ###########################################

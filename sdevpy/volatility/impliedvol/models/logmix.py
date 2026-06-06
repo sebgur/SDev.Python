@@ -578,33 +578,33 @@ if __name__ == "__main__":
     lv = model.local_vol(t, x)
     print(lv)
 
-    # # Calibrate model
-    # calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
-    # calibrator.calibrate(mkt_data)
-    # model.dump(data_file(name, valdate, 'LogMix'))
+    # Calibrate model
+    calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
+    calibrator.calibrate(mkt_data)
+    model.dump(data_file(name, valdate, 'LogMix'))
 
-    # # Estimate model on points and calculate RMSE, plot comparison
-    # n_rows, n_cols = 3, 2
-    # fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
-    # for i in range(n_rows):
-    #     for j in range(n_cols):
-    #         ax = axes[i, j]
-    #         exp_idx = n_cols * i + j
-    #         expiry = timegrids.model_time(valdate, expiries[exp_idx])
-    #         fwd = fwds[exp_idx]
-    #         strikes = strike_surface[exp_idx]
-    #         min_k, max_k = strikes[0], strikes[-1]
-    #         m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
-    #         m_vols = model.black_volatility(expiry, m_strikes, fwd)
-    #         ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
-    #         ax.plot(m_strikes, m_vols, label="model", color='green')
-    #         model_vols = model.black_volatility(expiry, strikes, fwd)
-    #         vol_rmse = rmse(vol_surface[exp_idx], model_vols)
-    #         ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
-    #         ax.set_xlabel('strike')
-    #         ax.set_ylabel('vol')
-    #         ax.legend()
+    # Estimate model on points and calculate RMSE, plot comparison
+    n_rows, n_cols = 3, 2
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            ax = axes[i, j]
+            exp_idx = n_cols * i + j
+            expiry = timegrids.model_time(valdate, expiries[exp_idx])
+            fwd = fwds[exp_idx]
+            strikes = strike_surface[exp_idx]
+            min_k, max_k = strikes[0], strikes[-1]
+            m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
+            m_vols = model.black_volatility(expiry, m_strikes, fwd)
+            ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
+            ax.plot(m_strikes, m_vols, label="model", color='green')
+            model_vols = model.black_volatility(expiry, strikes, fwd)
+            vol_rmse = rmse(vol_surface[exp_idx], model_vols)
+            ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
+            ax.set_xlabel('strike')
+            ax.set_ylabel('vol')
+            ax.legend()
 
-    # fig.suptitle('Option vols, Model vs Market', fontsize=16, fontweight='bold')
-    # plt.tight_layout()
-    # plt.show()
+    fig.suptitle('Option vols, Model vs Market', fontsize=16, fontweight='bold')
+    plt.tight_layout()
+    plt.show()

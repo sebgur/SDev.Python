@@ -68,7 +68,8 @@ def svi_formula(t: float, log_x: npt.ArrayLike, params: list[float]) -> npt.Arra
     return svi(t, log_x, *params)
 
 
-def taylor_dlog_x(t: float, log_x: npt.ArrayLike, params: list[float]) -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
+def taylor_dlog_x(t: float, log_x: npt.ArrayLike, params: list[float]
+                  ) -> tuple[npt.ArrayLike, npt.ArrayLike, npt.ArrayLike]:
     """ Analytical differentiation along the log-moneyness """
     # Retrieve parameters
     if len(params) != 5:

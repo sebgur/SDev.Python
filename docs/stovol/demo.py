@@ -36,9 +36,9 @@ def banner(s):
     print("\n" + "=" * 70 + f"\n{s}\n" + "=" * 70)
 
 
-def new_solver(L_func=None):
+def new_solver(l_func=None):
     return SLVPdeSolver(r=r, kappa=kappa, theta=theta, xi=xi, rho=rho,
-                        L_func=L_func)
+                        l_func=l_func)
 
 
 # 1. Vanilla check against closed-form Heston
@@ -87,19 +87,19 @@ print("(MC monitors barriers discretely => upward bias relative to "
 
 # 3. SLV: turn on a non-trivial leverage L(S)
 banner("3. SLV: non-trivial leverage L(S)")
-def L_func(S, t):
-    return 1.0 + 0.20 * (S0 / np.maximum(S, 1e-8) - 1.0)
+def l_func(s, t):
+    return 1.0 + 0.20 * (S0 / np.maximum(s, 1e-8) - 1.0)
 
-slv_call, _ = price_vanilla(new_solver(L_func), S0=S0, K=K_van, T=T_van,
+slv_call, _ = price_vanilla(new_solver(l_func), S0=S0, K=K_van, T=T_van,
                             N_t=80, v0=v0, option_type='call',
                             N_S=120, N_v=40)
-slv_put,  _ = price_vanilla(new_solver(L_func), S0=S0, K=K_van, T=T_van,
+slv_put,  _ = price_vanilla(new_solver(l_func), S0=S0, K=K_van, T=T_van,
                             N_t=80, v0=v0, option_type='put',
                             N_S=120, N_v=40)
 print(f"SLV ATM call = {slv_call:.5f}    (Heston {pde_call:.5f})")
 print(f"SLV ATM put  = {slv_put :.5f}    (Heston {pde_put :.5f})")
 
-slv_dnt, _ = price_dnt(new_solver(L_func), S0=S0,
+slv_dnt, _ = price_dnt(new_solver(l_func), S0=S0,
                        B_low=B_low, B_up=B_up,
                        T=T_dnt, N_t=200, v0=v0, rebate=1.0,
                        N_S=200, N_v=40)
@@ -108,7 +108,7 @@ print(f"SLV DNT      = {slv_dnt:.5f}    (Heston {pde_dnt:.5f})")
 print("Running SLV MC...")
 mc_slv_price, mc_slv_se = mc_dnt(S0, B_low, B_up, T_dnt, r, kappa, theta, xi,
                                  rho, v0, rebate=1.0,
-                                 n_paths=200_000, n_steps=400, L_func=L_func)
+                                 n_paths=200_000, n_steps=400, l_func=l_func)
 print(f"SLV DNT MC   = {mc_slv_price:.5f}  (SE = {mc_slv_se:.5f})")
 
 print("\nDone.")
