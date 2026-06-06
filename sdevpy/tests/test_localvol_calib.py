@@ -169,7 +169,9 @@ def test_lv_calib_black_constant():
 
 def test_calibrate_lv_bysections():
     """ Calibrated LV must reproduce market vols within 200 bps RMSE at each expiry """
-    result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, CALIB_CONFIG, calc_pde_vols=True)
+    calib_config = CALIB_CONFIG.copy()
+    calib_config['force_restart'] = True
+    result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, calib_config, calc_pde_vols=True)
     lv, iv_data, pde_vols = result['lv'], result['iv_data'], result['pde_vols']
     # iv_data, pde_vols = result['iv_data'], result['pde_vols']
 
@@ -183,6 +185,8 @@ def test_calibrate_lv_bysections():
     # Check accuracy
     for mkt_vols, exp_pde_vols in zip(iv_data.vols, pde_vols, strict=True):
         assert all(v > 0.0 for v in exp_pde_vols)
+        print(mkt_vols)
+        print(exp_pde_vols)
         assert metrics.rmse(mkt_vols, exp_pde_vols) < 0.02
 
 
@@ -210,5 +214,6 @@ def test_calibrate_lv_bysections_least_squares():
 
 if __name__ == "__main__":
     print("Hello")
+    test_calibrate_lv_bysections()
     # test_calibrate_lv_bysections_least_squares()
-    test_dupire_impliedvol()
+    # test_dupire_impliedvol()
