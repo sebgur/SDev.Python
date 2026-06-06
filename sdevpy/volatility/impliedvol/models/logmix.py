@@ -45,14 +45,7 @@ def logmix_f(t: float, beta: float) -> float:
     if abs(beta) < 1e-10:
         raise ValueError(f"beta must be non-zero in logmix_f, got {beta}")
 
-
     tmp = 1.0 + t / beta
-    ret = 1.0 - 2.0 / (1.0 + tmp * tmp)
-    # print("-" * 10)
-    # print(t)
-    # print(beta)
-    # print(tmp)
-    # print(ret)
     return 1.0 - 2.0 / (1.0 + tmp * tmp)
 
 
@@ -79,21 +72,6 @@ class LogMixMean(TimeParam):
     def diff(self, t: float) -> float:
         """ Differential of the LogMixMean parameter """
         return self.mu0 * logmix_df(t, self.beta)
-
-
-# class LogMixStrike(TimeParam):
-#     """ Strike (shift) parameter of the LogMix model """
-#     def __init__(self, nu0: float, beta: float):
-#         super().__init__()
-#         self.nu0, self.beta = nu0, beta
-
-#     def value(self, t: float) -> float:
-#         """ Value of the LogMixStrike parameter """
-#         return self.nu0 * logmix_f(t, self.beta)
-
-#     def diff(self, t: float) -> float:
-#         """ Differential of the LogMixStrike parameter """
-#         return self.nu0 * logmix_df(t, self.beta)
 
 
 class LogMixVar(TimeParam):
@@ -143,14 +121,6 @@ class LogMixWeight(TimeParam):
         n = self.norm.value(t)
         n_diff = self.norm.diff(t)
         return self.diff_given_norm(t, n, n_diff)
-        # if t <= 0.0:
-        #     raise ValueError("LogMixWeight.diff not defined at t <= 0")
-
-        # tmp1 = logmix_f(t, self.beta[self.component])
-        # tmp2 = self.norm.value(t)
-        # tmp3 = tmp1 * tmp2
-        # w = self.w0[self.component]
-        # return -w / (tmp3 * tmp3) * (tmp1 * self.norm.diff(t) + logmix_df(t, self.beta[self.component]) * tmp2)
 
     def diff_given_norm(self, t: float, n: float, n_diff: float) -> float:
         """ Assume the norm and its differential are given from outside (for performance reasons) """
@@ -199,7 +169,6 @@ class LogMix(ParametricImpliedVol):
         self.lv_method = LvMethod.Analytical
         # self.lv_method = LvMethod.PDF
         self.check_fwd_var = kwargs.get('check_fwd_var', False)
-        # self.shift_mean = kwargs.get('shift_mean', True)
         self.calculable_at_zero = False
         self.n_params = 5 + 7 * (self.n_mix - 1)
         self.verbose = kwargs.get('verbose', False)
@@ -222,10 +191,8 @@ class LogMix(ParametricImpliedVol):
         for i in range(self.n_mix):
             w = self.weight[i].value(t)
             f = fwd * (1.0 + self.mean[i].value(t))
-            k = strike
-            # k = strike * (1.0 + self.strike[i].value(t))
             stdev = np.sqrt(self.var[i].value(t))
-            total += w * self.black(k, is_call, f, stdev)
+            total += w * self.black(strike, is_call, f, stdev)
 
         return total
 
@@ -242,11 +209,9 @@ class LogMix(ParametricImpliedVol):
             w = self.weight[i].value(t)
             stdev = np.sqrt(self.var[i].value(t))
             mu = 1.0 + self.mean[i].value(t)
-            nu = 1.0
-            # nu = 1.0 + self.strike[i].value(t)
-            d_minus = np.log(fwd * mu / strike / nu) / stdev - 0.5 * stdev
+            d_minus = np.log(fwd * mu / strike) / stdev - 0.5 * stdev
             delta_n_minus = np.exp(-0.5 * d_minus * d_minus) / constants.C_SQRT2PI
-            prob += w * delta_n_minus / stdev * nu
+            prob += w * delta_n_minus / stdev
 
         return prob / strike
 
@@ -263,10 +228,8 @@ class LogMix(ParametricImpliedVol):
             w = self.weight[i].value(t)
             stdev = np.sqrt(self.var[i].value(t))
             mu = 1.0 + self.mean[i].value(t)
-            nu = 1.0
-            # nu = 1.0 + self.strike[i].value(t)
-            d_minus = np.log(fwd * mu / strike / nu) / stdev - 0.5 * stdev
-            prob += w * norm.cdf(-d_minus) * nu
+            d_minus = np.log(fwd * mu / strike) / stdev - 0.5 * stdev
+            prob += w * norm.cdf(-d_minus)
 
         return prob
 
@@ -299,12 +262,6 @@ class LogMix(ParametricImpliedVol):
             self.weight.append(LogMixWeight(i, w, beta))
             self.var.append(LogMixVar(a[i], b[i], c[i], d[i]))
             self.mean.append(LogMixMean(shift[i], beta[i]))
-            # if self.shift_mean:
-                # self.mean.append(LogMixMean(shift[i], beta[i]))
-            #     self.strike.append(LogMixStrike(0.0, 1.0))
-            # else:
-            #     self.mean.append(LogMixMean(0.0, 1.0))
-            #     self.strike.append(LogMixStrike(shift[i], beta[i]))
 
     def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters """
@@ -371,7 +328,6 @@ class LogMix(ParametricImpliedVol):
             m_diff.append(m_diff_)
             v.append(v_)
             v_diff.append(v_diff_)
-            # taylor_params.append({'w': w, 'w_diff': w_diff, 'm': m, 'm_diff': m_diff, 'v': v, 'v_diff': v_diff})
 
         return w, w_diff, m, m_diff, v, v_diff
 
@@ -382,9 +338,6 @@ class LogMix(ParametricImpliedVol):
         # then an aggregation of these components.
 
         t_esp = 5.0 / 365.0
-        # if t < t_esp:
-        #     return self.local_vol(t_esp, x)
-
         # Parameter values and differentials
         ws, ms, vs = [], [], []
         we, me, ve = [], [], []
@@ -400,7 +353,6 @@ class LogMix(ParametricImpliedVol):
             we.append(self.weight[i].value(te))
             me.append(self.mean[i].value(te))
             ve.append(self.var[i].value(te))
-
 
         # Components
         lambda_p, lambda_m, ndp, ndm = [], [], [], []
