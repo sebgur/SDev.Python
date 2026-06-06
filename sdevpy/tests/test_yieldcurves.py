@@ -27,7 +27,7 @@ def test_yieldcurve_creation():
                   dt.datetime(2046, 2, 15)]
     test = curve.discount(test_dates)
     ref = np.asarray([0.99961651, 0.99573301, 0.98019867, 0.57672856])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_yieldcurve_reading():
@@ -46,7 +46,7 @@ def test_yieldcurve_reading():
     test = -np.log(dfs) / ztimes
     ref = np.asarray([0.00589787, 0.01375476, 0.01850221, 0.02168115, 0.02991536])
     # print(test)
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_yieldcurve_unsorted():
@@ -75,7 +75,7 @@ def test_yieldcurve_unsorted():
     test_dates = [dt.datetime(2026, 3, 1), dt.datetime(2026, 6, 15), dt.datetime(2027, 2, 15),
                   dt.datetime(2046, 2, 15)]
 
-    assert np.allclose(curve_direct.discount(test_dates), curve_reverse.discount(test_dates))
+    assert np.allclose(curve_direct.discount(test_dates), curve_reverse.discount(test_dates), rtol=0.0, atol=1e-8)
 
 
 if __name__ == "__main__":

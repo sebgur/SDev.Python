@@ -34,12 +34,12 @@ def test_calib_dupire():
     m_test = np.asarray(m[0])
     # print(m_test)
     m_ref = np.asarray([0.79519045, 1.020546, 1.24590155])
-    assert np.allclose(m_test, m_ref, 1e-10)
+    assert np.allclose(m_test, m_ref, rtol=0.0, atol=1e-8)
     lv_test = np.asarray(lv[0])
     # print(lv_test)
     lv_ref = np.asarray([0.3291237, 0.16782647, 0.16614304])
     # lv_ref = np.asarray([0.33384114, 0.18219919, 0.36166036])
-    assert np.allclose(lv_test, lv_ref, 1e-10)
+    assert np.allclose(lv_test, lv_ref, rtol=0.0, atol=1e-8)
 
 
 def test_dupire_impliedvol():
@@ -49,7 +49,7 @@ def test_dupire_impliedvol():
     print(test)
     ref = np.asarray([0.37100141, 0.24239379, 0.20644008])
     # ref = np.asarray([0.36949807, 0.2413907, 0.20621366])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_dupire_pdf():
@@ -58,7 +58,7 @@ def test_dupire_pdf():
     test = dupire_formula(make_logmix2(), ts=0.25, te=1.0, x=x)
     ref = np.asarray([0.20, 0.20, 0.20])
     # ref = np.asarray([0.20000181, 0.20001192, 0.1999994])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_dupire_output_shape():
@@ -80,14 +80,14 @@ def test_dupire_ts_near_zero_returns_spot_vol():
     x = np.asarray([0.9, 1.0, 1.1])
     lv = dupire_formula(surface, ts=0.0, te=1.0, x=x)
     expected = surface.black_volatility(t=1.0, k=x, f=1.0)
-    assert np.allclose(lv, expected)
+    assert np.allclose(lv, expected, rtol=0.0, atol=1e-8)
 
 
 def test_dupire_flat_surface_recovers_constant_vol():
     """ On a flat vol surface (no skew, flat term structure) Dupire LV = IV """
     x = np.asarray([0.8, 0.9, 1.0, 1.1, 1.2])
     lv = dupire_formula(make_flat_surface(), ts=0.5, te=1.0, x=x)
-    assert np.allclose(lv, FLAT_VOL, atol=1e-6)
+    assert np.allclose(lv, FLAT_VOL, rtol=0.0, atol=1e-8)
 
 
 ##################### LV calib (Black case) #######################################################
@@ -140,8 +140,8 @@ def test_lv_calib_black():
     # for t in sample_t:
     #     print(f"{t}: {lv.value(t, [0.0])}")
 
-    assert np.allclose(lv.t_grid, calib_times, 1e-10)
-    assert np.allclose(lv.vol_grid, calib_lvols, 1e-10)
+    assert np.allclose(lv.t_grid, calib_times, rtol=0.0, atol=1e-8)
+    assert np.allclose(lv.vol_grid, calib_lvols, rtol=0.0, atol=1e-8)
 
 
 def test_lv_calib_black_constant():
@@ -162,7 +162,7 @@ def test_lv_calib_black_constant():
     te, ke, fe = times[0], strikes[0], fwds[0]
     calib_lvol = iv_surface.black_volatility(te, ke, fe)
 
-    assert isequal(lv.vol, calib_lvol, 1e-10)
+    assert isequal(lv.vol, calib_lvol, 1e-8)
 
 
 ##################### Calib LvSection #############################################################

@@ -22,7 +22,7 @@ def test_rebonato():
     """ Vectorized output matches element-wise scalar calls """
     v = np.array([0.0, 1.0, 5.0, 10.0])
     expected = np.array([rebonato(vi) for vi in v])
-    assert np.allclose(rebonato(v), expected)
+    assert np.allclose(rebonato(v), expected, rtol=0.0, atol=1e-8)
 
 
 def test_approx_cdf():

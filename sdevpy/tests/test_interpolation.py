@@ -14,7 +14,7 @@ def test_linear_interpolation():
     interp.set_data(X_GRID, Y_GRID)
     test = np.asarray(interp.value(TEST_X))
     ref = np.asarray([6, 10, 11.6, 18, 20.8, 25, 22.9, 22, 20.5])
-    assert np.allclose(test, ref, 1e-12)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-10)
 
 
 def test_cubicspline_interpolation():
@@ -23,7 +23,7 @@ def test_cubicspline_interpolation():
     interp.set_data(X_GRID, Y_GRID)
     test = interp.value(TEST_X)
     ref = np.asarray([6.15, 10, 11.5232, 18, 21.52, 25, 23.6098, 22, 22])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-10)
 
 
 def test_step_interpolation():
@@ -32,7 +32,7 @@ def test_step_interpolation():
     interp.set_data(X_GRID, Y_GRID)
     test = interp.value(TEST_X)
     ref = np.asarray([10, 10, 18, 25, 25, 22, 22, 22, 22])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-10)
 
 
 def test_bspline_interpolation():
@@ -42,7 +42,7 @@ def test_bspline_interpolation():
     test = interp.value(TEST_X)
     # test = np.asarray(interp.value(TEST_X))
     ref = np.asarray([8.4375, 10, 11.248, 18, 21.424, 25, 24.4855, 22, 20.5])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-10)
 
 
 if __name__ == "__main__":

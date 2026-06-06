@@ -119,8 +119,8 @@ def test_lv_bysections_builder_set_expiry_updates_slice_state():
 
     assert builder.exp_idx == 0
     assert builder.fwd == FWDS[0]
-    assert np.allclose(builder.strikes, STRIKES[0])
-    assert np.allclose(builder.cf_prices, make_prices()[0])
+    assert np.allclose(builder.strikes, STRIKES[0], rtol=0.0, atol=1e-8)
+    assert np.allclose(builder.cf_prices, make_prices()[0], rtol=0.0, atol=1e-8)
 
 
 def test_lv_bysections_builder_objective_feasible_params_returns_finite_nonneg():
@@ -196,7 +196,7 @@ def test_lv_bymatrix_section_consistent_with_value():
     lv = make_mlv()
     t = 0.75
     logm = np.array([-0.15, 0.0, 0.15])
-    assert np.allclose(lv.section(t).value(logm), lv.value(t, logm))
+    assert np.allclose(lv.section(t).value(logm), lv.value(t, logm), rtol=0.0, atol=1e-8)
 
 
 def test_lv_bymatrix_dump():
@@ -214,7 +214,7 @@ def test_lv_bymatrix_dump():
 
     test_vol = np.asarray(test_section['vol'])
     ref_vol = np.asarray([0.2225, 0.22, 0.21, 0.2, 0.1975])
-    assert np.allclose(test_vol, ref_vol, 1e-10)
+    assert np.allclose(test_vol, ref_vol, rtol=0.0, atol=1e-8)
 
 
 def test_lv_matrix_read():
@@ -269,7 +269,7 @@ def test_lv_by_section_values():
     # print(test2)
     ref = np.asarray([0.31997821, 0.24, 0.33999348])
     # ref = np.asarray([0.43324738, 0.34641016, 0.43324738])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_lv_sections_return_time():

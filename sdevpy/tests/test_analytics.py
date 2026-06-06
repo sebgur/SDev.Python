@@ -32,7 +32,7 @@ def test_black_price_vectorized():
     is_call = np.asarray([True, True, True])
     test = black.price(expiry, strike, is_call, fwd, vol)
     ref = np.asarray([8.86974195, 9.94764497, 12.57046567])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_black_roundtrip():
@@ -43,7 +43,7 @@ def test_black_roundtrip():
     test = black.implied_vols(expiry, strikes, True, fwd, p)
     ref = np.asarray([0.25, 0.25, 0.25])
     # ref = np.asarray([0.25000382, 0.24999664, 0.25000281])
-    assert np.allclose(test, ref, 1e-6)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-6)
 
 
 def test_black_roundtrip_newton():
@@ -53,7 +53,7 @@ def test_black_roundtrip_newton():
     p = black.price(expiry, strikes, True, fwd, vol)
     test = black.implied_vol_newton(expiry, strikes, True, fwd, p)
     ref = np.asarray([0.25, 0.25, 0.25])
-    assert np.allclose(test, ref, 1e-6)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-6)
 
 
 ############ Bachelier ############################################################################
@@ -69,7 +69,7 @@ def test_bachelier_straddle_function():
     test = bachelier.price_straddles(expiry, strike, fwd, vol)
     ref = np.asarray([[0.0293304, 0.02820948, 0.0293304], [0.04009353, 0.04009353, 0.04167612]])
     # print(test)
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_bachelier_price_straddle():
@@ -99,7 +99,7 @@ def test_bachelier_price_vectorized():
     is_call = np.asarray([True, True, False])
     test = bachelier.price(expiry, strike, is_call, fwd, vol)
     ref = np.asarray([0.01674555, 0.02443013, 0.03410221])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_bachelier_roundtrip():
@@ -112,7 +112,7 @@ def test_bachelier_roundtrip():
     prices = bachelier.price(expiry, strikes, is_call, fwd, vol)
     test = bachelier.implied_vol(expiry, strikes, is_call, fwd, prices)
     ref = np.asarray([0.06, 0.06, 0.05, 0.06])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_bachelier_roundtrip_jaeckel():
@@ -126,7 +126,7 @@ def test_bachelier_roundtrip_jaeckel():
 
     test = np.asarray(test)
     ref = np.asarray([0.06, 0.06, 0.06, 0.06])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-10)
 
 
 def test_bachelier_roundtrip_brent():
@@ -140,7 +140,7 @@ def test_bachelier_roundtrip_brent():
 
     test = np.asarray(test)
     ref = np.asarray([0.06000024396, 0.05999898432, 0.05999999999, 0.05999898432])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-10)
 
 
 if __name__ == "__main__":

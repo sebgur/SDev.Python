@@ -61,8 +61,8 @@ def test_forward_pde():
     # pde_ref = np.asarray([2.70606853, 10.6012976, 21.44167511, 60.14815888, 132.34671851, 279.04775693])
     cf_ref = np.asarray([2.70369628483, 10.60016306545, 21.43931715705, 60.14359001452, 132.344239396, 279.0267305878])
 
-    pde_ok = np.allclose(np.asarray(pde_sums), pde_ref, 1e-10)
-    cf_ok = np.allclose(np.asarray(cf_sums), cf_ref, 1e-10)
+    pde_ok = np.allclose(np.asarray(pde_sums), pde_ref, rtol=0.0, atol=1e-8)
+    cf_ok = np.allclose(np.asarray(cf_sums), cf_ref, rtol=0.0, atol=1e-8)
 
     assert pde_ok and cf_ok
 
@@ -82,8 +82,8 @@ def test_forward_pde_no_rescale_x():
     # pde_ref = np.asarray([2.67658397, 10.57688613, 21.43376434, 60.11816797, 132.3149149, 278.98433455])
     cf_ref = np.asarray([2.70369628483, 10.60016306545, 21.43931715705, 60.14359001452, 132.344239396, 279.0267305878])
 
-    pde_ok = np.allclose(np.asarray(pde_sums), pde_ref, 1e-10)
-    cf_ok = np.allclose(np.asarray(cf_sums), cf_ref, 1e-10)
+    pde_ok = np.allclose(np.asarray(pde_sums), pde_ref, rtol=0.0, atol=1e-8)
+    cf_ok = np.allclose(np.asarray(cf_sums), cf_ref, rtol=0.0, atol=1e-8)
 
     assert pde_ok and cf_ok
 
@@ -94,7 +94,7 @@ def test_forward_pde_implicit():
     # print(np.asarray(pde_sums))
     pde_ref = np.asarray([2.70421593, 10.60144917, 21.45060693, 60.15186171, 132.28941678, 278.79925438])
     # pde_ref = np.asarray([2.70813352, 10.60375539, 21.44415924, 60.13071881, 132.23445455, 278.74946682])
-    assert np.allclose(np.asarray(pde_sums), pde_ref, 1e-10)
+    assert np.allclose(np.asarray(pde_sums), pde_ref, rtol=0.0, atol=1e-8)
 
 
 def test_forward_pde_explicit():

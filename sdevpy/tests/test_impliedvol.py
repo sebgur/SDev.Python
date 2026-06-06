@@ -31,7 +31,7 @@ def test_logmix_pdf():
     strikes = np.asarray([0.03, 0.04, 0.05])
     test = model.pdf(expiry, strikes, fwd)
     ref = np.asarray([27.15024656, 49.61906844, 19.05342396])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_logmix_pdf_integrates_to_one():
@@ -75,7 +75,7 @@ def test_logmix():
     is_call = True
     test = surface.calculate(t, k, is_call, f)
     ref = np.asarray([8.09016928, 12.68788175, 16.77192795])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_logmix_from_file():
@@ -115,7 +115,7 @@ def test_tssvi2():
     test = surface.calculate(t, k, is_call, f)
     ref = np.asarray([0.28002666, 0.27620326, 0.27544121])
     # ref = np.asarray([0.41214181, 0.23553742, 0.20534387])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_tssvi1_objective():
@@ -142,7 +142,7 @@ def test_tssvi1():
     is_call = True
     test = surface.calculate(t, k, is_call, f)
     ref = np.asarray([0.28683819, 0.32803753, 0.35367168])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_svi_formula():
@@ -156,7 +156,7 @@ def test_svi_formula():
 
     test = svi.svi_formula(t, log_m, params)
     ref = np.asarray([0.49837104, 0.32015621, 0.40644314])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_biexp_formula():
@@ -167,7 +167,7 @@ def test_biexp_formula():
 
     test = biexp.biexp_formula(t, log_m, params)
     ref = np.asarray([0.29982632, 0.25, 0.27999992])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_cubicvol_formula():
@@ -178,7 +178,7 @@ def test_cubicvol_formula():
 
     test = cubicvol.cubicvol(t, log_m, atm, skew, kurt, vl, vr)
     ref = np.asarray([0.3, 0.25, 0.249886])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_vsvi_formula():
@@ -191,7 +191,7 @@ def test_vsvi_formula():
     # print(test)
     ref = np.asarray([0.28327209, 0.25, 0.27122271])
     # ref = np.asarray([0.31409145, 0.275, 0.29098655])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_sabr():
@@ -202,7 +202,7 @@ def test_sabr():
     strikes = np.asarray([0.01, 0.04, 0.06])
     test = sabr.sabr_from_dict(expiry, strikes, fwd, params)
     ref = np.asarray([0.54225604, 0.25208659, 0.22711695])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 ########### NumericalImpliedVol ###################################################################

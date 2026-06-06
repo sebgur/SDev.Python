@@ -59,7 +59,7 @@ def test_mc():
     # print(test)
     ref = np.asarray([8.91971331055, 0.0, 5.04962052174, 0.00330715322, -53.11327812897])
     # ref = np.asarray([8.811443508, 0.0, 4.90812947, 0.003307153, -53.12764205195])
-    assert np.allclose(test, ref, 1e-8)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_path_interpolation():
@@ -83,7 +83,7 @@ def test_path_interpolation():
         [[100., 10.], [98., 9.8], [90., 9.], [86., 8.6], [80., 8.], [75., 7.5]],
         [[100., 10.], [110., 11.], [150., 15.], [170., 17.], [200., 20.], [225., 22.5]],
         [[100., 10.], [94., 9.4], [70., 7.], [66., 6.6], [60., 6.], [55., 5.5]]])
-    assert np.allclose(test, ref, 1e-8)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 if __name__ == "__main__":

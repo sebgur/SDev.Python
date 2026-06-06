@@ -13,7 +13,7 @@ def test_correlations():
     c = correlations.get_correlations(names, valdate)
     ref = np.asarray([0.5, 0.1, 0.1])
     test = np.asarray([c[0, 1], c[0, 2], c[1, 2]])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_spotdata():
@@ -47,7 +47,7 @@ def test_eqforward_creation():
     test = curve.value(test_dates)
     ref = np.asarray([100.50233117, 101.4947209, 102.06711626, 112.73343447, 128.4201])
     # ref = np.asarray([100.28716535, 101.09321315, 102.21072051, 111.87417472, 128.4201])
-    assert np.allclose(test, ref, 1e-10)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
 def test_eq_option_strikes():
@@ -72,7 +72,7 @@ def test_eq_option_strikes():
                       [71.77471782, 83.53767673, 98.88130446, 117.04314454, 136.22502001],
                       [62.15139633, 77.03054626, 97.77512372, 124.10628358, 153.81753883],
                       [46.17835038, 64.83651535, 94.53027807, 137.82316066, 193.51001927]])
-    assert(np.allclose(test, ref, 1e-10))
+    assert(np.allclose(test, ref, rtol=0.0, atol=1e-8))
 
     test = vol_data.get_strikes(fwd_curve, 'relative')
     # print(test)
@@ -83,7 +83,7 @@ def test_eq_option_strikes():
                       [0.70353483, 0.81883520, 0.96923323, 1.14725535, 1.33527584],
                       [0.59714405, 0.74010135, 0.93941306, 1.19240007, 1.47786267],
                       [0.41783899, 0.58666505, 0.85534533, 1.24707553, 1.75095106]])
-    assert(np.allclose(test, ref, 1e-10))
+    assert(np.allclose(test, ref, rtol=0.0, atol=1e-8))
 
 
 if __name__ == "__main__":
