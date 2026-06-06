@@ -239,7 +239,8 @@ def test_numerical_impliedvol_calculate_call_put_parity():
 
 if __name__ == "__main__":
     print("Hello")
-    test_numerical_impliedvol_calculate_call_put_parity()
+    test_logmix_from_file()
+    # test_numerical_impliedvol_calculate_call_put_parity()
     # test_build_step_grid_short_term()
     # test_logmix_from_file()
     # test_logmix_pdf_integrates_to_one()

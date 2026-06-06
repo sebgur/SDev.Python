@@ -494,7 +494,7 @@ class LogMix(ParametricImpliedVol):
         """ Dump to dictionary """
         if self.params is None:
                 raise RuntimeError("Model has no parameters yet. Call update_params() first.")
-        return {'type': 'LogMix', 'n_mix': self.n_mix, 'params': self.params.tolist()}
+        return {'type': f'LogMix{self.n_mix}', 'params': self.params.tolist()}
 
 
 def get_logmix_parameters(n_mix: int, params: npt.ArrayLike, verbose: bool=True) -> tuple[dict, bool]:

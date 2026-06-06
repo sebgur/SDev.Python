@@ -1,98 +1,81 @@
-""" Create a number of implied volatility models and view their smiles """
+""" Calibrate a parametric implied vol model to market data. View diagnostics. """
 import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
-from sdevpy.volatility.impliedvol.models import biexp, svi, cubicvol, vsvi
+from sdevpy.maths.metrics import rmse
+from sdevpy.market import eqvolsurface as vsurf
+from sdevpy.market.eqforward import get_forward_curves
+from sdevpy.volatility.impliedvol import impliedvol_factory
+from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
+from sdevpy.volatility.impliedvol import impliedvol
+from sdevpy.utilities import timegrids
 
 
-#### Select valuation dates, terms and percentiles ####
-valdate = dt.datetime(2025, 12, 15)
-terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
-percents = [0.10, 0.25, 0.50, 0.75, 0.90]
-base_vol = 0.25
+# Choose underlying and date
+name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
+# Choose model
+model_name = 'LogMix3' # TsSvi1, TsSvi2, LogMix2, LogMix3
+dump_to_file = True
 
-## BiExp model ##
-print("Running BiExp model")
-params = [0.25, 0.30, 0.28, 1.0, 1.5, 0.0]
-x = np.linspace(-5, 5, 100)
-v = biexp.biexp(x, *params)
-plt.plot(x, v)
-plt.title('BiExp smile')
-plt.show()
+# Retrieve forward curve
+fwd_curve = get_forward_curves([name], valdate)[0]
 
-expiries, fwds, strikes, vols = biexp.generate_sample_data(valdate, terms, base_vol, percents)
+# Retrieve option data
+file = vsurf.data_file(name, valdate)
+option_data = vsurf.eqvolsurfacedata_from_file(file)
+mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
+print(f"Retrieved market data from file {file}")
+
+# Access data in object
+expiries = option_data.expiries
+fwds = fwd_curve.value(expiries)
+mkt_strikes = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
+mkt_vols = option_data.vols
+
+# Quick check of size consistency
+print(f"Number of expiries: {len(expiries)}")
+print(f"Number of forwards: {len(fwds)}")
+print(f"Number of strike sections: {len(mkt_strikes)}")
+print(f"Number of vol sections: {len(mkt_vols)}")
+for i in range(len(expiries)):
+    print(f"Expiry {i+1} number of strikes/vols: {len(mkt_strikes[i])}/{len(mkt_vols[i])}")
+
+option_data.pretty_print()
+
+# Calibrate
+iv_surface = impliedvol_factory.get_new_model(model_name)
+calibrator = TsIvCalibrator(iv_surface, {'optimizer': 'SLSQP', 'tol': 1e-6})
+calibrator.calibrate(mkt_data)
+
+# Display accuracy of the fit. Estimate model on points and calculate RMSE, plot comparison.
 n_rows, n_cols = 3, 2
 fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
 for i in range(n_rows):
     for j in range(n_cols):
         ax = axes[i, j]
         exp_idx = n_cols * i + j
-        ax.plot(strikes[exp_idx], vols[exp_idx], color='red')
-        ax.set_title(expiries[exp_idx])
+        expiry = timegrids.model_time(valdate, expiries[exp_idx])
+        fwd = fwds[exp_idx]
+        exp_strikes = mkt_strikes[exp_idx]
+        min_k, max_k = exp_strikes[0], exp_strikes[-1]
+        m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
+        m_vols = iv_surface.black_volatility(expiry, m_strikes, fwd)
+        ax.scatter(exp_strikes, mkt_vols[exp_idx], label="market", color='black')
+        ax.plot(m_strikes, m_vols, label="model", color='green')
+        model_vols = iv_surface.black_volatility(expiry, exp_strikes, fwd)
+        vol_rmse = rmse(mkt_vols[exp_idx], model_vols)
+        ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
         ax.set_xlabel('strike')
         ax.set_ylabel('vol')
+        ax.legend()
 
-fig.suptitle('BiExp Vols', fontsize=16, fontweight='bold')
+fig.suptitle('Option vols, Model vs Market', fontsize=16, fontweight='bold')
 plt.tight_layout()
 plt.show()
 
-
-## SVI model ##
-print("Running SVI model")
-# One chart example
-t = 1/365
-alnv = 0.25
-a = alnv**2 * t # a > 0
-b = 0.0 # a / np.log(2) # b > 0
-rho = 0.0 # -1 < rho < 1
-m = 0.0 # No constraints
-sigma = 0.0 # 0.5 / np.sqrt(t) # > 0
-params = [a, b, rho, m, sigma]
-
-k = np.linspace(0.2, 3.0, 100)
-x = np.log(k)
-
-vol = svi.svi_formula(t, x, params)
-plt.plot(x, vol)
-plt.title('SVI smile')
-plt.show()
-
-# Vectorization
-times = np.asarray([t])
-times = np.full_like(k, times)
-print(f"times: {times.shape}")
-params = [np.full_like(k, np.asarray([a])), np.full_like(k, np.asarray([b])), np.full_like(k, np.asarray([rho])),
-          np.full_like(k, np.asarray([m])), np.full_like(k, np.asarray([sigma]))]
-vols = svi.svi_formula(times, x, params)
-print(f"shape: {vols.shape}")
-
-
-## CubicVol model ##
-print("Running CubicVol model")
-t = 1.5
-atm, skew, kurt, vl, vr = 0.25, 0.1, 0.25, 0.30, 0.27
-
-ms = np.linspace(0.2, 4.0, 100)
-lms = np.log(ms)
-cubic_vols = cubicvol.cubicvol(t, lms, atm, skew, kurt, vl, vr)
-print(cubic_vols)
-
-
-## vSVI model ##
-print("Running vSVI model")
-expiries, fwds, strikes, vols = vsvi.generate_sample_data(valdate, terms, base_vol, percents)
-n_rows, n_cols = 3, 2
-fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
-for i in range(n_rows):
-    for j in range(n_cols):
-        ax = axes[i, j]
-        exp_idx = n_cols * i + j
-        ax.plot(strikes[exp_idx], vols[exp_idx], color='red')
-        ax.set_title(expiries[exp_idx])
-        ax.set_xlabel('strike')
-        ax.set_ylabel('vol')
-
-fig.suptitle('vSVI Vols', fontsize=16, fontweight='bold')
-plt.tight_layout()
-plt.show()
+# Dump to file
+if dump_to_file:
+    file = impliedvol.data_file(name, valdate, model_name)
+    iv_surface.dump(file)
+    print(f"Dumping model to file: {file}")
