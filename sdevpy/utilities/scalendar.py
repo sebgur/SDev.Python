@@ -205,7 +205,7 @@ def make_calendar_from_mcal(exchange, years: range):
 
 def list_mcal_calendars() -> list[str]:
     """ List all calendars available in mcal """
-    print(mcal.get_calendar_names())
+    return mcal.get_calendar_names()
 
 
 def make_schedule(calstr, start, end, term, convention=BDC.F, convert_to_datetime=False):

@@ -35,7 +35,7 @@ def pd_read_xls(xls_file: str, col_name: str, index_col: int):
     return xls.parse(col_name, index_col=index_col)
 
 
-def print_python_bit_version() -> str:
+def print_python_bit_version() -> None:
     """ Prints number of bits of the installed python version (32 or 64) """
     print(struct.calcsize("P") * 8)
 

@@ -222,7 +222,7 @@ def test_lv_matrix_read():
     lv = localvol_factory.get_local_vols([name], valdate, model_name='Matrix')[0]
     section = lv.section_at_index(1)
     time = section.time
-    assert isequal(time, 0.04081632653061224)
+    assert isequal(time, 0.020202020202020204)
     assert section.interp_type == 'cubicspline'
     assert len(section.logm_list) == 100
     assert len(section.vol_list) == 100

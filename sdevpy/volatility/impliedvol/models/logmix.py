@@ -399,7 +399,6 @@ class LogMix(ParametricImpliedVol):
         s2 = s2 / (te - ts)
 
         # Calculate local vol out of components
-        print(s2)
         return np.sqrt(np.maximum(s2, 0.0))
 
     def local_vol(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
