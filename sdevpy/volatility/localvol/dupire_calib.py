@@ -62,6 +62,11 @@ def dupire_formula_single(ivsurf: ImpliedVol, ts: float, te: float, x: float) ->
 
 def dupire_formula(ivsurf: ImpliedVol, ts: float, te: float, x: npt.ArrayLike) -> npt.ArrayLike:
     """ Calculate Dupire formula on the ImpliedVol, between times ts and te, at moneyness x """
+    # In case the LV is analytical, return it immediately
+    if ivsurf.lv_method == LvMethod.Analytical:
+        return ivsurf.local_vol_step(ts, te, x)
+        # return ivsurf.local_vol(ts, x)
+
     t_threshold = 0.0001
     x_threshold = 0.00001
     iv_threshold = 0.000001

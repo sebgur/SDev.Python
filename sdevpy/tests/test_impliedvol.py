@@ -80,7 +80,7 @@ def test_logmix():
 
 def test_logmix_from_file():
     name, date = 'ABC', dt.datetime(2025, 12, 15)
-    ivol = get_impliedvol(name, date, 'LogMix')
+    ivol = get_impliedvol(name, date, 'LogMix3')
     n_mix = ivol.n_mix
     params = ivol.params
     assert n_mix == 3

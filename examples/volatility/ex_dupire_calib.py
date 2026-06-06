@@ -12,7 +12,7 @@ from sdevpy.utilities import dates as dts
 from sdevpy.utilities.algos import upper_bound
 
 
-name, valdate, model_name = "ABC", dt.datetime(2025, 12, 15), 'TsSvi1'
+name, valdate, model_name = "ABC", dt.datetime(2025, 12, 15), 'LogMix3'
 test_tenors = ['1M', '3M', '6M', '9M', '1Y', '2Y'] # Must have len = 6
 n_test_strikes = 10
 lw_p = 0.05 # Low percentile strike
@@ -38,13 +38,12 @@ for expiry, time in zip(test_expiries, test_times, strict=True):
     atm = iv_surface.black_volatility(time, fwd, fwd)
     stdev = atm * np.sqrt(time)
     exp_strikes = fwd * np.exp(-0.5 * stdev * stdev + stdev * n_quantiles)
-    call = iv_surface.forward_price(time, strikes, True, fwd)
-    put = iv_surface.forward_price(time, strikes, False, fwd)
+    call = iv_surface.forward_price(time, exp_strikes, True, fwd)
+    put = iv_surface.forward_price(time, exp_strikes, False, fwd)
     fwds.append(fwd)
     strikes.append(exp_strikes)
     cf_prices.append(call + put)
-    cf_ivs.append(iv_surface.black_volatility(time, strikes, fwd))
-
+    cf_ivs.append(iv_surface.black_volatility(time, exp_strikes, fwd))
 
 ################ Calibrate LV #####################################################################
 # Granularity of the LV matrix
@@ -70,9 +69,9 @@ lv_matrix = lv_calib['lv_matrix']
 lv = lv_calib['lv']
 
 # Dump LV result to file
-out_file = lvf.data_folder(name, valdate, 'Matrix')
-print(f"Dumping LV result to file: {out_file}")
-lv.dump(out_file)
+# out_file = lvf.data_folder(name, valdate, 'Matrix')
+# print(f"Dumping LV result to file: {out_file}")
+# lv.dump(out_file)
 
 # View the LV along the strike at several expiries
 t_idx = [upper_bound(lv_t, tp) for tp in test_times]

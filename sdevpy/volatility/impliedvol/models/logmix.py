@@ -45,7 +45,14 @@ def logmix_f(t: float, beta: float) -> float:
     if abs(beta) < 1e-10:
         raise ValueError(f"beta must be non-zero in logmix_f, got {beta}")
 
+
     tmp = 1.0 + t / beta
+    ret = 1.0 - 2.0 / (1.0 + tmp * tmp)
+    # print("-" * 10)
+    # print(t)
+    # print(beta)
+    # print(tmp)
+    # print(ret)
     return 1.0 - 2.0 / (1.0 + tmp * tmp)
 
 
@@ -74,19 +81,19 @@ class LogMixMean(TimeParam):
         return self.mu0 * logmix_df(t, self.beta)
 
 
-class LogMixStrike(TimeParam):
-    """ Strike (shift) parameter of the LogMix model """
-    def __init__(self, nu0: float, beta: float):
-        super().__init__()
-        self.nu0, self.beta = nu0, beta
+# class LogMixStrike(TimeParam):
+#     """ Strike (shift) parameter of the LogMix model """
+#     def __init__(self, nu0: float, beta: float):
+#         super().__init__()
+#         self.nu0, self.beta = nu0, beta
 
-    def value(self, t: float) -> float:
-        """ Value of the LogMixStrike parameter """
-        return self.nu0 * logmix_f(t, self.beta)
+#     def value(self, t: float) -> float:
+#         """ Value of the LogMixStrike parameter """
+#         return self.nu0 * logmix_f(t, self.beta)
 
-    def diff(self, t: float) -> float:
-        """ Differential of the LogMixStrike parameter """
-        return self.nu0 * logmix_df(t, self.beta)
+#     def diff(self, t: float) -> float:
+#         """ Differential of the LogMixStrike parameter """
+#         return self.nu0 * logmix_df(t, self.beta)
 
 
 class LogMixVar(TimeParam):
@@ -133,14 +140,28 @@ class LogMixWeight(TimeParam):
 
     def diff(self, t: float) -> float:
         """ Differential of the LogMixWeight parameter """
+        n = self.norm.value(t)
+        n_diff = self.norm.diff(t)
+        return self.diff_given_norm(t, n, n_diff)
+        # if t <= 0.0:
+        #     raise ValueError("LogMixWeight.diff not defined at t <= 0")
+
+        # tmp1 = logmix_f(t, self.beta[self.component])
+        # tmp2 = self.norm.value(t)
+        # tmp3 = tmp1 * tmp2
+        # w = self.w0[self.component]
+        # return -w / (tmp3 * tmp3) * (tmp1 * self.norm.diff(t) + logmix_df(t, self.beta[self.component]) * tmp2)
+
+    def diff_given_norm(self, t: float, n: float, n_diff: float) -> float:
+        """ Assume the norm and its differential are given from outside (for performance reasons) """
         if t <= 0.0:
             raise ValueError("LogMixWeight.diff not defined at t <= 0")
 
         tmp1 = logmix_f(t, self.beta[self.component])
-        tmp2 = self.norm.value(t)
+        tmp2 = n
         tmp3 = tmp1 * tmp2
         w = self.w0[self.component]
-        return -w / (tmp3 * tmp3) * (tmp1 * self.norm.diff(t) + logmix_df(t, self.beta[self.component]) * tmp2)
+        return -w / (tmp3 * tmp3) * (tmp1 * n_diff + logmix_df(t, self.beta[self.component]) * tmp2)
 
 
 class LogMixNorm(TimeParam):
@@ -175,7 +196,8 @@ class LogMix(ParametricImpliedVol):
         super().__init__()
         self.n_mix = n_mix
         self.calculate_type = OptionQuoteType.ForwardPremium
-        self.lv_method = LvMethod.PDF
+        self.lv_method = LvMethod.Analytical
+        # self.lv_method = LvMethod.PDF
         self.check_fwd_var = kwargs.get('check_fwd_var', False)
         # self.shift_mean = kwargs.get('shift_mean', True)
         self.calculable_at_zero = False
@@ -322,6 +344,155 @@ class LogMix(ParametricImpliedVol):
 
         return is_ok, (0.0 if is_ok else constants.FLOAT_INFTY)
 
+    def taylor_parameters(self, t: float):
+        """ Gather values and differentials of all parameter functions for later usage in Dupire's formula """
+        # Weight norm: retrieve from any weight
+        n = self.weight[0].norm.value(t)
+        n_diff = self.weight[0].norm.diff(t)
+
+        w, w_diff, m, m_diff, v, v_diff = [], [], [], [], [], []
+        for i in range(self.n_mix):
+            # Weight
+            w_ = self.weight[i].value(t)
+            w_diff_ = self.weight[i].diff_given_norm(t, n, n_diff)
+
+            # Mean
+            m_ = self.mean[i].value(t)
+            m_diff_ = self.mean[i].diff(t)
+
+            # Variance
+            v_ = self.var[i].value(t)
+            v_diff_ = self.var[i].diff(t)
+
+            # Store
+            w.append(w_)
+            w_diff.append(w_diff_)
+            m.append(m_)
+            m_diff.append(m_diff_)
+            v.append(v_)
+            v_diff.append(v_diff_)
+            # taylor_params.append({'w': w, 'w_diff': w_diff, 'm': m, 'm_diff': m_diff, 'v': v, 'v_diff': v_diff})
+
+        return w, w_diff, m, m_diff, v, v_diff
+
+    def local_vol_step(self, ts: float, te: float, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ Calculate local vol (typically by analytical formula) """
+        # Two blocks of data are necessary to put together the analytical function: the time differentials of the
+        # parameter functions and a number of standard normal PDF/CDF calls. The formula giving the local vol is
+        # then an aggregation of these components.
+
+        t_esp = 5.0 / 365.0
+        # if t < t_esp:
+        #     return self.local_vol(t_esp, x)
+
+        # Parameter values and differentials
+        ws, ms, vs = [], [], []
+        we, me, ve = [], [], []
+        for i in range(self.n_mix):
+            if ts < t_esp:
+                ws.append(self.weight[i].value(te))
+                ms.append(self.mean[i].value(te))
+            else:
+                ws.append(self.weight[i].value(ts))
+                ms.append(self.mean[i].value(ts))
+
+            vs.append(self.var[i].value(ts))
+            we.append(self.weight[i].value(te))
+            me.append(self.mean[i].value(te))
+            ve.append(self.var[i].value(te))
+
+
+        # Components
+        lambda_p, lambda_m, ndp, ndm = [], [], [], []
+        for i in range(self.n_mix):
+            # norm coefficients
+            if ts < t_esp:
+                stdev = np.sqrt(ve[i])
+                fwd_coeff = (1.0 + me[i])
+            else:
+                stdev = np.sqrt(vs[i])
+                fwd_coeff = (1.0 + ms[i])
+
+            dp = np.log(fwd_coeff / x) / stdev + 0.5 * stdev
+            dm = dp - stdev
+            ndp_ = norm.cdf(dp)
+            ndm_ = norm.cdf(dm)
+            npdp_ = norm.pdf(dp)
+            npdm_ = norm.pdf(dm)
+
+            # Lambda functions
+            wstdev = ws[i] / stdev
+            lambda_p.append(npdp_ * wstdev * fwd_coeff)
+            lambda_m.append(npdm_ * wstdev)
+
+            # N weights
+            ndp.append(ndp_)
+            ndm.append(ndm_)
+
+        # Normalize
+        sum_lambda_p = np.asarray(lambda_p).sum(axis=0)
+        sum_lambda_m = np.asarray(lambda_m).sum(axis=0)
+        lambda_p = lambda_p / sum_lambda_p
+
+        # Calculate LV terms
+        term1, term2, term3 = [], [], []
+        for i in range(self.n_mix):
+            term1.append(lambda_p[i] * (ve[i] - vs[i]))
+            term2.append(ndp[i] / sum_lambda_p * (we[i] * (1.0 + me[i]) - ws[i] * (1.0 + ms[i])))
+            term3.append(ndm[i] / sum_lambda_m * (we[i] - ws[i]))
+
+        bs = np.asarray(term1).sum(axis=0) # Black-Scholes term
+        correction = (2.0 * (np.asarray(term2) - np.asarray(term3))).sum(axis=0)
+        s2 = bs + correction
+        s2 = s2 / (te - ts)
+
+        # Calculate local vol out of components
+        print(s2)
+        return np.sqrt(np.maximum(s2, 0.0))
+
+    def local_vol(self, t: float, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ Calculate local vol (typically by analytical formula) """
+        # Two blocks of data are necessary to put together the analytical function: the time differentials of the
+        # parameter functions and a number of standard normal PDF/CDF calls. The formula giving the local vol is
+        # then an aggregation of these components.
+
+        t_esp = 5.0 / 365.0
+        if t < t_esp:
+            return self.local_vol(t_esp, x)
+
+        # Parameter values and differentials
+        w, w_diff, m, m_diff, v, v_diff = self.taylor_parameters(t)
+
+        # Components
+        a_num, a_den, b_num, b_den = [], [], [], []
+        for i in range(self.n_mix):
+            # norm coefficients
+            stdev = np.sqrt(v[i])
+            fwd_coeff = (1.0 + m[i])
+            dp = np.log(fwd_coeff / x) / stdev + 0.5 * stdev
+            dm = dp - stdev
+            ndp = norm.cdf(dp)
+            ndm = norm.cdf(dm)
+            npdp = norm.pdf(dp)
+            npdm = norm.pdf(dm)
+
+            # A and B functions
+            tmp1 = fwd_coeff * w_diff[i] + w[i] * m_diff[i]
+            tmp2 = w[i] / stdev
+            tmp3 = fwd_coeff * tmp2
+            tmp4 = tmp3 * 0.5 * v_diff[i]
+
+            a_num.append(ndp * tmp1 + npdp * tmp4)
+            a_den.append(npdp * tmp3)
+
+            b_num.append(ndm * w_diff[i])
+            b_den.append(npdm * tmp2)
+
+        # Calculate local vol out of components
+        a = np.asarray(a_num).sum(axis=0) / np.asarray(a_den).sum(axis=0)
+        b = np.asarray(b_num).sum(axis=0) / np.asarray(b_den).sum(axis=0)
+        return np.sqrt(np.maximum(2.0 * (a - b), 0.0))
+
     def bounds(self, keep_feasible: bool=False):
         """ Recommended bounds """
         lw_w0, lw_shift0, lw_beta0 = 0.0, -1.0, 0.01
@@ -448,36 +619,41 @@ if __name__ == "__main__":
 
     # Initialize model
     model = LogMix(n_mix=3)
-    # model.update_params(model.initial_point())
-    # model.check_params()
+    model.update_params(model.initial_point())
+    model.check_params()
 
-    # Calibrate model
-    calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
-    calibrator.calibrate(mkt_data)
-    model.dump(data_file(name, valdate, 'LogMix'))
+    t = 0.5
+    x = np.asarray([0.80, 0.90, 1.0, 1.1, 1.2, 1.3])
+    lv = model.local_vol(t, x)
+    print(lv)
 
-    # Estimate model on points and calculate RMSE, plot comparison
-    n_rows, n_cols = 3, 2
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
-    for i in range(n_rows):
-        for j in range(n_cols):
-            ax = axes[i, j]
-            exp_idx = n_cols * i + j
-            expiry = timegrids.model_time(valdate, expiries[exp_idx])
-            fwd = fwds[exp_idx]
-            strikes = strike_surface[exp_idx]
-            min_k, max_k = strikes[0], strikes[-1]
-            m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
-            m_vols = model.black_volatility(expiry, m_strikes, fwd)
-            ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
-            ax.plot(m_strikes, m_vols, label="model", color='green')
-            model_vols = model.black_volatility(expiry, strikes, fwd)
-            vol_rmse = rmse(vol_surface[exp_idx], model_vols)
-            ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
-            ax.set_xlabel('strike')
-            ax.set_ylabel('vol')
-            ax.legend()
+    # # Calibrate model
+    # calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
+    # calibrator.calibrate(mkt_data)
+    # model.dump(data_file(name, valdate, 'LogMix'))
 
-    fig.suptitle('Option vols, Model vs Market', fontsize=16, fontweight='bold')
-    plt.tight_layout()
-    plt.show()
+    # # Estimate model on points and calculate RMSE, plot comparison
+    # n_rows, n_cols = 3, 2
+    # fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+    # for i in range(n_rows):
+    #     for j in range(n_cols):
+    #         ax = axes[i, j]
+    #         exp_idx = n_cols * i + j
+    #         expiry = timegrids.model_time(valdate, expiries[exp_idx])
+    #         fwd = fwds[exp_idx]
+    #         strikes = strike_surface[exp_idx]
+    #         min_k, max_k = strikes[0], strikes[-1]
+    #         m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
+    #         m_vols = model.black_volatility(expiry, m_strikes, fwd)
+    #         ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
+    #         ax.plot(m_strikes, m_vols, label="model", color='green')
+    #         model_vols = model.black_volatility(expiry, strikes, fwd)
+    #         vol_rmse = rmse(vol_surface[exp_idx], model_vols)
+    #         ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
+    #         ax.set_xlabel('strike')
+    #         ax.set_ylabel('vol')
+    #         ax.legend()
+
+    # fig.suptitle('Option vols, Model vs Market', fontsize=16, fontweight='bold')
+    # plt.tight_layout()
+    # plt.show()

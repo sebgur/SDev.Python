@@ -16,6 +16,7 @@ from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 class LvMethod(Enum):
     ImpliedVol = 0
     PDF = 1
+    Analytical = 2
 
 
 class ImpliedVol(ABC):

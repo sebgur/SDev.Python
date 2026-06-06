@@ -22,9 +22,12 @@ def get_impliedvol_from_data(data: dict) -> ImpliedVol:
             params = data['params']
             ivol = TsSvi2()
             ivol.update_params(params)
-        case "logmix":
-            n_mix = data['n_mix']
-            ivol = LogMix(n_mix)
+        case "logmix2":
+            ivol = LogMix(2)
+            params = data['params']
+            ivol.update_params(params)
+        case "logmix3":
+            ivol = LogMix(3)
             params = data['params']
             ivol.update_params(params)
         case _:
