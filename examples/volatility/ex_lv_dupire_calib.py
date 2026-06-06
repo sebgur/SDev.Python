@@ -12,7 +12,10 @@ from sdevpy.utilities import dates as dts
 from sdevpy.utilities.algos import upper_bound
 
 
+# Choose underlying and date
 name, valdate, model_name = "ABC", dt.datetime(2025, 12, 15), 'LogMix3'
+
+# Choose LV diagnostic grids
 test_tenors = ['1M', '3M', '6M', '9M', '1Y', '2Y'] # Must have len = 6
 n_test_strikes = 10
 lw_p = 0.05 # Low percentile strike
@@ -69,9 +72,10 @@ lv_matrix = lv_calib['lv_matrix']
 lv = lv_calib['lv']
 
 # Dump LV result to file
-# out_file = lvf.data_folder(name, valdate, 'Matrix')
-# print(f"Dumping LV result to file: {out_file}")
-# lv.dump(out_file)
+out_file = lvf.data_file(name, valdate, 'Matrix')
+print(f"Dumping LV result to file: {out_file}")
+lv.valdate = lv.snapdate = valdate
+lv.dump(out_file)
 
 # View the LV along the strike at several expiries
 t_idx = [upper_bound(lv_t, tp) for tp in test_times]
