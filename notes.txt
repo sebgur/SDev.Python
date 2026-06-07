@@ -8,6 +8,9 @@
 
 >pytest --cov=sdevpy --cov-report=html
 
+########## Strange pip installs ####################################################################
+pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+
 ########## ToDo ###################################################################################
 # * Add 1d solving to ATM only, to do live and Vega with smile solving less often.
 # * Calibration weights based on percentiles, with possible removal of options
