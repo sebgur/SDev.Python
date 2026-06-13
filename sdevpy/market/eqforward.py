@@ -1,4 +1,4 @@
-import os, json
+import json
 import datetime as dt
 import numpy as np
 from pathlib import Path
@@ -6,21 +6,8 @@ from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
 from sdevpy.maths import interpolation as itp
 from sdevpy.market import yieldcurve as ycrv
-from sdevpy.market.spot import get_spots
-
-
-def get_forward_curves(names, valdate, **kwargs):
-    spots = get_spots(names, valdate)
-
-    fwd_curves = []
-    for name, spot in zip(names, spots, strict=True):
-        file = data_file(name, valdate, **kwargs)
-        data = eqforwarddata_from_file(file)
-        curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
-        curve.calibrate(data, spot)
-        fwd_curves.append(curve)
-
-    return fwd_curves
+# from sdevpy.market.spot import get_spots
+# from sdevpy.market.provider import MarketDataProvider
 
 
 class EqForwardData:
@@ -114,7 +101,8 @@ class EqForwardCurve:
             raise RuntimeError(f"Unknown forward interpolation variable: {self.interp_var}")
 
 
-def eqforwarddata_from_file(file):
+def eqforwarddata_from_file(file: str|Path) -> EqForwardData:
+    """ Retrieve EQ forward data from file """
     with open(file) as f:
         data = json.load(f)
 
@@ -134,20 +122,34 @@ def eqforwarddata_from_file(file):
     return data
 
 
-def data_file(name, date, **kwargs):
-    folder = kwargs.get('folder', test_data_folder())
-    name_folder = os.path.join(folder, name)
-    os.makedirs(name_folder, exist_ok=True)
-    file = os.path.join(name_folder, date.strftime(dts.DATE_FILE_FORMAT) + ".json")
-    return file
+# def get_forward_curves(names: list[str], valdate: dt.datetime,
+#                        provider: MarketDataProvider) -> list[EqForwardCurve]:
+#     """ Retrieve forward curves """
+#     spots = provider.get_spots(names, valdate)
+
+#     fwd_curves = []
+#     for name, spot in zip(names, spots, strict=True):
+#         data = provider.get_eq_forward_data(name, valdate)
+#         # file = data_file(name, valdate, folder)
+#         # data = eqforwarddata_from_file(file)
+#         curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
+#         curve.calibrate(data, spot)
+#         fwd_curves.append(curve)
+
+#     return fwd_curves
 
 
-def test_data_folder():
-    folder = Path(__file__).parent.parent.parent.resolve()
-    dataset_folder = os.path.join(folder, "datasets")
-    folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "eqforwards")
-    os.makedirs(folder, exist_ok=True)
-    return folder
+def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
+    """ Return the data file given the name, date and folder """
+    return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
+
+
+# def test_data_folder():
+#     folder = Path(__file__).parent.parent.parent.resolve()
+#     dataset_folder = os.path.join(folder, "datasets")
+#     folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "eqforwards")
+#     os.makedirs(folder, exist_ok=True)
+#     return folder
 
 
 if __name__ == "__main__":

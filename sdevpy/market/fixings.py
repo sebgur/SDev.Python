@@ -7,10 +7,10 @@ from sdevpy.utilities.tools import isiterable
 from sdevpy.maths import interpolation as itp
 
 
-def get_fixings(name: str, dates: dt.datetime|list[dt.datetime], **kwargs):
-    interpolate = kwargs.get('interpolate', False)
-    handler = fixinghandler(name, interpolate=interpolate, **kwargs)
-    return handler.value(dates)
+# def get_fixings(name: str, dates: dt.datetime|list[dt.datetime], **kwargs):
+#     interpolate = kwargs.get('interpolate', False)
+#     handler = fixinghandler(name, interpolate=interpolate, **kwargs)
+#     return handler.value(dates)
 
 
 class FixingHandler:

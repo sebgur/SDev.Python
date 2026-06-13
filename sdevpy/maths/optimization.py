@@ -4,10 +4,9 @@
 # For DE: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html
 from abc import ABC, abstractmethod
 import numpy as np
-from pathlib import Path
 import logging
 import scipy.optimize as opt
-log = logging.getLogger(Path(__file__).stem)
+log = logging.getLogger(__name__)
 
 
 SCIPY_OPTIMIZERS = ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA',

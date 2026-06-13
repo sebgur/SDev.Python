@@ -1,6 +1,7 @@
 import numpy as np
 from sdevpy.montecarlo.payoffs.basic import list_instrument_names, list_instrument_eventdates
 from sdevpy.utilities.tools import isiterable
+from sdevpy.market.provider import MarketDataProvider
 
 
 class Book:
@@ -33,11 +34,11 @@ class Book:
 
         return self.names
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
         # Set valuation date for each instrument. Among other things,
         # this sets the event dates in the instruments.
         for instr in self.instruments:
-            instr.set_valuation_date(valdate)
+            instr.set_valuation_date(valdate, md)
 
         # Gather and merge event dates from all instruments
         all_dates = list_instrument_eventdates(self.instruments)

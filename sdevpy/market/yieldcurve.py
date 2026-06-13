@@ -1,4 +1,4 @@
-import os, json
+import json
 from pathlib import Path
 import datetime as dt
 import numpy as np
@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
+from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.maths import interpolation as itp
 
 
@@ -148,15 +149,17 @@ class YieldCurveVariable(Enum):
     LOG_DISCOUNT = 2
 
 
-def get_yieldcurve(name: str, date: dt.datetime, **kwargs):
-    file = data_file(name, date, **kwargs)
+def get_yieldcurve(name: str, date: dt.datetime, folder: str) -> InterpolatedYieldCurve:
+    file = data_file(name, date, folder)
     curve = yieldcurve_from_file(file)
     return curve
 
 
-def yieldcurve_from_file(file: str):
-    with open(file) as f:
-        data = json.load(f)
+def yieldcurve_from_file(file: str|Path) -> InterpolatedYieldCurve:
+    """ Create yield curve object given file """
+    data = jsm.deserialize(file)
+    # with open(file) as f:
+    #     data = json.load(f)
 
     name = data.get('name')
     valdate = data.get('valdate')
@@ -182,20 +185,17 @@ def yieldcurve_from_file(file: str):
     return curve
 
 
-def data_file(name, date, **kwargs):
-    folder = kwargs.get('folder', test_data_folder())
-    name_folder = os.path.join(folder, name)
-    os.makedirs(name_folder, exist_ok=True)
-    file = os.path.join(name_folder, date.strftime(dts.DATE_FILE_FORMAT) + ".json")
-    return file
+def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
+    """ Return the data file given the curve name, date and folder """
+    return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
 
 
-def test_data_folder():
-    folder = Path(__file__).parent.parent.parent.resolve()
-    dataset_folder = os.path.join(folder, "datasets")
-    folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "yieldcurves")
-    os.makedirs(folder, exist_ok=True)
-    return folder
+# def test_data_folder():
+#     folder = Path(__file__).parent.parent.parent.resolve()
+#     dataset_folder = os.path.join(folder, "datasets")
+#     folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "yieldcurves")
+#     os.makedirs(folder, exist_ok=True)
+#     return folder
 
 
 if __name__ == "__main__":

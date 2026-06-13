@@ -13,7 +13,6 @@ from sdevpy.volatility.impliedvol.impliedvol import data_file
 from sdevpy.volatility.impliedvol.parametric_impliedvol import ParametricImpliedVol
 from sdevpy.volatility.impliedvol.models import svi
 from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
 from sdevpy.maths.metrics import rmse
@@ -174,6 +173,7 @@ class TsSvi2(ParametricImpliedVol):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from sdevpy.market.provider import get_forward_curves
     name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
 

@@ -8,10 +8,11 @@ from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.models.assetmodels import MultiAssetGBM
 from sdevpy.montecarlo.pathgenerator import PathGenerator
-from sdevpy.market.spot import get_spots
+from sdevpy.market.provider import MarketDataProvider
+# from sdevpy.market.spot import get_spots
 from sdevpy.market.yieldcurve import get_yieldcurve
-from sdevpy.market.eqforward import get_forward_curves
-from sdevpy.market.correlations import get_correlations
+from sdevpy.market.provider import get_forward_curves
+# from sdevpy.market.correlations import get_correlations
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
@@ -26,19 +27,20 @@ def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) 
     return disc_tgrid
 
 
-def price_book(valdate: dt.datetime, book: Book, **kwargs) -> dict:
+def price_book(valdate: dt.datetime, book: Book, md: MarketDataProvider, **kwargs) -> dict:
     """ Price book (PV) by Monte-Carlo """
     names = book.set_nameindexes()
-    book.set_valuation_date(valdate)
+    book.set_valuation_date(valdate, md)
     eventdates = book.eventdates
 
     # Retrieve modelling data
     names = book.names
-    disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
-    spot = get_spots(names, valdate)
-    fwd_curves = get_forward_curves(names, valdate)
+    disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
+    spot = md.get_spots(names, valdate)
+    # spot = get_spots(names, valdate)
+    fwd_curves = get_forward_curves(names, valdate, md)
     lvs = lvf.get_local_vols(names, valdate, **kwargs)
-    corr = get_correlations(names, valdate)
+    corr = md.get_correlations(names, valdate)
 
     # Build time grid
     disc_tgrid = build_timegrid(valdate, eventdates, McConfig(**kwargs))

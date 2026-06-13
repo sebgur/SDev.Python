@@ -15,26 +15,27 @@ from sdevpy.analytics import black
 from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.market.eqforward import get_forward_curves
+from sdevpy.market.provider import get_forward_curves, MarketDataProvider
+# from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.instruments.constants import string_to_optiontype, OptionType
 log = logging.getLogger(__name__)
 
 
-def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, **kwargs) -> dict:
+def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict,
+                            md: MarketDataProvider, **kwargs) -> dict:
     """ Calibrate InterpolatedParamLocalVol type to market data """
     # Arguments
-    # verbose = kwargs.get('verbose', False)
-    # disp_opt = kwargs.get('disp_opt', False)
     calc_pde_vols = kwargs.get('calc_pde_vols', False)
     force_restart = config.get('force_restart', False)
     model_name = config.get('model_name', 'VSVI')
 
     # Retrieve forward curve
-    fwd_curve = get_forward_curves([name], valdate)[0]
+    fwd_curve = get_forward_curves([name], valdate, md)[0]
 
     # Retrieve target market option data
-    file = vsurf.data_file(name, valdate)
-    surface_data = vsurf.eqvolsurfacedata_from_file(file)
+    surface_data = md.get_eq_vol_data(name, valdate)
+    # file = vsurf.data_file(name, valdate)
+    # surface_data = vsurf.eqvolsurfacedata_from_file(file)
     expiries = surface_data.expiries
     fwds = fwd_curve.value(expiries)
     strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')

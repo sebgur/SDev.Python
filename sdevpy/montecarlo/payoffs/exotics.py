@@ -1,9 +1,9 @@
 import numpy as np
 import datetime as dt
-from sdevpy.montecarlo.payoffs.basic import (
-    Payoff, Average, Terminal, Basket,
+from sdevpy.montecarlo.payoffs.basic import (Payoff, Average, Terminal, Basket,
     list_payoff_names, list_payoff_eventdates)
 from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_option, make_vanilla_option_payoff
+from sdevpy.market.provider import MarketDataProvider
 
 
 class WorstOfBarrier(Payoff):
@@ -39,7 +39,7 @@ class WorstOfBarrier(Payoff):
     def set_nameindexes(self, names):
         self.set_multiindexes(names)
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
         if self.expiry < valdate:
             raise ValueError("Past trade found")
 

@@ -1,5 +1,6 @@
 import datetime as dt
 import numpy as np
+from sdevpy.market.provider import MarketDataFileProvider
 from sdevpy.market import yieldcurve as ycrv
 from sdevpy.utilities import timegrids as tg
 
@@ -31,8 +32,7 @@ def test_yieldcurve_creation():
 
 
 def test_yieldcurve_reading():
-    valdate = dt.datetime(2025, 12, 15)
-    name = 'USD.SOFR.1D'
+    name, valdate = 'USD.SOFR.1D', dt.datetime(2025, 12, 15)
 
     # Test dates
     zdates = [dt.datetime(2026, 3, 12), dt.datetime(2026, 8, 15), dt.datetime(2027, 2, 15),
@@ -40,8 +40,8 @@ def test_yieldcurve_reading():
     ztimes = tg.model_time(valdate, zdates)
 
     # Read curve
-    file = ycrv.data_file(name, valdate)
-    curve = ycrv.yieldcurve_from_file(file)
+    md = MarketDataFileProvider()
+    curve = md.get_yieldcurve(name, valdate)
     dfs = curve.discount(zdates)
     test = -np.log(dfs) / ztimes
     ref = np.asarray([0.00589787, 0.01375476, 0.01850221, 0.02168115, 0.02991536])

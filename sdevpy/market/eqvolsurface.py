@@ -6,8 +6,8 @@ from pathlib import Path
 from sdevpy.utilities import dates
 from sdevpy.utilities import timegrids
 from sdevpy.analytics import black
-from sdevpy.market.eqforward import EqForwardCurve, get_forward_curves
-log = logging.getLogger(Path(__file__).stem)
+from sdevpy.market.eqforward import EqForwardCurve
+log = logging.getLogger(__name__)
 
 
 class EqVolSurfaceData:
@@ -157,26 +157,4 @@ def test_data_folder() -> str:
 
 
 if __name__ == "__main__":
-    name = "ABC"
-    valdate = dt.datetime(2025, 12, 15)
-    folder = test_data_folder()
-
-    # # Generate a sample to start from
-    # from sdevpy.models import svivol
-    # terms = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0]
-    # expiries, fwds, strike_surface, vol_surface = svivol.generate_sample_data(valdate, terms)
-    # strike_types = ['absolute' for expiry in expiries]
-    # surface_data = VolSufaceData(valdate, expiries, fwds, strike_surface, vol_surface, strike_types,
-    #                              name=name)
-    # file = data_file(folder, name, valdate)
-    # surface_data.dump(file)
-
-    # Get forward curve
-    fwd_curve = get_forward_curves([name], valdate)[0]
-
-    # Get data from existing file
-    file = data_file(name, valdate, folder=folder)
-    surface_data = eqvolsurfacedata_from_file(file)
-    print(surface_data.get_strikes(to_type='absolute'))
-    print(surface_data.get_strikes(fwd_curve=fwd_curve, to_type='relative'))
-    surface_data.pretty_print(4)
+    print("Hello")

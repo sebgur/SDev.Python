@@ -3,7 +3,8 @@ import datetime as dt
 from abc import ABC, abstractmethod
 from sdevpy.utilities.scalendar import make_schedule
 from sdevpy.utilities.tools import rand_str
-from sdevpy.market import fixings as fxgs
+from sdevpy.market.provider import MarketDataProvider
+# from sdevpy.market import fixings as fxgs
 
 
 def list_payoff_eventdates(payoffs):
@@ -81,10 +82,10 @@ class Instrument:
             for cf in leg:
                 cf.payoff.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate: dt.datetime, md: MarketDataProvider):
         for leg in self.cashflow_legs:
             for cf in leg:
-                cf.payoff.set_valuation_date(valdate)
+                cf.payoff.set_valuation_date(valdate, md)
 
     def set_eventindexes(self, eventdates):
         for leg in self.cashflow_legs:
@@ -127,7 +128,7 @@ class Payoff(ABC):
         """ No-op default: override in subclasses when needed """
         pass
 
-    def set_valuation_date(self, valdate): # noqa: B027
+    def set_valuation_date(self, valdate, md: MarketDataProvider): # noqa: B027
         """ No-op default: override in subclasses when needed """
         pass
 
@@ -215,7 +216,7 @@ class Terminal(Payoff):
         except ValueError as e:
             raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
         if self.expiry < valdate:
             raise ValueError("Past trade found")
 
@@ -254,7 +255,7 @@ class Average(Payoff):
         except ValueError as e:
             raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
         # Calculate current sum using fixings up to the day before valdate
         # For days from and including valdate, collect the date as event date
         self.eventdates = []
@@ -266,7 +267,8 @@ class Average(Payoff):
                 self.eventdates.append(date)
 
         # Fetch historical fixings
-        hist_fixings = fxgs.get_fixings(self.name, hist_fixing_dates)
+        hist_fixings = md.get_fixings(self.name, hist_fixing_dates)
+        # hist_fixings = fxgs.get_fixings(self.name, hist_fixing_dates)
 
         # Calculate historical sum up to the day before valuation
         self.current_sum = np.asarray(hist_fixings).sum()
@@ -301,9 +303,9 @@ class Max(Payoff):
         for subpayoff in self.subpayoffs:
             subpayoff.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
         for subpayoff in self.subpayoffs:
-            subpayoff.set_valuation_date(valdate)
+            subpayoff.set_valuation_date(valdate, md)
 
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates(self.subpayoffs)
@@ -333,9 +335,9 @@ class Min(Payoff):
         for subpayoff in self.subpayoffs:
             subpayoff.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
         for subpayoff in self.subpayoffs:
-            subpayoff.set_valuation_date(valdate)
+            subpayoff.set_valuation_date(valdate, md)
 
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates(self.subpayoffs)
@@ -360,8 +362,8 @@ class Abs(Payoff):
     def set_nameindexes(self, names):
         self.subpayoff.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate):
-        self.subpayoff.set_valuation_date(valdate)
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
+        self.subpayoff.set_valuation_date(valdate, md)
         self.eventdates = self.subpayoff.eventdates
 
     def set_eventindexes(self, eventdates):
@@ -388,9 +390,9 @@ class Basket(Payoff):
         for subpayoff in self.subpayoffs:
             subpayoff.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
         for subpayoff in self.subpayoffs:
-            subpayoff.set_valuation_date(valdate)
+            subpayoff.set_valuation_date(valdate, md)
 
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates(self.subpayoffs)
@@ -418,7 +420,7 @@ class WorstOf(Payoff):
     def set_nameindexes(self, names):
         self.set_multiindexes(names)
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
         if self.expiry < valdate:
             raise ValueError("Past trade found")
 
@@ -477,7 +479,7 @@ class Variance(Payoff):
             self.name_idx = None
             raise ValueError(f"Could not find name {self.name} in path names: {str(e)}") from e
 
-    def set_valuation_date(self, valdate):
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
         # Calculate current variance using fixings up to the day before valdate
         # For days from and including valdate, collect the date as event date
         self.eventdates = []
@@ -489,7 +491,8 @@ class Variance(Payoff):
                 self.eventdates.append(date)
 
         # Fetch historical fixings
-        hist_fixings = fxgs.get_fixings(self.name, hist_fixing_dates)
+        hist_fixings = md.get_fixings(self.name, hist_fixing_dates)
+        # hist_fixings = fxgs.get_fixings(self.name, hist_fixing_dates)
 
         # Calculate historical variance up to the day before valuation
         self.current_sum = 0.0
@@ -526,9 +529,9 @@ class Add(Payoff):
         self.left.set_nameindexes(names)
         self.right.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate):
-        self.left.set_valuation_date(valdate)
-        self.right.set_valuation_date(valdate)
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
+        self.left.set_valuation_date(valdate, md)
+        self.right.set_valuation_date(valdate, md)
 
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates([self.left, self.right])
@@ -553,9 +556,9 @@ class Sub(Payoff):
         self.left.set_nameindexes(names)
         self.right.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate):
-        self.left.set_valuation_date(valdate)
-        self.right.set_valuation_date(valdate)
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
+        self.left.set_valuation_date(valdate, md)
+        self.right.set_valuation_date(valdate, md)
 
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates([self.left, self.right])
@@ -581,9 +584,9 @@ class Mul(Payoff):
         self.left.set_nameindexes(names)
         self.right.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate):
-        self.left.set_valuation_date(valdate)
-        self.right.set_valuation_date(valdate)
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
+        self.left.set_valuation_date(valdate, md)
+        self.right.set_valuation_date(valdate, md)
 
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates([self.left, self.right])
@@ -607,9 +610,9 @@ class Div(Payoff):
         self.left.set_nameindexes(names)
         self.right.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate):
-        self.left.set_valuation_date(valdate)
-        self.right.set_valuation_date(valdate)
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
+        self.left.set_valuation_date(valdate, md)
+        self.right.set_valuation_date(valdate, md)
 
         # Gather event dates from subpayoofs
         self.eventdates = list_payoff_eventdates([self.left, self.right])
@@ -632,8 +635,8 @@ class Neg(Payoff):
         payoff = -self.old.evaluate(mkt_state)
         return payoff
 
-    def set_valuation_date(self, valdate):
-        self.old.set_valuation_date(valdate)
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
+        self.old.set_valuation_date(valdate, md)
         self.eventdates = self.old.eventdates
 
     def set_eventindexes(self, eventdates):

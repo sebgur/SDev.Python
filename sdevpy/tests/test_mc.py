@@ -7,6 +7,7 @@ from sdevpy.utilities import book as bk
 from sdevpy.montecarlo.mcpricer import price_book, path_interp_coeffs, interp_paths
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
+from sdevpy.market.provider import MarketDataFileProvider
 
 
 def test_mc():
@@ -53,7 +54,8 @@ def test_mc():
     lv_map = {'ABC': lv, 'KLM': lv, 'XYZ': lv}
 
     ## Price ##
-    mc_price = price_book(valdate, book, scramble=False, constr_type='brownianbridge',
+    md = MarketDataFileProvider()
+    mc_price = price_book(valdate, book, md, scramble=False, constr_type='brownianbridge',
                           rng_type='sobol', n_paths=2000, lv_map=lv_map)
     test = mc_price['pv']
     # print(test)

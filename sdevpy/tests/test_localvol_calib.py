@@ -10,6 +10,7 @@ from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
 from sdevpy.maths import metrics
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
+from sdevpy.market.provider import MarketDataFileProvider
 
 
 CALIB_VALDATE = dt.datetime(2025, 12, 15)
@@ -155,7 +156,8 @@ def test_calibrate_lv_bysections():
     """ Calibrated LV must reproduce market vols within 200 bps RMSE at each expiry """
     calib_config = CALIB_CONFIG.copy()
     calib_config['force_restart'] = True
-    result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, calib_config, calc_pde_vols=True)
+    md = MarketDataFileProvider()
+    result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, calib_config, md, calc_pde_vols=True)
     lv, iv_data, pde_vols = result['lv'], result['iv_data'], result['pde_vols']
 
     # Check output consistency
@@ -176,7 +178,8 @@ def test_calibrate_lv_bysections_least_squares():
     calib_config = CALIB_CONFIG.copy()
     calib_config['optimizer'] = 'LeastSquares'
     calib_config['model_name'] = "VSVI"
-    result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, calib_config, calc_pde_vols=True)
+    md = MarketDataFileProvider()
+    result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, calib_config, md, calc_pde_vols=True)
     lv, iv_data, pde_vols = result['lv'], result['iv_data'], result['pde_vols']
     # iv_data, pde_vols = result['iv_data'], result['pde_vols']
 

@@ -16,7 +16,6 @@ from sdevpy.volatility.impliedvol.impliedvol import LvMethod, data_file
 from sdevpy.volatility.impliedvol.parametric_impliedvol import ParametricImpliedVol
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
 from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.market.eqforward import get_forward_curves
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
 from sdevpy.maths.metrics import rmse
@@ -552,6 +551,7 @@ def get_logmix_parameters(n_mix: int, params: npt.ArrayLike, verbose: bool=True)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from sdevpy.market.eqforward import get_forward_curves
     name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
 
