@@ -10,6 +10,7 @@ from sdevpy.analytics import black
 from sdevpy.utilities import timegrids
 from sdevpy.utilities import book as bk
 from sdevpy.market import provider as mdp
+from sdevpy.pricingcontext import default_pricing_context
 
 
 #################### TODO #########################################################################
@@ -23,7 +24,7 @@ from sdevpy.market import provider as mdp
 
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
-    md = mdp.MarketDataFileProvider()
+    ctx = default_pricing_context()
 
     # Create portfolio
     book = bk.Book()
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     book.add_trades(trades)
 
     # Price book
-    mc_price = price_book(valdate, book, md, constr_type='brownianbridge', rng_type='sobol',
+    mc_price = price_book(valdate, book, ctx, constr_type='brownianbridge', rng_type='sobol',
                           n_paths=10000, n_timesteps=50)
 
     # Gather all names in the book
@@ -73,7 +74,7 @@ if __name__ == "__main__":
     print(f"Number of assets: {len(names)}")
 
     # Closed-form for vanilla
-    md = mdp.MarketDataFileProvider()
+    md = ctx.market_provider
     disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
     fwd_curves = mdp.get_eq_forward_curves(names, valdate, md)
     lvs = get_local_vols(names, valdate)

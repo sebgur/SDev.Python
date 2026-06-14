@@ -198,21 +198,10 @@ class ImpliedVol(ABC):
             return black.implied_vol(t, k + self.shift, is_call, f + self.shift, price)
 
 
-def data_file(name: str, date: dt.datetime, model_name: str, **kwargs) -> str:
+def data_file(name: str, date: dt.datetime, model_name: str, folder: str|Path) -> Path:
     """ Data file for implied vol models """
-    folder = kwargs.get('folder', test_data_folder())
-    name_folder = folder / name
-    name_folder.mkdir(parents=True, exist_ok=True)
-    filename = date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json"
-    return name_folder / filename
-
-
-def test_data_folder() -> str:
-    """ Test data folder for implied vol models """
-    path = Path(__file__).parent.parent.parent.parent / "datasets" / "impliedvol"
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json")
 
 
 if __name__ == "__main__":
-    print(test_data_folder())
+    print("Hello")

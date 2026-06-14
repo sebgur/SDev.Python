@@ -13,27 +13,27 @@ from sdevpy.market.spot import SpotData
 from sdevpy.market.eqforward import EqForwardData, EqForwardCurve
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
-from sdevpy.tests.test import test_marketdata_path
+from sdevpy.tests import testconfig
 
 
 @runtime_checkable
 class MarketDataProvider(Protocol):
-    def get_yieldcurve(self, name: str, valdate: dt.datetime) -> YieldCurve: ...
+    def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve: ...
     def get_fixings(self, name: str, dates: dt.datetime|list[dt.datetime], **kwargs) -> list[float]: ...
     def get_fixing_handler(self, name: str, **kwargs) -> FixingHandler: ...
-    def get_correlations(self, names: list[str], valdate: dt.datetime) -> np.ndarray: ...
-    def get_spot(self, name: str, valdate: dt.datetime) -> float: ...
-    def get_spots(self, names: list[str], valdate: dt.datetime) -> np.ndarray: ...
-    def get_spot_data(self, name: str, valdate: dt.datetime) -> SpotData: ...
+    def get_correlations(self, names: list[str], date: dt.datetime) -> np.ndarray: ...
+    def get_spot(self, name: str, date: dt.datetime) -> float: ...
+    def get_spots(self, names: list[str], date: dt.datetime) -> np.ndarray: ...
+    def get_spot_data(self, name: str, date: dt.datetime) -> SpotData: ...
 
-    def get_eq_forward_data(self, name: str, valdate: dt.datetime) -> EqForwardData: ...
-    def get_eq_vol_data(self, name: str, valdate: dt.datetime) -> EqVolSurfaceData: ...
+    def get_eq_forward_data(self, name: str, date: dt.datetime) -> EqForwardData: ...
+    def get_eq_vol_data(self, name: str, date: dt.datetime) -> EqVolSurfaceData: ...
 
 
 class MarketDataFileProvider:
-    """ Reads market data from JSON/CSV files on disk """
+    """ Reads market data from files on disk """
     def __init__(self, root: str|Path=None):
-        self.root = (Path(root) if root is not None else test_marketdata_path())
+        self.root = (Path(root) if root is not None else testconfig.marketdata_path())
 
     def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve:
         """ Retrieve yield curve """
@@ -52,48 +52,48 @@ class MarketDataFileProvider:
         folder = self.root / 'fixings'
         return fixings.fixinghandler(name, interpolate=interpolate, folder=folder)
 
-    def get_correlations(self, names: list[str], valdate: dt.datetime) -> np.ndarray:
+    def get_correlations(self, names: list[str], date: dt.datetime) -> np.ndarray:
         """ Retrieve correlations """
         folder = self.root / 'correlations'
-        return correlations.get_correlations(names, valdate, folder=folder)
+        return correlations.get_correlations(names, date, folder=folder)
 
-    def get_spot(self, name: str, valdate: dt.datetime) -> float:
+    def get_spot(self, name: str, date: dt.datetime) -> float:
         """ Retrieve spot """
-        return self.get_spot_data(name, valdate).value
+        return self.get_spot_data(name, date).value
 
-    def get_spots(self, names: list[str], valdate: dt.datetime) -> np.ndarray:
+    def get_spots(self, names: list[str], date: dt.datetime) -> np.ndarray:
         """ Get spot prices for specified names on given date """
-        spots = [self.get_spot(name, valdate) for name in names]
+        spots = [self.get_spot(name, date) for name in names]
         return np.asarray(spots)
 
-    def get_spot_data(self, name: str, valdate: dt.datetime) -> SpotData:
+    def get_spot_data(self, name: str, date: dt.datetime) -> SpotData:
         """ Retrieve spot data object """
         folder = self.root / 'spot'
-        file = spot_mod.data_file(name, valdate, folder=folder)
+        file = spot_mod.data_file(name, date, folder=folder)
         return spot_mod.spotdata_from_file(file)
 
-    def get_eq_forward_data(self, name: str, valdate: dt.datetime) -> EqForwardData:
+    def get_eq_forward_data(self, name: str, date: dt.datetime) -> EqForwardData:
         """ Retrieve EQ forward data object """
         folder = self.root / 'eqforwards'
-        file = eqfwd.data_file(name, valdate, folder=folder)
+        file = eqfwd.data_file(name, date, folder=folder)
         return eqfwd.eqforwarddata_from_file(file)
 
-    def get_eq_vol_data(self, name: str, valdate: dt.datetime) -> EqVolSurfaceData:
+    def get_eq_vol_data(self, name: str, date: dt.datetime) -> EqVolSurfaceData:
         """ Retrieve EQ vol surface data object """
         folder = self.root / 'eqoptions'
-        file = eqvol.data_file(name, valdate, folder=folder)
+        file = eqvol.data_file(name, date, folder=folder)
         return eqvol.eqvolsurfacedata_from_file(file)
 
 
-def get_eq_forward_curves(names: list[str], valdate: dt.datetime,
+def get_eq_forward_curves(names: list[str], date: dt.datetime,
                           provider: MarketDataProvider) -> list[EqForwardCurve]:
     """ Retrieve EQ forward curves """
-    spots = provider.get_spots(names, valdate)
+    spots = provider.get_spots(names, date)
 
     fwd_curves = []
     for name, spot_ in zip(names, spots, strict=True):
-        data = provider.get_eq_forward_data(name, valdate)
-        curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
+        data = provider.get_eq_forward_data(name, date)
+        curve = EqForwardCurve(valdate=date, interp_var='forward', interp_type='cubicspline')
         curve.calibrate(data, spot_)
         fwd_curves.append(curve)
 

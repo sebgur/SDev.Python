@@ -11,6 +11,8 @@ from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.utilities.tools import isequal
+from sdevpy.calibration import provider as cdp
+from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 
 
 ############### TEST HELPERS ######################################################################
@@ -219,7 +221,10 @@ def test_lv_bymatrix_dump():
 
 def test_lv_matrix_read():
     name, valdate = 'ABC', dt.datetime(2025, 12, 15)
-    lv = localvol_factory.get_local_vols([name], valdate, model_name='Matrix')[0]
+    model_name = 'Matrix'
+    cal_prov = CalibrationDataFileProvider()
+    lv = cdp.get_localvol(name, valdate, model_name, cal_prov)
+    # lv = localvol_factory.get_local_vols([name], valdate, model_name='Matrix')[0]
     section = lv.section_at_index(1)
     time = section.time
     assert isequal(time, 0.020202020202020204)

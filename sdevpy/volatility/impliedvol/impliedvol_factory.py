@@ -1,3 +1,4 @@
+from pathlib import Path
 import datetime as dt
 from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol, data_file
@@ -34,18 +35,6 @@ def get_impliedvol_from_data(data: dict) -> ImpliedVol:
             raise ValueError(f"Unknown implied vol model: {type_}")
 
     return ivol
-
-
-def get_impliedvol(name: str, date: dt.datetime, model_name: str, **kwargs) -> ImpliedVol:
-    """ Retrieve implied vol model knowing name, date and model name """
-    file = data_file(name, date, model_name, **kwargs)
-
-    # Check file existence
-    if not file.exists():
-        raise FileNotFoundError(f"Implied vol file not found: {file}")
-
-    data = jsm.deserialize(file)
-    return get_impliedvol_from_data(data)
 
 
 def get_new_model(model_name: str) -> ImpliedVol:

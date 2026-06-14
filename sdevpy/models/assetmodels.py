@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     # Load
     store_date = valdate
-    lv = lvf.load_param_lv(store_date, name, folder=folder)
+    lv = lvf.load_param_lv(name, store_date, folder=folder)
     lv.name = name
     lv.valdate = valdate
 

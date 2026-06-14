@@ -34,6 +34,7 @@ exclude = ["sdevpy/volatility/impliedvol/models/tssvi2*"]
 
 [tool.setuptools.package-data]
 "sdevpy" = ["datasets/**/*", "notebooks/**/*.ipynb"]
+"sdevpy.tests" = ["data/**/*"]
 
 [tool.ruff]
 line-length = 120
@@ -46,7 +47,7 @@ ignore = ["E401", "I001"]
 [tool.coverage.run]
 omit = [
     "sdevpy/**/__init__.py",
-    "sdevpy/tests/test.py",
+    "sdevpy/tests/testconfig.py",
     "sdevpy/logger.py",
     "sdevpy/settings.py",
     "sdevpy/utilities/constants.py",

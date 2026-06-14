@@ -4,15 +4,15 @@ from scipy.integrate import quad
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder, TsIvCalibrator
-from sdevpy.volatility.impliedvol.impliedvol_factory import get_impliedvol
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
 from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
-# from sdevpy.market import eqvolsurface as vsurf
 from sdevpy.market import provider as mdp
+from sdevpy.calibration import provider as cdp
+from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 
 
 # n_mix=1, flat vol term structure: beta=1, a=b=0.2, c=0, d=1 → stdev(t=1)=0.2
@@ -86,7 +86,8 @@ def test_logmix():
 
 def test_logmix_from_file():
     name, date = 'ABC', dt.datetime(2025, 12, 15)
-    ivol = get_impliedvol(name, date, 'LogMix3')
+    cal_prov = CalibrationDataFileProvider()
+    ivol = cdp.get_impliedvol(name, date, 'LogMix3', cal_prov)
     n_mix = ivol.n_mix
     params = ivol.params
     assert n_mix == 3

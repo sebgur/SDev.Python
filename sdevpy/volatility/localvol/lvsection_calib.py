@@ -6,7 +6,7 @@ from enum import Enum
 from scipy.optimize import least_squares
 from sdevpy.utilities import timegrids, dates
 from sdevpy.utilities.tools import isequal
-from sdevpy.volatility.localvol import localvol_factory as lvf
+# from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import TimeInterpolatedLocalVol
 from sdevpy.volatility.impliedvol.optionsurface import calibration_targets
 from sdevpy.pde.pdeschemes import PdeConfig
@@ -14,13 +14,15 @@ from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
-from sdevpy.market import provider as mdp
+from sdevpy.market.provider import MarketDataProvider, get_eq_forward_curves
+from sdevpy.calibration import provider as cal_prov_mod
+from sdevpy.calibration.provider import CalibrationDataProvider
 from sdevpy.instruments.constants import string_to_optiontype, OptionType
 log = logging.getLogger(__name__)
 
 
-def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict,
-                            md: mdp.MarketDataProvider, **kwargs) -> dict:
+def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, md_prov: MarketDataProvider,
+                            cal_prov: CalibrationDataProvider, **kwargs) -> dict:
     """ Calibrate InterpolatedParamLocalVol type to market data """
     # Arguments
     calc_pde_vols = kwargs.get('calc_pde_vols', False)
@@ -28,12 +30,10 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict,
     model_name = config.get('model_name', 'VSVI')
 
     # Retrieve forward curve
-    fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
+    fwd_curve = get_eq_forward_curves([name], valdate, md_prov)[0]
 
     # Retrieve target market option data
-    surface_data = md.get_eq_vol_data(name, valdate)
-    # file = vsurf.data_file(name, valdate)
-    # surface_data = vsurf.eqvolsurfacedata_from_file(file)
+    surface_data = md_prov.get_eq_vol_data(name, valdate)
     expiries = surface_data.expiries
     fwds = fwd_curve.value(expiries)
     strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
@@ -50,8 +50,10 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict,
     # Initial LV: either from scratch or from existing
     lv_t_grid = [0.0] # LV time grid
     lv_t_grid.extend(expiry_grid[:-1])
-    lv = lvf.load_param_lv(valdate, name, t_grid=lv_t_grid, folder=config.get('lv_folder', None),
-                           force_new=force_restart, model_name=model_name)
+    lv = cal_prov_mod.get_localvol_or_new(name, valdate, model_name, cal_prov, t_grid=lv_t_grid,
+                                          force_new=force_restart)
+    # lv = lvf.load_param_lv(name, valdate, folder=config.get('lv_folder', None), t_grid=lv_t_grid,
+    #                        force_new=force_restart, model_name=model_name)
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
 
     # Set forward PDE

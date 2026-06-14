@@ -1,78 +1,115 @@
 import datetime as dt
-# import numpy as np
-from pathlib import Path
+import logging
+# from pathlib import Path
 from typing import Protocol, runtime_checkable
-# from sdevpy.market import spot as spot_mod
-# from sdevpy.market import correlations
-# from sdevpy.market import yieldcurve as ycrv
-from sdevpy.market import yieldcurve as yc
-# from sdevpy.market import eqforward as eqfwd
-# from sdevpy.market import eqvolsurface as eqvol
-# from sdevpy.market import fixings
-# from sdevpy.market.spot import SpotData
-# from sdevpy.market.eqforward import EqForwardData, EqForwardCurve
-# from sdevpy.market.eqvolsurface import EqVolSurfaceData
-# from sdevpy.market.fixings import FixingHandler
-from sdevpy.tests.test import test_calibdata_path
+# from sdevpy.market import yieldcurve as yc_mod
+from sdevpy.volatility.impliedvol import impliedvol as iv_mod
+from sdevpy.volatility.impliedvol import impliedvol_factory as ivf
+from sdevpy.volatility.localvol import localvol as lv_mod
+from sdevpy.volatility.localvol import localvol_factory as lvf
+log = logging.getLogger(__name__)
 
 
 @runtime_checkable
 class CalibrationDataProvider(Protocol):
-    def get_yieldcurve(self, name: str, valdate: dt.datetime) -> yc.YieldCurve: ...
-    # def get_impliedvol(self, name: str, dates: dt.datetime|list[dt.datetime], **kwargs) -> list[float]: ...
-    # def get_localvol(self, name: str, **kwargs) -> FixingHandler: ...
+    def get_impliedvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None: ...
+    def get_localvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None: ...
 
 
-class CalibrationDataFileProvider:
-    """ Reads calibrated data from JSON/CSV files on disk """
-    def __init__(self, root: str|Path=None):
-        self.root = (Path(root) if root is not None else test_calibdata_path())
+# class CalibrationDataFileProvider:
+#     """ Reads calibrated data from files on disk """
+#     def __init__(self, root: str|Path=None):
+#         self.root = (Path(root) if root is not None else testconfig.calibdata_path())
 
-    def get_yieldcurve(self, name: str, date: dt.datetime) -> yc.YieldCurve:
-        """ Retrieve yield curve """
-        folder = str(self.root / 'yieldcurves')
-        file = yc.data_file(name, date, folder)
-        curve = yc.yieldcurve_from_file(file)
-        return curve
-        # return ycrv.get_yieldcurve(name, valdate, folder=folder)
+#     def get_impliedvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict:
+#         """ Retrieve implied vol data """
+#         folder = self.root / 'impliedvol'
+#         file = iv_mod.data_file(name, date, model_name, folder)
+#         return jsm.deserialize(file)
 
-    # def get_fixings(self, name: str, dates: dt.datetime|list[dt.datetime], **kwargs) -> list[float]:
-    #     """ Retrieve fixings """
-    #     handler = self.get_fixing_handler(name, **kwargs)
-    #     return handler.value(dates)
+#     def get_localvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict:
+#         """ Retrieve local vol data """
+#         folder = self.root / 'localvol'
+#         file = lvf.data_file(name, date, folder)
+#         return jsm.deserialize(file)
 
-    # def get_fixing_handler(self, name: str, **kwargs) -> FixingHandler:
-    #     """ Retrieve fixings handler """
-    #     folder = str(self.root / 'fixings')
-    #     interpolate = kwargs.get('interpolate', False)
-    #     return fixings.fixinghandler(name, interpolate=interpolate, folder=folder)
 
-    # def get_correlations(self, names: list[str], valdate: dt.datetime) -> np.ndarray:
-    #     """ Retrieve correlations """
-    #     folder = str(self.root / 'correlations')
-    #     return correlations.get_correlations(names, valdate, folder=folder)
+def get_impliedvol(name: str, date: dt.datetime, model_name: str,
+                   cal_prov: CalibrationDataProvider) -> iv_mod.ImpliedVol:
+    """ Retrieve implied vol knowing name, date and model name """
+    data = cal_prov.get_impliedvol_data(name, date, model_name)
+    return ivf.get_impliedvol_from_data(data)
 
-    # def get_spot(self, name: str, valdate: dt.datetime) -> float:
-    #     """ Retrieve spot """
-    #     return self.get_spot_data(name, valdate).value
 
-    # def get_spots(self, names: list[str], valdate: dt.datetime) -> np.ndarray:
-    #     """ Get spot prices for specified names on given date """
-    #     spots = [] # ToDo: write as comprehension
-    #     for name in names:
-    #         spots.append(self.get_spot(name, valdate))
+def get_localvol(name: str, date: dt.datetime, model_name: str, cal_prov: CalibrationDataProvider,
+                 t_grid: list[float]=None) -> lv_mod.LocalVol:
+    """ Retrieve local vol knowing name, date and model name """
+    data = cal_prov.get_localvol_data(name, date, model_name)
+    return lvf.get_localvol_from_data(data, t_grid)
 
-    #     return np.asarray(spots)
 
-    # def get_spot_data(self, name: str, valdate: dt.datetime) -> SpotData:
-    #     """ Retrieve spot data object """
-    #     folder = str(self.root / 'spot')
-    #     file = spot_mod.data_file(name, valdate, folder=folder)
-    #     return spot_mod.spotdata_from_file(file)
+name_model_map = {'ABC': 'BiExp', 'KLM': 'VSVI', 'XYZ': 'Matrix'}
+
+
+def get_localvol_or_new(name: str, date: dt.datetime, model_name: str, cal_prov: CalibrationDataProvider,
+                        t_grid: list[float]=None, force_new: bool=False) -> lv_mod.LocalVol:
+    """ Retrieve local vol for given name, date and model name.
+        If the model name is None, we infer it from the (name, model) map.
+        t_grid, if given, is used to define the time grid of the model, interpolating
+        from the stored grid if a stored model is present.
+        If t_grid is not given and there is a stored model, the grid of the stored model
+        is used. If t_grid is not given and there is no stored model, an error is thrown.
+        Args:
+            - force_new: return new local vol even if there is an existing one
+    """
+    model_name = (name_model_map.get(name, None) if model_name is None else model_name)
+    if model_name is None:
+        raise ValueError(f"No model name specified for name: {name}")
+
+    # Look for an existing model file
+    lv = None
+    if not force_new: # Try to get it from calibration provider, None if absent
+        lv = get_localvol(name, date, model_name, cal_prov, t_grid=t_grid)
+
+    if lv is None:
+        log.info(f"Initializing new LV for {name}")
+        lv = lvf.get_localvol_new(t_grid, model_name)
+        # sections = create_sections(t_grid, model_name)
+        # lv = localvol.InterpolatedParamLocalVol(sections)
+
+    # date_str = date.strftime(dts.DATE_FILE_FORMAT)
+    # file = Path(folder) / name / (date_str + "." + model_name + ".json")
+    # if file.exists() and not force_new:
+    #     log.info(f"Loading existing LV for {name} from file: {file}")
+    #     lv_data = jsm.deserialize(file)
+    #     lv = get_localvol_from_data(lv_data, t_grid)
+    # else:
+    #     log.info(f"Initializing new LV for {name}")
+    #     sections = create_sections(t_grid, model_name)
+    #     lv = localvol.InterpolatedParamLocalVol(sections)
+
+    return lv
+
+
+def get_local_vols(names: list[str], valdate: dt.datetime, cal_prov: CalibrationDataProvider,
+                   **kwargs) -> list[lv_mod.LocalVol]:
+    """ Retrieve local vols assuming calibration has already been done """
+    lv_map = kwargs.get('lv_map', None)
+    lvs = []
+    if lv_map is None: # Get from CalibrationDataProvider
+        model_name = kwargs.get('model_name', None)
+        for name in names:
+            lvs.append(get_localvol_or_new(name, valdate, model_name, cal_prov, **kwargs))
+    else: # Read from map
+        for name in names:
+            name_lv = lv_map.get(name, None)
+            if name_lv is not None:
+                lvs.append(name_lv)
+            else:
+                raise ValueError(f"Could not find LV object in map for name: {name}")
+
+    return lvs
 
 
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
-    # md_provider = MarketDataFileProvider()
-    # obj = md_provider.get_yieldcurve("USD.SOFR.1D", valdate)
-    # print(obj)

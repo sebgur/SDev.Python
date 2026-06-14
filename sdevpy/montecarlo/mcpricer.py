@@ -8,11 +8,13 @@ from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.models.assetmodels import MultiAssetGBM
 from sdevpy.montecarlo.pathgenerator import PathGenerator
+from sdevpy.pricingcontext import PricingContext
 from sdevpy.market import provider as mdp
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.utilities.book import Book
+from sdevpy.calibration import provider as cal_prov_mod
 
 
 def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) -> npt.ArrayLike:
@@ -23,28 +25,30 @@ def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) 
     return disc_tgrid
 
 
-def price_book(valdate: dt.datetime, book: Book, md: mdp.MarketDataProvider, **kwargs) -> dict:
+def price_book(valdate: dt.datetime, book: Book, ctx: PricingContext, **kwargs) -> dict:
     """ Price book (PV) by Monte-Carlo """
+    md_prov = ctx.market_provider
+    cal_prov = ctx.calib_provider
+
     book.set_nameindexes()
-    book.set_valuation_date(valdate, md)
+    book.set_valuation_date(valdate, md_prov)
     eventdates = book.eventdates
 
     # Retrieve modelling data
     names = book.names
-    disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
-    spot = md.get_spots(names, valdate)
-    # spot = get_spots(names, valdate)
-    fwd_curves = mdp.get_eq_forward_curves(names, valdate, md)
-    lvs = lvf.get_local_vols(names, valdate, **kwargs)
-    corr = md.get_correlations(names, valdate)
+    disc_curve = md_prov.get_yieldcurve(book.csa_curve_id, valdate)
+    spot = md_prov.get_spots(names, valdate)
+    fwd_curves = mdp.get_eq_forward_curves(names, valdate, md_prov)
+    lvs = cal_prov_mod.get_local_vols(names, valdate, cal_prov, **kwargs)
+    # lvs = lvf.get_local_vols(names, valdate, **kwargs)
+    corr = md_prov.get_correlations(names, valdate)
 
     # Build time grid
     disc_tgrid = build_timegrid(valdate, eventdates, McConfig(**kwargs))
 
     # Set model
     # lv_map = kwargs.get('lv_map', None)
-    # use_lv = (lv_map is not None)
-    model = MultiAssetGBM(spot, fwd_curves, lvs, disc_tgrid)#, use_lv=use_lv)
+    model = MultiAssetGBM(spot, fwd_curves, lvs, disc_tgrid)
 
     # Set spot path generator
     generator = PathGenerator(model, disc_tgrid, **kwargs, corr_matrix=corr)
