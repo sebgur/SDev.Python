@@ -4,6 +4,9 @@ from sdevpy.montecarlo.payoffs.basic import Max, Abs, Terminal
 from sdevpy.instruments.constants import OptionType, string_to_optiontype
 
 
+# ToDo: simplify/reuse/explain these 3 very similar methods here.
+
+
 def make_vanilla_option_payoff(payoff, strike: float, optiontype: str):
     """ Create a vanilla option on top of a given payoff """
     optiontype_ = string_to_optiontype(optiontype)
@@ -21,7 +24,7 @@ def make_vanilla_option_payoff(payoff, strike: float, optiontype: str):
 
 
 def make_vanilla_option(name: str, strike: float, optiontype: str, expiry: dt.datetime):
-    """ Create a vanilla option on a simple index. ToDo: can't we merge? """
+    """ Create a vanilla option on a simple index """
     optiontype_ = string_to_optiontype(optiontype)
     match optiontype_:
         case OptionType.CALL:
@@ -37,7 +40,7 @@ def make_vanilla_option(name: str, strike: float, optiontype: str, expiry: dt.da
 
 
 def vanilla_option(spot, strike: float, optiontype):
-    """ Vanilla option given spot. ToDo: explain more """
+    """ Vanilla option given spot """
     match optiontype:
         case OptionType.CALL:
             payoff = np.maximum(spot - strike, 0.0)

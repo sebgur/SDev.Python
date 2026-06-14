@@ -1,7 +1,6 @@
 import numpy as np
 import datetime as dt
-from sdevpy.montecarlo.payoffs.basic import (Payoff, Average, Terminal, Basket,
-    list_payoff_names, list_payoff_eventdates)
+from sdevpy.montecarlo.payoffs.basic import Payoff, Average, Terminal, Basket
 from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_option, make_vanilla_option_payoff
 from sdevpy.market.provider import MarketDataProvider
 
@@ -66,31 +65,3 @@ def make_basket_option(names: list[str], weights: list[float], strike: float, op
     basket = Basket(spots, weights)
     payoff = make_vanilla_option_payoff(basket, strike, optiontype)
     return payoff
-
-
-class Maximum(Payoff):
-    """ ToDo: [Warning] work in progress. """
-    def __init__(self, left: Payoff, right: Payoff):
-        super().__init__()
-        self.left = left
-        self.right = right
-        self.names = list_payoff_names([self.left, self.right])
-        self.eventdates = list_payoff_eventdates([self.left, self.right])
-
-    def evaluate(self, mkt_state: dict):
-        # return np.maximum(self.left.evaluate(mkt_state), self.right.evaluate(mkt_state))
-        raise NotImplementedError("Not implemented yet: Maximum(Payoff)")
-
-
-class BarrierDown(Payoff):
-    """ ToDo: [Warning] work in progress. """
-    def __init__(self, asset_index: int, level: float):
-        super().__init__()
-        self.asset_index = asset_index
-        self.level = level
-
-    def evaluate(self, mkt_state: dict):
-        # paths = mkt_state.event_paths
-        # breached = (paths[:, :, self.asset_index] < self.level).any(axis=1)
-        # return (~breached).astype(float)
-        raise NotImplementedError("Not implemented yet: BarrierDown(Payoff)")

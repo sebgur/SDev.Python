@@ -14,15 +14,6 @@ from sdevpy import logger
 logger.configure()
 
 
-#################### TODO #########################################################################
-# * Make notebook with varswap and volswap trades pricing in MC from scratch (market data)
-    ## Varswap ##
-    # cash-flow = N_vega / (2 * strike) * (variance - strike^2)
-    ## Volswap ##
-    # vol = sqrt(variance)
-    # cashflow = N_vega * (vol - strike)
-
-
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
     ctx = default_pricing_context()
