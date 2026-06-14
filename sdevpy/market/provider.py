@@ -23,6 +23,7 @@ class MarketDataProvider(Protocol):
     def get_fixing_handler(self, name: str, **kwargs) -> FixingHandler: ...
     def get_correlations(self, names: list[str], valdate: dt.datetime) -> np.ndarray: ...
     def get_spot(self, name: str, valdate: dt.datetime) -> float: ...
+    def get_spots(self, names: list[str], valdate: dt.datetime) -> np.ndarray: ...
     def get_spot_data(self, name: str, valdate: dt.datetime) -> SpotData: ...
 
     def get_eq_forward_data(self, name: str, valdate: dt.datetime) -> EqForwardData: ...
@@ -62,7 +63,7 @@ class MarketDataFileProvider:
         """ Retrieve spot """
         return self.get_spot_data(name, valdate).value
 
-    def get_spots(self, names: list[str], valdate: dt.datetime):
+    def get_spots(self, names: list[str], valdate: dt.datetime) -> np.ndarray:
         """ Get spot prices for specified names on given date """
         spots = [] # ToDo: write as comprehension
         for name in names:
@@ -97,8 +98,6 @@ def get_forward_curves(names: list[str], valdate: dt.datetime,
     fwd_curves = []
     for name, spot_ in zip(names, spots, strict=True):
         data = provider.get_eq_forward_data(name, valdate)
-        # file = data_file(name, valdate, folder)
-        # data = eqforwarddata_from_file(file)
         curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
         curve.calibrate(data, spot_)
         fwd_curves.append(curve)

@@ -119,34 +119,9 @@ def eqforwarddata_from_file(file: str|Path) -> EqForwardData:
     return data
 
 
-# def get_forward_curves(names: list[str], valdate: dt.datetime,
-#                        provider: MarketDataProvider) -> list[EqForwardCurve]:
-#     """ Retrieve forward curves """
-#     spots = provider.get_spots(names, valdate)
-
-#     fwd_curves = []
-#     for name, spot in zip(names, spots, strict=True):
-#         data = provider.get_eq_forward_data(name, valdate)
-#         # file = data_file(name, valdate, folder)
-#         # data = eqforwarddata_from_file(file)
-#         curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
-#         curve.calibrate(data, spot)
-#         fwd_curves.append(curve)
-
-#     return fwd_curves
-
-
 def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
     """ Return the data file given the name, date and folder """
     return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
-
-
-# def test_data_folder():
-#     folder = Path(__file__).parent.parent.parent.resolve()
-#     dataset_folder = os.path.join(folder, "datasets")
-#     folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "eqforwards")
-#     os.makedirs(folder, exist_ok=True)
-#     return folder
 
 
 if __name__ == "__main__":

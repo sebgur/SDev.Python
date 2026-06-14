@@ -1,7 +1,7 @@
 from pathlib import Path
 import json
 import datetime as dt
-import numpy as np
+# import numpy as np
 from sdevpy.utilities import dates
 from sdevpy.utilities import jsonmanager as jsm
 
@@ -40,8 +40,6 @@ class SpotData:
 def spotdata_from_file(file: str|Path):
     """ Retrieve spot data object from file """
     data = jsm.deserialize(file)
-    # with open(file) as f:
-    #     data = json.load(f)
 
     name = data.get('name')
     valdate = data.get('valdate')
@@ -56,14 +54,6 @@ def spotdata_from_file(file: str|Path):
 def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
     """ Return the data file given the name, date and folder """
     return Path(folder) / name / (date.strftime(dates.DATE_FILE_FORMAT) + ".json")
-
-
-# def test_data_folder():
-#     folder = Path(__file__).parent.parent.parent.resolve()
-#     dataset_folder = os.path.join(folder, "datasets")
-#     folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "spot")
-#     os.makedirs(folder, exist_ok=True)
-#     return folder
 
 
 if __name__ == "__main__":
