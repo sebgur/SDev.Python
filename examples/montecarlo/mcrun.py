@@ -1,6 +1,6 @@
 import numpy as np
 import datetime as dt
-from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
+from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance, Sqrt
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option, make_asian_option
 from sdevpy.montecarlo.payoffs import cashflows as cfl
@@ -59,7 +59,19 @@ if __name__ == "__main__":
     index = Variance('ABC', start_date, expiry)
     vstrike = 14.0
     payoff = index - vstrike * vstrike
-    cf = cfl.Cashflow(payoff, expiry)
+    notional = 100.0 * 1000
+    vega_notional = notional / (2.0 * vstrike)
+    cf = cfl.Cashflow(payoff, expiry, notional=vega_notional)
+    trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
+
+    # VolSwap
+    var_index = Variance('ABC', start_date, expiry)
+    index = Sqrt(var_index)
+    vstrike = 14.0
+    payoff = index - vstrike
+    notional = 100.0 * 1000
+    vega_notional = notional
+    cf = cfl.Cashflow(payoff, expiry, notional=vega_notional)
     trades.append(Trade(Instrument(cashflow_legs=[[cf]])))
 
     # Create book

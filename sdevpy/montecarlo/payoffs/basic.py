@@ -369,6 +369,27 @@ class Abs(Payoff):
         self.subpayoff.set_eventindexes(eventdates)
 
 
+class Sqrt(Payoff):
+    """ Square root of the payoff """
+    def __init__(self, subpayoff):
+        super().__init__()
+        self.subpayoff = subpayoff
+        self.names = self.subpayoff.names
+
+    def evaluate(self, mkt_state: dict):
+        return np.sqrt(self.subpayoff.evaluate(mkt_state))
+
+    def set_nameindexes(self, names):
+        self.subpayoff.set_nameindexes(names)
+
+    def set_valuation_date(self, valdate, md: MarketDataProvider):
+        self.subpayoff.set_valuation_date(valdate, md)
+        self.eventdates = self.subpayoff.eventdates
+
+    def set_eventindexes(self, eventdates):
+        self.subpayoff.set_eventindexes(eventdates)
+
+
 class Basket(Payoff):
     """ Linear combination of specified payoffs. We could have implemented it using
         the algebra, but the code below may help make the tree simpler """
