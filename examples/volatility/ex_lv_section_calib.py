@@ -5,6 +5,7 @@ from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
 from sdevpy.utilities import timegrids
 from sdevpy.market import provider as mdp
+from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.maths import metrics
 from sdevpy import logger
 logger.configure()
@@ -16,7 +17,7 @@ np.set_printoptions(suppress=True, precision=n_digits)
 name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get MarketDataProvider
-md = mdp.MarketDataFileProvider()
+md = MarketDataFileProvider()
 
 # Choose model
 # model_name = 'VSVI'

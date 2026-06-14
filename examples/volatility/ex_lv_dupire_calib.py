@@ -4,6 +4,7 @@ from scipy.stats import norm
 import matplotlib.pyplot as plt
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.market import provider as mdp
+from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.localvol.dupire_calib import calib_lv_dupire
 from sdevpy.utilities import timegrids
@@ -16,7 +17,7 @@ from sdevpy.utilities.algos import upper_bound
 name, valdate, model_name = "ABC", dt.datetime(2025, 12, 15), 'LogMix3'
 
 # Get MarketDataProvider
-md = mdp.MarketDataFileProvider()
+md_prov = MarketDataFileProvider()
 
 # Choose LV diagnostic grids
 test_tenors = ['1M', '3M', '6M', '9M', '1Y', '2Y'] # Must have len = 6
@@ -29,7 +30,7 @@ up_p = 1.0 - lw_p # High percentile strike
 iv_surface = impliedvol_factory.get_impliedvol(name, valdate, model_name)
 
 # Retrieve forward curve
-fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
+fwd_curve = mdp.get_eq_forward_curves([name], valdate, md_prov)[0]
 
 # Define expiries at which we will observe the accuracy
 test_expiries = [dts.advance(valdate, tenor) for tenor in test_tenors]

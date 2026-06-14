@@ -1,13 +1,14 @@
 import datetime as dt
 import numpy as np
 from sdevpy.market import provider as mdp
+from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.market import eqforward as eqf
 
 
 def test_correlations():
     names = ['ABC', 'KLM', 'XYZ']
     valdate = dt.datetime(2025, 12, 15)
-    md = mdp.MarketDataFileProvider()
+    md = MarketDataFileProvider()
     c = md.get_correlations(names, valdate)
     # c = correlations.get_correlations(names, valdate)
     ref = np.asarray([0.5, 0.1, 0.1])
@@ -19,7 +20,7 @@ def test_spotdata():
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Fetch data
-    md = mdp.MarketDataFileProvider()
+    md = MarketDataFileProvider()
     test = md.get_spot(name, valdate)
     ref = 100.0
     assert test == ref
@@ -30,7 +31,7 @@ def test_eqforward_creation():
     spot = 100.0
 
     # Get data from existing file
-    md = mdp.MarketDataFileProvider()
+    md = MarketDataFileProvider()
     test_data = md.get_eq_forward_data(name, valdate)
 
     # Create forward curve
@@ -52,7 +53,7 @@ def test_eq_option_strikes():
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Retrieve market option data object
-    md = mdp.MarketDataFileProvider()
+    md = MarketDataFileProvider()
     vol_data = md.get_eq_vol_data(name, valdate)
 
     # Retrieve forward curve

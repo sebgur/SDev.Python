@@ -1,6 +1,6 @@
 import datetime as dt
 import numpy as np
-from sdevpy.market.provider import MarketDataFileProvider
+from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.market import yieldcurve as ycrv
 from sdevpy.utilities import timegrids as tg
 

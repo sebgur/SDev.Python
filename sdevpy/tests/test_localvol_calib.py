@@ -10,7 +10,7 @@ from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
 from sdevpy.maths import metrics
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
-from sdevpy.market.provider import MarketDataFileProvider
+from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 
 

@@ -58,12 +58,13 @@ if __name__ == "__main__":
     import datetime as dt
     import numpy as np
     from sdevpy.market import provider as mdp
+    from sdevpy.market.fileprovider import MarketDataFileProvider
     from sdevpy.utilities import timegrids
     from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
     from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol, DFLT_PDE_CONFIG
 
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
-    md = mdp.MarketDataFileProvider()
+    md = MarketDataFileProvider()
 
     # Retrieve forward curve
     fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
