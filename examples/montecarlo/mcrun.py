@@ -1,6 +1,5 @@
 import numpy as np
 import datetime as dt
-import logging
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option, make_asian_option
@@ -9,11 +8,8 @@ from sdevpy.volatility.localvol.localvol_factory import get_local_vols
 from sdevpy.analytics import black
 from sdevpy.utilities import timegrids
 from sdevpy.utilities import book as bk
-from sdevpy.market.yieldcurve import get_yieldcurve
-from sdevpy.market.eqforward import get_forward_curves
+from sdevpy.market import provider as mdp
 from sdevpy.montecarlo.payoffs import cashflows as cfl
-logger = logging.getLogger("mcrun")
-logger.setLevel(logging.DEBUG)
 
 
 #################### TODO #########################################################################
@@ -24,19 +20,9 @@ logger.setLevel(logging.DEBUG)
     # vol = sqrt(variance)
     # cashflow = N_vega * (vol - strike)
 
-# * Implementing exact Dupire through python vectorization and try parallelization
-# * Check vanilla accuracy against LV calib
-# * Implement clever greeks (vega through 1D recalib, save BM/interpolation)
-
 
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
-
-    logger.debug("some debug")
-    logger.info("some info")
-    logger.warning("some warning")
-    logger.error("some error")
-    logger.critical("some critical")
 
     # Create portfolio
     book = bk.Book()
@@ -86,8 +72,9 @@ if __name__ == "__main__":
     print(f"Number of assets: {len(names)}")
 
     # Closed-form for vanilla
-    disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
-    fwd_curves = get_forward_curves(names, valdate)
+    md = mdp.MarketDataFileProvider()
+    disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
+    fwd_curves = mdp.get_forward_curves(names, valdate)
     lvs = get_local_vols(names, valdate)
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx].value(expiry)

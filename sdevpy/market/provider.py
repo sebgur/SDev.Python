@@ -5,11 +5,11 @@ from typing import Protocol, runtime_checkable
 from sdevpy.market import spot as spot_mod
 from sdevpy.market import correlations
 from sdevpy.market import yieldcurve as ycrv
+from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.market import eqforward as eqfwd
 from sdevpy.market import eqvolsurface as eqvol
 from sdevpy.market import fixings
 from sdevpy.market.spot import SpotData
-from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.market.eqforward import EqForwardData, EqForwardCurve
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
@@ -34,10 +34,13 @@ class MarketDataFileProvider:
     def __init__(self, root: str|Path=None):
         self.root = (Path(root) if root is not None else test_marketdata_path())
 
-    def get_yieldcurve(self, name: str, valdate: dt.datetime) -> YieldCurve:
+    def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve:
         """ Retrieve yield curve """
         folder = str(self.root / 'yieldcurves')
-        return ycrv.get_yieldcurve(name, valdate, folder=folder)
+        file = ycrv.data_file(name, date, folder)
+        curve = ycrv.yieldcurve_from_file(file)
+        return curve
+        # return ycrv.get_yieldcurve(name, valdate, folder=folder)
 
     def get_fixings(self, name: str, dates: dt.datetime|list[dt.datetime], **kwargs):
         """ Retrieve fixings """

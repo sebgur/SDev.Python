@@ -5,9 +5,6 @@ from pathlib import Path
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
 from sdevpy.maths import interpolation as itp
-from sdevpy.market import yieldcurve as ycrv
-# from sdevpy.market.spot import get_spots
-# from sdevpy.market.provider import MarketDataProvider
 
 
 class EqForwardData:
@@ -154,9 +151,9 @@ def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from sdevpy.market import provider as mdp
 
-    name = "ABC"
-    valdate = dt.datetime(2025, 12, 15)
+    name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Generate a sample to start from
     spot = 100.0
@@ -175,8 +172,9 @@ if __name__ == "__main__":
     test_data = eqforwarddata_from_file(file)
 
     # Create forward curve
+    md = mdp.MarketDataFileProvider()
     curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
-    yieldcurve = ycrv.get_yieldcurve('USD.SOFR.1D', valdate)
+    yieldcurve = md.get_yieldcurve('USD.SOFR.1D', valdate)
     curve.calibrate(test_data, spot, yieldcurve)
 
     # Interpolate and display

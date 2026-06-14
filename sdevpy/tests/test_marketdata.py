@@ -1,18 +1,13 @@
 import datetime as dt
 import numpy as np
-from sdevpy.market import provider
-from sdevpy.market.provider import MarketDataFileProvider
-# from sdevpy.market.spot import get_spots
-from sdevpy.market import yieldcurve as ycrv
+from sdevpy.market import provider as mdp
 from sdevpy.market import eqforward as eqf
-from sdevpy.market import eqvolsurface as vsurf
-# from sdevpy.market import correlations
 
 
 def test_correlations():
     names = ['ABC', 'KLM', 'XYZ']
     valdate = dt.datetime(2025, 12, 15)
-    md = MarketDataFileProvider()
+    md = mdp.MarketDataFileProvider()
     c = md.get_correlations(names, valdate)
     # c = correlations.get_correlations(names, valdate)
     ref = np.asarray([0.5, 0.1, 0.1])
@@ -24,9 +19,8 @@ def test_spotdata():
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Fetch data
-    md = MarketDataFileProvider()
+    md = mdp.MarketDataFileProvider()
     test = md.get_spot(name, valdate)
-    # test = get_spots([name], valdate)[0]
     ref = 100.0
     assert test == ref
 
@@ -36,15 +30,12 @@ def test_eqforward_creation():
     spot = 100.0
 
     # Get data from existing file
-    md = MarketDataFileProvider()
-    # file = eqf.data_file(name, valdate)
-    # test_data = eqf.eqforwarddata_from_file(file)
+    md = mdp.MarketDataFileProvider()
     test_data = md.get_eq_forward_data(name, valdate)
 
     # Create forward curve
     curve = eqf.EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
     yieldcurve = md.get_yieldcurve('USD.SOFR.1D', valdate)
-    # yieldcurve = ycrv.get_yieldcurve('USD.SOFR.1D', valdate)
     curve.calibrate(test_data, spot, yieldcurve)
 
     # Interpolate and display
@@ -61,17 +52,13 @@ def test_eq_option_strikes():
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Retrieve market option data object
-    md = MarketDataFileProvider()
+    md = mdp.MarketDataFileProvider()
     vol_data = md.get_eq_vol_data(name, valdate)
-    # file = vsurf.data_file(name, valdate)
-    # vol_data = vsurf.eqvolsurfacedata_from_file(file)
 
     # Retrieve forward curve
-    fwd_curve = provider.get_forward_curves([name], valdate, md)[0]
-    # fwd_curve = eqf.get_forward_curves([name], valdate)[0]
+    fwd_curve = mdp.get_forward_curves([name], valdate, md)[0]
 
     # Access data in object
-    # expiries = vol_data.expiries
     test = vol_data.get_strikes(fwd_curve, 'absolute')
     # print(test)
 

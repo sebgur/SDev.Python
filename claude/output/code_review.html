@@ -47,7 +47,7 @@
     .grade-letter {
       font-size: 4.2rem;
       font-weight: 800;
-      color: var(--green);
+      color: var(--yellow);
       line-height: 1;
       min-width: 3.8rem;
       text-align: center;
@@ -101,18 +101,6 @@
       color: var(--muted);
     }
     .progress-banner strong { color: var(--text); }
-
-    .regression-banner {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-left: 4px solid var(--orange);
-      border-radius: 8px;
-      padding: .9rem 1.2rem;
-      margin-bottom: 1.5rem;
-      font-size: .88rem;
-      color: var(--muted);
-    }
-    .regression-banner strong { color: var(--text); }
 
     .issue {
       background: var(--surface);
@@ -200,40 +188,34 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-06 &nbsp;·&nbsp; <strong>11th review</strong> (full scan)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-13 &nbsp;·&nbsp; <strong>10th review</strong> (full scan)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter">B+</div>
+    <div class="grade-letter">B</div>
     <div class="grade-details">
-      <h2>4 issues closed, calibration testing now in place — one ruff-rename regression introduced</h2>
+      <h2>Provider pattern landed — but two regressions in <code>mcpricer.py</code> and a Protocol gap need immediate attention</h2>
       <p>
-        Solid progress: the PDE commented-out loops are gone, <code>check_global_params()</code> is now guarded
-        in both TsSvi1 and TsSvi2, a full calibration smoke test has landed in <code>test_impliedvol.py</code>,
-        and test-output pollution in <code>test_localvol_calib.py</code> is cleaned up.
-        The ruff rename pass on <code>docs/stovol/products.py</code> introduced a silent
-        <code>NameError</code>: terminal lambda bodies reference <code>s</code> (lowercase)
-        while the lambda parameter is still <code>S</code> — docs-level but real.
-        The <code>Variance</code> new-contract crash, the two WIP payoff stubs, and the serial
-        implied-vol loop remain open from the previous review.
+        The <code>MarketDataProvider</code> Protocol is now implemented and wired into the book, payoffs,
+        calibrator, and tests — a significant architecture improvement.
+        <code>test_tssvi1_calibrate</code> closes the biggest testing gap from the 9th review.
+        The PDE schemes are fully vectorized and <code>shift_forward</code> now defaults to <code>False</code>.
+        However, the provider refactor left <code>price_vanilla_surface</code> broken (wrong call signature),
+        and <code>get_spots</code> is called on <code>MarketDataProvider</code>-typed objects but is absent
+        from the Protocol, undermining type safety. The variance new-contract crash and the two WIP stubs
+        in the public namespace remain unresolved from the 9th review.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since 10th review (4 of 10, 1 partial):</strong>
-    debug <code>print()</code> calls in <code>test_localvol_calib.py</code> cleaned up (#3) &nbsp;·&nbsp;
-    <code>TsIvCalibrator.calibrate</code> smoke test added to <code>test_impliedvol.py</code> (#4) &nbsp;·&nbsp;
-    all four commented-out original for-loops removed from <code>pdeschemes.py</code> (#6) &nbsp;·&nbsp;
-    <code>check_global_params()</code> now guarded for <code>params=None</code> in TsSvi1 and TsSvi2 (#8) &nbsp;·&nbsp;
-    one of two commented config blocks removed in <code>black.py</code> (#5 partial)
-  </div>
-
-  <div class="regression-banner">
-    <strong>Regression introduced (ruff rename pass):</strong>
-    <code>docs/stovol/products.py</code> terminal lambdas now reference undefined <code>s</code> — the lambda
-    parameter was left as <code>S</code> (uppercase) while the body was lowercased. Runtime
-    <code>NameError</code> on any call to <code>price_vanilla()</code>. See issue&nbsp;#2.
+    <strong>Fixed since 9th review:</strong>
+    <code>MarketDataProvider</code> Protocol implemented in <code>provider.py</code> &nbsp;·&nbsp;
+    all market-data tests updated to use <code>MarketDataFileProvider</code> &nbsp;·&nbsp;
+    <code>test_tssvi1_calibrate</code> added — full calibration round-trip now covered &nbsp;·&nbsp;
+    PDE schemes vectorized (was loop-based) &nbsp;·&nbsp;
+    <code>PdeConfig.shift_forward</code> now defaults to <code>False</code>, matching actual usage &nbsp;·&nbsp;
+    <code>get_forward_curves</code> moved to <code>provider.py</code> as a free function on the interface
   </div>
 
   <div class="scorecard">
@@ -247,42 +229,42 @@
         <tr>
           <td>Architecture</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy and solid PDE/MC separation unchanged; no structural regressions</td>
+          <td style="color:var(--muted);font-size:.83rem">Provider pattern well-structured; free function <code>get_forward_curves</code> on the interface is the right idiom; <code>price_vanilla_surface</code> not updated to the new pattern is the only structural gap</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>7 / 10</td>
+          <td>Correctness</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>price_vanilla_surface</code> crashes (missing <code>md</code> arg); <code>Variance</code> new-contract crash still present; <code>get_spots</code> called on Protocol objects but not declared</td>
+        </tr>
+        <tr>
+          <td>Error Handling</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Optimizer result <code>success</code> flag not checked in <code>TsIvCalibrator</code>; <code>LocalVol.dump_data</code> family crashes on <code>valdate=None</code> (the default)</td>
+        </tr>
+        <tr>
+          <td>Testing</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>Variance</code> still crashes for new contracts; <code>products.py</code> terminal conditions raise <code>NameError</code> after ruff rename</td>
+          <td style="color:var(--muted);font-size:.83rem">Calibration round-trip now tested; Dupire, LV-by-sections, yield curve unsorted all covered; <code>price_vanilla_surface</code> and new-contract <code>Variance</code> still untested</td>
         </tr>
         <tr>
-          <td>Error Handling</td><td>7 / 10</td>
+          <td>Code Quality</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>check_global_params()</code> None guard now in place for TsSvi1 and TsSvi2; <code>Variance.evaluate()</code> still raises for new contracts</td>
+          <td style="color:var(--muted);font-size:.83rem">PDE loops eliminated; production prints gone; <code>names</code> redundantly reassigned in <code>price_book</code>; scattered commented-out imports in mcpricer.py</td>
         </tr>
         <tr>
-          <td>Testing</td><td>8 / 10</td>
+          <td>Maintainability</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Calibration round-trip test now present; test output is clean in <code>test_localvol_calib.py</code>; <code>Average</code> and <code>Variance</code> payoffs still have no coverage</td>
+          <td style="color:var(--muted);font-size:.83rem">Provider pattern isolates data source concerns; free-function pattern for composed operations is clean and extensible</td>
         </tr>
         <tr>
-          <td>Code Quality</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Commented-out PDE loops fully removed; one "Original config" block and stale Newton return code still in <code>black.py</code></td>
+          <td>Type Safety</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Protocol exists but has gaps: <code>get_spots</code> missing, <code>get_fixings</code> annotated as returning <code>FixingHandler</code> but returns values; mypy would flag both callers</td>
         </tr>
         <tr>
-          <td>Maintainability</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good module layout; arithmetic payoff boilerplate (~130 lines across <code>Add</code>/<code>Sub</code>/<code>Mul</code>/<code>Div</code>) still unaddressed</td>
-        </tr>
-        <tr>
-          <td>Type Safety</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good annotation coverage across analytics and vol models; <code>Payoff</code> subclass lifecycle state has no type annotation</td>
-        </tr>
-        <tr>
-          <td>Documentation</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Solid docstrings on key classes and methods; <code>Average</code> docstring still carries a "ToDo: test with inception date in the past" note</td>
+          <td>Documentation</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good docstrings on calibrators and LV; provider methods have brief one-liners; <code>Variance</code> docstring does not mention the new-contract limitation</td>
         </tr>
       </tbody>
     </table>
@@ -291,309 +273,268 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
-  <div class="issue critical">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title">New variance swaps always crash at pricing — <code>current_fixing</code> is never set when <code>start &ge; valdate</code></span>
-      <span class="badge critical">Critical</span>
+      <span class="issue-title"><code>price_vanilla_surface</code> crashes immediately — missing <code>md</code> argument after provider refactor</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 452, 462–466</span>
+    <span class="loc">sdevpy/montecarlo/mcpricer.py · line 221</span>
     <p>
-      <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets <code>self.current_fixing = None</code>.
-      In <code>set_valuation_date</code>, when the trade has not yet started (<code>start &ge; valdate</code>),
-      all dates go into <code>self.eventdates</code> and <code>hist_fixing_dates</code> is empty.
-      <code>get_fixings</code> returns <code>None</code> or an empty list, so neither guard fires and
-      <code>current_fixing</code> stays <code>None</code>. Then <code>evaluate()</code> unconditionally
-      raises:
+      <strong>Why it's bad:</strong> <code>price_book</code> was refactored to take
+      <code>md: MarketDataProvider</code> as its third positional argument, but
+      <code>price_vanilla_surface</code> was never updated. At line 221 it calls:
     </p>
-    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
-    <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
+    <pre>sim_prices = price_book(valdate, book, <span class="rm">lv_map={name: lv}</span>, **kwargs)</pre>
     <p>
-      Every new-issue variance swap is unrunnable. The existing test uses
-      <code>start_date = 2025-11-15</code> with <code>valdate = 2025-12-15</code>, ensuring historical
-      fixings are always present — the failing path (new contract) is never exercised by the test suite.
+      <code>lv_map={name: lv}</code> lands in <code>**kwargs</code>, leaving <code>md</code> unbound.
+      Python will raise <code>TypeError: price_book() missing 1 required positional argument: 'md'</code>
+      on every call. Additionally, line 225 still calls the module-level <code>get_yieldcurve</code>
+      directly rather than going through a provider. This function is effectively dead code that silently
+      rotted during the refactor.
     </p>
-    <p>
-      <strong>Fix:</strong> For a new contract the first simulated spot <em>is</em> the start fixing.
-      Expose a <code>set_current_fixing(spot)</code> method and call it from the pricing engine before
-      <code>evaluate()</code>, or document that the caller must supply it. An alternative is to have
-      <code>evaluate()</code> treat <code>current_fixing is None</code> as meaning the first path value
-      is the starting point:
-    </p>
-    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
-    <span class="c"># New contract: first simulated spot is the start fixing</span>
-    <span class="ok">first_spot = spot_paths[:, 0]
-    var_sum = var_sum + np.power(np.log(spot_paths[:, 1] / first_spot), 2)
-    spot_paths = spot_paths[:, 1:]  # shift window</span>
-<span class="kw">else</span>:
-    var_sum = var_sum + np.power(np.log(spot_paths[:, 0] / self.current_fixing), 2)</pre>
+    <p><strong>Fix:</strong> Add an <code>md: MarketDataProvider</code> parameter to
+      <code>price_vanilla_surface</code> and thread it through to <code>price_book</code> and the discount
+      curve retrieval:</p>
+    <pre><span class="kw">def</span> <span class="fn">price_vanilla_surface</span>(valdate, expiries, strikes, name, lv, md: MarketDataProvider, **kwargs):
+    ...
+    sim_prices = price_book(valdate, book, md, lv_map={name: lv}, **kwargs)
+    disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)</pre>
   </div>
 
   <!-- 2 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title">Ruff rename introduced <code>NameError</code> in <code>price_vanilla()</code> — lambda body uses <code>s</code> but parameter is still <code>S</code></span>
+      <span class="issue-title"><code>get_spots</code> absent from <code>MarketDataProvider</code> Protocol but called on Protocol-typed objects</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">docs/stovol/products.py · lines 25, 31</span>
+    <span class="loc">sdevpy/montecarlo/mcpricer.py · line 39 &nbsp;·&nbsp; sdevpy/market/provider.py · line 92</span>
     <p>
-      <strong>Why it's bad:</strong> The ruff lowercase rename pass changed the body of the terminal
-      lambdas from <code>S - K</code> / <code>K - S</code> to <code>s - k</code> / <code>k - s</code>,
-      but left the lambda <em>parameter</em> as uppercase <code>S</code>. The lowercase <code>s</code>
-      in the body refers to nothing in <code>price_vanilla</code>'s local scope — it is an undefined name.
-      Any call to <code>price_vanilla()</code> reaches the terminal condition and raises
-      <code>NameError: name 's' is not defined</code>.
+      <strong>Why it's bad:</strong> The Protocol declares <code>get_spot</code> (singular) but not
+      <code>get_spots</code> (plural). Both <code>price_book</code> and <code>get_forward_curves</code>
+      call <code>md.get_spots(names, valdate)</code> / <code>provider.get_spots(names, valdate)</code>
+      on objects typed as <code>MarketDataProvider</code>. mypy reports an error on both sites. More
+      importantly, any alternative provider implementation (Bloomberg, database) that correctly
+      implements every method in the Protocol will still fail at runtime because
+      <code>get_spots</code> is missing from the declared contract.
     </p>
-    <pre><span class="c"># Current (broken) — S is the lambda param, s is undefined:</span>
-<span class="rm">terminal = lambda S, v: np.maximum(s - k, 0.0) # noqa</span>
-<span class="rm">terminal = lambda S, v: np.maximum(k - s, 0.0) # noqa</span>
-
-<span class="c"># Fix — lowercase the lambda parameter to match the body:</span>
-<span class="ok">terminal = lambda s, v: np.maximum(s - k, 0.0)  # noqa: E731
-terminal = lambda s, v: np.maximum(k - s, 0.0)  # noqa: E731</span></pre>
-    <p>
-      Note also that <code>smax_bc</code> at line 29 references <code>solver.s[-1]</code> — confirm
-      the <code>SLVPdeSolver</code> attribute was also renamed from <code>S</code> to <code>s</code>
-      in the same pass; if not, that will raise <code>AttributeError</code>.
-    </p>
+    <p><strong>Fix:</strong> Add <code>get_spots</code> to the Protocol:</p>
+    <pre><span class="ok">def get_spots(self, names: list[str], valdate: dt.datetime) -> np.ndarray: ...</span></pre>
   </div>
 
   <!-- 3 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP stubs in the public payoff API</span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>get_fixings</code> annotated as <code>-> FixingHandler</code> in the Protocol but returns values</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
+    <span class="loc">sdevpy/market/provider.py · line 22 (Protocol) &nbsp;·&nbsp; lines 42–45 (implementation)</span>
     <p>
-      <strong>Why it's bad:</strong> Both classes carry <em>"ToDo: [Warning] work in progress"</em>
-      comments and both raise <code>NotImplementedError</code> unconditionally in <code>evaluate()</code>.
-      They are importable from the public <code>sdevpy.montecarlo.payoffs.exotics</code> namespace.
-      <code>Maximum.__init__</code> also incorrectly sets <code>self.eventdates</code> at construction
-      time — the lifecycle contract requires this to happen in <code>set_valuation_date()</code>.
-      <code>BarrierDown</code> takes a raw integer asset index rather than a name string, bypassing
-      the name-resolution system entirely. A caller who instantiates either class gets a
-      <code>NotImplementedError</code> deep inside the MC engine with no indication that the payoff
-      is simply unfinished.
+      <strong>Why it's bad:</strong> The Protocol declares:
     </p>
+    <pre><span class="kw">def</span> <span class="fn">get_fixings</span>(self, name, dates, **kwargs) -> <span class="rm">FixingHandler</span>: ...</pre>
     <p>
-      <strong>Fix:</strong> Move the <code>raise NotImplementedError</code> into <code>__init__</code>
-      so failure is immediate and clearly labelled, or prefix with an underscore to remove them from
-      the public API until they are complete:
+      But the implementation at lines 42–45 returns <code>handler.value(dates)</code>, which is a
+      <code>float</code> or <code>list[float]</code> depending on the input. The callers in
+      <code>Average.set_valuation_date</code> and <code>Variance.set_valuation_date</code> (basic.py
+      lines 270 and 494) treat the return as a list of floats and call <code>np.asarray(...).sum()</code>
+      on it — which would crash if the annotation were accurate and a real <code>FixingHandler</code>
+      were returned.
     </p>
-    <pre><span class="kw">class</span> <span class="ok">_Maximum</span>(Payoff):  <span class="c"># underscore = not public API yet</span>
-    ...</pre>
+    <p><strong>Fix:</strong> Correct the Protocol annotation to match reality:</p>
+    <pre><span class="kw">def</span> <span class="fn">get_fixings</span>(self, name: str,
+               dates: dt.datetime | list[dt.datetime],
+               **kwargs) -> <span class="ok">float | list[float]</span>: ...</pre>
   </div>
 
   <!-- 4 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title"><code>brownianbridge()</code> outer factor loop is pure Python — factor dimension not vectorized</span>
+      <span class="issue-title">New variance swap (<code>start &ge; valdate</code>) always crashes at pricing — <code>current_fixing</code> never set</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/maths/rand/pathconstruction.py · line 43</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 454, 499–504</span>
     <p>
-      <strong>Why it's bad:</strong> The outer <code>for d in range(n_factors)</code> loop processes
-      one factor at a time in Python, while all inner operations (mean, variance, midpoint assignment)
-      are already fully vectorized over paths. With <code>n_factors</code> assets (e.g. a 5-asset
-      worst-of basket), the loop runs 5 times, each time issuing separate NumPy calls.
-      The incremental path builder has no such loop — both the path and factor dimensions are handled
-      in a single vectorized block.
+      <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets <code>self.current_fixing = None</code>.
+      In <code>set_valuation_date</code>, when <code>start &ge; valdate</code> (a brand-new contract),
+      <code>hist_fixing_dates = []</code>. Then <code>md.get_fixings(name, [])</code> returns <code>[]</code>
+      and the guard at line 503 (<code>len(hist_fixings) &ge; 1</code>) is never satisfied, so
+      <code>current_fixing</code> stays <code>None</code>. Every subsequent <code>evaluate()</code>
+      call raises:
     </p>
+    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is None</span>:
+    <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
     <p>
-      <strong>Fix:</strong> Broadcast over the factor dimension by keeping <code>d</code> as a full
-      slice. All indexing into <code>w</code> and <code>z</code> already supports the factor axis;
-      removing the outer loop and replacing <code>[:, end, d]</code> with <code>[:, end, :]</code>
-      throughout should suffice:
+      The existing <code>test_mc.py</code> always uses <code>start = 2025-11-15</code> (one month before
+      valdate), so historical fixings always exist and the bug is invisible. Any real new-issue
+      trade (start = valdate) will crash.
     </p>
-    <pre><span class="rm">for d in range(n_factors):
-    w[:, -1, d] = np.sqrt(t) * z[:, 0, d]
-    ...
-    w[:, mid, d] = mean + np.sqrt(var) * z[:, z_index, d]</span>
-
-<span class="ok">w[:, -1, :] = np.sqrt(t) * z[:, 0, :]
-...
-mean = ((t_mid - t_start) * w[:, end, :] + (t_end - t_mid) * w[:, start, :]) / (t_end - t_start)
-var  = (t_mid - t_start) * (t_end - t_mid) / (t_end - t_start)
-w[:, mid, :] = mean + np.sqrt(var) * z[:, z_index, :]</span></pre>
+    <p><strong>Fix:</strong> When no historical fixings exist, initialise <code>current_fixing</code>
+    from the spot on valdate:</p>
+    <pre><span class="ok">if len(hist_fixings) == 0:
+    self.current_fixing = md.get_spot(self.name, valdate)</span>
+elif len(hist_fixings) >= 1:
+    self.current_fixing = hist_fixings[-1]</pre>
   </div>
 
   <!-- 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title"><code>implied_vols()</code> iterates over strikes with a Python loop — vectorized <code>implied_vol_newton</code> exists but is never called</span>
+      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are WIP stubs publicly exported</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py · line 51</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
     <p>
-      <strong>Why it's bad:</strong> <code>implied_vols()</code> runs a serial Python list comprehension
-      calling the scalar Brent solver once per strike. For a 50-strike surface this is 50 sequential
-      Python → SciPy calls. <code>implied_vol_newton()</code> in the same file is a fully vectorized
-      Newton-Raphson solver that processes the whole strike array in one call, typically converging in
-      under 10 iterations. It is defined, but <code>implied_vols()</code> never delegates to it.
+      <strong>Why it's bad:</strong> Both classes are tagged <em>"Warning: work in progress"</em>
+      and raise <code>NotImplementedError</code> in <code>evaluate()</code>. They are importable from
+      <code>sdevpy.montecarlo.payoffs.exotics</code>. <code>Maximum</code> also sets
+      <code>self.eventdates</code> in <code>__init__</code> (the wrong lifecycle phase — should be
+      deferred to <code>set_valuation_date</code>), and <code>BarrierDown</code> takes a raw integer
+      index rather than a name, bypassing the name-resolution system. A caller who accidentally
+      instantiates either class gets an error deep inside the pricing engine with no indication of why
+      it fails immediately.
     </p>
-    <pre><span class="c"># Current (slow — one Brent call per strike):</span>
-<span class="rm">ivs = [implied_vol(expiry, k, is_call, fwd, p) for k, p in zip(strike, fwd_price, strict=True)]</span>
+    <p><strong>Fix:</strong> Until fully implemented, prefix with underscore to remove from the
+    public API, or raise <code>NotImplementedError</code> in <code>__init__</code>:</p>
+    <pre><span class="kw">class</span> <span class="ok">_Maximum</span>(Payoff):   <span class="c"># not exported</span>
+    ...
 
-<span class="c"># Drop-in replacement (vectorized Newton, ~10–100× faster):</span>
-<span class="ok">return implied_vol_newton(expiry, strike, is_call, fwd, fwd_price)</span></pre>
-    <p>
-      The <code>implied_vol_newton</code> docstring notes it may struggle near zero vega; a safe drop-in
-      would add a Brent fallback for those cases. As a first step, delegating unconditionally is a large
-      improvement with minimal risk.
-    </p>
+<span class="c"># or, to fail at construction time:</span>
+<span class="kw">def</span> <span class="fn">__init__</span>(self, left, right):
+    <span class="kw">raise</span> NotImplementedError(<span class="st">"Maximum is not yet implemented"</span>)</pre>
   </div>
 
   <!-- 6 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">Dead commented code in <code>black.py</code>: stale "Original config" block and abandoned Newton return code</span>
+      <span class="issue-title"><code>LocalVol.dump_data</code> family crashes if <code>valdate</code> is not supplied (the default)</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py · lines 34–37, 80–84</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol.py · lines 329–332 (ConstantLocalVol) &nbsp;·&nbsp; lines 142–144 (TimeInterpolatedLocalVol)</span>
     <p>
-      <strong>Why it's bad:</strong> Two separate blocks of commented-out code remain in production
-      code. First, the "Original config" block at lines 34–37 was one of two such blocks — the other
-      was removed in the last pass, but this one survives:
+      <strong>Why it's bad:</strong> <code>LocalVol.__init__</code> defaults <code>valdate</code> to
+      <code>None</code> via <code>kwargs.get('valdate', None)</code>. Both <code>dump_data</code>
+      implementations then call <code>self.valdate.strftime(...)</code> unconditionally. Any call to
+      <code>dump_data()</code> on an LV object that was constructed without an explicit
+      <code>valdate</code> — including every PDE test that uses
+      <code>ConstantLocalVol(0.20)</code> — raises <code>AttributeError: 'NoneType' object has no
+      attribute 'strftime'</code>. The test suite avoids this only by never calling <code>dump_data</code>
+      on these objects.
     </p>
-    <pre><span class="rm"># # Original config
-# options = {'xtol': 1e-4, 'maxiter': 100, 'disp': False}
-# xmin = 1e-6
-# xmax = 1.0</span></pre>
-    <p>
-      Second, <code>implied_vol_newton()</code> at lines 80–84 has four lines of stale exploration
-      code for conditionally returning a scalar vs. array:
-    </p>
-    <pre><span class="rm"># # if len(strike) == 1 and len(fwd_price) == 1 and len(vol) == 1: # Return a scalar if inputs are scalar
-# #     return vol[0]
-# # else:
-# #     return vol
-# return (vol.item() if vol.ndim == 0 or vol.size ==1 else vol)</span></pre>
-    <p>
-      <strong>Fix:</strong> Delete both blocks. If the "Original config" values may be needed again,
-      a code comment explaining the <em>reason</em> for the current choice is more useful than the old
-      values verbatim. The Newton scalar/array branching question is answered by always returning an
-      array — callers that need a scalar can call <code>.item()</code> themselves.
-    </p>
+    <p><strong>Fix:</strong> Guard the serialization or require <code>valdate</code> explicitly:</p>
+    <pre><span class="kw">def</span> <span class="fn">dump_data</span>(self) -> dict:
+    <span class="ok">if self.valdate is None:
+        raise RuntimeError("Cannot serialize LocalVol without a valdate")</span>
+    <span class="kw">return</span> {<span class="st">'name'</span>: self.name, <span class="st">'valdate'</span>: self.valdate.strftime(dates.DATE_FORMAT), ...}</pre>
   </div>
 
   <!-- 7 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title">Arithmetic payoff nodes repeat identical 4-method boilerplate across 4 classes (~130 lines)</span>
-      <span class="badge low">Low</span>
+      <span class="issue-title"><code>TsIvCalibrator.calibrate</code> does not check <code>result.success</code> — silent convergence failure</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 514–619</span>
+    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · lines 86–91</span>
     <p>
-      <strong>Why it's bad:</strong> <code>Add</code>, <code>Sub</code>, <code>Mul</code>, and
-      <code>Div</code> each implement the same four lifecycle methods
-      (<code>set_nameindexes</code>, <code>set_valuation_date</code>, <code>set_eventindexes</code>,
-      and <code>__init__</code>) with identical structure — only the operator in <code>evaluate()</code>
-      differs. A bug in one copy (e.g. a missing delegation to <code>right.set_eventindexes</code>)
-      would be silently inconsistent across the other three.
+      <strong>Why it's bad:</strong> After calling <code>optimizer.minimize</code>, the calibrator
+      assigns <code>self.sol = self.result.x</code> and forces the model to that point — regardless of
+      whether the optimizer converged. <code>scipy.optimize.OptimizeResult.success</code> is never
+      inspected. A failed calibration (hit max iterations, ill-conditioned surface, infeasible bounds)
+      will silently leave the model at a non-converged parameter set, which is then used for pricing
+      and further LV calibration. In production, this produces subtly wrong prices with no warning.
     </p>
-    <p>
-      <strong>Fix:</strong> Extract a <code>BinaryPayoff</code> base class that handles all lifecycle
-      delegation and exposes an abstract <code>_combine(left_val, right_val)</code> method:
-    </p>
-    <pre><span class="kw">class</span> <span class="fn">BinaryPayoff</span>(Payoff):
-    <span class="kw">def</span> <span class="fn">__init__</span>(self, left, right):
-        <span class="fn">super()</span>.__init__()
-        self.left, self.right = left, right
-        self.names = list_payoff_names([left, right])
-
-    <span class="kw">def</span> <span class="fn">set_nameindexes</span>(self, names): ...   <span class="c"># delegate to both</span>
-    <span class="kw">def</span> <span class="fn">set_valuation_date</span>(self, valdate): ...  <span class="c"># delegate + gather eventdates</span>
-    <span class="kw">def</span> <span class="fn">set_eventindexes</span>(self, eventdates): ...  <span class="c"># delegate to both</span>
-
-<span class="kw">class</span> <span class="fn">Add</span>(BinaryPayoff):
-    <span class="kw">def</span> <span class="fn">evaluate</span>(self, mkt_state):
-        <span class="kw">return</span> self.left.evaluate(mkt_state) + self.right.evaluate(mkt_state)</pre>
+    <p><strong>Fix:</strong> Raise or at minimum warn on failed convergence:</p>
+    <pre><span class="ok">if not self.result.success:
+    import warnings
+    warnings.warn(
+        f"Calibration did not converge: {self.result.message}",
+        RuntimeWarning, stacklevel=2
+    )</span>
+self.model.update_params(self.sol)</pre>
   </div>
 
   <!-- 8 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>Average</code> and <code>Variance</code> payoffs have no test coverage; known edge cases are documented but untested</span>
+      <span class="issue-title"><code>provider.py</code> <code>__main__</code> block calls non-existent method <code>get_yield_curve</code></span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 231–281, 434–510 &nbsp;·&nbsp; sdevpy/tests/</span>
+    <span class="loc">sdevpy/market/provider.py · line 109</span>
     <p>
-      <strong>Why it's bad:</strong> Neither <code>Average</code> nor <code>Variance</code> appears
-      in any <code>test_*.py</code> file. <code>Average.__init__</code> carries the docstring note
-      <em>"ToDo: test with inception date in the past"</em> — an acknowledged gap. The critical
-      path for <code>Variance</code> (new contract, <code>start = valdate</code>) is issue&nbsp;#1
-      above and is entirely invisible to the test suite. The in-flight case (some historical fixings)
-      is exercised only through the MC smoke tests in <code>test_mc.py</code>, which do not isolate
-      the payoff lifecycle.
+      <strong>Why it's bad:</strong> The <code>if __name__ == "__main__"</code> block calls
+      <code>md_provider.get_yield_curve(...)</code> but the actual method is named
+      <code>get_yieldcurve</code> (no underscore). Running the file directly produces
+      <code>AttributeError: 'MarketDataFileProvider' object has no attribute 'get_yield_curve'</code>.
+      This is a documentation and discoverability problem: developers exploring the provider API by
+      running the file get an immediate crash. The Protocol itself has the same method named
+      <code>get_yieldcurve</code>, so the mismatch is in the example code only.
     </p>
-    <p>
-      <strong>Fix:</strong> Add unit tests for <code>set_valuation_date</code> and
-      <code>set_eventindexes</code> covering: (1) all-future dates (new contract), (2) mixed
-      historical + future dates, (3) all-past dates (fully seasoned). These tests require only
-      a mock <code>get_fixings</code> and a stub <code>mkt_state</code> — no MC engine needed.
-    </p>
+    <pre><span class="rm">obj = md_provider.get_yield_curve("USD.SOFR.1D", valdate)</span>
+<span class="ok">obj = md_provider.get_yieldcurve("USD.SOFR.1D", valdate)</span></pre>
   </div>
 
   <!-- 9 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title">Stray commented-out <code>print</code> left inside <code>Mul.evaluate()</code></span>
+      <span class="issue-title"><code>price_book</code> redundantly re-fetches <code>names</code> after <code>set_nameindexes</code></span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 578</span>
+    <span class="loc">sdevpy/montecarlo/mcpricer.py · lines 32–37</span>
     <p>
-      <strong>Why it's bad:</strong> A debug statement was commented out but never removed:
+      <strong>Why it's bad:</strong> <code>book.set_nameindexes()</code> at line 32 returns the name
+      list and stores it in <code>book.names</code>. Line 37 then reads <code>names = book.names</code>
+      again, discarding the value already returned. The variable assigned at line 32 is shadowed
+      at line 37. There are also several commented-out imports at the top of the file
+      (<code># from sdevpy.market.spot import get_spots</code>,
+      <code># from sdevpy.market.correlations import get_correlations</code>) that are leftover from
+      the pre-provider API and should be deleted.
     </p>
-    <pre><span class="kw">def</span> <span class="fn">evaluate</span>(self, mkt_state: dict):
-    payoff = self.left.evaluate(mkt_state) * self.right.evaluate(mkt_state)
-    <span class="rm"># print(f"Mul: {payoff.shape}")</span>
-    <span class="kw">return</span> payoff</pre>
-    <p>
-      This is the only such leftover in the arithmetic node classes after the earlier cleanup passes;
-      it is trivially removed. The other arithmetic nodes (<code>Add</code>, <code>Sub</code>,
-      <code>Div</code>) are clean.
-    </p>
-    <p><strong>Fix:</strong> Delete the commented line.</p>
+    <pre><span class="rm">names = book.set_nameindexes()   # return value immediately discarded
+book.set_valuation_date(valdate, md)
+eventdates = book.eventdates
+names = book.names               # re-reads what set_nameindexes already returned</span>
+
+<span class="ok">book.set_nameindexes()
+book.set_valuation_date(valdate, md)
+names = book.names
+eventdates = book.eventdates</span></pre>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>implied_vol_newton()</code> has no vega guard — division by near-zero vega can diverge silently</span>
+      <span class="issue-title">No test coverage for <code>price_vanilla_surface</code> or new-contract <code>Variance</code></span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py · lines 73–76</span>
+    <span class="loc">sdevpy/tests/test_mc.py · (absent)</span>
     <p>
-      <strong>Why it's bad:</strong> The Newton loop computes <code>vol -= diff / vega</code> where
-      <code>vega = fwd * norm.pdf(d1) * sqrt_t</code>. For very deep in-the-money or out-of-the-money
-      options, <code>norm.pdf(d1)</code> underflows to zero and the Newton step overflows to
-      <code>±inf</code>. The clamp <code>np.maximum(vol, 1e-8)</code> on the next line saves negative
-      vols but not <code>+inf</code>, which propagates silently into downstream pricing. The returned
-      array can contain <code>inf</code> with no warning.
+      <strong>Why it's bad:</strong> Issue #1 (<code>price_vanilla_surface</code> broken) and Issue #4
+      (new-contract <code>Variance</code> crash) both have zero test coverage. The
+      <code>price_vanilla_surface</code> regression introduced by the provider refactor would have been
+      caught immediately by even a smoke test. The new-contract <code>Variance</code> bug has been
+      present since the 9th review for the same reason — the single MC test always uses a
+      <code>start</code> date in the past.
     </p>
-    <pre><span class="rm">vol -= diff / vega</span>
-<span class="ok">step = np.where(vega > 1e-12, diff / vega, 0.0)  # skip near-zero-vega points
-vol -= step</span></pre>
     <p>
-      Points skipped in a given iteration are re-evaluated on the next iteration; in practice they
-      converge once the vol estimate moves to a more sensible region. Alternatively, add a post-loop
-      sanity check: <code>vol = np.where(np.isfinite(vol), vol, np.nan)</code> and raise if any
-      NaNs remain.
+      <strong>Fix:</strong> Add two targeted tests: (1) a <code>test_price_vanilla_surface</code> that
+      constructs a minimal LV and provider and calls the function, asserting no exception; (2) a
+      <code>test_variance_new_contract</code> where <code>start == valdate</code>, asserting that
+      <code>set_valuation_date</code> completes without error and <code>evaluate()</code> returns a
+      finite value.
     </p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #11 &nbsp;·&nbsp; 2026-06-06 (full scan)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #10 &nbsp;·&nbsp; 2026-06-13 (full scan)
   </footer>
 </div>
 </body>

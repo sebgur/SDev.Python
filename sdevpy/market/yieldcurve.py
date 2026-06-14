@@ -149,10 +149,10 @@ class YieldCurveVariable(Enum):
     LOG_DISCOUNT = 2
 
 
-def get_yieldcurve(name: str, date: dt.datetime, folder: str) -> InterpolatedYieldCurve:
-    file = data_file(name, date, folder)
-    curve = yieldcurve_from_file(file)
-    return curve
+# def get_yieldcurve(name: str, date: dt.datetime, folder: str) -> InterpolatedYieldCurve:
+#     file = data_file(name, date, folder)
+#     curve = yieldcurve_from_file(file)
+#     return curve
 
 
 def yieldcurve_from_file(file: str|Path) -> InterpolatedYieldCurve:
@@ -188,14 +188,6 @@ def yieldcurve_from_file(file: str|Path) -> InterpolatedYieldCurve:
 def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
     """ Return the data file given the curve name, date and folder """
     return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
-
-
-# def test_data_folder():
-#     folder = Path(__file__).parent.parent.parent.resolve()
-#     dataset_folder = os.path.join(folder, "datasets")
-#     folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "yieldcurves")
-#     os.makedirs(folder, exist_ok=True)
-#     return folder
 
 
 if __name__ == "__main__":

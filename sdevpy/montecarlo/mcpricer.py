@@ -8,11 +8,7 @@ from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.models.assetmodels import MultiAssetGBM
 from sdevpy.montecarlo.pathgenerator import PathGenerator
-from sdevpy.market.provider import MarketDataProvider
-# from sdevpy.market.spot import get_spots
-from sdevpy.market.yieldcurve import get_yieldcurve
-from sdevpy.market.provider import get_forward_curves
-# from sdevpy.market.correlations import get_correlations
+from sdevpy.market import provider as mdp
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
@@ -27,7 +23,7 @@ def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) 
     return disc_tgrid
 
 
-def price_book(valdate: dt.datetime, book: Book, md: MarketDataProvider, **kwargs) -> dict:
+def price_book(valdate: dt.datetime, book: Book, md: mdp.MarketDataProvider, **kwargs) -> dict:
     """ Price book (PV) by Monte-Carlo """
     names = book.set_nameindexes()
     book.set_valuation_date(valdate, md)
@@ -38,7 +34,7 @@ def price_book(valdate: dt.datetime, book: Book, md: MarketDataProvider, **kwarg
     disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
     spot = md.get_spots(names, valdate)
     # spot = get_spots(names, valdate)
-    fwd_curves = get_forward_curves(names, valdate, md)
+    fwd_curves = mdp.get_forward_curves(names, valdate, md)
     lvs = lvf.get_local_vols(names, valdate, **kwargs)
     corr = md.get_correlations(names, valdate)
 
@@ -198,7 +194,8 @@ class McConfig:
 
 
 def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], strikes: list[list[float]],
-                          name: str, lv: LocalVol, **kwargs) -> list[npt.NDArray[np.float64]]:
+                          name: str, lv: LocalVol, md: mdp.MarketDataProvider,
+                          **kwargs) -> list[npt.NDArray[np.float64]]:
     """ Price a surface of vanillas by Monte-Carlo simulation on LV process.
         Return a list of forward prices per expiry, corresponding to each strike (expiries x strikes).
         The option type is straddle by default but can be changed to call or put. """
@@ -222,7 +219,7 @@ def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], str
     sim_prices = sim_prices['pv']
 
     # Calculate forward prices and reformat container (per expiry)
-    disc_curve = get_yieldcurve(book.csa_curve_id, valdate)
+    disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
     mc_prices = []
     count = 0
     for i in range(len(expiries)):
