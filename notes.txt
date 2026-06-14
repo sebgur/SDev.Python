@@ -36,14 +36,3 @@ model type rather than a concrete module:
 class AnalyticsModel(Protocol):
     def price(self, expiry, strike, is_call, fwd, vol): ...
     def implied_vol(self, expiry, strike, is_call, fwd, fwd_price): ...
-
-4. Replace the repeated match calculate_type blocks in zerosurface.py
-
-forward_price(), black_volatility(), bachelier_volatility(), and shifted_black_volatility() all contain
-the same four-case match on self.calculate_type. Every time a new OptionQuoteType is added, all four
-methods must be updated. A dispatch dict defined once would eliminate the duplication and make the
-open/closed principle hold.
-
-The inconsistent return type of implied_vol_newton() (issue #1 from the last review) also counts against
-Architecture — a function that returns either a scalar or an array depending on input size is not a
-well-defined contract.

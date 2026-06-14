@@ -47,7 +47,7 @@
     .grade-letter {
       font-size: 4.2rem;
       font-weight: 800;
-      color: var(--yellow);
+      color: var(--green);
       line-height: 1;
       min-width: 3.8rem;
       text-align: center;
@@ -188,34 +188,40 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-13 &nbsp;·&nbsp; <strong>10th review</strong> (full scan)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-14 &nbsp;·&nbsp; <strong>11th review</strong> (full scan)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter">B</div>
+    <div class="grade-letter" style="color:var(--green)">B+</div>
     <div class="grade-details">
-      <h2>Provider pattern landed — but two regressions in <code>mcpricer.py</code> and a Protocol gap need immediate attention</h2>
+      <h2>Strongest review-to-review improvement yet — three high-severity correctness issues remain</h2>
       <p>
-        The <code>MarketDataProvider</code> Protocol is now implemented and wired into the book, payoffs,
-        calibrator, and tests — a significant architecture improvement.
-        <code>test_tssvi1_calibrate</code> closes the biggest testing gap from the 9th review.
-        The PDE schemes are fully vectorized and <code>shift_forward</code> now defaults to <code>False</code>.
-        However, the provider refactor left <code>price_vanilla_surface</code> broken (wrong call signature),
-        and <code>get_spots</code> is called on <code>MarketDataProvider</code>-typed objects but is absent
-        from the Protocol, undermining type safety. The variance new-contract crash and the two WIP stubs
-        in the public namespace remain unresolved from the 9th review.
+        This round saw sweeping structural improvements: the Provider pattern is now cleanly split between
+        Protocol and file-based implementation, <code>PricingContext</code> is a proper dataclass,
+        <code>CalibrationDataProvider</code> is complete, the PDE loops are vectorized, the
+        <code>trade.notional</code> multiplier bug is fixed, dead WIP stubs are removed, and all three
+        test-output <code>print()</code> calls are gone. Ten of the ten issues from the 10th review
+        are now resolved. The remaining high-severity items are all correctness bugs in the MC payoff
+        layer: the new-contract <code>Variance</code> mis-count, the missing zero-floor in
+        <code>Sqrt.evaluate</code>, and the <code>VectorLocalVol.refresh_sections</code> field-reset.
+        None will be caught by the current test suite without adding the new-contract case.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since 9th review:</strong>
-    <code>MarketDataProvider</code> Protocol implemented in <code>provider.py</code> &nbsp;·&nbsp;
-    all market-data tests updated to use <code>MarketDataFileProvider</code> &nbsp;·&nbsp;
-    <code>test_tssvi1_calibrate</code> added — full calibration round-trip now covered &nbsp;·&nbsp;
-    PDE schemes vectorized (was loop-based) &nbsp;·&nbsp;
-    <code>PdeConfig.shift_forward</code> now defaults to <code>False</code>, matching actual usage &nbsp;·&nbsp;
-    <code>get_forward_curves</code> moved to <code>provider.py</code> as a free function on the interface
+    <strong>Fixed since 10th review (all 10):</strong>
+    <code>trade.notional</code> now multiplied into PV at <code>mcpricer.py:176</code> &nbsp;·&nbsp;
+    <code>get_spots</code> added to <code>MarketDataProvider</code> Protocol &nbsp;·&nbsp;
+    <code>Maximum</code> / <code>BarrierDown</code> WIP stubs removed from <code>exotics.py</code> &nbsp;·&nbsp;
+    PDE band-vector assembly fully vectorized in <code>ThetaScheme</code> and <code>ImplicitScheme</code> &nbsp;·&nbsp;
+    <code>PdeConfig.shift_forward</code> default changed to <code>False</code> &nbsp;·&nbsp;
+    <code>check_consistency</code> dead code removed from <code>impliedvol_calib.py</code> &nbsp;·&nbsp;
+    all 3 live <code>print()</code> calls in test functions commented out &nbsp;·&nbsp;
+    <code>price_vanilla_surface</code> refactored to <code>ctx: PricingContext</code> &nbsp;·&nbsp;
+    <code>implied_vol</code> tolerance tightened (1e-4 → 1e-6, xmax 1.0 → 2.0) &nbsp;·&nbsp;
+    <code>test_tssvi1_calibrate</code> end-to-end calibration test added &nbsp;·&nbsp;
+    <em>new:</em> Provider/fileprovider split, <code>PricingContext</code> dataclass, <code>Sqrt</code> payoff
   </div>
 
   <div class="scorecard">
@@ -227,44 +233,44 @@
       </thead>
       <tbody>
         <tr>
-          <td>Architecture</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Provider pattern well-structured; free function <code>get_forward_curves</code> on the interface is the right idiom; <code>price_vanilla_surface</code> not updated to the new pattern is the only structural gap</td>
+          <td>Architecture</td><td>9 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:90%;background:#3fb950"></div></div><span class="score-lbl">Excellent</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Protocol/fileprovider split is clean; <code>PricingContext</code> correctly thin; payoff algebra complete with <code>Sqrt</code>; calibration provider well-mirrored</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>price_vanilla_surface</code> crashes (missing <code>md</code> arg); <code>Variance</code> new-contract crash still present; <code>get_spots</code> called on Protocol objects but not declared</td>
+          <td>Correctness</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Three high-severity correctness bugs: new-contract <code>Variance</code> mis-count, <code>Sqrt</code> no zero-floor, <code>VectorLocalVol.refresh_sections</code> field-reset</td>
         </tr>
         <tr>
           <td>Error Handling</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Optimizer result <code>success</code> flag not checked in <code>TsIvCalibrator</code>; <code>LocalVol.dump_data</code> family crashes on <code>valdate=None</code> (the default)</td>
+          <td style="color:var(--muted);font-size:.83rem"><code>dump_data</code> still crashes before <code>update_params</code>; <code>implied_vol_newton</code> silently returns unconverged result; <code>calib_black_from_vols</code> takes <code>np.sqrt</code> of potentially negative value</td>
         </tr>
         <tr>
           <td>Testing</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Calibration round-trip now tested; Dupire, LV-by-sections, yield curve unsorted all covered; <code>price_vanilla_surface</code> and new-contract <code>Variance</code> still untested</td>
+          <td style="color:var(--muted);font-size:.83rem">TsSvi1 calibration round-trip test now present; <code>shift_forward=True</code> path covered by PDE tests; Dupire calibration (<code>dupire_calib.py</code>) still untested</td>
         </tr>
         <tr>
           <td>Code Quality</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">PDE loops eliminated; production prints gone; <code>names</code> redundantly reassigned in <code>price_book</code>; scattered commented-out imports in mcpricer.py</td>
+          <td style="color:var(--muted);font-size:.83rem">No debug prints in production code; dead zero-array allocations remain in PDE scheme constructors; one copy-paste log message in <code>calibration/fileprovider.py</code></td>
         </tr>
         <tr>
           <td>Maintainability</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Provider pattern isolates data source concerns; free-function pattern for composed operations is clean and extensible</td>
+          <td style="color:var(--muted);font-size:.83rem">Provider-pattern consistency across market and calibration layers makes the design easy to extend; <code>PricingContext</code> cleanly decouples callers from data sources</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Protocol exists but has gaps: <code>get_spots</code> missing, <code>get_fixings</code> annotated as returning <code>FixingHandler</code> but returns values; mypy would flag both callers</td>
+          <td>Type Safety</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Protocols well-annotated; <code>CalibrationDataProvider</code> returns <code>dict|None</code> which is honest; <code>ParametricImpliedVol.params</code> typed as <code>None</code> at construction creates false-positive usage</td>
         </tr>
         <tr>
-          <td>Documentation</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good docstrings on calibrators and LV; provider methods have brief one-liners; <code>Variance</code> docstring does not mention the new-contract limitation</td>
+          <td>Documentation</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">New files have clear docstrings; <code>Variance</code> docstring does not document the new-contract behaviour (i.e. what <code>current_fixing=None</code> implies for pricing)</td>
         </tr>
       </tbody>
     </table>
@@ -276,265 +282,282 @@
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>price_vanilla_surface</code> crashes immediately — missing <code>md</code> argument after provider refactor</span>
+      <span class="issue-title">New-contract <code>Variance</code>: first log-return is silently skipped yet counted in denominator</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/mcpricer.py · line 221</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 487–496</span>
     <p>
-      <strong>Why it's bad:</strong> <code>price_book</code> was refactored to take
-      <code>md: MarketDataProvider</code> as its third positional argument, but
-      <code>price_vanilla_surface</code> was never updated. At line 221 it calls:
+      <strong>Why it's bad:</strong> When <code>start &ge; valdate</code> (a brand-new swap), <code>hist_fixing_dates</code>
+      is empty, <code>get_fixings</code> returns an empty list, and the condition
+      <code>len(hist_fixings) &ge; 1</code> is never met — so <code>self.current_fixing</code> stays
+      <code>None</code>. In <code>evaluate()</code> the guarded block is skipped:
     </p>
-    <pre>sim_prices = price_book(valdate, book, <span class="rm">lv_map={name: lv}</span>, **kwargs)</pre>
+    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is not None</span>:   <span class="c"># False for a new contract → skipped</span>
+    var_sum = var_sum + np.power(np.log(spot_paths[:, 0] / self.current_fixing), 2)</pre>
     <p>
-      <code>lv_map={name: lv}</code> lands in <code>**kwargs</code>, leaving <code>md</code> unbound.
-      Python will raise <code>TypeError: price_book() missing 1 required positional argument: 'md'</code>
-      on every call. Additionally, line 225 still calls the module-level <code>get_yieldcurve</code>
-      directly rather than going through a provider. This function is effectively dead code that silently
-      rotted during the refactor.
+      The first log-return — from the current spot at <code>valdate</code> to the first scheduled
+      counting date — is never added to <code>var_sum</code>. Yet <code>self.n_returns</code> was
+      computed as <code>len(alldates) - 1</code>, which includes that return in the denominator.
+      The realised variance is therefore understated, with the error growing as the first return
+      becomes a larger fraction of the total. The existing test always uses
+      <code>start_date = 2025-11-15</code> with <code>valdate = 2025-12-15</code>, so there are
+      always historical fixings and the branch is never exercised.
     </p>
-    <p><strong>Fix:</strong> Add an <code>md: MarketDataProvider</code> parameter to
-      <code>price_vanilla_surface</code> and thread it through to <code>price_book</code> and the discount
-      curve retrieval:</p>
-    <pre><span class="kw">def</span> <span class="fn">price_vanilla_surface</span>(valdate, expiries, strikes, name, lv, md: MarketDataProvider, **kwargs):
-    ...
-    sim_prices = price_book(valdate, book, md, lv_map={name: lv}, **kwargs)
-    disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)</pre>
+    <p><strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty, seed <code>current_fixing</code>
+    from the current spot:</p>
+    <pre><span class="kw">if</span> hist_fixings <span class="kw">is not None and</span> len(hist_fixings) >= 1:
+    self.current_fixing = hist_fixings[-1]
+<span class="ok">else:
+    self.current_fixing = md.get_spot(self.name, valdate)</span></pre>
   </div>
 
   <!-- 2 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>get_spots</code> absent from <code>MarketDataProvider</code> Protocol but called on Protocol-typed objects</span>
+      <span class="issue-title"><code>Sqrt.evaluate</code> has no zero-floor — negative paths produce silent <code>nan</code></span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/mcpricer.py · line 39 &nbsp;·&nbsp; sdevpy/market/provider.py · line 92</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 380</span>
     <p>
-      <strong>Why it's bad:</strong> The Protocol declares <code>get_spot</code> (singular) but not
-      <code>get_spots</code> (plural). Both <code>price_book</code> and <code>get_forward_curves</code>
-      call <code>md.get_spots(names, valdate)</code> / <code>provider.get_spots(names, valdate)</code>
-      on objects typed as <code>MarketDataProvider</code>. mypy reports an error on both sites. More
-      importantly, any alternative provider implementation (Bloomberg, database) that correctly
-      implements every method in the Protocol will still fail at runtime because
-      <code>get_spots</code> is missing from the declared contract.
+      <strong>Why it's bad:</strong> <code>Variance</code> is theoretically non-negative (sum of squared
+      log-returns), but floating-point noise on near-zero paths can produce tiny negatives.
+      <code>np.sqrt</code> of a negative number returns <code>nan</code> silently:
     </p>
-    <p><strong>Fix:</strong> Add <code>get_spots</code> to the Protocol:</p>
-    <pre><span class="ok">def get_spots(self, names: list[str], valdate: dt.datetime) -> np.ndarray: ...</span></pre>
+    <pre><span class="kw">def</span> <span class="fn">evaluate</span>(self, mkt_state: dict):
+    <span class="rm">return np.sqrt(self.subpayoff.evaluate(mkt_state))</span></pre>
+    <p>
+      A single <code>nan</code> path propagates through every subsequent algebra node
+      (<code>Sub</code>, <code>Mul</code>, discounting) without raising, so the final PV is
+      contaminated silently. Any vol-swap book with near-zero realised variance on some paths
+      will produce wrong numbers with no error signal.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="kw">def</span> <span class="fn">evaluate</span>(self, mkt_state: dict):
+    <span class="ok">return np.sqrt(np.maximum(self.subpayoff.evaluate(mkt_state), 0.0))</span></pre>
   </div>
 
   <!-- 3 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>get_fixings</code> annotated as <code>-> FixingHandler</code> in the Protocol but returns values</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>VectorLocalVol.refresh_sections</code> calls <code>super().__init__</code>, silently resetting <code>valdate</code>, <code>name</code>, <code>snapdate</code></span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/market/provider.py · line 22 (Protocol) &nbsp;·&nbsp; lines 42–45 (implementation)</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol.py · lines 300–312</span>
     <p>
-      <strong>Why it's bad:</strong> The Protocol declares:
+      <strong>Why it's bad:</strong> <code>refresh_sections</code> is meant to resync the internal
+      <code>sections</code> list after modifying <code>self.vol_grid</code>. It does so by calling
+      <code>super().__init__(sections, **kwargs)</code> which chains up through
+      <code>TimeInterpolatedLocalVol.__init__</code> to <code>LocalVol.__init__(**kwargs)</code>.
+      If called with no arguments (the common case), that base call sets:
     </p>
-    <pre><span class="kw">def</span> <span class="fn">get_fixings</span>(self, name, dates, **kwargs) -> <span class="rm">FixingHandler</span>: ...</pre>
+    <pre>self.valdate  = kwargs.get(<span class="st">'valdate'</span>,  <span class="kw">None</span>)     <span class="c"># → None</span>
+self.name     = kwargs.get(<span class="st">'name'</span>,    <span class="st">'Unknown'</span>) <span class="c"># → 'Unknown'</span>
+self.snapdate = kwargs.get(<span class="st">'snapdate'</span>, self.valdate) <span class="c"># → None</span></pre>
     <p>
-      But the implementation at lines 42–45 returns <code>handler.value(dates)</code>, which is a
-      <code>float</code> or <code>list[float]</code> depending on the input. The callers in
-      <code>Average.set_valuation_date</code> and <code>Variance.set_valuation_date</code> (basic.py
-      lines 270 and 494) treat the return as a list of floats and call <code>np.asarray(...).sum()</code>
-      on it — which would crash if the annotation were accurate and a real <code>FixingHandler</code>
-      were returned.
+      A subsequent <code>dump_data()</code> call would then raise:
+      <em>"Cannot dump ConstantLocalVol: no valuation date"</em> — even though the object was
+      correctly constructed with a <code>valdate</code>. The bug is latent: it bites whenever
+      a caller rebuilds the vol grid and then serializes or queries <code>valdate</code>.
     </p>
-    <p><strong>Fix:</strong> Correct the Protocol annotation to match reality:</p>
-    <pre><span class="kw">def</span> <span class="fn">get_fixings</span>(self, name: str,
-               dates: dt.datetime | list[dt.datetime],
-               **kwargs) -> <span class="ok">float | list[float]</span>: ...</pre>
+    <p>
+      <strong>Fix:</strong> Replace the <code>super().__init__</code> call with a targeted
+      section rebuild that does not touch the base-class fields:
+    </p>
+    <pre><span class="kw">def</span> <span class="fn">refresh_sections</span>(self, **kwargs) -> <span class="kw">None</span>:
+    <span class="kw">if</span> len(self.vol_grid) != len(self.t_grid):
+        <span class="kw">raise</span> ValueError(...)
+    <span class="ok">self.sections = [FlatLocalVolSection(t, v)
+                     for t, v in zip(self.t_grid, self.vol_grid)]</span></pre>
   </div>
 
   <!-- 4 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title">New variance swap (<code>start &ge; valdate</code>) always crashes at pricing — <code>current_fixing</code> never set</span>
+      <span class="issue-title"><code>dump_data()</code> crashes with <code>AttributeError</code> if called before <code>update_params()</code></span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 454, 499–504</span>
+    <span class="loc">sdevpy/volatility/impliedvol/parametric_impliedvol.py · line 10 &nbsp;·&nbsp; tssvi1.py · line ~152 &nbsp;·&nbsp; tssvi2.py · line ~148 &nbsp;·&nbsp; logmix.py · line ~366</span>
     <p>
-      <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets <code>self.current_fixing = None</code>.
-      In <code>set_valuation_date</code>, when <code>start &ge; valdate</code> (a brand-new contract),
-      <code>hist_fixing_dates = []</code>. Then <code>md.get_fixings(name, [])</code> returns <code>[]</code>
-      and the guard at line 503 (<code>len(hist_fixings) &ge; 1</code>) is never satisfied, so
-      <code>current_fixing</code> stays <code>None</code>. Every subsequent <code>evaluate()</code>
-      call raises:
+      <strong>Why it's bad:</strong> <code>ParametricImpliedVol.__init__</code> sets
+      <code>self.params = None</code>. Every concrete <code>dump_data()</code> implementation
+      calls <code>self.params.tolist()</code> without guarding against this initial state.
+      Any serialization of a freshly constructed model before calibration raises:
     </p>
-    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is None</span>:
-    <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
+    <pre><span class="rm">AttributeError: 'NoneType' object has no attribute 'tolist'</span></pre>
     <p>
-      The existing <code>test_mc.py</code> always uses <code>start = 2025-11-15</code> (one month before
-      valdate), so historical fixings always exist and the bug is invisible. Any real new-issue
-      trade (start = valdate) will crash.
+      <strong>Fix:</strong> Guard at the base class level so all subclasses inherit the check:
     </p>
-    <p><strong>Fix:</strong> When no historical fixings exist, initialise <code>current_fixing</code>
-    from the spot on valdate:</p>
-    <pre><span class="ok">if len(hist_fixings) == 0:
-    self.current_fixing = md.get_spot(self.name, valdate)</span>
-elif len(hist_fixings) >= 1:
-    self.current_fixing = hist_fixings[-1]</pre>
+    <pre><span class="kw">def</span> <span class="fn">update_params</span>(self, x):
+    self.params = np.asarray(x, dtype=<span class="fn">float</span>)
+
+<span class="ok">def _require_params(self):
+    if self.params is None:
+        raise RuntimeError("Model has no parameters; call update_params() first")</span></pre>
+    <p>Then call <code>self._require_params()</code> at the top of each concrete <code>dump_data()</code>.</p>
   </div>
 
   <!-- 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are WIP stubs publicly exported</span>
+      <span class="issue-title"><code>implied_vol_newton</code> silently returns unconverged result when <code>max_iter</code> is reached</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
+    <span class="loc">sdevpy/analytics/black.py · lines 59–85</span>
     <p>
-      <strong>Why it's bad:</strong> Both classes are tagged <em>"Warning: work in progress"</em>
-      and raise <code>NotImplementedError</code> in <code>evaluate()</code>. They are importable from
-      <code>sdevpy.montecarlo.payoffs.exotics</code>. <code>Maximum</code> also sets
-      <code>self.eventdates</code> in <code>__init__</code> (the wrong lifecycle phase — should be
-      deferred to <code>set_valuation_date</code>), and <code>BarrierDown</code> takes a raw integer
-      index rather than a name, bypassing the name-resolution system. A caller who accidentally
-      instantiates either class gets an error deep inside the pricing engine with no indication of why
-      it fails immediately.
+      <strong>Why it's bad:</strong> Newton-Raphson exits the loop when either
+      <code>np.all(np.abs(diff) &lt; tol)</code> is true <em>or</em> when <code>max_iter</code>
+      iterations are exhausted. In the second case the function returns the last iterate without
+      any indication of failure. Near-zero vega (deep OTM, very short dated) can cause Newton to
+      diverge or stall; the caller has no way to detect this and will silently use a bad implied vol
+      in calibration or pricing.
     </p>
-    <p><strong>Fix:</strong> Until fully implemented, prefix with underscore to remove from the
-    public API, or raise <code>NotImplementedError</code> in <code>__init__</code>:</p>
-    <pre><span class="kw">class</span> <span class="ok">_Maximum</span>(Payoff):   <span class="c"># not exported</span>
+    <p><strong>Fix:</strong> Track convergence and warn:</p>
+    <pre><span class="kw">for</span> _ <span class="kw">in</span> range(max_iter):
     ...
-
-<span class="c"># or, to fail at construction time:</span>
-<span class="kw">def</span> <span class="fn">__init__</span>(self, left, right):
-    <span class="kw">raise</span> NotImplementedError(<span class="st">"Maximum is not yet implemented"</span>)</pre>
+    <span class="ok">if np.all(np.abs(diff) &lt; tol):
+        return vol</span>
+<span class="ok">log.warning("implied_vol_newton did not converge")</span>
+<span class="kw">return</span> vol</pre>
   </div>
 
   <!-- 6 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title"><code>LocalVol.dump_data</code> family crashes if <code>valdate</code> is not supplied (the default)</span>
+      <span class="issue-title"><code>calib_black_from_vols</code> passes potentially negative argument to <code>np.sqrt</code></span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol.py · lines 329–332 (ConstantLocalVol) &nbsp;·&nbsp; lines 142–144 (TimeInterpolatedLocalVol)</span>
+    <span class="loc">sdevpy/volatility/localvol/black_calib.py · line 55</span>
     <p>
-      <strong>Why it's bad:</strong> <code>LocalVol.__init__</code> defaults <code>valdate</code> to
-      <code>None</code> via <code>kwargs.get('valdate', None)</code>. Both <code>dump_data</code>
-      implementations then call <code>self.valdate.strftime(...)</code> unconditionally. Any call to
-      <code>dump_data()</code> on an LV object that was constructed without an explicit
-      <code>valdate</code> — including every PDE test that uses
-      <code>ConstantLocalVol(0.20)</code> — raises <code>AttributeError: 'NoneType' object has no
-      attribute 'strftime'</code>. The test suite avoids this only by never calling <code>dump_data</code>
-      on these objects.
+      <strong>Why it's bad:</strong> The Dupire-bootstrap formula for piecewise-constant local vol is:
     </p>
-    <p><strong>Fix:</strong> Guard the serialization or require <code>valdate</code> explicitly:</p>
-    <pre><span class="kw">def</span> <span class="fn">dump_data</span>(self) -> dict:
-    <span class="ok">if self.valdate is None:
-        raise RuntimeError("Cannot serialize LocalVol without a valdate")</span>
-    <span class="kw">return</span> {<span class="st">'name'</span>: self.name, <span class="st">'valdate'</span>: self.valdate.strftime(dates.DATE_FORMAT), ...}</pre>
+    <pre>lvols.append(np.sqrt((vole**<span class="fn">2</span> * te - vols**<span class="fn">2</span> * ts) / (te - ts)))</pre>
+    <p>
+      If the implied vol term structure decreases fast enough that
+      <code>vole² · te &lt; vols² · ts</code> (e.g., a steep inversion in the term structure), the
+      argument to <code>np.sqrt</code> is negative and returns <code>nan</code> silently. The resulting
+      <code>VectorLocalVol</code> contains a <code>nan</code> section and all subsequent PDE or
+      MC pricing will produce <code>nan</code> with no indication of where it came from.
+    </p>
+    <p><strong>Fix:</strong> Guard with a meaningful error before the sqrt:</p>
+    <pre>forward_var = (vole**<span class="fn">2</span> * te - vols**<span class="fn">2</span> * ts) / (te - ts)
+<span class="ok">if forward_var &lt; 0:
+    raise ValueError(f"Negative forward variance at pillar {i}: inverted vol term structure")</span>
+lvols.append(np.sqrt(forward_var))</pre>
   </div>
 
   <!-- 7 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title"><code>TsIvCalibrator.calibrate</code> does not check <code>result.success</code> — silent convergence failure</span>
+      <span class="issue-title">Dupire calibration path (<code>dupire_calib.py</code>, <code>lvsection_calib.py</code>) has no automated tests</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · lines 86–91</span>
+    <span class="loc">sdevpy/volatility/localvol/dupire_calib.py &nbsp;·&nbsp; sdevpy/volatility/localvol/lvsection_calib.py</span>
     <p>
-      <strong>Why it's bad:</strong> After calling <code>optimizer.minimize</code>, the calibrator
-      assigns <code>self.sol = self.result.x</code> and forces the model to that point — regardless of
-      whether the optimizer converged. <code>scipy.optimize.OptimizeResult.success</code> is never
-      inspected. A failed calibration (hit max iterations, ill-conditioned surface, infeasible bounds)
-      will silently leave the model at a non-converged parameter set, which is then used for pricing
-      and further LV calibration. In production, this produces subtly wrong prices with no warning.
+      <strong>Why it's bad:</strong> The TsSvi1 calibration round-trip test added this cycle is a
+      meaningful step forward, and the <code>shift_forward</code> path is now exercised. However,
+      the Dupire density-fitting calibration (<code>dupire_calib.py</code>) and the per-section
+      LV calibration (<code>lvsection_calib.py</code>) remain entirely outside automated test
+      coverage. These are the paths used to produce the stored LV files that the MC and PDE
+      pricers consume. A silent regression in <code>calibrate_lv_interp</code> or
+      <code>calibrate_section</code> would corrupt stored data and produce wrong prices without
+      any CI signal.
     </p>
-    <p><strong>Fix:</strong> Raise or at minimum warn on failed convergence:</p>
-    <pre><span class="ok">if not self.result.success:
-    import warnings
-    warnings.warn(
-        f"Calibration did not converge: {self.result.message}",
-        RuntimeWarning, stacklevel=2
-    )</span>
-self.model.update_params(self.sol)</pre>
+    <p>
+      <strong>Fix:</strong> Add a <code>test_dupire_calib</code> that loads the market data,
+      calls <code>calibrate_lv_interp</code>, and asserts the resulting LV reproduces
+      at least a few reference prices within a reasonable tolerance (e.g., 1bp ATM).
+    </p>
   </div>
 
   <!-- 8 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>provider.py</code> <code>__main__</code> block calls non-existent method <code>get_yield_curve</code></span>
+      <span class="issue-title"><code>CalibrationDataFileProvider.get_impliedvol_data</code> logs "LocalVol file not found" for an implied-vol file</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/market/provider.py · line 109</span>
+    <span class="loc">sdevpy/calibration/fileprovider.py · line 19</span>
     <p>
-      <strong>Why it's bad:</strong> The <code>if __name__ == "__main__"</code> block calls
-      <code>md_provider.get_yield_curve(...)</code> but the actual method is named
-      <code>get_yieldcurve</code> (no underscore). Running the file directly produces
-      <code>AttributeError: 'MarketDataFileProvider' object has no attribute 'get_yield_curve'</code>.
-      This is a documentation and discoverability problem: developers exploring the provider API by
-      running the file get an immediate crash. The Protocol itself has the same method named
-      <code>get_yieldcurve</code>, so the mismatch is in the example code only.
+      <strong>Why it's bad:</strong> The log line was copy-pasted from <code>get_localvol_data</code>
+      without updating the message:
     </p>
-    <pre><span class="rm">obj = md_provider.get_yield_curve("USD.SOFR.1D", valdate)</span>
-<span class="ok">obj = md_provider.get_yieldcurve("USD.SOFR.1D", valdate)</span></pre>
+    <pre><span class="kw">def</span> <span class="fn">get_impliedvol_data</span>(self, name, date, model_name):
+    file = self.impliedvol_data_file(name, date, model_name)
+    <span class="kw">if not</span> file.exists():
+        <span class="rm">log.debug(f'LocalVol file not found: {file}')</span>  <span class="c"># ← wrong</span></pre>
+    <p>
+      When debugging a missing implied-vol file, the log will say "LocalVol file not found",
+      sending the reader to look in the wrong place.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre>        <span class="ok">log.debug(f'ImpliedVol file not found: {file}')</span></pre>
   </div>
 
   <!-- 9 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>price_book</code> redundantly re-fetches <code>names</code> after <code>set_nameindexes</code></span>
+      <span class="issue-title">Dead <code>np.zeros</code> allocations in <code>ThetaScheme</code> and <code>ImplicitScheme</code> immediately overwritten</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/mcpricer.py · lines 32–37</span>
+    <span class="loc">sdevpy/pde/pdeschemes.py · lines 63–65, 91–93</span>
     <p>
-      <strong>Why it's bad:</strong> <code>book.set_nameindexes()</code> at line 32 returns the name
-      list and stores it in <code>book.names</code>. Line 37 then reads <code>names = book.names</code>
-      again, discarding the value already returned. The variable assigned at line 32 is shadowed
-      at line 37. There are also several commented-out imports at the top of the file
-      (<code># from sdevpy.market.spot import get_spots</code>,
-      <code># from sdevpy.market.correlations import get_correlations</code>) that are leftover from
-      the pre-provider API and should be deleted.
+      <strong>Why it's bad:</strong> The vectorisation of the PDE band-vector assembly is correct
+      and fast, but the previous loop scaffolding left orphaned allocations:
     </p>
-    <pre><span class="rm">names = book.set_nameindexes()   # return value immediately discarded
-book.set_valuation_date(valdate, md)
-eventdates = book.eventdates
-names = book.names               # re-reads what set_nameindexes already returned</span>
-
-<span class="ok">book.set_nameindexes()
-book.set_valuation_date(valdate, md)
-names = book.names
-eventdates = book.eventdates</span></pre>
+    <pre><span class="rm">upper = np.zeros(n_x - 1)   # allocated …</span>
+<span class="rm">main  = np.zeros(n_x)        # allocated …</span>
+<span class="rm">lower = np.zeros(n_x - 1)   # allocated …</span>
+<span class="c"># Vectorized</span>
+main  = 1.0 + theta_dt_2 * b * lv**<span class="fn">2</span>        <span class="c"># … and immediately replaced</span>
+upper = -theta_dt_2 * a * lv[<span class="fn">1</span>:]**<span class="fn">2</span>
+lower = -theta_dt_2 * c * lv[:-<span class="fn">1</span>]**<span class="fn">2</span></pre>
+    <p>
+      The three <code>np.zeros</code> calls allocate memory that is discarded on the very next
+      line. Each call to <code>roll_forward</code> performs 3 pointless allocations. With 250
+      mesh points × 50 time steps × many maturities, this accumulates.
+    </p>
+    <p><strong>Fix:</strong> Simply remove the three <code>np.zeros</code> lines. The vectorized
+    assignments create the arrays directly.</p>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title">No test coverage for <code>price_vanilla_surface</code> or new-contract <code>Variance</code></span>
+      <span class="issue-title"><code>VectorLocalVol.vol_grid</code> can silently diverge from internal <code>sections</code></span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/tests/test_mc.py · (absent)</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol.py · lines 280–298</span>
     <p>
-      <strong>Why it's bad:</strong> Issue #1 (<code>price_vanilla_surface</code> broken) and Issue #4
-      (new-contract <code>Variance</code> crash) both have zero test coverage. The
-      <code>price_vanilla_surface</code> regression introduced by the provider refactor would have been
-      caught immediately by even a smoke test. The new-contract <code>Variance</code> bug has been
-      present since the 9th review for the same reason — the single MC test always uses a
-      <code>start</code> date in the past.
+      <strong>Why it's bad:</strong> <code>VectorLocalVol</code> stores <code>self.vol_grid</code>
+      as a mutable public list. The internal <code>self.sections</code> (inherited from
+      <code>TimeInterpolatedLocalVol</code>) are built once at construction and not automatically
+      kept in sync. A caller can modify <code>vol_grid</code> directly:
+    </p>
+    <pre>lv.vol_grid[2] = 0.35   <span class="c"># looks like an update …</span>
+lv.value(t, logm)        <span class="c"># … but still returns the old value from sections[2]</span></pre>
+    <p>
+      The stale read is silent and hard to debug. <code>refresh_sections()</code> exists but is
+      not documented as a required call after mutation, and is itself broken (see issue #3).
     </p>
     <p>
-      <strong>Fix:</strong> Add two targeted tests: (1) a <code>test_price_vanilla_surface</code> that
-      constructs a minimal LV and provider and calls the function, asserting no exception; (2) a
-      <code>test_variance_new_contract</code> where <code>start == valdate</code>, asserting that
-      <code>set_valuation_date</code> completes without error and <code>evaluate()</code> returns a
-      finite value.
+      <strong>Fix:</strong> Make the sync automatic by overriding <code>__setitem__</code> on a
+      custom list subclass, or expose a proper <code>update_vol(t_idx, vol)</code> method that
+      updates both <code>vol_grid</code> and <code>sections[t_idx]</code> atomically. At minimum,
+      prefix <code>vol_grid</code> with an underscore and provide a property that raises if
+      direct mutation is attempted.
     </p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #10 &nbsp;·&nbsp; 2026-06-13 (full scan)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #11 &nbsp;·&nbsp; 2026-06-14 (full scan)
   </footer>
 </div>
 </body>
