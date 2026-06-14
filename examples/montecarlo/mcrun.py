@@ -74,7 +74,7 @@ if __name__ == "__main__":
     # Closed-form for vanilla
     md = mdp.MarketDataFileProvider()
     disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
-    fwd_curves = mdp.get_forward_curves(names, valdate)
+    fwd_curves = mdp.get_eq_forward_curves(names, valdate)
     lvs = get_local_vols(names, valdate)
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx].value(expiry)

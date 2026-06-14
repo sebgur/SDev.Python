@@ -551,12 +551,12 @@ def get_logmix_parameters(n_mix: int, params: npt.ArrayLike, verbose: bool=True)
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from sdevpy.market.eqforward import get_forward_curves
-    name = "ABC"
-    valdate = dt.datetime(2025, 12, 15)
+    from sdevpy.market import provider as mdp
+
+    name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Retrieve forward curve
-    fwd_curve = get_forward_curves([name], valdate)[0]
+    fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
 
     # Retrieve target market option data
     file = vsurf.data_file(name, valdate)

@@ -34,7 +34,7 @@ def price_book(valdate: dt.datetime, book: Book, md: mdp.MarketDataProvider, **k
     disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
     spot = md.get_spots(names, valdate)
     # spot = get_spots(names, valdate)
-    fwd_curves = mdp.get_forward_curves(names, valdate, md)
+    fwd_curves = mdp.get_eq_forward_curves(names, valdate, md)
     lvs = lvf.get_local_vols(names, valdate, **kwargs)
     corr = md.get_correlations(names, valdate)
 

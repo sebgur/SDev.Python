@@ -14,15 +14,13 @@ from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
-from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.market.provider import get_forward_curves, MarketDataProvider
-# from sdevpy.market.eqforward import get_forward_curves
+from sdevpy.market import provider as mdp
 from sdevpy.instruments.constants import string_to_optiontype, OptionType
 log = logging.getLogger(__name__)
 
 
 def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict,
-                            md: MarketDataProvider, **kwargs) -> dict:
+                            md: mdp.MarketDataProvider, **kwargs) -> dict:
     """ Calibrate InterpolatedParamLocalVol type to market data """
     # Arguments
     calc_pde_vols = kwargs.get('calc_pde_vols', False)
@@ -30,7 +28,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict,
     model_name = config.get('model_name', 'VSVI')
 
     # Retrieve forward curve
-    fwd_curve = get_forward_curves([name], valdate, md)[0]
+    fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
     # Retrieve target market option data
     surface_data = md.get_eq_vol_data(name, valdate)

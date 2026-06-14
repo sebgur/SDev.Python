@@ -90,9 +90,9 @@ class MarketDataFileProvider:
         return eqvol.eqvolsurfacedata_from_file(file)
 
 
-def get_forward_curves(names: list[str], valdate: dt.datetime,
-                       provider: MarketDataProvider) -> list[EqForwardCurve]:
-    """ Retrieve forward curves """
+def get_eq_forward_curves(names: list[str], valdate: dt.datetime,
+                          provider: MarketDataProvider) -> list[EqForwardCurve]:
+    """ Retrieve EQ forward curves """
     spots = provider.get_spots(names, valdate)
 
     fwd_curves = []
@@ -108,5 +108,5 @@ def get_forward_curves(names: list[str], valdate: dt.datetime,
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
     md_provider = MarketDataFileProvider()
-    obj = md_provider.get_yield_curve("USD.SOFR.1D", valdate)
+    obj = md_provider.get_yieldcurve("USD.SOFR.1D", valdate)
     print(obj)

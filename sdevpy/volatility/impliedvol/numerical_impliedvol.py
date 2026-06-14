@@ -58,7 +58,7 @@ if __name__ == "__main__":
     import datetime as dt
     import numpy as np
     from sdevpy.market import eqvolsurface as vsurf
-    from sdevpy.market.eqforward import get_forward_curves
+    from sdevpy.market import provider as mdp
     from sdevpy.utilities import timegrids
     from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
     from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol, DFLT_PDE_CONFIG
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Retrieve forward curve
-    fwd_curve = get_forward_curves([name], valdate)[0]
+    fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
 
     # Retrieve option data
     file = vsurf.data_file(name, valdate)
@@ -88,8 +88,6 @@ if __name__ == "__main__":
     print(f"Number of vol sections: {len(mkt_vols)}")
     for i in range(len(expiries)):
         print(f"Expiry {i+1} number of strikes/vols: {len(mkt_strikes[i])}/{len(mkt_vols[i])}")
-
-
 
     # Choose model
     section_model = 'BiExp' # SVI, CubicVol, BiExp
@@ -116,7 +114,7 @@ if __name__ == "__main__":
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Retrieve forward curve
-    fwd_curve = get_forward_curves([name], valdate)[0]
+    fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
 
     # fwds = surface_data.forwards
     fwds = fwd_curve.value(expiries)

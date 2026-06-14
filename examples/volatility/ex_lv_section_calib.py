@@ -4,11 +4,10 @@ import matplotlib.pyplot as plt
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
 from sdevpy.utilities import timegrids
-from sdevpy.market.eqforward import get_forward_curves
+from sdevpy.market import provider as mdp
 from sdevpy.maths import metrics
 from sdevpy import logger
-logger.configure(sdevpy_level='info')
-
+logger.configure()
 
 # Choose underlying and date
 n_digits = 6
@@ -42,7 +41,7 @@ expiries = surface_data.expiries
 expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
 # Retrieve forward curve
-fwd_curve = get_forward_curves([name], valdate)[0]
+fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
 
 # fwds = surface_data.forwards
 fwds = fwd_curve.value(expiries)

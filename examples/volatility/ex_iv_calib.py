@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sdevpy.maths.metrics import rmse
 from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.market.eqforward import get_forward_curves
+from sdevpy.market import provider as mdp
 from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 from sdevpy.volatility.impliedvol import impliedvol
@@ -21,7 +21,7 @@ model_name = 'LogMix3' # TsSvi1, TsSvi2, LogMix2, LogMix3
 dump_to_file = True
 
 # Retrieve forward curve
-fwd_curve = get_forward_curves([name], valdate)[0]
+fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
 
 # Retrieve option data
 file = vsurf.data_file(name, valdate)

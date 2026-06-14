@@ -3,7 +3,7 @@ import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 from sdevpy.volatility.localvol import localvol_factory as lvf
-from sdevpy.market.eqforward import get_forward_curves
+from sdevpy.market import provider as mdp
 from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.localvol.dupire_calib import calib_lv_dupire
 from sdevpy.utilities import timegrids
@@ -26,7 +26,7 @@ up_p = 1.0 - lw_p # High percentile strike
 iv_surface = impliedvol_factory.get_impliedvol(name, valdate, model_name)
 
 # Retrieve forward curve
-fwd_curve = get_forward_curves([name], valdate)[0]
+fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
 
 # Define expiries at which we will observe the accuracy
 test_expiries = [dts.advance(valdate, tenor) for tenor in test_tenors]

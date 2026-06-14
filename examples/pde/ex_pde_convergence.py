@@ -1,7 +1,7 @@
 import datetime as dt
 import numpy as np
 from scipy.stats import norm
-from sdevpy.market.eqforward import get_forward_curves
+from sdevpy.market import provider as mdp
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
 from sdevpy.pde.pdeschemes import PdeConfig
@@ -11,12 +11,6 @@ from sdevpy.utilities import timegrids
 from sdevpy.maths import metrics
 from sdevpy.analytics import black
 
-
-#################### TODO ###########################################
-# * See if we can get accuracy that's similar to ConstantLocalVol
-# * If moving to lognormal_density from LV, need to include the
-#   initialization step in the optimizer.
-# * Move to vectorize straddle payoff calibration (see code review)
 
 # Specify underlying and date
 name, valdate = "ABC", dt.datetime(2025, 12, 15)
@@ -30,7 +24,7 @@ strike_percentiles = np.linspace(0.01, 0.99, n_strikes)
 strike_conf = norm.ppf(strike_percentiles)
 
 # Retrieve forward curve
-fwd_curve = get_forward_curves([name], valdate)[0]
+fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
 
 # Retrieve local volatility
 cvol = 0.40

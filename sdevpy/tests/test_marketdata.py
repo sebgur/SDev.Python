@@ -56,7 +56,7 @@ def test_eq_option_strikes():
     vol_data = md.get_eq_vol_data(name, valdate)
 
     # Retrieve forward curve
-    fwd_curve = mdp.get_forward_curves([name], valdate, md)[0]
+    fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
     # Access data in object
     test = vol_data.get_strikes(fwd_curve, 'absolute')

@@ -11,8 +11,8 @@ from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
-from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.market.provider import get_forward_curves, MarketDataFileProvider
+# from sdevpy.market import eqvolsurface as vsurf
+from sdevpy.market import provider as mdp
 
 
 # n_mix=1, flat vol term structure: beta=1, a=b=0.2, c=0, d=1 → stdev(t=1)=0.2
@@ -245,9 +245,8 @@ def test_numerical_impliedvol_calculate_call_put_parity():
 
 def test_tssvi1_calibrate():
     """ Full round-trip: load market data → calibrate → check RMSE and validity """
-    # fwd_curve = get_forward_curves([_CALIB_NAME], _CALIB_DATE)[0]
-    md = MarketDataFileProvider()
-    fwd_curve = get_forward_curves([_CALIB_NAME], _CALIB_DATE, md)[0]
+    md = mdp.MarketDataFileProvider()
+    fwd_curve = mdp.get_eq_forward_curves([_CALIB_NAME], _CALIB_DATE, md)[0]
     option_data = md.get_eq_vol_data(_CALIB_NAME, _CALIB_DATE)
     # option_data = vsurf.eqvolsurfacedata_from_file(vsurf.data_file(_CALIB_NAME, _CALIB_DATE))
     mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
