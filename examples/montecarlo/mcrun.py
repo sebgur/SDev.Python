@@ -3,13 +3,13 @@ import datetime as dt
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument, Variance
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option, make_asian_option
+from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.montecarlo.mcpricer import price_book
 from sdevpy.volatility.localvol.localvol_factory import get_local_vols
 from sdevpy.analytics import black
 from sdevpy.utilities import timegrids
 from sdevpy.utilities import book as bk
 from sdevpy.market import provider as mdp
-from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 
 #################### TODO #########################################################################
@@ -23,6 +23,7 @@ from sdevpy.montecarlo.payoffs import cashflows as cfl
 
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
+    md = mdp.MarketDataFileProvider()
 
     # Create portfolio
     book = bk.Book()
@@ -63,7 +64,7 @@ if __name__ == "__main__":
     book.add_trades(trades)
 
     # Price book
-    mc_price = price_book(valdate, book, constr_type='brownianbridge', rng_type='sobol',
+    mc_price = price_book(valdate, book, md, constr_type='brownianbridge', rng_type='sobol',
                           n_paths=10000, n_timesteps=50)
 
     # Gather all names in the book

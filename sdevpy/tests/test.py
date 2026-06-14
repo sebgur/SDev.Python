@@ -13,5 +13,11 @@ def test_marketdata_path() -> Path:
     return path
 
 
+def test_calibdata_path() -> Path:
+    """ Get test calibrated data path """
+    path = test_root_path() / "calibdata"
+    return path
+
+
 if __name__ == "__main__":
     print(test_marketdata_path())

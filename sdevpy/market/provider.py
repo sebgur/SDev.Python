@@ -37,26 +37,24 @@ class MarketDataFileProvider:
 
     def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve:
         """ Retrieve yield curve """
-        folder = str(self.root / 'yieldcurves')
+        folder = self.root / 'yieldcurves'
         file = ycrv.data_file(name, date, folder)
         curve = ycrv.yieldcurve_from_file(file)
         return curve
-        # return ycrv.get_yieldcurve(name, valdate, folder=folder)
 
-    def get_fixings(self, name: str, dates: dt.datetime|list[dt.datetime], **kwargs) -> list[float]:
+    def get_fixings(self, name: str, dates: dt.datetime|list[dt.datetime], interpolate: bool=False) -> list[float]:
         """ Retrieve fixings """
-        handler = self.get_fixing_handler(name, **kwargs)
+        handler = self.get_fixing_handler(name, interpolate=interpolate)
         return handler.value(dates)
 
-    def get_fixing_handler(self, name: str, **kwargs) -> FixingHandler:
+    def get_fixing_handler(self, name: str, interpolate: bool=False) -> FixingHandler:
         """ Retrieve fixings handler """
-        folder = str(self.root / 'fixings')
-        interpolate = kwargs.get('interpolate', False)
+        folder = self.root / 'fixings'
         return fixings.fixinghandler(name, interpolate=interpolate, folder=folder)
 
     def get_correlations(self, names: list[str], valdate: dt.datetime) -> np.ndarray:
         """ Retrieve correlations """
-        folder = str(self.root / 'correlations')
+        folder = self.root / 'correlations'
         return correlations.get_correlations(names, valdate, folder=folder)
 
     def get_spot(self, name: str, valdate: dt.datetime) -> float:
@@ -65,27 +63,24 @@ class MarketDataFileProvider:
 
     def get_spots(self, names: list[str], valdate: dt.datetime) -> np.ndarray:
         """ Get spot prices for specified names on given date """
-        spots = [] # ToDo: write as comprehension
-        for name in names:
-            spots.append(self.get_spot(name, valdate))
-
+        spots = [self.get_spot(name, valdate) for name in names]
         return np.asarray(spots)
 
     def get_spot_data(self, name: str, valdate: dt.datetime) -> SpotData:
         """ Retrieve spot data object """
-        folder = str(self.root / 'spot')
+        folder = self.root / 'spot'
         file = spot_mod.data_file(name, valdate, folder=folder)
         return spot_mod.spotdata_from_file(file)
 
     def get_eq_forward_data(self, name: str, valdate: dt.datetime) -> EqForwardData:
         """ Retrieve EQ forward data object """
-        folder = str(self.root / 'eqforwards')
+        folder = self.root / 'eqforwards'
         file = eqfwd.data_file(name, valdate, folder=folder)
         return eqfwd.eqforwarddata_from_file(file)
 
     def get_eq_vol_data(self, name: str, valdate: dt.datetime) -> EqVolSurfaceData:
         """ Retrieve EQ vol surface data object """
-        folder = str(self.root / 'eqoptions')
+        folder = self.root / 'eqoptions'
         file = eqvol.data_file(name, valdate, folder=folder)
         return eqvol.eqvolsurfacedata_from_file(file)
 

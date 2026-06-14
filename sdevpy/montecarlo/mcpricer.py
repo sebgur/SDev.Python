@@ -25,7 +25,7 @@ def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) 
 
 def price_book(valdate: dt.datetime, book: Book, md: mdp.MarketDataProvider, **kwargs) -> dict:
     """ Price book (PV) by Monte-Carlo """
-    names = book.set_nameindexes()
+    book.set_nameindexes()
     book.set_valuation_date(valdate, md)
     eventdates = book.eventdates
 
