@@ -149,12 +149,6 @@ class YieldCurveVariable(Enum):
     LOG_DISCOUNT = 2
 
 
-# def get_yieldcurve(name: str, date: dt.datetime, folder: str) -> InterpolatedYieldCurve:
-#     file = data_file(name, date, folder)
-#     curve = yieldcurve_from_file(file)
-#     return curve
-
-
 def yieldcurve_from_file(file: str|Path) -> InterpolatedYieldCurve:
     """ Create yield curve object given file """
     data = jsm.deserialize(file)
@@ -191,46 +185,4 @@ def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-
     valdate = dt.datetime(2026, 2, 15)
-
-    # Create curve
-    name = 'USD.SOFR.1D'
-    interp_var = 'zerorate'
-    scheme = 'linear'
-    curve = InterpolatedYieldCurve(valdate=valdate, interp_var=interp_var, interp_type=scheme,
-                                   name=name)
-
-    # Create data
-    zdates = [dt.datetime(2026, 3, 15), dt.datetime(2026, 8, 15), dt.datetime(2027, 2, 15),
-              dt.datetime(2031, 2, 15), dt.datetime(2036, 2, 15), dt.datetime(2056, 2, 15)]
-    zrs = np.asarray([0.01, 0.015, 0.020, 0.022, 0.025, 0.030])
-    ztimes = timegrids.model_time(valdate, zdates)
-    dfs = np.exp(-zrs * ztimes)
-
-    # Set data
-    curve.set_data(zdates, dfs)
-
-    # Interpolate and display
-    test_dates = [dts.advance(valdate, str(n) + 'm') for n in range(1, 600)]
-    test_dfs = curve.discount(test_dates)
-    test_times = timegrids.model_time(valdate, test_dates)
-    test_zrs = -np.log(test_dfs) / test_times
-
-    # Write to file to create first sample
-    file = data_file(name, valdate)
-    curve.dump(file)
-
-    # Read from file
-    curve2 = yieldcurve_from_file(file)
-    curve2_dfs = curve2.discount(test_dates)
-    curve2_zrs = -np.log(curve2_dfs) / test_times
-
-    print(test_zrs[10:15])
-    print(curve2_zrs[10:15])
-
-    plt.plot(test_dates, test_zrs)
-    plt.plot(test_dates, curve2_zrs, color='red')
-    plt.scatter(zdates, zrs, color='black')
-    plt.show()

@@ -16,24 +16,6 @@ class CalibrationDataProvider(Protocol):
     def get_localvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None: ...
 
 
-# class CalibrationDataFileProvider:
-#     """ Reads calibrated data from files on disk """
-#     def __init__(self, root: str|Path=None):
-#         self.root = (Path(root) if root is not None else testconfig.calibdata_path())
-
-#     def get_impliedvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict:
-#         """ Retrieve implied vol data """
-#         folder = self.root / 'impliedvol'
-#         file = iv_mod.data_file(name, date, model_name, folder)
-#         return jsm.deserialize(file)
-
-#     def get_localvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict:
-#         """ Retrieve local vol data """
-#         folder = self.root / 'localvol'
-#         file = lvf.data_file(name, date, folder)
-#         return jsm.deserialize(file)
-
-
 def get_impliedvol(name: str, date: dt.datetime, model_name: str,
                    cal_prov: CalibrationDataProvider) -> iv_mod.ImpliedVol:
     """ Retrieve implied vol knowing name, date and model name """

@@ -39,21 +39,5 @@ def spotdata_from_file(file: str|Path) -> SpotData:
     return data
 
 
-def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
-    """ Return the data file given the name, date and folder """
-    return Path(folder) / name / (date.strftime(dates.DATE_FILE_FORMAT) + ".json")
-
-
 if __name__ == "__main__":
     name, valdate = "ABC", dt.datetime(2026, 2, 15)
-
-    # Generate a sample to start from
-    spot = 100.0
-    data = SpotData(valdate, spot, name=name)
-    file = data_file(name, valdate)
-    data.dump(file)
-
-    # Get data from existing file
-    test_data = spotdata_from_file(file)
-    test_value = test_data.value
-    print(test_value)

@@ -2,6 +2,7 @@ import datetime as dt
 import numpy as np
 from pathlib import Path
 from typing import Protocol, runtime_checkable
+from sdevpy.utilities import dates as dts
 from sdevpy.market import spot as spot_mod
 from sdevpy.market import correlations
 from sdevpy.market import yieldcurve as ycrv
@@ -69,7 +70,8 @@ class MarketDataFileProvider:
     def get_spot_data(self, name: str, date: dt.datetime) -> SpotData:
         """ Retrieve spot data object """
         folder = self.root / 'spot'
-        file = spot_mod.data_file(name, date, folder=folder)
+        # file = spot_mod.data_file(name, date, folder=folder)
+        file = Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
         return spot_mod.spotdata_from_file(file)
 
     def get_eq_forward_data(self, name: str, date: dt.datetime) -> EqForwardData:
