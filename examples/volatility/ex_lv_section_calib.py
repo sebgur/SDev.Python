@@ -9,10 +9,14 @@ from sdevpy.maths import metrics
 from sdevpy import logger
 logger.configure()
 
+
 # Choose underlying and date
 n_digits = 6
 np.set_printoptions(suppress=True, precision=n_digits)
 name, valdate = "ABC", dt.datetime(2025, 12, 15)
+
+# Get MarketDataProvider
+md = mdp.MarketDataFileProvider()
 
 # Choose model
 # model_name = 'VSVI'
@@ -41,7 +45,7 @@ expiries = surface_data.expiries
 expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
 # Retrieve forward curve
-fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
+fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
 # fwds = surface_data.forwards
 fwds = fwd_curve.value(expiries)

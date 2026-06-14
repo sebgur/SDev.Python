@@ -16,12 +16,15 @@ logger.configure(sdevpy_level='info')
 # Choose underlying and date
 name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
+# Get MarketDataProvider
+md = mdp.MarketDataFileProvider()
+
 # Choose model
 model_name = 'LogMix3' # TsSvi1, TsSvi2, LogMix2, LogMix3
 dump_to_file = True
 
 # Retrieve forward curve
-fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
+fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
 # Retrieve option data
 file = vsurf.data_file(name, valdate)

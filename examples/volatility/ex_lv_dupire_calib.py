@@ -15,6 +15,9 @@ from sdevpy.utilities.algos import upper_bound
 # Choose underlying and date
 name, valdate, model_name = "ABC", dt.datetime(2025, 12, 15), 'LogMix3'
 
+# Get MarketDataProvider
+md = mdp.MarketDataFileProvider()
+
 # Choose LV diagnostic grids
 test_tenors = ['1M', '3M', '6M', '9M', '1Y', '2Y'] # Must have len = 6
 n_test_strikes = 10
@@ -26,7 +29,7 @@ up_p = 1.0 - lw_p # High percentile strike
 iv_surface = impliedvol_factory.get_impliedvol(name, valdate, model_name)
 
 # Retrieve forward curve
-fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
+fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
 # Define expiries at which we will observe the accuracy
 test_expiries = [dts.advance(valdate, tenor) for tenor in test_tenors]

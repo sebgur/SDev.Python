@@ -63,11 +63,11 @@ if __name__ == "__main__":
     from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
     from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol, DFLT_PDE_CONFIG
 
-
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
+    md = mdp.MarketDataFileProvider()
 
     # Retrieve forward curve
-    fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
+    fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
     # Retrieve option data
     file = vsurf.data_file(name, valdate)
@@ -114,7 +114,7 @@ if __name__ == "__main__":
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Retrieve forward curve
-    fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
+    fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
     # fwds = surface_data.forwards
     fwds = fwd_curve.value(expiries)

@@ -176,9 +176,10 @@ if __name__ == "__main__":
     from sdevpy.market import provider as mdp
 
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
+    md = mdp.MarketDataFileProvider()
 
     # Retrieve forward curve
-    fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
+    fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
     # Retrieve target market option data
     file = vsurf.data_file(name, valdate)

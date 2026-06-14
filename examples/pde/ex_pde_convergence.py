@@ -15,6 +15,9 @@ from sdevpy.analytics import black
 # Specify underlying and date
 name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
+# Get MarketDataProvider
+md = mdp.MarketDataFileProvider()
+
 # Specify products
 tenor = '1y'
 expiry = dts.advance(valdate, tenor)
@@ -24,7 +27,7 @@ strike_percentiles = np.linspace(0.01, 0.99, n_strikes)
 strike_conf = norm.ppf(strike_percentiles)
 
 # Retrieve forward curve
-fwd_curve = mdp.get_eq_forward_curves([name], valdate)[0]
+fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
 # Retrieve local volatility
 cvol = 0.40
