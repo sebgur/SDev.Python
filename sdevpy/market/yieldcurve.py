@@ -152,8 +152,6 @@ class YieldCurveVariable(Enum):
 def yieldcurve_from_file(file: str|Path) -> InterpolatedYieldCurve:
     """ Create yield curve object given file """
     data = jsm.deserialize(file)
-    # with open(file) as f:
-    #     data = json.load(f)
 
     name = data.get('name')
     valdate = data.get('valdate')
@@ -177,11 +175,6 @@ def yieldcurve_from_file(file: str|Path) -> InterpolatedYieldCurve:
 
     curve.set_data(pillar_dates, pillar_dfs)
     return curve
-
-
-def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
-    """ Return the data file given the curve name, date and folder """
-    return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
 
 
 if __name__ == "__main__":

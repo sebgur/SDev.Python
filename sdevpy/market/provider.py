@@ -39,7 +39,7 @@ class MarketDataFileProvider:
     def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve:
         """ Retrieve yield curve """
         folder = self.root / 'yieldcurves'
-        file = ycrv.data_file(name, date, folder)
+        file = Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
         curve = ycrv.yieldcurve_from_file(file)
         return curve
 
@@ -70,7 +70,6 @@ class MarketDataFileProvider:
     def get_spot_data(self, name: str, date: dt.datetime) -> SpotData:
         """ Retrieve spot data object """
         folder = self.root / 'spot'
-        # file = spot_mod.data_file(name, date, folder=folder)
         file = Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
         return spot_mod.spotdata_from_file(file)
 

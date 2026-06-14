@@ -8,19 +8,14 @@ from pathlib import Path
 import numpy as np
 import numpy.typing as npt
 from abc import ABC, abstractmethod
-import datetime as dt
 import logging
 from scipy.stats import norm
 import scipy.optimize as opt
-from sdevpy.volatility.impliedvol.impliedvol import LvMethod, data_file
+from sdevpy.volatility.impliedvol.impliedvol import LvMethod
 from sdevpy.volatility.impliedvol.parametric_impliedvol import ParametricImpliedVol
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
-from sdevpy.market import eqvolsurface as vsurf
-from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
-from sdevpy.maths.metrics import rmse
 from sdevpy.maths import constants
-from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 log = logging.getLogger(Path(__file__).stem)
 
 
@@ -550,62 +545,4 @@ def get_logmix_parameters(n_mix: int, params: npt.ArrayLike, verbose: bool=True)
 
 
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    from sdevpy.market import provider as mdp
-
-    name, valdate = "ABC", dt.datetime(2025, 12, 15)
-    md = mdp.MarketDataFileProvider()
-
-    # Retrieve forward curve
-    fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
-
-    # Retrieve target market option data
-    file = vsurf.data_file(name, valdate)
-    option_data = vsurf.eqvolsurfacedata_from_file(file)
-    expiries = option_data.expiries
-    fwds = fwd_curve.value(expiries)
-    strike_surface = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
-    vol_surface = option_data.vols
-    call_surface = option_data.get_prices(fwd_curve, option_type='call')
-    mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
-
-    # Initialize model
-    model = LogMix(n_mix=3)
-    model.update_params(model.initial_point())
-    model.check_params()
-
-    t = 0.5
-    x = np.asarray([0.80, 0.90, 1.0, 1.1, 1.2, 1.3])
-    lv = model.local_vol(t, x)
-    print(lv)
-
-    # Calibrate model
-    calibrator = TsIvCalibrator(model, {'optimizer': 'SLSQP', 'tol': 1e-10})
-    calibrator.calibrate(mkt_data)
-    model.dump(data_file(name, valdate, 'LogMix'))
-
-    # Estimate model on points and calculate RMSE, plot comparison
-    n_rows, n_cols = 3, 2
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
-    for i in range(n_rows):
-        for j in range(n_cols):
-            ax = axes[i, j]
-            exp_idx = n_cols * i + j
-            expiry = timegrids.model_time(valdate, expiries[exp_idx])
-            fwd = fwds[exp_idx]
-            strikes = strike_surface[exp_idx]
-            min_k, max_k = strikes[0], strikes[-1]
-            m_strikes = np.linspace(0.8 * min_k, 1.2 * max_k, 100)
-            m_vols = model.black_volatility(expiry, m_strikes, fwd)
-            ax.scatter(strikes, vol_surface[exp_idx], label="market", color='black')
-            ax.plot(m_strikes, m_vols, label="model", color='green')
-            model_vols = model.black_volatility(expiry, strikes, fwd)
-            vol_rmse = rmse(vol_surface[exp_idx], model_vols)
-            ax.set_title(f"T:{expiry:.2f}, RMSE(bps): {10000.0 * vol_rmse:,.2f}")
-            ax.set_xlabel('strike')
-            ax.set_ylabel('vol')
-            ax.legend()
-
-    fig.suptitle('Option vols, Model vs Market', fontsize=16, fontweight='bold')
-    plt.tight_layout()
-    plt.show()
+    print("Hello")
