@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 import datetime as dt
 from sdevpy.utilities import timegrids, timer
-from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.models.assetmodels import MultiAssetGBM
 from sdevpy.montecarlo.pathgenerator import PathGenerator

@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 import datetime as dt
 import logging
@@ -7,8 +6,6 @@ from sdevpy.volatility.localvol import localvol
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, LocalVolSection
 from sdevpy.utilities import dates as dts
 from sdevpy.maths import interpolation as itp
-# from sdevpy.utilities import jsonmanager as jsm
-# from sdevpy.calibration.provider import CalibrationDataProvider, get_localvol
 log = logging.getLogger(__name__)
 
 

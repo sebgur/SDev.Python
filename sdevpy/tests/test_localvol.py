@@ -2,7 +2,6 @@ import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
-from sdevpy.volatility.localvol import localvol_factory
 from sdevpy.volatility.impliedvol.models.biexp import BiExpSection
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2
