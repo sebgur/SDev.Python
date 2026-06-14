@@ -104,7 +104,7 @@ def check_fixings(name: str, **kwargs) -> None:
 
 
 def data_file(name: str, folder: str|Path) -> Path:
-    """ Return the data file given the name, date and folder """
+    """ Return the data file given the name and folder """
     return Path(folder) / (name + ".csv")
 
 
