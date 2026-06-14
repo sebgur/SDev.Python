@@ -268,7 +268,6 @@ class Average(Payoff):
 
         # Fetch historical fixings
         hist_fixings = md.get_fixings(self.name, hist_fixing_dates)
-        # hist_fixings = fxgs.get_fixings(self.name, hist_fixing_dates)
 
         # Calculate historical sum up to the day before valuation
         self.current_sum = np.asarray(hist_fixings).sum()
@@ -457,19 +456,24 @@ class Variance(Payoff):
         self.scaling = 10000 * 252
 
     def evaluate(self, mkt_state: dict):
-        paths = mkt_state.event_paths
-        spot_paths = paths[:, self.varidxs, self.name_idx]
-        # Historical variance
+        # Historical variance (up to the increment that ended yesterday if started in the past)
         var_sum = self.current_sum
-        # Add current increment
-        if self.current_fixing is None:
-            raise ValueError(f"Fixing not set for variance on {self.name}")
 
-        var_sum = var_sum + np.power(np.log(spot_paths[:, 0] / self.current_fixing), 2)
-        # Add forward variance
-        log_returns = np.diff(np.log(np.asarray(spot_paths)))
-        log_returns2 = np.power(log_returns, 2)
-        var_sum = var_sum + log_returns2.sum(axis=1)
+        if len(self.varidxs) > 0: # There are still points today or in the future
+            # Get spot values on variance counting days (incl. today if today is counting)
+            paths = mkt_state.event_paths
+            spot_paths = paths[:, self.varidxs, self.name_idx]
+
+            # Add current increment (from yesterday to today end of day)
+            if self.current_fixing is not None:
+                # raise ValueError(f"Fixing not set for variance on {self.name}")
+                var_sum = var_sum + np.power(np.log(spot_paths[:, 0] / self.current_fixing), 2)
+
+            # Add forward variance
+            log_returns = np.diff(np.log(np.asarray(spot_paths)))
+            log_returns2 = np.power(log_returns, 2)
+            var_sum = var_sum + log_returns2.sum(axis=1)
+
         return self.scaling * var_sum / self.n_returns
 
     def set_nameindexes(self, names):
@@ -492,7 +496,6 @@ class Variance(Payoff):
 
         # Fetch historical fixings
         hist_fixings = md.get_fixings(self.name, hist_fixing_dates)
-        # hist_fixings = fxgs.get_fixings(self.name, hist_fixing_dates)
 
         # Calculate historical variance up to the day before valuation
         self.current_sum = 0.0
