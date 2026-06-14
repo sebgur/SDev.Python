@@ -1,20 +1,8 @@
 from pathlib import Path
 import json
 import datetime as dt
-# import numpy as np
 from sdevpy.utilities import dates
 from sdevpy.utilities import jsonmanager as jsm
-
-
-# def get_spots(names: list[str], valdate: dt.datetime, folder: str|Path):
-#     """ Get spot prices for specified names on given date """
-#     spots = []
-#     for name in names:
-#         file = data_file(name, valdate, folder)
-#         data = spotdata_from_file(file)
-#         spots.append(data.value)
-
-#     return np.asarray(spots)
 
 
 class SpotData:
@@ -37,7 +25,7 @@ class SpotData:
         return data
 
 
-def spotdata_from_file(file: str|Path):
+def spotdata_from_file(file: str|Path) -> SpotData:
     """ Retrieve spot data object from file """
     data = jsm.deserialize(file)
 

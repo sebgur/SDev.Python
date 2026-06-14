@@ -1,4 +1,4 @@
-import os, json, logging
+import json, logging
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
@@ -31,6 +31,7 @@ class EqVolSurfaceData:
             raise ValueError("Incompatible size along time direction between expiries, forwards, strikes and vols")
 
     def get_prices(self, fwd_curve: EqForwardCurve, option_type: str='call') -> npt.ArrayLike:
+        """ Retrieve prices """
         option_type_lw = option_type.lower()
         prices = []
         abs_strikes = self.get_strikes(fwd_curve, to_type='absolute')
@@ -75,12 +76,14 @@ class EqVolSurfaceData:
 
             return conv_strikes
 
-    def dump(self, file, indent=2):
+    def dump(self, file: str, indent: int=2) -> None:
+        """ Dump data to file """
         data = self.dump_data()
         with open(file, 'w') as f:
             json.dump(data, f, indent=indent)
 
-    def dump_data(self):
+    def dump_data(self) -> dict:
+        """ Dump data as dictionary """
         sections = []
         for i, expiry in enumerate(self.expiries):
             expiry_str = expiry.strftime(dates.DATE_FORMAT)
@@ -94,7 +97,8 @@ class EqVolSurfaceData:
 
         return data
 
-    def pretty_print(self, n_digits=4):
+    def pretty_print(self, n_digits: int=4) -> None:
+        """ Print information """
         sep = '-'*70
         print(sep)
         print(sep)
@@ -138,22 +142,9 @@ def eqvolsurfacedata_from_file(file: str) -> EqVolSurfaceData:
     return data
 
 
-def data_file(name: str, date: dt.datetime, **kwargs) -> str:
-    """ Data file path for EQ vol surfaces """
-    folder = kwargs.get('folder', test_data_folder())
-    name_folder = os.path.join(folder, name)
-    os.makedirs(name_folder, exist_ok=True)
-    file = os.path.join(name_folder, date.strftime(dates.DATE_FILE_FORMAT) + ".json")
-    return file
-
-
-def test_data_folder() -> str:
-    """ Test data folder for EQ vol surfaces """
-    folder = Path(__file__).parent.parent.parent.resolve()
-    dataset_folder = os.path.join(folder, "datasets")
-    folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "eqoptions")
-    os.makedirs(folder, exist_ok=True)
-    return folder
+def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
+    """ Return the data file given the name, date and folder """
+    return Path(folder) / name / (date.strftime(dates.DATE_FILE_FORMAT) + ".json")
 
 
 if __name__ == "__main__":
