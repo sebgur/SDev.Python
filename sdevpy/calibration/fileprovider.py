@@ -1,6 +1,6 @@
 import datetime as dt
 from pathlib import Path
-from sdevpy.volatility.impliedvol import impliedvol as iv_mod
+from sdevpy.utilities import dates as dts
 from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.tests import testconfig
 from sdevpy.utilities import jsonmanager as jsm
@@ -13,8 +13,7 @@ class CalibrationDataFileProvider:
 
     def get_impliedvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None:
         """ Retrieve implied vol data if existing, None otherwise """
-        folder = self.root / 'impliedvol'
-        file = iv_mod.data_file(name, date, model_name, folder)
+        file = self.impliedvol_data_file(name, date, model_name)
         return (jsm.deserialize(file) if file.exists() else None)
 
     def get_localvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None:
@@ -22,6 +21,11 @@ class CalibrationDataFileProvider:
         folder = self.root / 'localvol'
         file = lvf.data_file(name, date, model_name, folder)
         return (jsm.deserialize(file) if file.exists() else None)
+
+    def impliedvol_data_file(self, name: str, date: dt.datetime, model_name: str) -> Path:
+        """ Data file for implied vol models """
+        folder = self.root / 'impliedvol'
+        return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json")
 
 
 if __name__ == "__main__":

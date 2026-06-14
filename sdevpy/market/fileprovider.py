@@ -66,9 +66,14 @@ class MarketDataFileProvider:
 
     def get_eq_vol_data(self, name: str, date: dt.datetime) -> EqVolSurfaceData:
         """ Retrieve EQ vol surface data object """
-        folder = self.root / 'eqoptions'
-        file = eqvol.data_file(name, date, folder=folder)
+        file = self.eq_vol_data_file(name, date)
         return eqvol.eqvolsurfacedata_from_file(file)
+
+    def eq_vol_data_file(self, name: str, date: dt.datetime) -> Path:
+        """ Return the data file given the name, date and folder """
+        folder = self.root / 'eqoptions'
+        return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
+
 
 
 if __name__ == "__main__":

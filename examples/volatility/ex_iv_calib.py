@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from sdevpy.maths.metrics import rmse
 from sdevpy.market import provider as mdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 from sdevpy.volatility.impliedvol import impliedvol
@@ -18,6 +19,7 @@ name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get MarketDataProvider
 md_prov = MarketDataFileProvider()
+cal_prov = CalibrationDataFileProvider()
 
 # Choose model
 model_name = 'LogMix3' # TsSvi1, TsSvi2, LogMix2, LogMix3
@@ -79,6 +81,6 @@ plt.show()
 
 # Dump to file
 if dump_to_file:
-    file = impliedvol.data_file(name, valdate, model_name)
+    file = cal_prov.impliedvol_data_file(name, valdate, model_name)
     iv_surface.dump(file)
     print(f"Dumping model to file: {file}")

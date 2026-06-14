@@ -1,10 +1,10 @@
-import json, logging
+import logging
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
-from pathlib import Path
 from sdevpy.utilities import dates
 from sdevpy.utilities import timegrids
+from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.analytics import black
 from sdevpy.market.eqforward import EqForwardCurve
 log = logging.getLogger(__name__)
@@ -79,8 +79,9 @@ class EqVolSurfaceData:
     def dump(self, file: str, indent: int=2) -> None:
         """ Dump data to file """
         data = self.dump_data()
-        with open(file, 'w') as f:
-            json.dump(data, f, indent=indent)
+        jsm.serialize(data, file, indent=indent)
+        # with open(file, 'w') as f:
+        #     json.dump(data, f, indent=indent)
 
     def dump_data(self) -> dict:
         """ Dump data as dictionary """
@@ -121,8 +122,9 @@ class EqVolSurfaceData:
 
 def eqvolsurfacedata_from_file(file: str) -> EqVolSurfaceData:
     """ Retrieve EqVolSurfaceData from file """
-    with open(file) as f:
-        data = json.load(f)
+    # with open(file) as f:
+    #     data = json.load(f)
+    data = jsm.deserialize(file)
 
     name = data.get('name')
     valdate = data.get('valdate')
@@ -140,11 +142,6 @@ def eqvolsurfacedata_from_file(file: str) -> EqVolSurfaceData:
                             name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT),
                             strike_input_type=strike_input_type)
     return data
-
-
-def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
-    """ Return the data file given the name, date and folder """
-    return Path(folder) / name / (date.strftime(dates.DATE_FILE_FORMAT) + ".json")
 
 
 if __name__ == "__main__":

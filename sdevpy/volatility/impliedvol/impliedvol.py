@@ -1,5 +1,3 @@
-from pathlib import Path
-import datetime as dt
 from abc import ABC, abstractmethod
 from enum import Enum
 import numpy as np
@@ -7,7 +5,6 @@ import numpy.typing as npt
 from scipy.stats import norm
 from scipy.optimize import brentq
 from sdevpy.maths import constants
-from sdevpy.utilities import dates as dts
 from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.analytics import black, bachelier
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
@@ -196,11 +193,6 @@ class ImpliedVol(ABC):
         else:
             price = self.to_price(t, k, f, is_call, value)
             return black.implied_vol(t, k + self.shift, is_call, f + self.shift, price)
-
-
-def data_file(name: str, date: dt.datetime, model_name: str, folder: str|Path) -> Path:
-    """ Data file for implied vol models """
-    return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json")
 
 
 if __name__ == "__main__":
