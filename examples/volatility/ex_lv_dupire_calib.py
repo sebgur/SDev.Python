@@ -2,9 +2,9 @@ import datetime as dt
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
-from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.market import provider as mdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.localvol.dupire_calib import calib_lv_dupire
 from sdevpy.utilities import timegrids
@@ -18,6 +18,7 @@ name, valdate, model_name = "ABC", dt.datetime(2025, 12, 15), 'LogMix3'
 
 # Get MarketDataProvider
 md_prov = MarketDataFileProvider()
+cal_prov = CalibrationDataFileProvider()
 
 # Choose LV diagnostic grids
 test_tenors = ['1M', '3M', '6M', '9M', '1Y', '2Y'] # Must have len = 6
@@ -76,7 +77,7 @@ lv_matrix = lv_calib['lv_matrix']
 lv = lv_calib['lv']
 
 # Dump LV result to file
-out_file = lvf.data_file(name, valdate, 'Matrix')
+out_file = cal_prov.localvol_data_file(name, valdate, 'Matrix')
 print(f"Dumping LV result to file: {out_file}")
 lv.valdate = lv.snapdate = valdate
 lv.dump(out_file)
