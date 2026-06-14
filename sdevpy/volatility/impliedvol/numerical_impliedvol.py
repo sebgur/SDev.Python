@@ -57,7 +57,6 @@ class NumericalImpliedVol(ImpliedVol):
 if __name__ == "__main__":
     import datetime as dt
     import numpy as np
-    from sdevpy.market import eqvolsurface as vsurf
     from sdevpy.market import provider as mdp
     from sdevpy.utilities import timegrids
     from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
@@ -70,10 +69,8 @@ if __name__ == "__main__":
     fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
 
     # Retrieve option data
-    file = vsurf.data_file(name, valdate)
-    option_data = vsurf.eqvolsurfacedata_from_file(file)
+    option_data = md.get_eq_vol_data(name, valdate)
     mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
-    print(f"Retrieved market data from file {file}")
 
     # Access data in object
     expiries = option_data.expiries

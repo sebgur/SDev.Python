@@ -249,7 +249,6 @@ def test_tssvi1_calibrate():
     md = mdp.MarketDataFileProvider()
     fwd_curve = mdp.get_eq_forward_curves([_CALIB_NAME], _CALIB_DATE, md)[0]
     option_data = md.get_eq_vol_data(_CALIB_NAME, _CALIB_DATE)
-    # option_data = vsurf.eqvolsurfacedata_from_file(vsurf.data_file(_CALIB_NAME, _CALIB_DATE))
     mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
 
     model = TsSvi1()

@@ -76,7 +76,7 @@ class MarketDataFileProvider:
     def get_eq_forward_data(self, name: str, date: dt.datetime) -> EqForwardData:
         """ Retrieve EQ forward data object """
         folder = self.root / 'eqforwards'
-        file = eqfwd.data_file(name, date, folder=folder)
+        file = Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
         return eqfwd.eqforwarddata_from_file(file)
 
     def get_eq_vol_data(self, name: str, date: dt.datetime) -> EqVolSurfaceData:

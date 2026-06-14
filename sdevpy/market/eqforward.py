@@ -119,47 +119,5 @@ def eqforwarddata_from_file(file: str|Path) -> EqForwardData:
     return data
 
 
-def data_file(name: str, date: dt.datetime, folder: str|Path) -> Path:
-    """ Return the data file given the name, date and folder """
-    return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
-
-
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    from sdevpy.market import provider as mdp
-
-    name, valdate = "ABC", dt.datetime(2025, 12, 15)
-
-    # Generate a sample to start from
-    spot = 100.0
-    expiries = [dt.datetime(2026, 3, 15), dt.datetime(2026, 8, 15), dt.datetime(2027, 2, 15),
-                dt.datetime(2031, 2, 15), dt.datetime(2036, 2, 15)]
-    zrs = np.asarray([-0.01, -0.015, -0.020, -0.022, -0.025])
-    ztimes = timegrids.model_time(valdate, expiries)
-    zfwds = spot * np.exp(-zrs * ztimes)
-
-    pillars = [{'expiry': d, 'forward': f} for d, f in zip(expiries, zfwds, strict=True)]
-    data = EqForwardData(valdate, pillars, name=name)
-    file = data_file(name, valdate)
-    # data.dump(file)
-
-    # Get data from existing file
-    test_data = eqforwarddata_from_file(file)
-
-    # Create forward curve
-    md = mdp.MarketDataFileProvider()
-    curve = EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
-    yieldcurve = md.get_yieldcurve('USD.SOFR.1D', valdate)
-    curve.calibrate(test_data, spot, yieldcurve)
-
-    # Interpolate and display
-    test_dates = [dts.advance(valdate, str(n) + 'm') for n in range(1, 150)]
-    test_fwds = curve.value(test_dates)
-
-    # Original data
-    base_dates = test_data.expiries
-    base_fwds = test_data.forwards
-
-    plt.plot(test_dates, test_fwds)
-    plt.scatter(base_dates, base_fwds, color='black')
-    plt.show()
+    print("Hello")
