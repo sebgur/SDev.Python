@@ -34,7 +34,7 @@ def get_impliedvol_from_data(data: dict) -> ImpliedVol:
     return ivol
 
 
-def get_new_model(model_name: str) -> ImpliedVol:
+def get_impliedvol_new(model_name: str) -> ImpliedVol:
     """ Create fresh model and initialize with sample parameters """
     match model_name.lower():
         case 'tssvi1':

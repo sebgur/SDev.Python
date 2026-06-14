@@ -9,11 +9,11 @@ from sdevpy.models.assetmodels import MultiAssetGBM
 from sdevpy.montecarlo.pathgenerator import PathGenerator
 from sdevpy.pricingcontext import PricingContext
 from sdevpy.market import provider as mdp
+from sdevpy.calibration import provider as cal_prov_mod
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.utilities.book import Book
-from sdevpy.calibration import provider as cal_prov_mod
 
 
 def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) -> npt.ArrayLike:
@@ -197,7 +197,7 @@ class McConfig:
 
 
 def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], strikes: list[list[float]],
-                          name: str, lv: LocalVol, md: mdp.MarketDataProvider,
+                          name: str, lv: LocalVol, ctx: PricingContext,
                           **kwargs) -> list[npt.NDArray[np.float64]]:
     """ Price a surface of vanillas by Monte-Carlo simulation on LV process.
         Return a list of forward prices per expiry, corresponding to each strike (expiries x strikes).
@@ -218,11 +218,11 @@ def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], str
     book.add_trades(trades)
 
     # Calculate MC prices (discounted)
-    sim_prices = price_book(valdate, book, lv_map={name: lv}, **kwargs)
+    sim_prices = price_book(valdate, book, ctx, lv_map={name: lv}, **kwargs)
     sim_prices = sim_prices['pv']
 
     # Calculate forward prices and reformat container (per expiry)
-    disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
+    disc_curve = ctx.market_provider.get_yieldcurve(book.csa_curve_id, valdate)
     mc_prices = []
     count = 0
     for i in range(len(expiries)):

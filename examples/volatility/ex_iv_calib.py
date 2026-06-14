@@ -49,7 +49,7 @@ for i in range(len(expiries)):
 option_data.pretty_print()
 
 # Calibrate
-iv_surface = impliedvol_factory.get_new_model(model_name)
+iv_surface = impliedvol_factory.get_impliedvol_new(model_name)
 calibrator = TsIvCalibrator(iv_surface, {'optimizer': 'SLSQP', 'tol': 1e-6})
 calibrator.calibrate(mkt_data)
 
