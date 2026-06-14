@@ -102,7 +102,6 @@ if __name__ == "__main__":
     lv = calib_result['lv']
     print(lv)
 
-
     pde_config = DFLT_PDE_CONFIG
     num_iv = NumericalImpliedVol(lv, pde_config=pde_config)
 
@@ -125,6 +124,5 @@ if __name__ == "__main__":
         f = fwds[exp_idx]
         strikes = strike_surface[exp_idx]
         num_iv_prices.append(num_iv.calculate(expiry, strikes, is_call, f))
-        num_iv_vols.append(['ToDo'])
 
     print(f"Num. IV prices: {num_iv_prices}")

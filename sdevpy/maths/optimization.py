@@ -95,7 +95,7 @@ class SciPyOptimizer(Optimizer):
             if tol is None:
                 tol = 0.0
             maxiter = self.kwargs.get('maxiter', 1000)
-            # mutation = self.kwargs.get('mutation', (0.5, 1.0)) # ToDo: parameter not used
+            # mutation = self.kwargs.get('mutation', (0.5, 1.0)) # Not used
             result = opt.differential_evolution(func, x0=x0, args=args, bounds=bounds,
                                                 tol=tol, maxiter=maxiter, atol=atol,
                                                 popsize=popsize, strategy=strategy,

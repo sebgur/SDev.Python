@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import numpy.typing as npt
 from sdevpy.volatility.impliedvol.parametric_impliedvol import ParametricImpliedVol
@@ -6,6 +7,7 @@ from sdevpy.maths.metrics import rmse
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.utilities import timegrids
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
+log = logging.getLogger(__name__)
 
 
 class TsIvObjectiveBuilder:
@@ -86,6 +88,10 @@ class TsIvCalibrator:
         optimizer = create_optimizer(method, tol=tol)
         self.result = optimizer.minimize(objective, x0=init_params, bounds=bounds)
         self.sol = self.result.x # Optimum parameters
+
+        # Warn if failure to converge
+        if not self.result.success:
+            log.warning(f"Optimization did not converge: {self.result.message}")
 
         # Make sure model is left at solution point
         self.model.update_params(self.sol)

@@ -54,19 +54,6 @@ def get_localvol_or_new(name: str, date: dt.datetime, model_name: str, cal_prov:
     if lv is None:
         log.info(f"Initializing new LV for {name}")
         lv = lvf.get_localvol_new(t_grid, model_name)
-        # sections = create_sections(t_grid, model_name)
-        # lv = localvol.InterpolatedParamLocalVol(sections)
-
-    # date_str = date.strftime(dts.DATE_FILE_FORMAT)
-    # file = Path(folder) / name / (date_str + "." + model_name + ".json")
-    # if file.exists() and not force_new:
-    #     log.info(f"Loading existing LV for {name} from file: {file}")
-    #     lv_data = jsm.deserialize(file)
-    #     lv = get_localvol_from_data(lv_data, t_grid)
-    # else:
-    #     log.info(f"Initializing new LV for {name}")
-    #     sections = create_sections(t_grid, model_name)
-    #     lv = localvol.InterpolatedParamLocalVol(sections)
 
     return lv
 
@@ -79,7 +66,7 @@ def get_local_vols(names: list[str], valdate: dt.datetime, cal_prov: Calibration
     if lv_map is None: # Get from CalibrationDataProvider
         model_name = kwargs.get('model_name', None)
         for name in names:
-            lvs.append(get_localvol_or_new(name, valdate, model_name, cal_prov, **kwargs))
+            lvs.append(get_localvol_or_new(name, valdate, model_name, cal_prov))
     else: # Read from map
         for name in names:
             name_lv = lv_map.get(name, None)

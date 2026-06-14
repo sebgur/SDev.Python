@@ -92,7 +92,6 @@ def check_expiries_and_forwards(targets: list[list[OptionTarget]]) -> None:
                 raise ValueError("Inconsistent expiries in calibration basket")
 
 
-# ToDo
 def convert_target(target: OptionTarget, to_type: OptionQuoteType, to_shift: float) -> OptionTarget:
     """ Convert option target from its type to the chosen target type """
     t, f, k, is_call = target.expiry, target.forward, target.strike, target.is_call

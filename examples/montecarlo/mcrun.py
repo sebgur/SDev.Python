@@ -5,12 +5,13 @@ from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.montecarlo.payoffs.exotics import WorstOfBarrier, make_basket_option, make_asian_option
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.montecarlo.mcpricer import price_book
-from sdevpy.volatility.localvol.localvol_factory import get_local_vols
 from sdevpy.analytics import black
 from sdevpy.utilities import timegrids
 from sdevpy.utilities import book as bk
 from sdevpy.market import provider as mdp
 from sdevpy.pricingcontext import default_pricing_context
+from sdevpy import logger
+logger.configure()
 
 
 #################### TODO #########################################################################
@@ -74,10 +75,9 @@ if __name__ == "__main__":
     print(f"Number of assets: {len(names)}")
 
     # Closed-form for vanilla
-    md = ctx.market_provider
-    disc_curve = md.get_yieldcurve(book.csa_curve_id, valdate)
-    fwd_curves = mdp.get_eq_forward_curves(names, valdate, md)
-    lvs = get_local_vols(names, valdate)
+    md_prov = ctx.market_provider
+    disc_curve = md_prov.get_yieldcurve(book.csa_curve_id, valdate)
+    fwd_curves = mdp.get_eq_forward_curves(names, valdate, md_prov)
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx].value(expiry)
     df = disc_curve.discount(expiry)

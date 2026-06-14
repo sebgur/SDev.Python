@@ -124,9 +124,6 @@ class TimeInterpolatedLocalVol(LocalVol):
         """ The section is obtained by locating the requested time t on the time axis and
             picking the section at the pillar index above (upper_bound) """
         t_idx = algos.lower_bound(self.t_grid, t, clamp=True)
-        # t_idx = algos.upper_bound(self.t_grid, t, clamp=True) # Old version with upper_bound
-
-        # print(f"Section requested at {t}, using pillar at time index/time: {t_idx}/{self.t_grid[t_idx]}")
         return self.section_at_index(t_idx)
 
     def section_at_index(self, t_idx: int):
@@ -135,6 +132,12 @@ class TimeInterpolatedLocalVol(LocalVol):
 
     def dump_data(self) -> dict:
         """ Dump LV object into dictionary """
+        if self.valdate is None:
+            raise ValueError("Cannot dump ConstantLocalVol: no valuation date")
+
+        if self.snapdate is None:
+            raise ValueError("Cannot dump ConstantLocalVol: no snap date")
+
         sections = []
         for section in self.sections:
             sections.append(section.dump())
@@ -328,6 +331,12 @@ class ConstantLocalVol(LocalVol):
 
     def dump_data(self) -> dict:
         """ Dump object to dictionary """
+        if self.valdate is None:
+            raise ValueError("Cannot dump ConstantLocalVol: no valuation date")
+
+        if self.snapdate is None:
+            raise ValueError("Cannot dump ConstantLocalVol: no snap date")
+
         return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 'vol': self.vol}
 

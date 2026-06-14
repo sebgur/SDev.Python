@@ -39,14 +39,12 @@ def price_book(valdate: dt.datetime, book: Book, ctx: PricingContext, **kwargs) 
     spot = md_prov.get_spots(names, valdate)
     fwd_curves = mdp.get_eq_forward_curves(names, valdate, md_prov)
     lvs = cal_prov_mod.get_local_vols(names, valdate, cal_prov, **kwargs)
-    # lvs = lvf.get_local_vols(names, valdate, **kwargs)
     corr = md_prov.get_correlations(names, valdate)
 
     # Build time grid
     disc_tgrid = build_timegrid(valdate, eventdates, McConfig(**kwargs))
 
     # Set model
-    # lv_map = kwargs.get('lv_map', None)
     model = MultiAssetGBM(spot, fwd_curves, lvs, disc_tgrid)
 
     # Set spot path generator

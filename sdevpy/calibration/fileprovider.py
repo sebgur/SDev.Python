@@ -1,8 +1,10 @@
+import logging
 import datetime as dt
 from pathlib import Path
 from sdevpy.utilities import dates as dts
 from sdevpy.tests import testconfig
 from sdevpy.utilities import jsonmanager as jsm
+log = logging.getLogger(__name__)
 
 
 class CalibrationDataFileProvider:
@@ -13,11 +15,17 @@ class CalibrationDataFileProvider:
     def get_impliedvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None:
         """ Retrieve implied vol data if existing, None otherwise """
         file = self.impliedvol_data_file(name, date, model_name)
+        if not file.exists():
+            log.debug(f'LocalVol file not found: {file}')
+
         return (jsm.deserialize(file) if file.exists() else None)
 
     def get_localvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None:
         """ Retrieve local vol data if existing, None otherwise """
         file = self.localvol_data_file(name, date, model_name)
+        if not file.exists():
+            log.debug(f'LocalVol file not found: {file}')
+
         return (jsm.deserialize(file) if file.exists() else None)
 
     def impliedvol_data_file(self, name: str, date: dt.datetime, model_name: str) -> Path:

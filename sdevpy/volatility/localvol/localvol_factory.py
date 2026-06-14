@@ -49,8 +49,11 @@ def get_localvol_new(t_grid: list[float], model_name: str) -> InterpolatedParamL
 
 def get_localvol_from_data(data: dict, new_t_grid: list[float]=None) -> localvol.LocalVol:
     """ Create InterpolatedLocalVol from data """
+    if data is None:
+        raise ValueError('LocalVol data is None')
+
     # Create sections
-    sections = data['sections']
+    sections = data.get('sections', None)
     if sections is None:
         raise KeyError("Sections node not valid in LV data")
 
