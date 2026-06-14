@@ -1,16 +1,9 @@
-import os
+from pathlib import Path
 import datetime as dt
 import pandas as pd
-from pathlib import Path
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities.tools import isiterable
 from sdevpy.maths import interpolation as itp
-
-
-# def get_fixings(name: str, dates: dt.datetime|list[dt.datetime], **kwargs):
-#     interpolate = kwargs.get('interpolate', False)
-#     handler = fixinghandler(name, interpolate=interpolate, **kwargs)
-#     return handler.value(dates)
 
 
 class FixingHandler:
@@ -110,23 +103,9 @@ def check_fixings(name: str, **kwargs) -> None:
     df.to_csv(file, index=False)
 
 
-def data_file(name: str, **kwargs) -> str:
-    """ Returns file path corresponding to name
-        Args:
-            **kwargs: folder (str, optional): defaults to test data folder
-    """
-    folder = kwargs.get('folder', test_data_folder())
-    file = os.path.join(folder, name + ".csv")
-    return file
-
-
-def test_data_folder():
-    """ Returns test data folder for fixings """
-    folder = Path(__file__).parent.parent.parent.resolve()
-    dataset_folder = os.path.join(folder, "datasets")
-    folder = os.path.join(os.path.join(dataset_folder, "marketdata"), "fixings")
-    os.makedirs(folder, exist_ok=True)
-    return folder
+def data_file(name: str, folder: str|Path) -> Path:
+    """ Return the data file given the name, date and folder """
+    return Path(folder) / (name + ".csv")
 
 
 if __name__ == "__main__":
