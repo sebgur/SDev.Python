@@ -28,7 +28,8 @@ def list_models() -> list[str]:
 
 def list_model_info() -> list[dict]:
     """ List information about the models that are configured for use """
-    config = huggingface.list_available_models() # Available models (downloaded)
+    config = read_llm_config() # Configured models
+    hf_list = huggingface.list_available_models() # Available models (downloaded)
     lib_ids, repo_ids, downloadeds, types = [], [], [], []
     filenames, size_gbs, size_strings = [], [], []
     for model_key, model_config in config.items():
@@ -36,7 +37,7 @@ def list_model_info() -> list[dict]:
             repo_id = model_config.get("repo_id")
             type_ = model_config.get("type")
             filename = model_config.get("filename", None)
-            # Get information form Hugging Face if downloaded
+            # Get information from Hugging Face if downloaded
             hf_model = next((m for m in hf_list if m['repo_id'] == repo_id), None)
             if hf_model is None:
                 downloaded = False
@@ -59,7 +60,7 @@ def list_model_info() -> list[dict]:
 
     df = pd.DataFrame({'Name': lib_ids, 'Repo': repo_ids, 'Size(GB)': size_strings, 'Size': size_gbs,
                        'Type': types, 'Downloaded': downloadeds, 'Filename': filenames})
-    df.sort_values(by='Sizes', ascending=False, inplace=True)
+    df.sort_values(by='Size', ascending=False, inplace=True)
     return df
 
 
@@ -99,20 +100,22 @@ def from_pretrained(model_id: str, max_context_tokens: int=None) -> LocalModel:
 
 
 if __name__ == "__main__":
-    model_id = "qwen3.5-0.8B"
-    print()
-    print(f"Chatting with: {model_id}")
+    df = list_model_info()
+    print(df)
+    # model_id = "qwen3.5-0.8B"
+    # print()
+    # print(f"Chatting with: {model_id}")
 
-    # Load model
-    model = from_pretrained(model_id)
+    # # Load model
+    # model = from_pretrained(model_id)
 
-    prompt = "Why is the sky blue?"
-    print()
-    print("Prompt:")
-    print(prompt)
+    # prompt = "Why is the sky blue?"
+    # print()
+    # print("Prompt:")
+    # print(prompt)
 
-    print("\nBot:")
-    response = model.respond_prompt(prompt)
-    model.unload()
+    # print("\nBot:")
+    # response = model.respond_prompt(prompt)
+    # model.unload()
 
-    print(response)
+    # print(response)
