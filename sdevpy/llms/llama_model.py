@@ -1,8 +1,6 @@
-import warnings
-import os
-import gc
+import os, gc, warnings
 from llama_cpp import Llama
-from sdevpy.llms.llama_model import LocalModel
+from sdevpy.llms.local_model import LocalModel
 
 
 class LlamaModel(LocalModel):
@@ -10,7 +8,7 @@ class LlamaModel(LocalModel):
         super().__init__(config)
 
     def respond_prompt(self, prompt: str, **kwargs) -> str:
-        """ Single prompt response from model """
+        """ Single prompt response from model. ToDo: call self.chat() instead. """
         max_tokens = kwargs.get('max_tokens', 4096)
         if max_tokens is None:
             max_tokens = -1 # 'no limit' in Llama
@@ -18,14 +16,14 @@ class LlamaModel(LocalModel):
         messages = [{"role": "user", "content": prompt}]
 
         # Remove thinking mode if specified
-        if self.config.get("no_think", False):
+        use_thinking_mode = kwargs.get('enable_thinking', False)
+        if not use_thinking_mode: # Turn-off thinking mode
             messages = messages.copy()
-            messages[0] = {**messages[0], "content": messages[0]["content"] + "\n/no_think"}
+            last_idx = next(i for i in range(len(messages)-1, -1, -1) if messages[i]["role"] == "user")
+            messages[last_idx] = {**messages[last_idx], "content": messages[last_idx]["content"] + "\n/no_think"}
 
         response = self.model.create_chat_completion(messages=messages, max_tokens=max_tokens)
         response = response["choices"][0]["message"]["content"]
-
-        # Return clean response
         return self.clean_response(response)
 
     def chat(self, messages: list[dict], **kwargs) -> str:
@@ -35,14 +33,14 @@ class LlamaModel(LocalModel):
             max_tokens = -1 # 'no limit' in Llama
 
         # Remove thinking mode if specified
-        if self.config.get("no_think", False):
+        use_thinking_mode = kwargs.get('enable_thinking', False)
+        if not use_thinking_mode: # Turn-off thinking mode
             messages = messages.copy()
-            messages[0] = {**messages[0], "content": messages[0]["content"] + "\n/no_think"}
+            last_idx = next(i for i in range(len(messages)-1, -1, -1) if messages[i]["role"] == "user")
+            messages[last_idx] = {**messages[last_idx], "content": messages[last_idx]["content"] + "\n/no_think"}
 
         response = self.model.create_chat_completion(messages=messages, max_tokens=max_tokens)
         response = response["choices"][0]["message"]["content"]
-
-        # Return clean response
         return self.clean_response(response)
 
     def pretty_print(self) -> None: # pragma: no cov

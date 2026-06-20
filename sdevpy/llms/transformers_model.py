@@ -67,7 +67,6 @@ class TransformersModel(LocalModel):
         # Number parameters
         total_params = sum(p.numel() for p in self.model.parameters())
         print(f"Number of parameters: {total_params/1e9:.3f}B")
-        # print(f"Number of parameters: {self.model.num_parameters():,}") # Should match the above
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(f"Number of trainable parameters: {trainable_params/1e9:.3f}B")
 
