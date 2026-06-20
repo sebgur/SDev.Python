@@ -53,13 +53,13 @@ class LlamaModel(LocalModel):
         size_gb = os.path.getsize(self.model.model_path) / (1024**3)
         print(f"File size (GB): {size_gb:.3f}")
 
-    def load(self) -> None:
+    def load(self, max_context_tokens: int=None) -> None:
         """ Load Llama model from Hugging Face into memory.
             n_ctx: restrict max context size, default=0 (no restriction, maximum available)
         """
         hf_repo_id = self.config.get("repo_id")
         filename = self.config.get("filename")
-        n_ctx = self.config.get("max_context_tokens", 0)
+        n_ctx = (0 if max_context_tokens is None else max_context_tokens) # 0 means max available for model
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="The `local_dir_use_symlinks` argument is deprecated")
