@@ -13,12 +13,15 @@ class LocalModel(ABC):
 
     @abstractmethod
     def respond_instruction(self, system_prompt: str, user_prompt: str, **kwargs) -> str: # pragma: no cov
-        """ Respond to instruction """
-        pass
+        """ Respond to instruction prompt """
+        messages = [{"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                    ]
+        return self.chat(messages, **kwargs)
 
     @abstractmethod
     def chat(self, messages: list[dict], **kwargs) -> str: # pragma: no cov
-        """ Chat-oriented response do messages """
+        """ Chat-oriented structured response to messages """
         pass
 
     def clean_response(self, response: str) -> str:
@@ -35,7 +38,7 @@ class LocalModel(ABC):
         return self.model
 
     @abstractmethod
-    def load(self) -> None: # pragma: no cov
+    def load(self, max_context_tokens: int=None) -> None: # pragma: no cov
         """ Load underlying model into memory """
         pass
 
