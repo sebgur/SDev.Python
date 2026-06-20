@@ -11,7 +11,6 @@ class LocalModel(ABC):
         """ Respond to simple prompt """
         pass
 
-    @abstractmethod
     def respond_instruction(self, system_prompt: str, user_prompt: str, **kwargs) -> str: # pragma: no cov
         """ Respond to instruction prompt """
         messages = [{"role": "system", "content": system_prompt},

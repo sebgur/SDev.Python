@@ -1,6 +1,6 @@
 import logging
 import gc, torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from sdevpy.llms.local_model import LocalModel
 
 
@@ -18,7 +18,7 @@ class TransformersModel(LocalModel):
         top_p = kwargs.get('top_p', 0.9)
 
         # Create prompt and tokenize
-        inputs = self.tokenizer(prompt, return_tensors="pt")
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
 
         # Generate response
         with torch.no_grad():
@@ -33,7 +33,7 @@ class TransformersModel(LocalModel):
         return self.clean_response(response)
 
     def chat(self, messages: list[dict], **kwargs) -> str:
-        """ Chat-oriented response to messages """
+        """ Chat-oriented structured response to messages """
         max_tokens = kwargs.get('max_tokens', 4096)
         temperature = kwargs.get('temperature', 0.2)
         num_beams = kwargs.get('num_beams', 1)
@@ -59,7 +59,7 @@ class TransformersModel(LocalModel):
         return self.clean_response(response)
 
     def pretty_print(self) -> None:
-        """ Display information about the model """
+        """ Display information about the Transformers model """
         print(f"Model name: {self.model.config.name_or_path}")
         print(f"Model type: {self.model.config.model_type}")
         print(f"Architecture: {self.model.config.architectures}")
@@ -81,18 +81,21 @@ class TransformersModel(LocalModel):
         size_gb = total_size / (1024**3) # Convert to GB
         print(f"Size(GB): {size_gb:.3f}")
 
-    def load(self) -> None:
+    def load(self, max_context_tokens: int=None) -> None:
         """ Load Transformers model from Hugging Face into memory """
         hf_repo_id = self.config.get("repo_id")
+        model_config = AutoConfig.from_pretrained(hf_repo_id)
+        if max_context_tokens:
+            model_config.max_position_embeddings = max_context_tokens
 
         logger = logging.getLogger("transformers.modeling_utils")
         original_level = logger.level
         logger.setLevel(logging.ERROR)
-
-        self.model = AutoModelForCausalLM.from_pretrained(hf_repo_id)
-        self.tokenizer = AutoTokenizer.from_pretrained(hf_repo_id)
-
-        logger.setLevel(original_level)
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(hf_repo_id, config=model_config)
+            self.tokenizer = AutoTokenizer.from_pretrained(hf_repo_id)
+        finally:
+            logger.setLevel(original_level)
 
     def unload(self) -> None:
         """ Unload Transformers model from memory """
