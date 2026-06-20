@@ -30,6 +30,7 @@ def list_model_info() -> list[dict]:
     """ List information about the models that are configured for use """
     config = read_llm_config() # Configured models
     hf_list = huggingface.list_available_models() # Available models (downloaded)
+
     lib_ids, repo_ids, downloadeds, types = [], [], [], []
     filenames, size_gbs, size_strings = [], [], []
     for model_key, model_config in config.items():
@@ -37,6 +38,7 @@ def list_model_info() -> list[dict]:
             repo_id = model_config.get("repo_id")
             type_ = model_config.get("type")
             filename = model_config.get("filename", None)
+
             # Get information from Hugging Face if downloaded
             hf_model = next((m for m in hf_list if m['repo_id'] == repo_id), None)
             if hf_model is None:
@@ -105,6 +107,7 @@ if __name__ == "__main__":
     # model_id = "qwen3.5-0.8B"
     # print()
     # print(f"Chatting with: {model_id}")
+    # # model_id = "tiny-gpt2"
 
     # # Load model
     # model = from_pretrained(model_id)
@@ -116,6 +119,9 @@ if __name__ == "__main__":
 
     # print("\nBot:")
     # response = model.respond_prompt(prompt)
+
     # model.unload()
 
+    # print()
+    # print("Bot:")
     # print(response)
