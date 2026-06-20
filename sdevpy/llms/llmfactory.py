@@ -106,24 +106,26 @@ def from_pretrained(model_id: str, max_context_tokens: int=None) -> LocalModel:
 if __name__ == "__main__":
     df = list_model_info()
     print(df)
-    # model_id = "qwen3.5-0.8B"
-    # print()
-    # print(f"Chatting with: {model_id}")
-    # # model_id = "tiny-gpt2"
 
-    # # Load model
-    # model = from_pretrained(model_id)
+    # model_id = "tiny-gpt2"
+    model_id = "qwen3.5-0.8B"
+    # model_id = "llama-3.2-1B-Instruct"
+    print()
+    print(f"Chatting with: {model_id}")
 
-    # prompt = "Why is the sky blue?"
-    # print()
-    # print("Prompt:")
-    # print(prompt)
+    # Load model
+    model = from_pretrained(model_id)
 
-    # print("\nBot:")
-    # response = model.respond_prompt(prompt)
+    prompt = "Why is the sky blue?"
+    print()
+    print("Prompt:")
+    print(prompt)
 
-    # model.unload()
+    print("\nBot:")
+    response = model.respond_prompt(prompt)
 
-    # print()
-    # print("Bot:")
-    # print(response)
+    model.unload()
+
+    print()
+    print("Bot:")
+    print(response)
