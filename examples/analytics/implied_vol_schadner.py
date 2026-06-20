@@ -50,6 +50,7 @@ import numpy as np
 import time
 from scipy.stats import invgauss
 from scipy.special import ndtr, log_ndtr, ndtri
+from sdevpy.analytics import black
 
 
 __all__ = ["ig_cdf", "ig_pdf", "ig_ppf", "bs_normalized_call", "implied_vol_call", "implied_vol_put"]
@@ -273,45 +274,58 @@ def implied_vol_put(P, K, F, T, D=1.0):
 # Self-test: reproduce the paper's recovery grid (Section 3, Eqs. 3 & 13).
 # --------------------------------------------------------------------------- #
 def test_schadner():
-    v_grid = np.concatenate(([0.01], np.arange(0.05, 2.0001, 0.05)))
-    delta_grid = np.array([0.05, 0.20, 0.30, 0.45, 0.55, 0.70, 0.80, 0.95])
+    vol_grid = np.asarray([0.01, 0.05, 0.20])
+    # vol_grid = np.concatenate(([0.01], np.arange(0.05, 2.0001, 0.05)))
+    delta_grid = np.array([0.30, 0.45, 0.55, 0.70])
+    # delta_grid = np.array([0.05, 0.20, 0.30, 0.45, 0.55, 0.70, 0.80, 0.95])
+    print(f"vol_grid: {vol_grid.shape}")
+    print(f"delta_grid: {delta_grid.shape}")
 
-    V, DEL = np.meshgrid(v_grid, delta_grid, indexing="ij")
-    V = V.ravel()
-    DEL = DEL.ravel()
+    vol, delta = np.meshgrid(vol_grid, delta_grid, indexing="ij")
+    vol = vol.ravel()
+    delta = delta.ravel()
+    print(f"vol: {vol}")
+    print(f"delta: {delta}")
 
     # forward log-moneyness from the BS delta relation (Eq. 13)
-    k = V * (0.5 * V - ndtri(DEL))
-    c = bs_normalized_call(k, V)       # normalized call price (D=F=1)
+    t = 1.5
+    k = vol * (0.5 * vol - ndtri(delta))
+    c = bs_normalized_call(k, vol * np.sqrt(t)) # normalized call price (D=F=1)
 
     F = 1.0
     K = F * np.exp(k)
-    C = c * F                          # D = 1
-    T = 1.0                            # so sigma == v
+    # C = c * F # D = 1
 
-    sigma_rec = implied_vol_call(C, K, F, T, D=1.0)
-    err = np.abs(sigma_rec - V)        # recovered total vol vs input
+    # Full prices
+    call = black.price(t, K, True, F, vol)
+    # print(f"Schadner price: {C}")
+    print(f"Check: {call}")
+    # print(f"Call diff: {10000 * (C - call)}")
 
-    print(f"grid points              : {V.size}")
+
+    sigma_rec = implied_vol_call(call, K, F, t, D=1.0)
+    err = np.abs(sigma_rec - vol)        # recovered total vol vs input
+
+    print(f"grid points              : {vol.size}")
     print(f"mean abs recovery error  : {err.mean():.3e}")
     print(f"max  abs recovery error  : {err.max():.3e}")
-    print(f"(paper reports mean 2.24e-16, max 1.33e-15)")
+    print("(paper reports mean 2.24e-16, max 1.33e-15)")
 
     # put round-trip via parity: P/(DF) = c - (1 - e^k)
     p = c - (1.0 - np.exp(k))
     P = p * F
-    sigma_put = implied_vol_put(P, K, F, T, D=1.0)
-    err_put = np.abs(sigma_put - V)
+    sigma_put = implied_vol_put(P, K, F, t, D=1.0)
+    err_put = np.abs(sigma_put - vol)
     print(f"max abs put recovery err : {err_put.max():.3e}")
 
     # crude timing (vectorised; not the compiled regime of the paper)
     reps = 2000
     t0 = time.perf_counter()
     for _ in range(reps):
-        implied_vol_call(C, K, F, T, D=1.0)
+        implied_vol_call(call, K, F, t, D=1.0)
     dt = time.perf_counter() - t0
-    per = dt / (reps * V.size) * 1e6
-    print(f"vectorised speed         : {per:.3f} us/eval over {reps*V.size:,} evals")
+    per = dt / (reps * vol.size) * 1e6
+    print(f"vectorised speed         : {per:.3f} us/eval over {reps*vol.size:,} evals")
 
     # spot example
     s = implied_vol_call(C=10.0, K=105.0, F=100.0, T=0.5, D=0.99)
@@ -320,19 +334,19 @@ def test_schadner():
     # well-conditioned random batch: invert the OTM wing, prices not tiny
     rng = np.random.default_rng(1)
     n = 200_000
-    Fr = 100 * np.exp(rng.normal(0, 0.2, n))
-    Kr = Fr * np.exp(rng.normal(0, 0.3, n))
-    Tr = rng.uniform(0.05, 3.0, n)
-    Dr = np.exp(-rng.uniform(0, 0.05, n) * Tr)
+    fr = 100 * np.exp(rng.normal(0, 0.2, n))
+    kr = fr * np.exp(rng.normal(0, 0.3, n))
+    tr = rng.uniform(0.05, 3.0, n)
+    dr = np.exp(-rng.uniform(0, 0.05, n) * tr)
     sr = rng.uniform(0.05, 1.2, n)
-    kr = np.log(Kr / Fr)
-    cr = bs_normalized_call(kr, sr * np.sqrt(Tr))
-    Cr = cr * Dr * Fr
-    Pr = Cr - Dr * (Fr - Kr)
+    kr = np.log(kr / fr)
+    cr = bs_normalized_call(kr, sr * np.sqrt(tr))
+    Cr = cr * dr * fr
+    Pr = Cr - dr * (fr - kr)
     # route to the OTM wing and keep only recoverable prices (norm. price > 1e-6)
-    otm_call = Kr >= Fr
-    rec = implied_vol_call(Cr, Kr, Fr, Tr, Dr)
-    rec = np.where(otm_call, rec, implied_vol_put(Pr, Kr, Fr, Tr, Dr))
+    otm_call = kr >= fr
+    rec = implied_vol_call(Cr, kr, fr, tr, dr)
+    rec = np.where(otm_call, rec, implied_vol_put(Pr, kr, fr, tr, dr))
     otm_price = np.where(otm_call, cr, cr - (1 - np.exp(kr)))
     keep = otm_price > 1e-6
     er = np.abs(rec[keep] - sr[keep])
