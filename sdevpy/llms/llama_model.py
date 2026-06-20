@@ -27,7 +27,7 @@ class LlamaModel(LocalModel):
         return self.clean_response(response)
 
     def chat(self, messages: list[dict], **kwargs) -> str:
-        """ Chat-oriented response to messages """
+        """ Chat-oriented structured response to messages """
         max_tokens = kwargs.get('max_tokens', 4096)
         if max_tokens is None:
             max_tokens = -1 # 'no limit' in Llama
@@ -44,7 +44,7 @@ class LlamaModel(LocalModel):
         return self.clean_response(response)
 
     def pretty_print(self) -> None: # pragma: no cov
-        """ Display information about the model """
+        """ Display information about the Llama model """
         metadata = self.model.metadata
         print(f"Model path: {self.model.model_path}")
         print(f"Model name: {metadata.get('general.name', 'Unknown')}")
@@ -78,11 +78,11 @@ def get_model(repo_id: str, filename: str="*.gguf", n_ctx: int=0) -> Llama:
 
 if __name__ == "__main__":
     repo_id, filename, no_think = "unsloth/Qwen3.5-27B-GGUF", "Qwen3.5-27B-Q4_K_M.gguf", True
-    config = {"repo_id": repo_id, "filename": filename, "no_think": no_think}
+    config = {"repo_id": repo_id, "filename": filename}
 
     # Load model into RAM
     model = LlamaModel(config)
-    model.load()
+    model.load(max_context_tokens=8192)
 
     # Display information
     model.pretty_print()
