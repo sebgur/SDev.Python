@@ -14,7 +14,7 @@ def list_available_models() -> list[dict]:
     # Add other size units
     for model in models:
         size_gb = model['size_on_disk'] / (1024**3)
-        size_str = f"{size_gb:.2f}" if size_gb > 0.01 else f"{size_gb:.3f}"
+        size_str = f"{size_gb:.2f}"
         model['size_gb'] = size_gb
         model['size_string'] = size_str
 
