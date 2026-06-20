@@ -1,13 +1,10 @@
 """
 Explicit Black-Scholes implied volatility via the inverse-Gaussian quantile.
-
 Implements the closed-form solution of
-
     Wolfgang Schadner, "An Explicit Solution to Black-Scholes Implied
     Volatility" (arXiv:2604.24480, 2026).
 
 Core identity (paper Eq. 1, call):
-
     sigma(K, C) = (2 / sqrt(T)) * [ F_IG^{-1}( (1 - c) / m ; 2/|k|, 1 ) ]^{-1/2}
 
 with
@@ -15,13 +12,12 @@ with
     k = log(K / F)         forward log-moneyness
     m = 1      if K > F
     m = K / F  if K < F
-and the at-the-forward limit (Eq. 2)
 
+and the at-the-forward limit (Eq. 2)
     sigma(K = F, C) = (2 / sqrt(T)) * Phi^{-1}( (c + 1) / 2 ).
 
 The only non-elementary operation is the inverse-Gaussian (Wald) quantile
 F_IG^{-1}(q; mu, lambda). Design choices for speed AND accuracy:
-
   * The quantile is computed self-contained: a monotone analytic bracket on
     the closed-form CDF, then a safeguarded Halley iteration (bisection
     fallback) to machine precision. This is ~3-4x faster than seeding from
@@ -53,15 +49,15 @@ from scipy.special import ndtr, log_ndtr, ndtri
 from sdevpy.analytics import black
 
 
-__all__ = ["ig_cdf", "ig_pdf", "ig_ppf", "bs_normalized_call", "implied_vol_call", "implied_vol_put"]
-
 _ATM_TOL = 1e-12  # |k| below this is treated as at-the-forward
 
 
-# --------------------------------------------------------------------------- #
+# ndtr, log_ndtr and ndtri are used for extreme performance saving. They save by
+# avoiding overheads for argument validation, error checking, etc. Recommended here
+# as speed is the target.
+
 # Inverse-Gaussian (Wald) primitives, mean parameter `mu`, shape `lam`.
 # Stable in the tails: the exp(2*lam/mu) * Phi(b) term is formed in log space.
-# --------------------------------------------------------------------------- #
 def ig_cdf(x, mu, lam=1.0):
     """CDF of IG(mean=mu, shape=lam) evaluated at x (paper Eq. 4 complement)."""
     x = np.asarray(x, dtype=float)
@@ -90,10 +86,9 @@ def _ig_logpdf_deriv_factor(x, mu, lam=1.0):
 
 
 def _scipy_seed(q, mu, lam):
-    """Fast seed from scipy's Boost quantile; validated, warnings suppressed.
-
-    Boost can fail to converge in the extreme tail, so the result is only
-    used where it is finite and positive -- elsewhere we fall back to the mean.
+    """ Fast seed from scipy's Boost quantile; validated, warnings suppressed.
+        Boost can fail to converge in the extreme tail, so the result is only
+        used where it is finite and positive -- elsewhere we fall back to the mean.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
@@ -106,14 +101,12 @@ def _scipy_seed(q, mu, lam):
 
 
 def ig_ppf(q, mu, lam=1.0, maxiter=60, tol=1e-15, use_scipy_seed=False):
-    """Inverse-Gaussian quantile F_IG^{-1}(q; mu, lam), vectorised.
-
-    Self-contained and robust: a monotone analytic bracket is established, then
-    a safeguarded Halley iteration (with bisection fallback) drives every point
-    to machine precision. The default analytic seed is ~3-4x faster than
-    seeding from scipy's Boost quantile (which is itself a root finder); set
-    ``use_scipy_seed=True`` to compare. scipy is still used for the underlying
-    Gaussian special functions, which is the right tool for those.
+    """ Inverse-Gaussian quantile F_IG^{-1}(q; mu, lam), vectorised.
+        Self-contained and robust: a monotone analytic bracket is established, then a safeguarded Halley iteration
+        (with bisection fallback) drives every point to machine precision. The default analytic seed is
+        ~3-4x faster than seeding from scipy's Boost quantile (which is itself a root finder); set
+        ``use_scipy_seed=True`` to compare. scipy is still used for the underlying Gaussian special functions,
+        which is the right tool for those.
     """
     q, mu = np.broadcast_arrays(np.asarray(q, float), np.asarray(mu, float))
     shape = q.shape
@@ -201,7 +194,7 @@ def _solve_total_vol(q_otm, abs_k):
     return 2.0 / np.sqrt(x)
 
 
-def implied_vol_call(C, K, F, T, D=1.0):
+def implied_vol_call(C, K, F, T):
     """Black-Scholes implied volatility from a European call price.
 
     Parameters
@@ -224,8 +217,8 @@ def implied_vol_call(C, K, F, T, D=1.0):
     for K <= F. Cells whose price sits at or beyond the no-arbitrage boundary
     return NaN rather than a misleading number.
     """
-    C, K, F, T, D = map(lambda z: np.asarray(z, dtype=float), (C, K, F, T, D))
-    c = C / (D * F)
+    C, K, F, T = map(lambda z: np.asarray(z, dtype=float), (C, K, F, T))
+    c = C / F
     k = np.log(K / F)
     atm = np.abs(k) < _ATM_TOL
 
@@ -253,14 +246,14 @@ def _assemble(q, c, k, atm, T):
     return sigma[()] if sigma.ndim == 0 else sigma
 
 
-def implied_vol_put(P, K, F, T, D=1.0):
+def implied_vol_put(P, K, F, T):
     """Black-Scholes implied volatility from a European put price (paper Eq. 9).
 
     Same conditioning note as `implied_vol_call`: best accuracy comes from the
     out-of-the-money wing (use this for K <= F).
     """
-    P, K, F, T, D = map(lambda z: np.asarray(z, dtype=float), (P, K, F, T, D))
-    p = P / (D * F)
+    P, K, F, T = map(lambda z: np.asarray(z, dtype=float), (P, K, F, T))
+    p = P / F
     k = np.log(K / F)
     atm = np.abs(k) < _ATM_TOL
 
@@ -270,10 +263,10 @@ def implied_vol_put(P, K, F, T, D=1.0):
     return _assemble(q, p, k, atm, T)
 
 
-# --------------------------------------------------------------------------- #
 # Self-test: reproduce the paper's recovery grid (Section 3, Eqs. 3 & 13).
-# --------------------------------------------------------------------------- #
 def test_schadner():
+    # ToDo: remove bs_normalized_price
+    # Set vols and deltas
     vol_grid = np.asarray([0.01, 0.05, 0.20])
     # vol_grid = np.concatenate(([0.01], np.arange(0.05, 2.0001, 0.05)))
     delta_grid = np.array([0.30, 0.45, 0.55, 0.70])
@@ -284,78 +277,69 @@ def test_schadner():
     vol, delta = np.meshgrid(vol_grid, delta_grid, indexing="ij")
     vol = vol.ravel()
     delta = delta.ravel()
+    print(f"Grid points: {vol.size}")
     print(f"vol: {vol}")
     print(f"delta: {delta}")
 
-    # forward log-moneyness from the BS delta relation (Eq. 13)
+    # Set strikes from deltas
     t = 1.5
-    k = vol * (0.5 * vol - ndtri(delta))
-    c = bs_normalized_call(k, vol * np.sqrt(t)) # normalized call price (D=F=1)
+    m = vol * (0.5 * vol - ndtri(delta))
+    fwd = 100.0
+    k = fwd * np.exp(m)
 
-    F = 1.0
-    K = F * np.exp(k)
-    # C = c * F # D = 1
-
-    # Full prices
-    call = black.price(t, K, True, F, vol)
-    # print(f"Schadner price: {C}")
-    print(f"Check: {call}")
-    # print(f"Call diff: {10000 * (C - call)}")
-
-
-    sigma_rec = implied_vol_call(call, K, F, t, D=1.0)
-    err = np.abs(sigma_rec - vol)        # recovered total vol vs input
-
-    print(f"grid points              : {vol.size}")
-    print(f"mean abs recovery error  : {err.mean():.3e}")
-    print(f"max  abs recovery error  : {err.max():.3e}")
+    # Round-trip on call price
+    call = black.price(t, k, True, fwd, vol)
+    sigma_call = implied_vol_call(call, k, fwd, t)
+    err_call = np.abs(sigma_call - vol) # recovered total vol vs input
+    print(f"Mean abs recovery error(call): {err_call.mean():.3e}")
+    print(f"Max abs recovery error(call): {err_call.max():.3e}")
     print("(paper reports mean 2.24e-16, max 1.33e-15)")
 
-    # put round-trip via parity: P/(DF) = c - (1 - e^k)
-    p = c - (1.0 - np.exp(k))
-    P = p * F
-    sigma_put = implied_vol_put(P, K, F, t, D=1.0)
+    # Rought-trip on put price
+    put = call - (fwd - k)
+    sigma_put = implied_vol_put(put, k, fwd, t)
     err_put = np.abs(sigma_put - vol)
-    print(f"max abs put recovery err : {err_put.max():.3e}")
+    print(f"Mean abs recovery error(put): {err_put.mean():.3e}")
+    print(f"Max abs put recovery err: {err_put.max():.3e}")
 
-    # crude timing (vectorised; not the compiled regime of the paper)
+    # Performance (vectorised)
     reps = 2000
     t0 = time.perf_counter()
     for _ in range(reps):
-        implied_vol_call(call, K, F, t, D=1.0)
+        implied_vol_call(call, k, fwd, t)
     dt = time.perf_counter() - t0
     per = dt / (reps * vol.size) * 1e6
-    print(f"vectorised speed         : {per:.3f} us/eval over {reps*vol.size:,} evals")
+    print(f"Vectorised speed: {per:.3f} us/eval over {reps*vol.size:,} evals")
 
-    # spot example
-    s = implied_vol_call(C=10.0, K=105.0, F=100.0, T=0.5, D=0.99)
-    print(f"example IV (C=10,K=105,F=100,T=0.5,D=0.99): {s:.6f}")
-
-    # well-conditioned random batch: invert the OTM wing, prices not tiny
+    # Well-conditioned random batch: invert the OTM wing, prices not tiny
     rng = np.random.default_rng(1)
-    n = 200_000
+    n = 2
+    # n = 200_000
     fr = 100 * np.exp(rng.normal(0, 0.2, n))
     kr = fr * np.exp(rng.normal(0, 0.3, n))
     tr = rng.uniform(0.05, 3.0, n)
-    dr = np.exp(-rng.uniform(0, 0.05, n) * tr)
     sr = rng.uniform(0.05, 1.2, n)
-    kr = np.log(kr / fr)
-    cr = bs_normalized_call(kr, sr * np.sqrt(tr))
-    Cr = cr * dr * fr
-    Pr = Cr - dr * (fr - kr)
-    # route to the OTM wing and keep only recoverable prices (norm. price > 1e-6)
-    otm_call = kr >= fr
-    rec = implied_vol_call(Cr, kr, fr, tr, dr)
-    rec = np.where(otm_call, rec, implied_vol_put(Pr, kr, fr, tr, dr))
-    otm_price = np.where(otm_call, cr, cr - (1 - np.exp(kr)))
-    keep = otm_price > 1e-6
-    er = np.abs(rec[keep] - sr[keep])
-    print(f"random OTM batch         : n={keep.sum():,}  "
-          f"mean={er.mean():.2e}  max={er.max():.2e}")
+    # kr = np.log(kr / fr)
+    # cr = bs_normalized_call(kr, sr * np.sqrt(tr))
+    # Cr = cr * fr
+    callr = black.price(tr, kr, True, fr, sr)
+    putr = callr - (fr - kr)
+    print(fr)
+    print(kr)
 
-    # graceful failure: price at the no-arbitrage boundary -> NaN, not 0
-    nan_demo = implied_vol_call(C=1e-300, K=400.0, F=100.0, T=0.1, D=1.0)
-    print(f"deep-OTM underflow price -> {nan_demo}  (NaN = unrecoverable)")
+    # Route to the OTM wing and keep only recoverable prices (norm. price > 1e-6)
+    otm_call = (kr >= fr)
+    rec = implied_vol_call(callr, kr, fr, tr)
+    rec = np.where(otm_call, rec, implied_vol_put(putr, kr, fr, tr))
+    otm_price = np.where(otm_call, callr, callr - (fr - kr))
+    keep = (otm_price > 1e-6 * fr)
+    er = np.abs(rec[keep] - sr[keep])
+    print(f"Random OTM batch: n={keep.sum():,}  "
+          f"Mean={er.mean():.2e} max={er.max():.2e}")
+
+    # Graceful failure: price at the no-arbitrage boundary -> NaN, not 0
+    nan_demo = implied_vol_call(C=1e-300, K=400.0, F=100.0, T=0.1)
+    print(f"Deep-OTM underflow price -> {nan_demo} (NaN = unrecoverable)")
 
 
 if __name__ == "__main__":
