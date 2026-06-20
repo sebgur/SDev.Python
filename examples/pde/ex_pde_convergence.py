@@ -58,8 +58,8 @@ price2 = fpde.price_vanillas(valdate, expiry, strikes, fwd_curve, lv, pde_config
 # # Calculate implied vols and RMSE
 # call1 = (price1 + fwd - strikes) / 2.0
 # call2 = (price2 + fwd - strikes) / 2.0
-# ivol1 = black.implied_vols(expiry_time, strikes, True, fwd, call1)
-# ivol2 = black.implied_vols(expiry_time, strikes, True, fwd, call2)
+# ivol1 = black.implied_vol(expiry_time, strikes, True, fwd, call1)
+# ivol2 = black.implied_vol(expiry_time, strikes, True, fwd, call2)
 # rmse = metrics.rmse(ivol1, ivol2) * 10000.0
 # rmse1 = metrics.rmse(ivol1, cf_vols) * 10000.0
 # rmse2 = metrics.rmse(ivol2, cf_vols) * 10000.0

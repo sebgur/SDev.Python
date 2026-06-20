@@ -4,6 +4,7 @@ import numpy.typing as npt
 from scipy.stats import norm
 from scipy.optimize import minimize_scalar
 from sdevpy.utilities.tools import isiterable
+from sdevpy.analytics.schadner import implied_vol_schadner
 
 
 def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
@@ -24,9 +25,14 @@ def price_straddles(expiry: npt.ArrayLike, strike: npt.ArrayLike, fwd: npt.Array
     return call + put
 
 
-def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
-    """ Direct method by numerical inversion using Brent.
-        Non-vectorized due to solver. """
+def implied_vol(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: bool, fwd: npt.ArrayLike,
+                fwd_price: npt.ArrayLike) -> npt.NDArray[np.float64]:
+    """ Black-Scholes inversion, using the Schadner method """
+    return implied_vol_schadner(expiry, strike, is_call, fwd, fwd_price)
+
+
+def implied_vol_brent(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
+    """ Direct method by numerical inversion using Brent. Non-vectorized due to solver. """
     # Trial config
     options = {'xtol': 1e-6, 'maxiter': 100, 'disp': False}
     xmin = 1e-6
@@ -44,14 +50,14 @@ def implied_vol(expiry: float, strike: float, is_call: bool, fwd: float, fwd_pri
     return res.x
 
 
-def implied_vols(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float,
-                 fwd_price: npt.ArrayLike) -> npt.NDArray[np.float64]:
+def implied_vols_brent(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float,
+                       fwd_price: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """ Black implied volatility for vector of strikes/prices """
     if isiterable(strike) and isiterable(fwd_price):
-        ivs = [implied_vol(expiry, k, is_call, fwd, p) for k, p in zip(strike, fwd_price, strict=True)]
+        ivs = [implied_vol_brent(expiry, k, is_call, fwd, p) for k, p in zip(strike, fwd_price, strict=True)]
         return np.asarray(ivs)
     elif not isiterable(strike) and not isiterable(fwd_price):
-        return implied_vol(expiry, strike, is_call, fwd, fwd_price)
+        return implied_vol_brent(expiry, strike, is_call, fwd, fwd_price)
     else:
         raise ValueError("Incompatible shapes between strikes and prices")
 

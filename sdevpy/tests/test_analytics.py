@@ -40,7 +40,8 @@ def test_black_roundtrip():
     expiry, fwd, vol = 0.5, 100.0,  0.25
     strikes = np.asarray([95, 100.0, 105.0])
     p = black.price(expiry, strikes, True, fwd, vol)
-    test = black.implied_vols(expiry, strikes, True, fwd, p)
+    test = black.implied_vol(expiry, strikes, True, fwd, p)
+    # test = black.implied_vols(expiry, strikes, True, fwd, p)
     ref = np.asarray([0.25, 0.25, 0.25])
     # ref = np.asarray([0.25000382, 0.24999664, 0.25000281])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-6)

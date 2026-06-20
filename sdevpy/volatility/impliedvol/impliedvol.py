@@ -172,7 +172,8 @@ class ImpliedVol(ABC):
             return value
         else:
             price = self.to_price(t, k, f, is_call, value)
-            return black.implied_vols(t, k, is_call, f, price)
+            # ToDo: once covered by pytest, replace with vectorized black.implied_vol()
+            return black.implied_vols_brent(t, k, is_call, f, price)
 
     def bachelier_volatility(self, t: float, k: float, f: float):
         """ Bachelier implied volatility """

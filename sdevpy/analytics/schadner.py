@@ -21,7 +21,6 @@
     ndtr, log_ndtr and ndtri are used for extreme performance saving. They save by avoiding overheads
     for argument validation, error checking, etc. Recommended here as speed is the target.
 """
-from __future__ import annotations
 import warnings
 import numpy as np
 import numpy.typing as npt
