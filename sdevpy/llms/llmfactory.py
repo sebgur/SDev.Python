@@ -5,6 +5,7 @@ from sdevpy.llms.local_model import LocalModel
 from sdevpy.llms.transformers_model import TransformersModel
 from sdevpy.llms.llama_model import LlamaModel
 from sdevpy.llms import huggingface
+from sdevpy.tests import conftest as tst
 
 
 def run_instruction(model_id: str, system_prompt: str, user_prompt: str, **kwargs) -> str:
@@ -66,9 +67,10 @@ def list_model_info() -> list[dict]:
     return df
 
 
-def read_llm_config(folder: str) -> dict:
-    """ Read Local LLM config and return object """
-    config_file = Path(folder) / "local_llms.json"
+def read_llm_config(folder: str=None) -> dict:
+    """ Read Local LLM config and return object. Folder defaults to testing. """
+    folder = (tst.staticdata_path() if folder is None else folder)
+    config_file = Path(folder) / "llmconfig.json"
     if config_file.exists():
         return jsm.deserialize(config_file)
     else:

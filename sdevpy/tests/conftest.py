@@ -19,5 +19,11 @@ def calibdata_path() -> Path:
     return path
 
 
+def staticdata_path() -> Path:
+    """ Get test static data path """
+    path = root_path() / "staticdata"
+    return path
+
+
 if __name__ == "__main__":
     print(marketdata_path())

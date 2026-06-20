@@ -47,7 +47,7 @@ ignore = ["E401", "I001"]
 [tool.coverage.run]
 omit = [
     "sdevpy/**/__init__.py",
-    "sdevpy/tests/testconfig.py",
+    "sdevpy/tests/conftestpy",
     "sdevpy/logger.py",
     "sdevpy/settings.py",
     "sdevpy/utilities/constants.py",

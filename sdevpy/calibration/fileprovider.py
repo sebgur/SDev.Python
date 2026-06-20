@@ -2,7 +2,7 @@ import logging
 import datetime as dt
 from pathlib import Path
 from sdevpy.utilities import dates as dts
-from sdevpy.tests import testconfig
+from sdevpy.tests import conftest
 from sdevpy.utilities import jsonmanager as jsm
 log = logging.getLogger(__name__)
 
@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 class CalibrationDataFileProvider:
     """ Reads calibrated data from files on disk """
     def __init__(self, root: str|Path=None):
-        self.root = (Path(root) if root is not None else testconfig.calibdata_path())
+        self.root = (Path(root) if root is not None else conftest.calibdata_path())
 
     def get_impliedvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None:
         """ Retrieve implied vol data if existing, None otherwise """
