@@ -377,7 +377,7 @@ class Sqrt(Payoff):
         self.names = self.subpayoff.names
 
     def evaluate(self, mkt_state: dict):
-        return np.sqrt(self.subpayoff.evaluate(mkt_state))
+        return np.sqrt(np.maximum(self.subpayoff.evaluate(mkt_state), 0.0))
 
     def set_nameindexes(self, names):
         self.subpayoff.set_nameindexes(names)

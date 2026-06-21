@@ -52,9 +52,9 @@ omit = [
     "sdevpy/settings.py",
     "sdevpy/utilities/constants.py",
     "sdevpy/utilities/pydotnet.py",
+    "sdevpy/utilities/clipboard.py",
     "sdevpy/tensorflow/*",
-    "sdevpy/machinelearning/*",
-    "sdevpy/volatility/mlsurfacegen/*"
+    "sdevpy/machinelearning/*"
 ]
 
 [tool.coverage.report]

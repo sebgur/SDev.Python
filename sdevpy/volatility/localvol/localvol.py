@@ -303,13 +303,14 @@ class VectorLocalVol(TimeInterpolatedLocalVol):
             raise ValueError("Incompatible sizes between new vol grid and existing time grid")
 
         # Create sections
-        sections = []
-        for i in range(len(self.t_grid)):
-            t, vol = self.t_grid[i], self.vol_grid[i]
-            sections.append(FlatLocalVolSection(t, vol))
+        self.sections = [FlatLocalVolSection(t, v) for t, v in zip(self.t_grid, self.vol_grid, strict=True)]
+        # sections = []
+        # for i in range(len(self.t_grid)):
+        #     t, vol = self.t_grid[i], self.vol_grid[i]
+        #     sections.append(FlatLocalVolSection(t, vol))
 
-        # Instantiate base
-        super().__init__(sections, **kwargs)
+        # # Instantiate base
+        # super().__init__(sections, **kwargs)
 
 
 class ConstantLocalVol(LocalVol):
