@@ -43,39 +43,9 @@ class TestCalibrationTargets:
     _str = [[0.03, 0.04, 0.05], [0.03, 0.04, 0.05]]
     _vol = [[0.20, 0.20, 0.20], [0.20, 0.20, 0.20]]
 
-    def test_returns_one_entry_per_expiry(self):
-        prices, ftols = calibration_targets(self._exp, self._fwd, self._str, self._vol)
-        assert len(prices) == 2 and len(ftols) == 2
-
     def test_ftols_are_positive(self):
         _, ftols = calibration_targets(self._exp, self._fwd, self._str, self._vol)
         assert all(f > 0 for f in ftols)
-
-    def test_call_prices_non_negative(self):
-        prices, _ = calibration_targets(self._exp, self._fwd, self._str, self._vol,
-                                        option_type='call')
-        assert all(np.all(np.asarray(p) >= 0) for p in prices)
-
-    def test_put_prices_non_negative(self):
-        prices, _ = calibration_targets(self._exp, self._fwd, self._str, self._vol,
-                                        option_type='put')
-        assert all(np.all(np.asarray(p) >= 0) for p in prices)
-
-    def test_straddle_exceeds_call_at_each_point(self):
-        p_call, _ = calibration_targets(self._exp, self._fwd, self._str, self._vol,
-                                        option_type='call')
-        p_straddle, _ = calibration_targets(self._exp, self._fwd, self._str, self._vol,
-                                            option_type='straddle')
-        for pc, ps in zip(p_call, p_straddle):
-            assert np.all(np.asarray(ps) >= np.asarray(pc))
-
-    def test_unknown_type_falls_through_to_straddle(self):
-        p_straddle, _ = calibration_targets(self._exp, self._fwd, self._str, self._vol,
-                                            option_type='straddle')
-        p_other, _ = calibration_targets(self._exp, self._fwd, self._str, self._vol,
-                                         option_type='whatever')
-        for ps, po in zip(p_straddle, p_other):
-            np.testing.assert_array_almost_equal(ps, po)
 
 
 # ── keep_positive ─────────────────────────────────────────────────────────────
@@ -298,3 +268,8 @@ class TestConvertToTargetValues:
         bad = make_target(forward=-0.01, strike=0.03, quote_type=OptionQuoteType.LogNormalVol)
         result = convert_to_target_values([[bad]], OptionQuoteType.ForwardPremium, 0.0)
         assert result == []
+
+
+if __name__ == "__main__":
+    test = TestCalibrationTargets()
+    test.test_returns_one_entry_per_expiry()

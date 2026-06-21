@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import numpy as np
 from enum import Enum
 from pathlib import Path
 import logging
@@ -37,8 +38,8 @@ def calibration_targets(expiries: list[float], fwds: list[float], strike_surface
     ftols = []
     for exp_idx, expiry in enumerate(expiries):
         fwd = fwds[exp_idx]
-        strikes = strike_surface[exp_idx]
-        vols = vol_surface[exp_idx]
+        strikes = np.asarray(strike_surface[exp_idx])
+        vols = np.asarray(vol_surface[exp_idx])
         if option_type.lower() == 'call':
             cf_price = black.price(expiry, strikes, True, fwd, vols)
             cf_price_bump = black.price(expiry, strikes, True, fwd, vols + voltol)
