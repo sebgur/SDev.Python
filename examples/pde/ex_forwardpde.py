@@ -30,6 +30,7 @@ calib_strikes = calib_fwds
 lv_calib = calib_lv_black(iv_surface, valdate, expiries, calib_strikes, calib_fwds)
 lv = lv_calib['lv']
 # print(lv.vol_grid)
+# Use update_vol() instead
 # # lv.vol_grid[0] = 0.15
 # # lv.vol_grid[1] = 0.15
 # # lv.vol_grid[2] = 0.15
@@ -37,7 +38,6 @@ lv = lv_calib['lv']
 # # lv.vol_grid[4] = 0.15
 # # lv.vol_grid[5] = 0.15
 # print(lv.vol_grid)
-# lv.refresh_sections()
 calib_vols = lv_calib['calib_vols']
 print(f"Calib target vols: {calib_vols}")
 print(f"LV time grid: {np.asarray(lv.t_grid)}")

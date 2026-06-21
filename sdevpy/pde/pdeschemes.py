@@ -59,9 +59,9 @@ class ThetaScheme(PdeScheme):
         # Calculate band vectors for tridiagonal system
         # lv = self.local_vol.value(te, x) # Use only the one at ts for lower_bound LV
         theta_dt_2 = self.theta * dt / 2.0
-        upper = np.zeros(n_x - 1)
-        main = np.zeros(n_x)
-        lower = np.zeros(n_x - 1)
+        # upper = np.zeros(n_x - 1)
+        # main = np.zeros(n_x)
+        # lower = np.zeros(n_x - 1)
 
         # Vectorized
         main = 1.0 + theta_dt_2 * b * lv**2
@@ -87,9 +87,9 @@ class ImplicitScheme(PdeScheme):
 
         lv = self.local_vol.value(ts, x) # Use the one at ts for lower_bound LV
         # lv = self.local_vol.value(te, x) # Original
-        upper = np.zeros(n_x - 1)
-        main = np.zeros(n_x)
-        lower = np.zeros(n_x - 1)
+        # upper = np.zeros(n_x - 1)
+        # main = np.zeros(n_x)
+        # lower = np.zeros(n_x - 1)
 
         # Vectorized
         main = 1.0 + b * lv**2

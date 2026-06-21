@@ -297,7 +297,12 @@ class VectorLocalVol(TimeInterpolatedLocalVol):
         # Instantiate base
         super().__init__(sections, **kwargs)
 
-    def refresh_sections(self, **kwargs) -> None:
+    def update_vol(self, t_idx: int, vol: float) -> None:
+        """ Update volatility at given index """
+        self.vol_grid[t_idx] = vol
+        self._refresh_sections()
+
+    def _refresh_sections(self) -> None:
         """ Refresh sections in case vol_grid was modified from outside """
         if len(self.vol_grid) != len(self.t_grid):
             raise ValueError("Incompatible sizes between new vol grid and existing time grid")
