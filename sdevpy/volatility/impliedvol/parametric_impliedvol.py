@@ -12,7 +12,6 @@ class ParametricImpliedVol(ImpliedVol):
     def update_params(self, x: list[float]) -> None:
         """ Update the current parameters """
         self.params = np.asarray(x, dtype=float)
-        # self.params = x
 
     def check_params(self) -> tuple[bool, float]:
         """ Check validity of the parameters, return is_ok state and penalty value (0.0 if is_ok) """
@@ -27,3 +26,8 @@ class ParametricImpliedVol(ImpliedVol):
     def initial_point(self) -> list[float]:
         """ Recommended initial point for optimization on parameters """
         pass
+
+    def _require_params(self) -> None:
+        """ Make sure params have been set """
+        if self.params is None:
+            raise RuntimeError("Model has no parameters. Call update_params() first")
