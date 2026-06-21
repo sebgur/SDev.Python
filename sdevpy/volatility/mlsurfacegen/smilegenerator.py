@@ -22,9 +22,10 @@ class SmileGenerator(ABC):
     def generate_samples(self, num_samples, rg):
         """ Generate a sample of expiries, strikes, relevant parameters and option prices """
 
-    @abstractmethod
-    def generate_samples_inverse(self, num_samples, rg, spreads):
+
+    def generate_samples_inverse(self, num_samples: int, rg, spreads):
         """ Generate an inverse sample of expiries, strikes, relevant parameters and option prices """
+        raise NotImplementedError("Generator class does not have a method generate_samples_inverse yet")
 
     @abstractmethod
     def price(self, expiries, strikes, are_calls, fwd, parameters):
@@ -32,9 +33,9 @@ class SmileGenerator(ABC):
         # Note: couldn't we identify this with price_surface_ref? Ideally rename as
         # price_options_ref given that now we have price_straddles_ref
 
-    @abstractmethod
     def price_straddles_ref(self, expiries, strikes, fwd, parameters):
         """ Calculate straddle prices under the specified model and its parameters """
+        raise NotImplementedError("Generator class does not have a method price_straddles_ref yet")
 
     # #### Retrieve direct datasets ####
     def retrieve_datasets(self, data_file, shuffle=False):
@@ -68,10 +69,9 @@ class SmileGenerator(ABC):
 
         return self.retrieve_inverse_datasets_no_shuffle(data_df)
 
-    @abstractmethod
     def retrieve_inverse_datasets_no_shuffle(self, data_df):
         """ Retrieve inverse dataset from dataframe without shuffling """
-        raise NotImplementedError("Method not implemented yet for chosen model")
+        raise NotImplementedError("Generator class does not have a method retrieve_inverse_datasets_no_shuffle yet")
 
     def price_surface_ref(self, expiries, strikes, are_calls, fwd, parameters):
         """ Calculate a surface of prices for given parameters using the reference model """

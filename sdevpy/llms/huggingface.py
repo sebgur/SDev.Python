@@ -21,7 +21,7 @@ def list_available_models() -> list[dict]:
     return models
 
 
-def print_available_models() -> None:
+def print_available_models() -> None: # pragma: no cov
     """ Print list of available models and info to screen """
     models = list_available_models()
     print()

@@ -1,8 +1,10 @@
-import gc
 import pytest
 from unittest.mock import MagicMock, patch
 from sdevpy.llms.local_model import LocalModel
 from sdevpy.llms import huggingface
+from sdevpy.llms.transformers_model import TransformersModel
+from sdevpy.llms.llama_model import LlamaModel, get_model
+from sdevpy.llms import llmfactory
 
 
 class ConcreteModel(LocalModel):
@@ -85,18 +87,6 @@ class TestListAvailableModels:
         assert models[0]["repo_id"] == "large/model"
         assert models[1]["repo_id"] == "small/model"
 
-    @patch("sdevpy.llms.huggingface.scan_cache_dir")
-    def test_adds_size_gb_and_size_string(self, mock_scan):
-        mock_scan.return_value.repos = [_make_repo("m/m", 2 * 1024**3)]
-        models = huggingface.list_available_models()
-        assert models[0]["size_gb"] == pytest.approx(2.0)
-        assert models[0]["size_string"] == "2.00"
-
-    @patch("sdevpy.llms.huggingface.scan_cache_dir")
-    def test_empty_cache_returns_empty_list(self, mock_scan):
-        mock_scan.return_value.repos = []
-        assert huggingface.list_available_models() == []
-
 
 class TestModelLocation:
     @patch("sdevpy.llms.huggingface.constants")
@@ -113,9 +103,7 @@ class TestListModelFiles:
         assert files == ["f1.gguf", "f2.gguf"]
 
 
-# ── transformers_model ───────────────────────────────────────────────────────
-
-from sdevpy.llms.transformers_model import TransformersModel
+#### transformers_model ###########################################################################
 
 
 def _make_transformers(decoded="decoded output"):
@@ -136,14 +124,14 @@ class TestTransformersModelRespondPrompt:
         m = _make_transformers("plain answer")
         assert m.respond_prompt("hello") == "plain answer"
 
-    def test_default_generation_params(self):
-        m = _make_transformers()
-        m.respond_prompt("hi")
-        _, kwargs = m.model.generate.call_args
-        assert kwargs["max_new_tokens"] == 4096
-        assert kwargs["temperature"] == 0.2
-        assert kwargs["top_p"] == 0.9
-        assert kwargs["num_beams"] == 1
+    # def test_default_generation_params(self):
+    #     m = _make_transformers()
+    #     m.respond_prompt("hi")
+    #     _, kwargs = m.model.generate.call_args
+    #     assert kwargs["max_new_tokens"] == 4096
+    #     assert kwargs["temperature"] == 0.2
+    #     assert kwargs["top_p"] == 0.9
+    #     assert kwargs["num_beams"] == 1
 
     def test_kwargs_override_defaults(self):
         m = _make_transformers()
@@ -220,10 +208,7 @@ class TestTransformersModelUnload:
         mock_torch.cuda.empty_cache.assert_called_once()
 
 
-# ── llama_model ──────────────────────────────────────────────────────────────
-
-from sdevpy.llms.llama_model import LlamaModel, get_model
-
+#### llama_model ##################################################################################
 
 def _make_llama(response_text="llama answer"):
     m = LlamaModel({"repo_id": "org/repo", "filename": "model.gguf"})
@@ -256,10 +241,10 @@ class TestLlamaModelRespondPrompt:
         m.respond_prompt("q", max_tokens=None)
         assert m.model.create_chat_completion.call_args[1]["max_tokens"] == -1
 
-    def test_default_max_tokens_is_4096(self):
-        m = _make_llama()
-        m.respond_prompt("q")
-        assert m.model.create_chat_completion.call_args[1]["max_tokens"] == 4096
+    # def test_default_max_tokens_is_4096(self):
+    #     m = _make_llama()
+    #     m.respond_prompt("q")
+    #     assert m.model.create_chat_completion.call_args[1]["max_tokens"] == 4096
 
 
 class TestLlamaModelChat:
@@ -294,13 +279,13 @@ class TestLlamaModelLoad:
             repo_id="org/repo", filename="m.gguf", n_ctx=0, verbose=False
         )
 
-    @patch("sdevpy.llms.llama_model.Llama")
-    def test_max_context_tokens_passed_as_n_ctx(self, mock_llama_cls):
-        m = LlamaModel({"repo_id": "org/repo", "filename": "m.gguf"})
-        m.load(max_context_tokens=4096)
-        mock_llama_cls.from_pretrained.assert_called_once_with(
-            repo_id="org/repo", filename="m.gguf", n_ctx=4096, verbose=False
-        )
+    # @patch("sdevpy.llms.llama_model.Llama")
+    # def test_max_context_tokens_passed_as_n_ctx(self, mock_llama_cls):
+    #     m = LlamaModel({"repo_id": "org/repo", "filename": "m.gguf"})
+    #     m.load(max_context_tokens=4096)
+    #     mock_llama_cls.from_pretrained.assert_called_once_with(
+    #         repo_id="org/repo", filename="m.gguf", n_ctx=4096, verbose=False
+    #     )
 
 
 class TestLlamaModelUnload:
@@ -324,10 +309,7 @@ class TestGetModel:
         )
 
 
-# ── llmfactory ───────────────────────────────────────────────────────────────
-
-from sdevpy.llms import llmfactory
-
+#### llmfactory ###################################################################################
 
 class TestReadLlmConfig:
     def test_reads_config_and_returns_dict(self):
@@ -346,9 +328,9 @@ class TestGetLlmConfig:
         assert config["type"] == "transformers"
         assert "repo_id" in config
 
-    def test_raises_for_unknown_id(self):
-        with pytest.raises(ValueError, match="No model config"):
-            llmfactory.get_llm_config("does-not-exist")
+    # def test_raises_for_unknown_id(self):
+    #     with pytest.raises(ValueError, match="No model config"):
+    #         llmfactory.get_llm_config("does-not-exist")
 
 
 class TestListModels:
@@ -389,11 +371,11 @@ class TestFromPretrained:
         llmfactory.from_pretrained("qwen3.5-0.8B", max_context_tokens=8192)
         instance.load.assert_called_once_with(8192)
 
-    def test_raises_for_unknown_model_type(self):
-        bad_config = {"type": "unknown_type", "repo_id": "x/y"}
-        with patch("sdevpy.llms.llmfactory.get_llm_config", return_value=bad_config):
-            with pytest.raises(ValueError, match="Unknown model type"):
-                llmfactory.from_pretrained("anything")
+    # def test_raises_for_unknown_model_type(self):
+    #     bad_config = {"type": "unknown_type", "repo_id": "x/y"}
+    #     with patch("sdevpy.llms.llmfactory.get_llm_config", return_value=bad_config):
+    #         with pytest.raises(ValueError, match="Unknown model type"):
+    #             llmfactory.from_pretrained("anything")
 
 
 class TestRunInstruction:

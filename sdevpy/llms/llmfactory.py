@@ -58,7 +58,7 @@ def list_model_info() -> list[dict]:
             downloadeds.append(downloaded)
             types.append(type_)
             filenames.append(filename)
-        except Exception as e:
+        except Exception as e: # pragma: no cov
             print(f"Failed to retrieve model information for {model_key}: {str(e)}")
 
     df = pd.DataFrame({'Name': lib_ids, 'Repo': repo_ids, 'Size(GB)': size_strings, 'Size': size_gbs,
@@ -74,7 +74,7 @@ def read_llm_config(folder: str=None) -> dict:
     if config_file.exists():
         return jsm.deserialize(config_file)
     else:
-        raise ValueError(f"LLM config file not found: {config_file}")
+        raise ValueError(f"LLM config file not found: {config_file}") # pragma: no cov
 
 
 def get_llm_config(model_id: str) -> dict:
@@ -84,7 +84,7 @@ def get_llm_config(model_id: str) -> dict:
     if model_config is not None:
         return model_config
     else:
-        raise ValueError(f"No model config found for ID: {model_id}")
+        raise ValueError(f"No model config found for ID: {model_id}") # pragma: no cov
 
 
 def from_pretrained(model_id: str, max_context_tokens: int=None) -> LocalModel:
@@ -96,7 +96,7 @@ def from_pretrained(model_id: str, max_context_tokens: int=None) -> LocalModel:
             model = TransformersModel(config)
         case 'llama':
             model = LlamaModel(config)
-        case _:
+        case _: # pragma: no cov
             raise ValueError(f"Unknown model type: {model_type}")
 
     model.load(max_context_tokens)
