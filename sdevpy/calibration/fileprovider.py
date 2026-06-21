@@ -16,7 +16,7 @@ class CalibrationDataFileProvider:
         """ Retrieve implied vol data if existing, None otherwise """
         file = self.impliedvol_data_file(name, date, model_name)
         if not file.exists():
-            log.debug(f'LocalVol file not found: {file}')
+            log.debug(f'ImpliedVol file not found: {file}')
 
         return (jsm.deserialize(file) if file.exists() else None)
 

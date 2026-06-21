@@ -1,5 +1,4 @@
 import pytest
-import numpy as np
 from sdevpy.analytics import black
 from sdevpy.volatility.impliedvol.optionsurface import (
     OptionQuoteType, OptionTarget, calibration_targets,
