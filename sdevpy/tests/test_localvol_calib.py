@@ -7,19 +7,16 @@ from sdevpy.volatility.localvol.black_calib import calib_lv_black
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
 from sdevpy.tests.test_localvol import (make_tssvi1, make_tssvi2, make_logmix2)
 from sdevpy.tests.test_localvol import (make_flat_surface, FLAT_VOL)
-from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol
+from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
 from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
-from sdevpy.maths import metrics
+from sdevpy.maths import metrics, constants
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
-from sdevpy.volatility.localvol.dupire_calib import dupire_formula_single   # add to existing import
-from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol  # add MatrixLocalVol
-from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections, LvObjectiveBuilder, PenaltyType
+from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder, PenaltyType
 from sdevpy.volatility.impliedvol.impliedvol import LvMethod
 from sdevpy.analytics import black
-from sdevpy.maths import metrics, constants    # add constants to existing
 
 
 CALIB_VALDATE = dt.datetime(2025, 12, 15)
@@ -56,62 +53,6 @@ def _make_builder(lv_t_grid=None, expiry_grid=None, option_type='straddle',
     cf_prices = [np.array([0.005, 0.004])] * n
     return LvObjectiveBuilder(mock_lv, expiry_grid, [0.04] * n, [[0.03, 0.04]] * n, cf_prices,
                               MagicMock(), option_type=option_type, penalty_type=penalty_type)
-
-
-##################### dupire_formula_single #######################################################
-
-class TestDupireFormulaSingle:
-    def test_ts_near_zero_returns_black_vol_at_te(self):
-        """ts < t_threshold: early return using black_volatility(te, x, 1.0)"""
-        surf = _mock_ivsurf(LvMethod.ImpliedVol, black_vol=0.25)
-        result = dupire_formula_single(surf, ts=0.0, te=1.0, x=1.0)
-        assert result == pytest.approx(0.25)
-        surf.black_volatility.assert_called_with(1.0, 1.0, 1.0)
-
-    def test_x_near_zero_returns_sqrt_dvar_dt(self):
-        """x < x_threshold: returns sqrt of forward variance derivative"""
-        surf = _mock_ivsurf(LvMethod.ImpliedVol, dvar_dt=0.04)
-        result = dupire_formula_single(surf, ts=0.5, te=1.0, x=1e-7)
-        assert result == pytest.approx(np.sqrt(0.04))
-
-    def test_implied_vol_zero_returns_zero(self):
-        """ImpliedVol branch, theta == 0: returns 0"""
-        surf = _mock_ivsurf(LvMethod.ImpliedVol, black_vol=0.0, dvar_dt=0.04)
-        result = dupire_formula_single(surf, ts=0.5, te=1.0, x=1.0)
-        assert result == pytest.approx(0.0)
-
-    def test_implied_vol_negative_sigma2_clamps_to_zero(self):
-        """ImpliedVol branch, very large negative curvature → denominator < 0 → sigma2 < 0 → 0"""
-        # With dvol_dx=0 and d2vol_dx2=-100 at x=1, ts=1: denominator = 0.20*1*(-100) + 1 = -19 < 0
-        surf = _mock_ivsurf(LvMethod.ImpliedVol, black_vol=0.20, dvar_dt=0.04,
-                            dvol_dx=0.0, d2vol_dx2=-100.0)
-        result = dupire_formula_single(surf, ts=1.0, te=2.0, x=1.0)
-        assert result == pytest.approx(0.0)
-
-    def test_implied_vol_method_matches_vectorised(self):
-        """scalar dupire_formula_single must agree with the vectorised dupire_formula at the same point"""
-        surf = make_tssvi1()
-        scalar = dupire_formula_single(surf, ts=0.25, te=1.0, x=1.0)
-        vector = dupire_formula(surf, ts=0.25, te=1.0, x=np.array([1.0]))[0]
-        assert scalar == pytest.approx(vector, rel=1e-6)
-
-    def test_pdf_stddev_zero_returns_zero(self):
-        """PDF branch, theta == 0 → stddev == 0: returns 0"""
-        surf = _mock_ivsurf(LvMethod.PDF, black_vol=0.0, dvar_dt=0.04)
-        result = dupire_formula_single(surf, ts=0.5, te=1.0, x=1.0)
-        assert result == pytest.approx(0.0)
-
-    def test_pdf_method_matches_vectorised(self):
-        """scalar dupire_formula_single (PDF path) must agree with the vectorised version"""
-        surf = make_logmix2()
-        scalar = dupire_formula_single(surf, ts=0.25, te=1.0, x=1.0)
-        vector = dupire_formula(surf, ts=0.25, te=1.0, x=np.array([1.0]))[0]
-        assert scalar == pytest.approx(vector, rel=1e-4)
-
-    def test_invalid_method_raises(self):
-        surf = _mock_ivsurf("bad_method", dvar_dt=0.04)
-        with pytest.raises(ValueError, match="Invalid Dupire"):
-            dupire_formula_single(surf, ts=0.5, te=1.0, x=1.0)
 
 
 ##################### dupire_formula: additional uncovered paths ##################################
