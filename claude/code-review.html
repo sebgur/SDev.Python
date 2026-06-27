@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Claude's Code Review — sdevpy</title>
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --text:      #c9d1d9;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --orange:    #f0883e;
+      --red:       #f85149;
+      --purple:    #bc8cff;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+
+    header { margin-bottom: 2.5rem; padding-bottom: 1.4rem; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.75rem; color: var(--accent); letter-spacing: -.02em; }
+    header p  { color: var(--muted); margin-top: .35rem; font-size: .9rem; }
+
+    .grade-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+    .grade-letter {
+      font-size: 4.2rem;
+      font-weight: 800;
+      line-height: 1;
+      min-width: 3.8rem;
+      text-align: center;
+    }
+    .grade-details h2 { font-size: 1.05rem; margin-bottom: .35rem; }
+    .grade-details p  { color: var(--muted); font-size: .88rem; }
+
+    .scorecard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+    .scorecard table { width: 100%; border-collapse: collapse; }
+    .scorecard thead th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      padding: .65rem 1.2rem;
+      text-align: left;
+    }
+    .scorecard tbody tr { border-top: 1px solid var(--border); }
+    .scorecard tbody tr:hover { background: var(--surface2); }
+    .scorecard td { padding: .7rem 1.2rem; font-size: .88rem; vertical-align: middle; }
+    .scorecard td:nth-child(2) { font-weight: 700; white-space: nowrap; }
+    .bar-wrap  { display: flex; align-items: center; gap: .55rem; }
+    .bar       { height: 6px; border-radius: 3px; background: var(--border); flex: 1; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 3px; }
+    .score-lbl { font-size: .78rem; color: var(--muted); white-space: nowrap; min-width: 4.5rem; }
+
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1.1rem;
+      padding-bottom: .45rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .progress-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      padding: .9rem 1.2rem;
+      margin-bottom: 2.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .progress-banner strong { color: var(--text); }
+
+    .issue {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 8px;
+      padding: 1.15rem 1.4rem;
+      margin-bottom: 1.1rem;
+    }
+    .issue.high     { border-left-color: var(--orange); }
+    .issue.medium   { border-left-color: var(--yellow); }
+    .issue.low      { border-left-color: var(--accent); }
+
+    .issue-header {
+      display: flex;
+      align-items: flex-start;
+      gap: .7rem;
+      margin-bottom: .7rem;
+      flex-wrap: wrap;
+    }
+    .issue-num {
+      font-size: .72rem; font-weight: 700;
+      background: #21262d; border-radius: 4px;
+      padding: .18rem .5rem; color: var(--muted);
+      white-space: nowrap; margin-top: .15rem;
+    }
+    .issue-title { font-weight: 600; font-size: .98rem; flex: 1; min-width: 0; }
+    .badge {
+      font-size: .7rem; font-weight: 700; padding: .18rem .55rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: .05em;
+      white-space: nowrap; margin-top: .1rem;
+    }
+    .badge.high     { background: #2d1e0f; color: var(--orange); }
+    .badge.medium   { background: #2c2005; color: var(--yellow); }
+    .badge.low      { background: #0c2a4a; color: var(--accent); }
+
+    .loc {
+      display: inline-block;
+      font-size: .76rem; color: var(--accent);
+      background: #0c2a4a; border: 1px solid #1f4068;
+      border-radius: 4px; padding: .12rem .48rem;
+      margin-bottom: .55rem;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    }
+
+    .issue p { color: var(--muted); font-size: .88rem; margin-bottom: .45rem; }
+    .issue p:last-child { margin-bottom: 0; }
+    .issue strong { color: var(--text); }
+
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .83em;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1em .38em;
+      color: var(--purple);
+    }
+    pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .9rem 1.1rem;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .82em;
+      line-height: 1.65;
+      margin: .55rem 0 .2rem;
+      color: #e6edf3;
+    }
+    .c  { color: #8b949e; }
+    .kw { color: #ff7b72; }
+    .st { color: #a5d6ff; }
+    .fn { color: #d2a8ff; }
+    .ok { color: #3fb950; }
+    .rm { color: #f85149; }
+
+    footer { margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; color: var(--muted); font-size: .8rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Claude's Code Review — <code>sdevpy</code></h1>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-27 &nbsp;·&nbsp; <strong>12th review</strong> (full scan)</p>
+  </header>
+
+  <div class="grade-card">
+    <div class="grade-letter" style="color:var(--yellow)">B</div>
+    <div class="grade-details">
+      <h2>Five 11th-review fixes landed — two new high-severity bugs introduced</h2>
+      <p>
+        Five of the ten issues from the 11th review are resolved: <code>Sqrt.evaluate</code> now floors at zero,
+        <code>VectorLocalVol._refresh_sections</code> no longer calls <code>super().__init__()</code>,
+        the <code>Variance</code> new-contract crash is handled gracefully, <code>dump_data()</code> is guarded by
+        <code>_require_params()</code>, and the <code>CalibrationDataFileProvider</code> error message is corrected.
+        However, two new high-severity bugs were found: <code>fixings.py</code> calls <code>Path.replace(str, str)</code>
+        which is a <code>TypeError</code> (the method takes one argument and renames files), and
+        <code>SabrGenerator.calibrate</code> unpacks <code>result, nfev</code> from <code>MultiOptimizer.minimize</code>
+        which returns a single object — making <code>calibrate()</code> unconditionally broken.
+        Both production file-provider classes also import from <code>sdevpy.tests</code>, a structural coupling
+        that breaks installed-package usage.
+      </p>
+    </div>
+  </div>
+
+  <div class="progress-banner">
+    <strong>Fixed since 11th review (5 of 10):</strong>
+    <code>Sqrt.evaluate</code> now has <code>np.maximum(..., 0.0)</code> floor &nbsp;·&nbsp;
+    <code>VectorLocalVol._refresh_sections</code> no longer calls <code>super().__init__()</code> &nbsp;·&nbsp;
+    <code>Variance</code> new-contract crash removed — graceful <code>current_fixing=None</code> skip &nbsp;·&nbsp;
+    <code>dump_data()</code> guarded by <code>_require_params()</code> in <code>tssvi1</code>, <code>tssvi2</code>, <code>logmix</code> &nbsp;·&nbsp;
+    <code>CalibrationDataFileProvider.get_impliedvol_data</code> error message corrected
+  </div>
+
+  <div class="scorecard" style="margin-bottom:2.5rem">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th><th>Score</th><th style="width:38%">Rating</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Architecture</td><td>8 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy and module layout; both file-provider classes couple production code to the test layer via <code>sdevpy.tests.conftest</code></td>
+        </tr>
+        <tr>
+          <td>Correctness</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Two new high-severity bugs: <code>Path.replace(str,str)</code> in <code>fixings.py</code> and <code>calibrate()</code> tuple-unpacking in <code>sabrgenerator.py</code>; negative-variance <code>nan</code> in <code>black_calib</code> still open</td>
+        </tr>
+        <tr>
+          <td>Error Handling</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>np.seterr(divide='raise')</code> not reset on exception; bare <code>except Exception: n_vol=-9999</code> swallows all errors silently; <code>implied_vol_newton</code> has no convergence failure signal</td>
+        </tr>
+        <tr>
+          <td>Testing</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good coverage growth; <code>sabrgenerator.calibrate</code> and Dupire calibration remain untested; new <code>test_rng.py</code> file staged</td>
+        </tr>
+        <tr>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>__main__</code> blocks with <code>print()</code> calls in 9+ library modules; <code>MersenneTwiser</code> class name typo in public API; dead <code>np.zeros</code> allocation in <code>ThetaScheme</code></td>
+        </tr>
+        <tr>
+          <td>Maintainability</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Test-layer imports in production file-providers; test ticker names hardcoded in module-level production map in <code>calibration/provider.py</code></td>
+        </tr>
+        <tr>
+          <td>Type Safety</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>_require_params()</code> guard now present; <code>t: float=None</code> in <code>forwardpde.py</code> should be <code>float | None</code>; most new test helpers are unannotated</td>
+        </tr>
+        <tr>
+          <td>Documentation</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Wrong class name in <code>TimeInterpolatedLocalVol.dump_data</code> error message; open <code>ToDo</code> in <code>Average</code> docstring; copy-paste error in <code>logmix_df</code> docstring</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Top 10 Issues</div>
+
+  <!-- 1 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#1</span>
+      <span class="issue-title"><code>fixings.py</code> calls <code>Path.replace(str, str)</code> — <code>TypeError</code> whenever duplicates are found</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/market/fixings.py · line 94</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>data_file()</code> returns a <code>pathlib.Path</code>.
+      <code>Path.replace(target)</code> is the OS rename/move call — it takes exactly one argument
+      (the destination path). Calling it with two string arguments raises
+      <code>TypeError: replace() takes 2 positional arguments but 3 were given</code>
+      the moment any CSV file contains duplicate dates. The error path that is supposed to detect
+      and isolate bad data instead crashes itself, producing a confusing traceback that points
+      away from the actual problem.
+    </p>
+    <pre>dupe_file = file.replace(<span class="st">".csv"</span>, <span class="st">".dupes.csv"</span>)  <span class="c"># TypeError — Path.replace takes 1 arg</span></pre>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">dupe_file = file.replace(".csv", ".dupes.csv")</span>
+<span class="ok">dupe_file = file.with_name(file.stem + ".dupes.csv")</span></pre>
+  </div>
+
+  <!-- 2 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#2</span>
+      <span class="issue-title"><code>SabrGenerator.calibrate</code> unpacks a single object as a 2-tuple — unconditionally broken</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · line 389</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>MultiOptimizer.minimize</code>
+      (<code>maths/optimization.py:135</code>) returns a single <code>scipy.OptimizeResult</code>
+      object. <code>SabrGenerator.calibrate</code> unpacks it as a two-tuple:
+    </p>
+    <pre>result, nfev = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)</pre>
+    <p>
+      This raises <code>ValueError: too many values to unpack</code> on every single call to
+      <code>calibrate()</code>. The method is entirely unusable. The value <code>nfev</code>
+      is already available as <code>result.nfev</code>.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">result, nfev = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)</span>
+<span class="ok">result = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)
+nfev = result.nfev</span></pre>
+  </div>
+
+  <!-- 3 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#3</span>
+      <span class="issue-title">Both production file-providers import from <code>sdevpy.tests</code> — breaks installed-package usage</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/market/fileprovider.py · line 16 &nbsp;·&nbsp; sdevpy/calibration/fileprovider.py · line 5</span>
+    <p>
+      <strong>Why it's bad:</strong> Both production classes use
+      <code>from sdevpy.tests import conftest</code> to fall back to the test data directory
+      when no root is provided. If <code>sdevpy</code> is installed from a wheel (standard for
+      any published package), the <code>tests/</code> subtree is absent and any code constructing
+      a file-provider without an explicit root crashes with <code>ModuleNotFoundError</code> at
+      import time. It also means a no-arg provider silently resolves to test-data paths in
+      production.
+    </p>
+    <pre><span class="kw">from</span> sdevpy.tests <span class="kw">import</span> conftest  <span class="c"># production module depending on test layer</span>
+<span class="c">...</span>
+self.root = (Path(root) <span class="kw">if</span> root <span class="kw">is not None else</span> conftest.marketdata_path())</pre>
+    <p>
+      <strong>Fix:</strong> Require <code>root</code> explicitly, or resolve it from an
+      environment variable / application-level config:
+    </p>
+    <pre><span class="rm">self.root = (Path(root) if root is not None else conftest.marketdata_path())</span>
+<span class="ok">if root is None:
+    raise ValueError("root path must be provided explicitly")
+self.root = Path(root)</span></pre>
+  </div>
+
+  <!-- 4 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#4</span>
+      <span class="issue-title"><code>np.seterr(divide='raise')</code> not restored on exception — global numpy state corrupted</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · lines 104, 171</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>generate_samples_inverse</code> sets the global numpy
+      floating-point error mode to <code>'raise'</code> at line 104 and resets it at line 171 —
+      but only on the success path. If any exception is raised in between (e.g. inside
+      <code>price_straddles_ref</code>), the reset is skipped. All subsequent numpy operations
+      in the process — in every unrelated module — will then raise on divide-by-zero instead
+      of returning <code>inf</code>, producing impossible-to-trace failures.
+    </p>
+    <pre><span class="rm">np.seterr(divide='raise')      # line 104 — set
+# ... exception possible here ...
+np.seterr(divide='warn')       # line 171 — never reached if exception thrown</span>
+
+<span class="ok">old = np.seterr(divide='raise')
+try:
+    # ... body ...
+finally:
+    np.seterr(**old)</span></pre>
+  </div>
+
+  <!-- 5 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#5</span>
+      <span class="issue-title"><code>calib_black_from_vols</code> takes square root of potentially negative variance — silent <code>nan</code></span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/volatility/localvol/black_calib.py · line 55</span>
+    <p>
+      <strong>Why it's bad:</strong> The Dupire forward variance
+      <code>vole² × te − vols² × ts</code> can be negative when implied vols decrease with
+      maturity (common in rates markets). <code>np.sqrt</code> of a negative number returns
+      <code>nan</code> silently, propagating through the entire calibrated local-vol surface
+      without any diagnostic:
+    </p>
+    <pre>lvols.append(np.sqrt((vole**<span class="fn">2</span> * te - vols**<span class="fn">2</span> * ts) / (te - ts)))</pre>
+    <p><strong>Fix:</strong> Guard and log before the square root:</p>
+    <pre><span class="ok">fwd_var = (vole**2 * te - vols**2 * ts) / (te - ts)
+if fwd_var < 0.0:
+    log.warning(f"Negative forward variance at T={te:.3f}; flooring to 0")
+    fwd_var = 0.0
+lvols.append(np.sqrt(fwd_var))</span></pre>
+  </div>
+
+  <!-- 6 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#6</span>
+      <span class="issue-title">Test ticker names hardcoded as module-level production data in <code>calibration/provider.py</code></span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/calibration/provider.py · line 31</span>
+    <p>
+      <strong>Why it's bad:</strong> A module-level dict bakes test instrument names into
+      production code:
+    </p>
+    <pre>name_model_map = {<span class="st">'ABC'</span>: <span class="st">'BiExp'</span>, <span class="st">'KLM'</span>: <span class="st">'VSVI'</span>, <span class="st">'XYZ'</span>: <span class="st">'Matrix'</span>}</pre>
+    <p>
+      <code>ABC</code>, <code>KLM</code>, and <code>XYZ</code> are the test fixtures from
+      <code>sdevpy/tests/data/</code>. <code>get_localvol_or_new</code> uses this map to infer
+      a model when <code>model_name=None</code> is passed — any real instrument not in this dict
+      results in a <code>KeyError</code>. Production code should not contain test instrument names.
+    </p>
+    <p>
+      <strong>Fix:</strong> Remove the map from the module and require callers to always supply
+      a <code>model_name</code>, or inject the map through a configuration mechanism.
+    </p>
+  </div>
+
+  <!-- 7 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#7</span>
+      <span class="issue-title"><code>implied_vol_newton</code> silently returns a non-converged result</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/analytics/black.py · lines 65–80</span>
+    <p>
+      <strong>Why it's bad:</strong> When <code>max_iter</code> is exhausted without meeting the
+      convergence tolerance, the Newton solver returns whatever approximation it reached last —
+      no warning, no flag, no exception. A calibration routine will receive a plausible-looking
+      but wrong volatility and proceed as if convergence occurred. The downstream effect can
+      be a fitted model that has absorbed solver error as parameter noise.
+    </p>
+    <p><strong>Fix:</strong> Track convergence and emit a warning when the loop exits early:</p>
+    <pre><span class="ok">converged = False
+for _ in range(max_iter):
+    # ... Newton step ...
+    if all_converged:
+        converged = True; break
+if not converged:
+    log.warning("implied_vol_newton: max_iter reached without full convergence")</span></pre>
+  </div>
+
+  <!-- 8 -->
+  <div class="issue low">
+    <div class="issue-header">
+      <span class="issue-num">#8</span>
+      <span class="issue-title">Dead <code>np.zeros</code> allocation in <code>ThetaScheme.roll_forward</code> immediately overwritten</span>
+      <span class="badge low">Low</span>
+    </div>
+    <span class="loc">sdevpy/pde/pdeschemes.py · line 52</span>
+    <p>
+      <strong>Why it's bad:</strong> The vectorized rewrite allocates a zeroed array that is
+      immediately discarded on the next line:
+    </p>
+    <pre>y = np.zeros(n_x)          <span class="c"># allocated — thrown away on the very next line</span>
+y = (<span class="fn">1.0</span> - ...) * p         <span class="c"># full overwrite</span></pre>
+    <p>
+      Lines 62–64 also carry commented-out <code>np.zeros</code> allocations that were made
+      redundant by the vectorized slices but never cleaned up. The live dead allocation is
+      misleading and suggests an incomplete refactor.
+    </p>
+    <p>
+      <strong>Fix:</strong> Delete line 52 and remove the dead commented lines at 62–64.
+    </p>
+  </div>
+
+  <!-- 9 -->
+  <div class="issue low">
+    <div class="issue-header">
+      <span class="issue-num">#9</span>
+      <span class="issue-title"><code>MersenneTwiser</code> — public API class name has a typo; also <code># pragma: no cov</code> is invalid</span>
+      <span class="badge low">Low</span>
+    </div>
+    <span class="loc">sdevpy/maths/rand/rng.py · lines 39, 64</span>
+    <p>
+      <strong>Why it's bad:</strong> The class is named <code>MersenneTwiser</code> (missing a
+      't'). Because it is exported as a public API symbol, a rename requires a deprecation alias
+      to avoid breaking callers — and the longer this stays, the more callers accumulate.
+      Separately, line 39 has <code># pragma: no cov</code>, which is not a recognised coverage
+      pragma. The correct directive is <code># pragma: no cover</code>. The current typo means
+      the abstract method is <em>not</em> actually excluded from coverage reports, silently
+      reducing measured coverage.
+    </p>
+    <pre><span class="rm">class MersenneTwiser(RandomNumberGenerator): ...    # line 64</span>
+<span class="rm">    pass  # pragma: no cov                           # line 39</span>
+
+<span class="ok">class MersenneTwister(RandomNumberGenerator): ...
+    pass  # pragma: no cover
+
+MersenneTwiser = MersenneTwister  # backward-compatible alias</span></pre>
+  </div>
+
+  <!-- 10 -->
+  <div class="issue low">
+    <div class="issue-header">
+      <span class="issue-num">#10</span>
+      <span class="issue-title"><code>TimeInterpolatedLocalVol.dump_data</code> names the wrong class in its error message</span>
+      <span class="badge low">Low</span>
+    </div>
+    <span class="loc">sdevpy/volatility/localvol/localvol.py · line 136</span>
+    <p>
+      <strong>Why it's bad:</strong> The method raises:
+    </p>
+    <pre><span class="kw">raise</span> ValueError(<span class="st">"Cannot dump ConstantLocalVol: ..."</span>)</pre>
+    <p>
+      but the code lives in <code>TimeInterpolatedLocalVol</code>. The error message was
+      copy-pasted from a neighbouring class. A developer seeing this traceback will look at the
+      wrong class entirely, wasting debugging time. The same copy-paste habit produced the
+      string <code>"subpayoofs"</code> (double 'o') in the docstrings of <code>Max</code>,
+      <code>Min</code>, and <code>Basket</code> in <code>basic.py</code>.
+    </p>
+    <pre><span class="rm">raise ValueError("Cannot dump ConstantLocalVol: ...")</span>
+<span class="ok">raise ValueError("Cannot dump TimeInterpolatedLocalVol: ...")</span></pre>
+  </div>
+
+  <footer>
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #12 &nbsp;·&nbsp; 2026-06-27 (full scan)
+  </footer>
+</div>
+</body>
+</html>

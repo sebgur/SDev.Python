@@ -18,7 +18,10 @@
       "PowerShell(Get-ChildItem *)",
       "PowerShell(git log *)",
       "PowerShell(git diff *)",
-      "PowerShell(git status*)"
+      "PowerShell(git status*)",
+      "Edit(/.claude/skills/code-review/**)",
+      "Edit(/.claude/skills/recommendations/**)",
+      "Edit(/.claude/skills/test-review/**)"
     ]
   }
 }

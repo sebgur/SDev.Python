@@ -91,7 +91,7 @@ def check_fixings(name: str, **kwargs) -> None:
     # Check for duplicated
     dupes = df[df['Date'].duplicated(keep=False)]
     if len(dupes) > 0:
-        dupe_file = file.replace(".csv", ".dupes.csv")
+        dupe_file = file.with_name(file.stem + ".dupes.csv")
         dupes.to_csv(dupe_file, index=False)
         raise ValueError(f"Duplicates found and output to {dupe_file}. Remove before continuing.")
 
