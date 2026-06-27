@@ -1,8 +1,10 @@
+import logging
 import numpy as np
 import datetime as dt
 from sdevpy.volatility.impliedvol.impliedvol import ImpliedVol
 from sdevpy.volatility.localvol.localvol import VectorLocalVol, ConstantLocalVol
 from sdevpy.utilities import timegrids
+log = logging.getLogger(__name__)
 
 
 def calib_lv_black(surface: ImpliedVol, valdate: dt.datetime, dates: list[dt.datetime],
@@ -52,7 +54,11 @@ def calib_black_from_vols(expiries: list[float], ivols: list[float]) -> dict:
             else:
                 ts, vols = expiries[i - 1], ivols[i - 1]
                 te, vole = expiries[i], ivols[i]
-                lvols.append(np.sqrt((vole**2 * te - vols**2 * ts) / (te - ts)))
+                fwd_var = (vole**2 * te - vols**2 * ts) / (te - ts)
+                if fwd_var < 0.0:
+                    log.warning(f"Negative forward variance at T={te:.3f}: flooring to 0")
+                    fwd_var = 0.0
+                lvols.append(np.sqrt(fwd_var))
 
         lv_expiries = [0]
         lv_expiries.extend(expiries[:-1])

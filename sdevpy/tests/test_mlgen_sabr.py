@@ -225,7 +225,8 @@ class TestSabrGeneratorCalibrate:
     def test_returns_correct_structure(self, mock_cls):
         mock_result = MagicMock()
         mock_result.x = [0.20, 0.5, 0.55, -0.25]
-        mock_cls.return_value.minimize.return_value = (mock_result, 100)
+        mock_result.nfev = 100
+        mock_cls.return_value.minimize.return_value = mock_result
 
         g = SabrGenerator(shift=0.0)
         g.price_straddles_ref = MagicMock(return_value=np.array([[0.002, 0.002]]))
@@ -244,7 +245,7 @@ class TestSabrGeneratorCalibrate:
     def test_minimize_called_once_per_expiry(self, mock_cls):
         mock_result = MagicMock()
         mock_result.x = [0.20, 0.5, 0.55, -0.25]
-        mock_cls.return_value.minimize.return_value = (mock_result, 10)
+        mock_cls.return_value.minimize.return_value = mock_result
 
         g = SabrGenerator(shift=0.0)
         g.price_straddles_ref = MagicMock(return_value=np.array([[0.002]]))
@@ -261,7 +262,7 @@ class TestSabrGeneratorCalibrate:
     def test_cal_prices_length_matches_expiries(self, mock_cls):
         mock_result = MagicMock()
         mock_result.x = [0.20, 0.5, 0.55, -0.25]
-        mock_cls.return_value.minimize.return_value = (mock_result, 5)
+        mock_cls.return_value.minimize.return_value = mock_result
 
         n_exp, n_str = 2, 3
         g = SabrGenerator(shift=0.0)
@@ -281,7 +282,7 @@ class TestSabrGeneratorCalibrate:
         """Calibrated parameters must be taken from result.x in LnVol/Beta/Nu/Rho order."""
         mock_result = MagicMock()
         mock_result.x = [0.11, 0.22, 0.33, -0.44]
-        mock_cls.return_value.minimize.return_value = (mock_result, 1)
+        mock_cls.return_value.minimize.return_value = mock_result
 
         g = SabrGenerator(shift=0.0)
         g.price_straddles_ref = MagicMock(return_value=np.array([[0.002]]))

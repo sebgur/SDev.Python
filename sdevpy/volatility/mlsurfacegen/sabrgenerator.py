@@ -101,102 +101,103 @@ class SabrGenerator(SmileGenerator):
                                  min_vol: float=0.0001, max_vol: float=0.2, rel_noise: float=0.0,
                                  noise_prob: float=0.0) -> pd.DataFrame:
         """ Generate inverse samples for SABR """
-        np.seterr(divide='raise')  # To catch errors and warnings
-        shift = self.shift
+        old = np.seterr(divide='raise') # To catch errors and warnings
+        try:
+            shift = self.shift
 
-        min_fwd = -shift - spreads[0] / 10000 + constants.BPS10
-        min_fwd = max(min_fwd, rg['F'][0])
+            min_fwd = -shift - spreads[0] / 10000 + constants.BPS10
+            min_fwd = max(min_fwd, rg['F'][0])
 
-        n_spreads = np.asarray(spreads).reshape(-1, 1) / 10000.0
-        log.info(spreads)
-        log.info(n_spreads.shape)
+            n_spreads = np.asarray(spreads).reshape(-1, 1) / 10000.0
+            log.info(spreads)
+            log.info(n_spreads.shape)
 
-        num_strikes = len(spreads)
-        surface_size = num_strikes * self.num_expiries
-        log.info(f"Number of strikes: {num_strikes:,}")
-        log.info(f"Number of expiries: {self.num_expiries:,}")
-        log.info(f"Surface size: {surface_size:,}")
-        log.info(f"Number of samples: {num_samples:,}")
-        log.info(f"Minimum forward: {min_fwd * 100:,.2f}%")
+            num_strikes = len(spreads)
+            surface_size = num_strikes * self.num_expiries
+            log.info(f"Number of strikes: {num_strikes:,}")
+            log.info(f"Number of expiries: {self.num_expiries:,}")
+            log.info(f"Surface size: {surface_size:,}")
+            log.info(f"Number of samples: {num_samples:,}")
+            log.info(f"Minimum forward: {min_fwd * 100:,.2f}%")
 
-        # Derive number of surfaces to generate
-        num_surfaces = int(num_samples / self.num_expiries)# + 1)
-        log.info(f"Number of surfaces/parameter samples: {num_surfaces:,}")
-
-        # Draw parameters
-        lnvol = self.rng.uniform(rg['LnVol'][0], rg['LnVol'][1], num_surfaces)
-        beta = self.rng.uniform(rg['Beta'][0], rg['Beta'][1], num_surfaces)
-        nu = self.rng.uniform(rg['Nu'][0], rg['Nu'][1], num_surfaces)
-        rho = self.rng.uniform(rg['Rho'][0], rg['Rho'][1], num_surfaces)
-
-        # Calculate prices per surface
-        ts = []
-        # strikes = []
-        fwds = []
-        lnvols = []
-        betas = []
-        nus = []
-        rhos = []
-        prices = []
-        for j in range(num_surfaces):
-            log.info(f"Surface generation number {j+1:,}/{num_surfaces:,}")
-            expiries = self.rng.uniform(rg['Ttm'][0], rg['Ttm'][1], self.num_expiries)
-            # Need to sort these expiries
-            expiries = np.unique(expiries)
-            fwd = self.rng.uniform(min_fwd, rg['F'][1], 1)[0]
-            # vol = lnvol[j]
-
-            # Calculate strikes
-            ks = []
-            for _ in range(self.num_expiries):
-                k = fwd + n_spreads
-                ks.append(k)
-
-            ks = np.asarray(ks)
+            # Derive number of surfaces to generate
+            num_surfaces = int(num_samples / self.num_expiries)# + 1)
+            log.info(f"Number of surfaces/parameter samples: {num_surfaces:,}")
 
             # Draw parameters
-            params = {'LnVol': lnvol[j], 'Beta': beta[j], 'Nu': nu[j], 'Rho': rho[j]}
+            lnvol = self.rng.uniform(rg['LnVol'][0], rg['LnVol'][1], num_surfaces)
+            beta = self.rng.uniform(rg['Beta'][0], rg['Beta'][1], num_surfaces)
+            nu = self.rng.uniform(rg['Nu'][0], rg['Nu'][1], num_surfaces)
+            rho = self.rng.uniform(rg['Rho'][0], rg['Rho'][1], num_surfaces)
 
-            # Calculate prices
-            price = self.price_straddles_ref(expiries, ks, fwd, params, use_nvol, rel_noise, noise_prob)
+            # Calculate prices per surface
+            ts = []
+            # strikes = []
+            fwds = []
+            lnvols = []
+            betas = []
+            nus = []
+            rhos = []
+            prices = []
+            for j in range(num_surfaces):
+                log.info(f"Surface generation number {j+1:,}/{num_surfaces:,}")
+                expiries = self.rng.uniform(rg['Ttm'][0], rg['Ttm'][1], self.num_expiries)
+                # Need to sort these expiries
+                expiries = np.unique(expiries)
+                fwd = self.rng.uniform(min_fwd, rg['F'][1], 1)[0]
+                # vol = lnvol[j]
 
-            # Flatten the results
-            for exp_idx, expiry in enumerate(expiries):
-                ts.append(expiry)
-                fwds.append(fwd)
-                lnvols.append(lnvol[j])
-                betas.append(beta[j])
-                nus.append(nu[j])
-                rhos.append(rho[j])
-                prices.append(price[exp_idx])
+                # Calculate strikes
+                ks = []
+                for _ in range(self.num_expiries):
+                    k = fwd + n_spreads
+                    ks.append(k)
 
-        np.seterr(divide='warn')  # Set back to warning
+                ks = np.asarray(ks)
 
-        # Create strike headers
-        strike_headers = ['K' + str(j) for j in range(num_strikes)]
+                # Draw parameters
+                params = {'LnVol': lnvol[j], 'Beta': beta[j], 'Nu': nu[j], 'Rho': rho[j]}
 
-        # Transpose prices
-        df_prices = np.asarray(prices)
-        df_prices = df_prices.transpose()
+                # Calculate prices
+                price = self.price_straddles_ref(expiries, ks, fwd, params, use_nvol, rel_noise, noise_prob)
 
-        # Put in dataframe
-        data_dic = { 'Ttm': ts, 'F': fwds, 'LnVol': lnvols, 'Beta': betas,
-                     'Nu': nus, 'Rho': rhos }
-        columns = ['Ttm', 'F', 'LnVol', 'Beta', 'Nu', 'Rho']
-        for j in range(num_strikes):
-            data_dic[strike_headers[j]] = df_prices[j]
-            columns.append(strike_headers[j])
+                # Flatten the results
+                for exp_idx, expiry in enumerate(expiries):
+                    ts.append(expiry)
+                    fwds.append(fwd)
+                    lnvols.append(lnvol[j])
+                    betas.append(beta[j])
+                    nus.append(nu[j])
+                    rhos.append(rho[j])
+                    prices.append(price[exp_idx])
 
-        df = pd.DataFrame(data_dic)
-        df.columns = columns
+            # Create strike headers
+            strike_headers = ['K' + str(j) for j in range(num_strikes)]
 
-        # Cleanse
-        if use_nvol:
+            # Transpose prices
+            df_prices = np.asarray(prices)
+            df_prices = df_prices.transpose()
+
+            # Put in dataframe
+            data_dic = { 'Ttm': ts, 'F': fwds, 'LnVol': lnvols, 'Beta': betas,
+                        'Nu': nus, 'Rho': rhos }
+            columns = ['Ttm', 'F', 'LnVol', 'Beta', 'Nu', 'Rho']
             for j in range(num_strikes):
-                df = df.drop(df[df[strike_headers[j]] > max_vol].index)
-                df = df.drop(df[df[strike_headers[j]] < min_vol].index)
+                data_dic[strike_headers[j]] = df_prices[j]
+                columns.append(strike_headers[j])
 
-        return df
+            df = pd.DataFrame(data_dic)
+            df.columns = columns
+
+            # Cleanse
+            if use_nvol:
+                for j in range(num_strikes):
+                    df = df.drop(df[df[strike_headers[j]] > max_vol].index)
+                    df = df.drop(df[df[strike_headers[j]] < min_vol].index)
+
+            return df
+        finally:
+            np.seterr(**old)
 
     def price(self, expiries, strikes, are_calls, fwd, parameters):
         expiries_ = np.asarray(expiries).reshape(-1, 1)
@@ -386,15 +387,13 @@ class SabrGenerator(SmileGenerator):
         for i in range(num_expiries):
             log.info(f"Optimizing at T = {expiries[i]}...")
             args = (self, expiries[i], strikes[i], fwd, mkt_prices[i], weights)
-            result, nfev = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)
+            result = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)
             x = result.x
             # fun = result.fun
+            nfev = result.nfev
             nfevs = nfevs + nfev
             cal_params.append({'LnVol': x[0], 'Beta': x[1], 'Nu': x[2], 'Rho': x[3]})
             # cal_params.append({'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25})
-
-            # print(f'Optimum parameters at T = {expiries[i]:.3f}: {cal_params[i]}')
-            # print(f'Optimum objective at T = {expiries[i]:.3f}: {fun}')
 
         # Calculate model prices at calibrated parameters
         cal_prices = []
