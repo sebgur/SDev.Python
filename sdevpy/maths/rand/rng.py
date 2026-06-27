@@ -36,7 +36,7 @@ class RandomNumberGenerator(ABC):
         self.dim = dim
 
     @abstractmethod
-    def uniform(self, n_draws):
+    def uniform(self, n_draws): # pragma: no cov
         pass
 
     def normal(self, n_draws):

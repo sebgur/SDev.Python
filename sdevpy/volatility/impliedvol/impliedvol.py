@@ -26,7 +26,7 @@ class ImpliedVol(ABC):
         self.base_date = None
 
     @abstractmethod
-    def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike:
+    def calculate(self, t: float, k: npt.ArrayLike, is_call: bool, f: float) -> npt.ArrayLike: # pragma: no cov
         """ Return the calculated quantity according to calculate_type """
         pass
 
@@ -36,7 +36,7 @@ class ImpliedVol(ABC):
         jsm.serialize(data, file)
 
     @abstractmethod
-    def dump_data(self) -> dict:
+    def dump_data(self) -> dict: # pragma: no cov
         """ Dump to dictionary """
         pass
 

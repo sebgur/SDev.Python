@@ -1,8 +1,55 @@
+import pytest
 import datetime as dt
 import numpy as np
 from sdevpy.market import provider as mdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.market import eqforward as eqf
+from sdevpy.market.fixings import FixingHandler, data_file
+# from sdevpy.tests.conftest import marketdata_path
+
+
+def _make_handler(interpolate=False):
+    dates = [dt.datetime(2025, 12, 1), dt.datetime(2025, 12, 2), dt.datetime(2025, 12, 3)]
+    values = [100.0, 101.0, 102.0]
+    return FixingHandler("TEST", dates, values, interpolate=interpolate)
+
+
+def test_fixinghandler_scalar_lookup():
+    h = _make_handler()
+    assert h.value(dt.datetime(2025, 12, 2)) == 101.0
+
+
+def test_fixinghandler_list_lookup():
+    h = _make_handler()
+    result = h.value([dt.datetime(2025, 12, 1), dt.datetime(2025, 12, 3)])
+    assert result == [100.0, 102.0]
+
+
+def test_fixinghandler_missing_raises():
+    h = _make_handler(interpolate=False)
+    with pytest.raises(ValueError):
+        h.value(dt.datetime(2025, 12, 5))
+
+
+def test_fixinghandler_unsorted_input_stores_sorted():
+    dates = [dt.datetime(2025, 12, 3), dt.datetime(2025, 12, 1), dt.datetime(2025, 12, 2)]
+    values = [102.0, 100.0, 101.0]
+    h = FixingHandler("TEST", dates, values)
+    assert h.dates[0] == dt.datetime(2025, 12, 1)
+    assert h.values[0] == 100.0
+
+
+def test_fixinghandler_interpolation():
+    h = _make_handler(interpolate=True)
+    # dt.datetime(2025, 12, 1) and (2025, 12, 3) are exact; interpolated mid should be ~101
+    result = h.value(dt.datetime(2025, 12, 2))
+    assert abs(result - 101.0) < 0.5
+
+
+def test_data_file_returns_correct_path():
+    from pathlib import Path
+    p = data_file("ABC", folder=Path("/some/folder"))
+    assert p == Path("/some/folder/ABC.csv")
 
 
 def test_correlations():

@@ -1,8 +1,56 @@
+import pytest
 import datetime as dt
 import numpy as np
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.market import yieldcurve as ycrv
 from sdevpy.utilities import timegrids as tg
+from sdevpy.market.yieldcurve import InterpolatedYieldCurve
+from sdevpy.utilities import timegrids as tg
+
+
+def _make_curve(interp_var='zerorate', interp_type='linear'):
+    valdate = dt.datetime(2026, 1, 1)
+    curve = InterpolatedYieldCurve(valdate=valdate, interp_var=interp_var, interp_type=interp_type)
+    dates = [dt.datetime(2026, 6, 1), dt.datetime(2027, 1, 1), dt.datetime(2028, 1, 1)]
+    dfs = np.asarray([0.99, 0.97, 0.94])
+    curve.set_data(dates, dfs)
+    return curve, valdate, dates, dfs
+
+
+def test_yieldcurve_mode():
+    curve, valdate, dates, dfs = _make_curve(interp_var='discount')
+    # Exact pillar: df should be recovered
+    df = curve.discount(dates[0])
+    assert abs(df - dfs[0]) < 1e-6
+
+    curve, valdate, dates, dfs = _make_curve(interp_var='log_discount')
+    df = curve.discount(dates[1])
+    assert abs(df - dfs[1]) < 1e-6
+
+    curve, valdate, dates, dfs = _make_curve(interp_var='zerorate', interp_type='cubicspline')
+    df = curve.discount(dates[0])
+    assert 0.0 < df < 1.0
+
+    with pytest.raises(RuntimeError):
+        InterpolatedYieldCurve(valdate=dt.datetime(2026, 1, 1), interp_var='bogus')
+
+    with pytest.raises(RuntimeError):
+        InterpolatedYieldCurve(valdate=dt.datetime(2026, 1, 1),
+                               interp_var='zerorate', interp_type='bogus')
+
+
+def test_yieldcurve_set_data_past_date_raises():
+    valdate = dt.datetime(2026, 1, 1)
+    curve = InterpolatedYieldCurve(valdate=valdate, interp_var='zerorate')
+    with pytest.raises(RuntimeError):
+        curve.set_data([dt.datetime(2025, 12, 1)], [0.99])  # date <= valdate
+
+
+def test_yieldcurve_dump_data_has_pillars():
+    curve, valdate, dates, dfs = _make_curve()
+    data = curve.dump_data()
+    assert 'pillars' in data
+    assert len(data['pillars']) == len(dates)
 
 
 def test_yieldcurve_creation():

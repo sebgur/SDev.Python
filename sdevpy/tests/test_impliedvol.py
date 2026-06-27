@@ -1,5 +1,6 @@
 import numpy as np
 import datetime as dt
+import pytest
 from scipy.integrate import quad
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi
@@ -14,6 +15,16 @@ from sdevpy.market import provider as mdp
 from sdevpy.calibration import provider as cdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
+from sdevpy.volatility.impliedvol.models.cubicvol import (
+    create_section, cubicvol_check_params, calculate_epsilon,
+    is_valid_left, is_valid_right, sample_params
+)
+from scipy.stats import norm as scipy_norm
+from sdevpy.volatility.impliedvol.models.logmix import (
+    logmix_f, logmix_df, LogMixMean, LogMixVar, LogMixWeight, LogMixNorm,
+    get_logmix_parameters
+)
+from sdevpy.maths import constants
 
 
 # n_mix=1, flat vol term structure: beta=1, a=b=0.2, c=0, d=1 → stdev(t=1)=0.2
@@ -29,6 +40,224 @@ def make_logmix1():
     m = LogMix(n_mix=1)
     m.update_params(_LOGMIX_PARAMS_1)
     return m
+
+
+def test_cubicvol_create_section():
+    config = {'atm': 0.25, 'skew': 0.1, 'kurt': 0.25, 'vl': 0.30, 'vr': 0.28}
+    section = create_section(1.0, param_config=config)
+    assert section.params[0] == 0.25
+
+    section = create_section(1.0)
+    d = section.dump_params()
+    assert set(d.keys()) == {'atm', 'skew', 'kurt', 'vl', 'vr'}
+
+
+def test_cubicvol_check_params():
+    section = create_section(1.0)
+    is_ok, penalty = section.check_params()
+    assert is_ok
+    assert penalty == 0.0
+
+    section.params = np.array([-0.1, 0.1, 0.25, 0.30, 0.28])  # negative atm
+    is_ok, penalty = section.check_params()
+    assert not is_ok
+
+    is_ok, penalty, epsl, epsr = cubicvol_check_params([0.25, 0.1])  # only 2 params
+    assert not is_ok
+
+
+def test_cubicvol_is_valid():
+    # vl < atm → invalid
+    assert not is_valid_left(atm=0.25, skew=0.1, kurt=0.25, vl=0.20)
+    assert not is_valid_right(atm=0.25, skew=-0.1, kurt=0.25, vr=0.28)
+
+
+def test_cubicvol_calculate_epsilon():
+    # delta_v=0 and is_right=True, skew != 0 → returns kurt^2 / (4*skew)
+    atm, skew, kurt, vr = 0.25, 0.1, 0.25, 0.25
+    eps = calculate_epsilon(atm, skew, kurt, vr, is_right=True)
+    expected = kurt * kurt / (4.0 * skew)
+    assert abs(eps - expected) < 1e-10
+
+    with pytest.raises(RuntimeError):
+        calculate_epsilon(0.25, 0.1, 0.25, 0.20, is_right=False)  # vl < atm
+
+
+####### LogMix ####################################################################################
+
+def test_logmix_f():
+    # t=1, beta=1: tmp=2, result = 1 - 2/5 = 0.6
+    assert abs(logmix_f(1.0, 1.0) - 0.6) < 1e-12
+    with pytest.raises(ValueError):
+        logmix_f(1.0, 0.0)
+
+    # t=1, beta=1: tmp1=2, tmp2=5, result = (4*2/1)/25 = 0.32
+    assert abs(logmix_df(1.0, 1.0) - 0.32) < 1e-12
+    with pytest.raises(ValueError):
+        logmix_df(1.0, 0.0)
+
+
+def test_logmix_mean():
+    m = LogMixMean(mu0=0.5, beta=1.0)
+    assert abs(m.value(1.0) - 0.5 * 0.6) < 1e-12  # 0.3
+    assert abs(m.diff(1.0) - 0.5 * 0.32) < 1e-12  # 0.16
+
+
+def test_logmix_var():
+    # a=b=0.2, c=0, d=1: s=0.2 for all t → value(1) = 0.04
+    v = LogMixVar(a=0.2, b=0.2, c=0.0, d=1.0)
+    assert abs(v.value(1.0) - 0.04) < 1e-12
+
+    # flat vol: ds=0, so diff = s*(0 + s) = s^2 = 0.04
+    v = LogMixVar(a=0.2, b=0.2, c=0.0, d=1.0)
+    assert abs(v.diff(1.0) - 0.04) < 1e-12
+
+    # d=0 is floored to 1e-8; result must be finite and positive
+    v = LogMixVar(a=0.2, b=0.2, c=0.0, d=0.0)
+    assert np.isfinite(v.value(1.0)) and v.value(1.0) > 0.0
+
+
+def test_logmix_norm():
+    with pytest.raises(ValueError):
+        LogMixNorm(w0=[0.6, 0.4], beta=[1.0])  # beta length mismatch
+
+    # n_mix=1: norm = w0/logmix_f(1, 1) = 1.0/0.6
+    n = LogMixNorm(w0=[1.0], beta=[1.0])
+    assert abs(n.value(1.0) - 1.0 / 0.6) < 1e-12
+
+    # n_mix=1: dnorm = -w0/f^2 * df = -1.0/0.36 * 0.32
+    n = LogMixNorm(w0=[1.0], beta=[1.0])
+    expected = -1.0 / (0.6 * 0.6) * 0.32
+    assert abs(n.diff(1.0) - expected) < 1e-12
+
+
+def test_logmix_weight():
+    with pytest.raises(ValueError):
+        LogMixWeight(component=0, w0=[0.6, 0.4], beta=[1.0])
+
+    # n_mix=1: weight always equals 1.0
+    wt = LogMixWeight(component=0, w0=[1.0], beta=[1.0])
+    assert abs(wt.value(1.0) - 1.0) < 1e-12
+
+    n = wt.norm.value(1.0)
+    n_diff = wt.norm.diff(1.0)
+    with pytest.raises(ValueError):
+        wt.diff_given_norm(0.0, n, n_diff)  # t <= 0
+
+    # For n_mix=1, weight=1 for all t, so diff=0
+    wt = LogMixWeight(component=0, w0=[1.0], beta=[1.0])
+    assert abs(wt.diff(1.0)) < 1e-12
+
+
+def test_get_logmix_parameters_n_mix2():
+    # n_mix=2, second component weight=0.3
+    p = [0.2, 0.2, 0.2, 0.0, 1.0,   # component 0
+         0.3, 0.1,                    # w1, shift1
+         0.2, 0.2, 0.2, 0.0, 1.0]    # component 1
+    d, is_ok = get_logmix_parameters(2, p)
+    assert is_ok
+    assert abs(d['w'][1] - 0.3) < 1e-12
+    assert abs(d['w'][0] - 0.7) < 1e-12
+
+def test_get_logmix_parameters_checks():
+    with pytest.raises(ValueError):
+        get_logmix_parameters(1, [0.2, 0.2])  # expects 5, got 2
+
+    with pytest.raises(ValueError):
+        get_logmix_parameters(0, [])
+
+    # w1=1.5 → tmp_w = -0.5 < weight_floor → is_ok=False
+    p = [0.2, 0.2, 0.2, 0.0, 1.0,
+         1.5, 0.0,
+         0.2, 0.2, 0.2, 0.0, 1.0]
+    d, is_ok = get_logmix_parameters(2, p)
+    assert not is_ok
+
+
+def test_logmix_raises():
+    m = LogMix(n_mix=1)
+    with pytest.raises(RuntimeError):
+        m.price(1.0, np.asarray([1.0]), True, 1.0)
+    with pytest.raises(RuntimeError):
+        m.pdf(1.0, np.asarray([1.0]), 1.0)
+    with pytest.raises(ValueError):
+        make_logmix1().pdf(0.0, np.asarray([1.0]), 1.0)
+    with pytest.raises(RuntimeError):
+        m.cdf(1.0, np.asarray([1.0]), 1.0)
+    with pytest.raises(ValueError):
+        make_logmix1().cdf(0.0, np.asarray([1.0]), 1.0)
+    with pytest.raises(RuntimeError):
+        m.check_params()
+    with pytest.raises(RuntimeError):
+        m.dump_data()
+
+
+def test_logmix_n_params():
+    assert LogMix(n_mix=1).n_params == 5
+    assert LogMix(n_mix=2).n_params == 12
+    assert LogMix(n_mix=3).n_params == 19
+    assert len(LogMix(n_mix=1).initial_point()) == 5
+    assert len(LogMix(n_mix=2).initial_point()) == 12
+    b = LogMix(n_mix=1).bounds()
+    assert len(b.lb) == 5
+    b = LogMix(n_mix=2).bounds()
+    assert len(b.lb) == 12
+    m = make_logmix1()
+    is_ok, penalty = m.check_params()
+    assert is_ok
+    assert penalty == 0.0
+    m = LogMix(n_mix=2)
+    # w1=1.5 → first weight negative → is_ok=False
+    p = [0.2, 0.2, 0.2, 0.0, 1.0,  1.5, 0.0,  0.2, 0.2, 0.2, 0.0, 1.0]
+    m.update_params(p)
+    is_ok, penalty = m.check_params()
+    assert not is_ok
+    assert penalty == constants.FLOAT_INFTY
+    m = LogMix(n_mix=1, check_fwd_var=True)
+    m.update_params(_LOGMIX_PARAMS_1)  # flat 20% vol → fwd var always positive
+    is_ok, penalty = m.check_params()
+    assert is_ok
+    m = make_logmix1()
+    d = m.dump_data()
+    assert d['type'] == 'LogMix1'
+    assert len(d['params']) == 5
+
+
+def test_logmix_black_call_atm_value():
+    # ATM: f=k=1, stdev=0.2; Black ATM call = f*(2*N(stdev/2)-1)
+    m = make_logmix1()
+    test = m.black(1.0, True, 1.0, 0.2)
+    # d1=0.1, d2=-0.1: call = N(0.1) - N(-0.1)
+    expected = scipy_norm.cdf(0.1) - scipy_norm.cdf(-0.1)
+    assert abs(test - expected) < 1e-12
+
+    # ATM CDF for lognormal with mu=0: N(stdev/2) = N(0.1)
+    test = m.cdf(1.0, np.asarray([1.0]), 1.0)
+    expected = scipy_norm.cdf(0.1)
+    assert abs(test - expected) < 1e-8
+
+
+def test_logmix_taylor_parameters():
+    m = make_logmix1()
+    w, w_d, mu, mu_d, v, v_d = m.taylor_parameters(1.0)
+    assert len(w) == 1 and len(v) == 1
+    assert abs(w_d[0]) < 1e-12
+
+
+def test_logmix_local_vol():
+    # t < 5/365 → recursive call; result must still be positive
+    m = make_logmix1()
+    lv = m.local_vol(0.001, np.asarray([1.0]))
+    assert np.all(lv >= 0.0)
+
+    # ts=0 (< 5/365): uses te-based stdev; flat vol → result = 0.2
+    lv = m.local_vol_step(0.0, 1.0, np.asarray([1.0]))
+    assert abs(lv[0] - 0.2) < 1e-6
+
+    # ts=0.5 >= 5/365; flat vol → result = 0.2
+    m = make_logmix1()
+    lv = m.local_vol_step(0.5, 1.0, np.asarray([1.0]))
+    assert abs(lv[0] - 0.2) < 1e-6
 
 
 def test_logmix_pdf():

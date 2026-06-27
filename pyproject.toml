@@ -54,7 +54,8 @@ omit = [
     "sdevpy/utilities/pydotnet.py",
     "sdevpy/utilities/clipboard.py",
     "sdevpy/tensorflow/*",
-    "sdevpy/machinelearning/*"
+    "sdevpy/machinelearning/*",
+    "sdevpy/llms/*"
 ]
 
 [tool.coverage.report]
