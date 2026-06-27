@@ -53,6 +53,7 @@ omit = [
     "sdevpy/utilities/constants.py",
     "sdevpy/utilities/pydotnet.py",
     "sdevpy/utilities/clipboard.py",
+    "sdevpy/utilities/timer.py",
     "sdevpy/tensorflow/*",
     "sdevpy/machinelearning/*",
     "sdevpy/llms/*"

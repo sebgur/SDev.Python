@@ -1,19 +1,16 @@
 """ Smile generator for classic and shifted Hagan SABR models """
-from pathlib import Path
-import os, logging
+import logging
 import numpy as np
 import pandas as pd
 import scipy.stats as sp
-from sdevpy import settings
 from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.analytics import black
 from sdevpy.analytics import bachelier
 from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
-from sdevpy.utilities import filemanager
 from sdevpy.utilities import constants
 from sdevpy.maths import metrics
 from sdevpy.maths import optimization as opt
-log = logging.getLogger(Path(__file__).stem)
+log = logging.getLogger(__name__)
 
 
 class SabrGenerator(SmileGenerator):
@@ -22,7 +19,8 @@ class SabrGenerator(SmileGenerator):
     def __init__(self, shift=0.0, num_expiries=15, num_strikes=10, seed=42):
         SmileGenerator.__init__(self, shift, num_expiries, num_strikes, seed)
 
-    def generate_samples(self, num_samples, rg):
+    def generate_samples(self, num_samples: int, rg: dict) -> pd.DataFrame:
+        """ Generate samples for SABR """
         shift = self.shift
 
         log.info(f"Number of strikes: {self.num_strikes:,}")
@@ -99,8 +97,10 @@ class SabrGenerator(SmileGenerator):
 
         return df
 
-    def generate_samples_inverse(self, num_samples, rg, spreads, use_nvol=False,
-                                 min_vol=0.0001, max_vol=0.2, rel_noise=0.0, noise_prob=0.0):
+    def generate_samples_inverse(self, num_samples: int, rg: dict, spreads: list[float], use_nvol: bool=False,
+                                 min_vol: float=0.0001, max_vol: float=0.2, rel_noise: float=0.0,
+                                 noise_prob: float=0.0) -> pd.DataFrame:
+        """ Generate inverse samples for SABR """
         np.seterr(divide='raise')  # To catch errors and warnings
         shift = self.shift
 
@@ -422,40 +422,49 @@ def sabr_obj(x, *args):
 
 
 if __name__ == "__main__":
-    # Test generation
-    NUM_SAMPLES = 200 #100 * 1000
-    MODEL_TYPE = 'SABR'
-    SHIFT = 0.03
-    project_folder = os.path.join(settings.WORKFOLDER, "stovolinv")
-    data_folder = os.path.join(project_folder, "samples")
-    filemanager.check_directory(data_folder)
-    file = os.path.join(data_folder, MODEL_TYPE + "_samples_test.tsv")
-    generator = SabrGenerator(SHIFT)
+    # from pathlib import Path
+    import datetime as dt
+    from sdevpy.tests import conftest
+    from sdevpy.utilities import dates as dts
 
+    # Define model, number of samples and fit direction
+    n_samples = 200 #100 * 1000
+    model_type = 'SABR'
+    shift = 0.03
+    use_direct = False
+
+    # Set path
+    data_path = conftest.dataset_path() / "stovol" / model_type
+    data_path.mkdir(parents=True, exist_ok=True)
+
+    # Create generator
+    generator = SabrGenerator(shift)
+
+    # Parameter ranges
     ranges = {'Ttm': [1.0 / 12.0, 35.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041],
               'LnVol': [0.05, 0.50], 'Beta': [0.1, 0.9], 'Nu': [0.1, 1.0], 'Rho': [-0.6, 0.6]}
-    print("Generating " + str(NUM_SAMPLES) + " samples")
+    print(f"Generating {n_samples} samples")
 
-    # [Inverse Map]
-    SPREADS = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
-    data_df_ = generator.generate_samples_inverse(NUM_SAMPLES, ranges, SPREADS)
+    # Generating data
+    print("Generating data")
+    if use_direct:
+        data_df_ = generator.generate_samples(n_samples, ranges)
+        # print(data_df_)
+        print("Cleansing data")
+        data_df_ = generator.to_nvol(data_df_)
+        file = data_path / (dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + "_direct.tsv")
+    else:
+        spreads = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
+        data_df_ = generator.generate_samples_inverse(n_samples, ranges, spreads)
+        file = data_path / (dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + "_inverse.tsv")
 
-    print("Output to file: " + file)
+    print(f"Output to file: {file}")
     generator.to_file(data_df_, file)
     print("Complete!")
 
-    # [Direct Map]
-    # data_df_ = generator.generate_samples(NUM_SAMPLES, ranges)
-    # print(data_df_)
-    # print("Cleansing data")
-    # data_df_ = generator.to_nvol(data_df_)
-    # print("Output to file: " + file)
-    # generator.to_file(data_df_, file)
-    # print("Complete!")
-
-    # Test price ref
+    # # Test price ref
     # NUM_STRIKES = 100
-    # PARAMS = { 'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25 }
+    # PARAMS = {'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25}
     # FWD = 0.028
 
     # # Any number of expiries can be calculated, but for optimum display choose no more than 6
@@ -471,7 +480,7 @@ if __name__ == "__main__":
 
     # ref_prices = generator.price_surface_ref(EXPIRIES, STRIKES, ARE_CALLS, FWD, PARAMS)
 
-    # Test strike conversion
+    # # Test strike conversion
     # generator = ShiftedSabrGenerator()
     # EXPIRIES = np.asarray([0.5, 1.0, 5.0]).reshape(-1, 1)
     # STRIKE_INPUTS = np.asarray([[0.1, 0.9], [0.4, 0.6], [0.5, 0.5]])

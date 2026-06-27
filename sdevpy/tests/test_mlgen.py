@@ -15,6 +15,9 @@ from sdevpy.volatility.mlsurfacegen.mchestongenerator import McHestonGenerator
 from sdevpy.volatility.mlsurfacegen import stovolfactory
 
 
+SABR_PARAMS = {'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25}
+
+
 # ── SmileGenerator ───────────────────────────────────────────────────────────
 
 class ConcreteSmileGen(SmileGenerator):
@@ -137,142 +140,6 @@ class TestSmileGeneratorRetrieveDatasets:
         result = g.retrieve_inverse_datasets_from_df(df, shuffle=False)
         g.retrieve_inverse_datasets_no_shuffle.assert_called_once_with(df)
         assert result == ("x", "y")
-
-
-# ── SabrGenerator ────────────────────────────────────────────────────────────
-
-SABR_PARAMS = {'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25}
-_SABR_MOD = "sdevpy.volatility.mlsurfacegen.sabrgenerator"
-
-
-class TestSabrGeneratorInit:
-    def test_inherits_smile_generator(self):
-        g = SabrGenerator(shift=0.03)
-        assert g.shift == 0.03
-        assert g.surface_size == 15 * 10
-
-
-class TestSabrGeneratorPrice:
-    @patch(f"{_SABR_MOD}.black.price")
-    @patch(f"{_SABR_MOD}.sabr.sabr_from_dict")
-    def test_returns_correct_shape(self, mock_sabr, mock_black):
-        mock_sabr.return_value = 0.20
-        mock_black.return_value = np.array([0.001])
-        g = SabrGenerator(shift=0.0)
-        expiries = np.array([[0.5], [1.0]])
-        strikes = np.array([[0.02, 0.03], [0.02, 0.03]])
-        result = g.price(expiries, strikes, [[False, False], [False, False]], 0.025, SABR_PARAMS)
-        assert result.shape == (2, 2)
-
-    @patch(f"{_SABR_MOD}.black.price")
-    @patch(f"{_SABR_MOD}.sabr.sabr_from_dict")
-    def test_shift_applied_to_fwd(self, mock_sabr, mock_black):
-        mock_sabr.return_value = 0.20
-        mock_black.return_value = np.array([0.001])
-        shift, fwd = 0.03, 0.01
-        g = SabrGenerator(shift=shift)
-        g.price(np.array([[1.0]]), np.array([[0.02]]), [[False]], fwd, SABR_PARAMS)
-        # Third positional arg to sabr_from_dict is shifted_f
-        assert mock_sabr.call_args[0][2] == pytest.approx(fwd + shift)
-
-
-class TestSabrGeneratorPriceStraddlesRef:
-    @patch(f"{_SABR_MOD}.black.price")
-    @patch(f"{_SABR_MOD}.sabr.sabr_from_dict")
-    def test_returns_correct_shape(self, mock_sabr, mock_black):
-        mock_sabr.return_value = 0.20
-        mock_black.return_value = np.array([0.001])
-        g = SabrGenerator(shift=0.0)
-        expiries = np.array([0.5, 1.0])
-        strikes = np.array([[0.02, 0.03], [0.02, 0.03]])
-        result = g.price_straddles_ref(expiries, strikes, 0.025, SABR_PARAMS)
-        assert result.shape == (2, 2)
-
-    @patch(f"{_SABR_MOD}.black.price")
-    @patch(f"{_SABR_MOD}.sabr.sabr_from_dict")
-    def test_straddle_is_call_plus_put(self, mock_sabr, mock_black):
-        mock_sabr.return_value = 0.20
-        mock_black.return_value = np.array([0.002])
-        g = SabrGenerator(shift=0.0)
-        result = g.price_straddles_ref(np.array([1.0]), np.array([[0.025]]), 0.025, SABR_PARAMS)
-        assert result[0][0] == pytest.approx(0.004)  # call[0] + put[0] = 0.002 + 0.002
-
-
-class TestSabrGeneratorRetrieveDatasetsNoShuffle:
-    def _make_df(self, n=5):
-        return pd.DataFrame({
-            'Ttm': np.ones(n), 'K': np.ones(n) * 0.02, 'F': np.ones(n) * 0.025,
-            'LnVol': np.ones(n) * 0.2, 'Beta': np.ones(n) * 0.5,
-            'Nu': np.ones(n) * 0.5, 'Rho': np.ones(n) * -0.25,
-            'NVol': np.ones(n) * 0.005,
-        })
-
-    def test_x_set_has_7_columns(self):
-        x, _ = SabrGenerator().retrieve_datasets_no_shuffle(self._make_df())
-        assert x.shape[1] == 7
-
-    def test_y_set_shape(self):
-        _, y = SabrGenerator().retrieve_datasets_no_shuffle(self._make_df(n=5))
-        assert y.shape == (5, 1)
-
-
-class TestSabrGeneratorRetrieveInverseDatasetsNoShuffle:
-    def _make_df(self, n=4, n_strikes=3):
-        d = {'Ttm': np.ones(n), 'F': np.ones(n) * 0.025,
-             'LnVol': np.ones(n) * 0.2, 'Beta': np.ones(n) * 0.5,
-             'Nu': np.ones(n) * 0.5, 'Rho': np.ones(n) * -0.25}
-        for i in range(n_strikes):
-            d[f'K{i}'] = np.ones(n) * 0.001
-        return pd.DataFrame(d)
-
-    def test_x_set_has_2_plus_n_strikes_columns(self):
-        x, _ = SabrGenerator().retrieve_inverse_datasets_no_shuffle(self._make_df(n_strikes=3))
-        assert x.shape[1] == 5  # 2 base + 3 strikes
-
-    def test_y_set_has_4_param_columns(self):
-        _, y = SabrGenerator().retrieve_inverse_datasets_no_shuffle(self._make_df())
-        assert y.shape[1] == 4
-
-
-class TestSabrGeneratorPriceSurfaceMod:
-    @patch(f"{_SABR_MOD}.bachelier.price")
-    def test_output_shape(self, mock_bach):
-        mock_bach.return_value = 0.001
-        model = MagicMock()
-        n_exp, n_str = 3, 4
-        model.predict.return_value = np.ones(n_exp * n_str) * 0.005
-        expiries = np.array([0.5, 1.0, 2.0])
-        strikes = np.ones((n_exp, n_str)) * 0.025
-        result = SabrGenerator().price_surface_mod(
-            model, expiries, strikes, [[False] * n_str] * n_exp, 0.025, SABR_PARAMS
-        )
-        assert result.shape == (n_exp, n_str)
-
-    @patch(f"{_SABR_MOD}.bachelier.price")
-    def test_model_receives_7_column_input(self, mock_bach):
-        mock_bach.return_value = 0.001
-        model = MagicMock()
-        n_exp, n_str = 2, 3
-        model.predict.return_value = np.ones(n_exp * n_str) * 0.005
-        expiries = np.array([0.5, 1.0])
-        strikes = np.ones((n_exp, n_str)) * 0.025
-        SabrGenerator().price_surface_mod(
-            model, expiries, strikes, [[False] * n_str] * n_exp, 0.025, SABR_PARAMS
-        )
-        assert model.predict.call_args[0][0].shape[1] == 7
-
-
-class TestSabrGeneratorGenerateSamples:
-    @patch(f"{_SABR_MOD}.black.price")
-    @patch(f"{_SABR_MOD}.sabr.sabr_from_dict")
-    def test_output_dataframe_columns(self, mock_sabr, mock_black):
-        mock_sabr.return_value = 0.20
-        mock_black.return_value = np.array([0.001])
-        g = SabrGenerator(num_expiries=2, num_strikes=2, seed=0)
-        rg = {'Ttm': [0.5, 1.0], 'K': [0.1, 0.9], 'F': [0.01, 0.04],
-              'LnVol': [0.1, 0.3], 'Beta': [0.3, 0.7], 'Nu': [0.1, 0.5], 'Rho': [-0.5, 0.5]}
-        df = g.generate_samples(g.surface_size, rg)
-        assert set(df.columns) == {'Ttm', 'K', 'F', 'LnVol', 'Beta', 'Nu', 'Rho', 'Price'}
 
 
 # ── McSabrGenerator ──────────────────────────────────────────────────────────

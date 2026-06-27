@@ -25,5 +25,11 @@ def staticdata_path() -> Path:
     return path
 
 
+def dataset_path() -> Path:
+    """ Get test dataset path """
+    path = root_path() / "datasets"
+    return path
+
+
 if __name__ == "__main__":
     print(marketdata_path())

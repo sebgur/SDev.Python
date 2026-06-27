@@ -86,8 +86,3 @@ def test_xml_to_json(tmp_path):
     root = list(loaded.values())[0]
     assert root['nu'] == '0.66'
     assert root['rho'] == '0.48'
-
-
-def _write_tsv(path, rows):
-    df = pd.DataFrame(rows, columns=['a', 'b'])
-    df.to_csv(path, sep='\t', index=False)
