@@ -3,12 +3,12 @@
     in a previous set and are now read from tsv. The network here is either loaded from a
     pre-trained state or trained from scratch. Pre-trained models can be loaded and training
     resumed. """
+from pathlib import Path
 import os
 from datetime import datetime
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from sdevpy import settings
 from sdevpy.machinelearning.topology import compose_model
 from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model
 from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay
@@ -45,7 +45,9 @@ SHOW_VOL_CHARTS = True # Show smile section charts
 # For comparison to reference values (accuracy of reference)
 NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25# 25
-project_folder = os.path.join(settings.WORKFOLDER, "stovol")
+project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
+project_path = project_path / "stovol"
+project_folder = str(project_path)
 
 print(">> Set up runtime configuration")
 print("> Chosen model type: " + MODEL_TYPE)

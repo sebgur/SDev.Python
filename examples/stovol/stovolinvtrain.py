@@ -3,8 +3,8 @@
     in a previous set and are now read from tsv. The network here is either loaded from a
     pre-trained state or trained from scratch. Pre-trained models can be loaded and training
     resumed. """
+from pathlib import Path
 import os
-from sdevpy import settings
 from datetime import datetime
 import numpy as np
 import tensorflow as tf
@@ -47,13 +47,13 @@ print("NumPy version: " + np.__version__)
 # print("SciKit version: " + sk.__version__)
 
 # ################ Runtime configuration ##########################################################
-MODEL_TYPE = "SABR"
-# MODEL_TYPE = "McSABR"
-# MODEL_TYPE = "FbSABR"
-# MODEL_TYPE = "McZABR"
-# MODEL_TYPE = "McHeston"
+model_type = "SABR"
+# model_type = "McSABR"
+# model_type = "FbSABR"
+# model_type = "McZABR"
+# model_type = "McHeston"
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
-MODEL_ID = "SABR" # MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
+MODEL_ID = "SABR" # model_type # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
 USE_TRAINED = True
 DOWNLOAD_MODELS = False # Only used when USE_TRAINED is True
@@ -71,42 +71,41 @@ SHOW_VOL_CHARTS = True # Show smile section charts
 NUM_MC = 100 * 1000 # 100 * 1000
 POINTS_PER_YEAR = 25# 25
 USE_NVOL = True
-project_folder = os.path.join(settings.WORKFOLDER, "stovolinv")
+project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
+dataset_path = project_path / "datasets" / "stovol" / "inverse" / model_type
 
 print(">> Set up runtime configuration")
-print("> Chosen model type: " + MODEL_TYPE)
+print("> Chosen model type: " + model_type)
 if USE_TRAINED:
     print("> Pre-trained model ID: " + MODEL_ID)
 
-filemanager.check_directory(project_folder)
-print("> Project folder: " + project_folder)
+print(f"> Project folder: {project_path}")
 
-dataset_folder = os.path.join(project_folder, "datasets")
-data_folder = os.path.join(dataset_folder, MODEL_TYPE)
-filemanager.check_directory(data_folder)
-print("> Data folder: " + data_folder)
-data_file = os.path.join(dataset_folder, MODEL_TYPE + "_data.tsv")
-print("> Data file: " + data_file)
+dataset_path = project_path / "datasets"
+data_path = dataset_path / model_type
+print(f"> Data folder: {data_path}")
+data_file = dataset_path / (model_type + "_data.tsv")
+print(f"> Data file: {data_file}")
 
-model_folder = os.path.join(project_folder, "models")
-filemanager.check_directory(model_folder)
-print("> Model folder: " + model_folder)
+model_path = project_path / "models"
+model_path.mkdir(parents=True, exist_ok=True)
+print(f"> Model folder: {model_path}")
 
 if USE_TRAINED and DOWNLOAD_MODELS:
     url = 'https://github.com/sebgur/SDev.Python/raw/main/models/stovolinv/models.zip'
     print("> Downloading and unzipping models from: " + url)
-    filemanager.download_unzip(url, model_folder)
+    filemanager.download_unzip(url, model_path)
 
 if DOWNLOAD_DATASETS:
     url = 'https://github.com/sebgur/SDev.Python/raw/main/datasets/stovolinv/datasets.zip'
     print("> Downloading and unzipping datasets from: " + url)
-    filemanager.download_unzip(url, dataset_folder)
+    filemanager.download_unzip(url, dataset_path)
 
 # ################ Select generator ###############################################################
 # Select generator. The number of expiries and surface size are irrelevant as here we do not
 # generate sample data but read it from files. Number of MC and points per year are required
 # to calculate the reference values against which we can validate the model.
-generator = set_generator(MODEL_TYPE, shift=SHIFT, num_mc=NUM_MC, points_per_year=POINTS_PER_YEAR)
+generator = set_generator(model_type, shift=SHIFT, num_mc=NUM_MC, points_per_year=POINTS_PER_YEAR)
 
 # ################ Prepare datasets ###############################################################
 # Datasets are always read, as even if we don't train, we're still going to evaluate the
@@ -114,7 +113,7 @@ generator = set_generator(MODEL_TYPE, shift=SHIFT, num_mc=NUM_MC, points_per_yea
 print(">> Preparing datasets")
 # Retrieve data from dataset folder
 print(f"> Requested {NUM_SAMPLES:,} samples")
-datasets.retrieve_data(data_folder, NUM_SAMPLES, shuffle=True, export_file=data_file)
+datasets.retrieve_data(data_path, NUM_SAMPLES, shuffle=True, export_file=data_file)
 print("> Exporting dataset to file: " + data_file)
 # Retrieve dataset
 print("> Reading dataset from file: " + data_file)
@@ -136,9 +135,9 @@ print(f"> Testing set size: {x_test.shape[0]:,}")
 # Compose new model or load pre-trained one
 if USE_TRAINED:
     print(">> Loading pre-trained model")
-    model_folder_name = os.path.join(model_folder, MODEL_ID)
-    print("> Loading pre-trained model from: " + model_folder_name)
-    model = load_learning_model(model_folder_name)
+    model_path_name = model_path / MODEL_ID
+    print(f"> Loading pre-trained model from: {model_path_name}")
+    model = load_learning_model(model_path_name)
     keras_model = model.model
     HIDDEN_LAYERS = NUM_NEURONS = DROP_OUT = None
     topology = model.topology_
@@ -204,9 +203,9 @@ if TRAIN:
     # Save trained model to file
     now = datetime.now()
     dt_string = now.strftime("%Y%m%d-%H_%M_%S")
-    model_folder_name = os.path.join(model_folder, MODEL_TYPE + "_" + dt_string)
-    print("Saving model to: " + model_folder_name)
-    model.save(model_folder_name)
+    model_path_name = model_path / (model_type + "_" + dt_string)
+    print(f"Saving model to: {model_path_name}")
+    model.save(model_path_name)
 
 
 # ################ Performance analysis ###########################################################
@@ -232,7 +231,7 @@ if SHOW_VOL_CHARTS:
     FWD = 0.055
 
     # Any number of expiries can be calculated, but for optimum display choose no more than 6
-    if MODEL_TYPE == "FbSABR":
+    if model_type == "FbSABR":
         EXPIRIES = np.asarray([0.25, 0.50, 1.0, 2.0, 5.0, 10.0]).reshape(-1, 1) # Only trained up to 5y
     else:
         EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.0, 10.0, 30.0]).reshape(-1, 1)

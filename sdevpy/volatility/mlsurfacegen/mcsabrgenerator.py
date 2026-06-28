@@ -1,6 +1,5 @@
 """ Smile generator for SABR model using Monte-Carlo to calculate option prices """
 import os
-from sdevpy import settings
 from sdevpy.volatility.impliedvol.models import mcsabr
 from sdevpy.volatility.mlsurfacegen.sabrgenerator import SabrGenerator
 from sdevpy.utilities import filemanager
@@ -25,6 +24,7 @@ class McSabrGenerator(SabrGenerator):
 
 
 if __name__ == "__main__":
+    from pathlib import Path
     NUM_SAMPLES = 100 #100 * 1000
     MODEL_TYPE = 'McSABR'
     SHIFT = 0.03
@@ -33,7 +33,8 @@ if __name__ == "__main__":
     SURFACE_SIZE = 50
     NUM_EXPIRIES = 10
     NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
-    project_folder = os.path.join(settings.WORKFOLDER, "stovol")
+    project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
+    project_folder = str(project_path)
     data_folder = os.path.join(project_folder, "samples")
     filemanager.check_directory(data_folder)
     file = os.path.join(data_folder, MODEL_TYPE + "_samples_tests.tsv")

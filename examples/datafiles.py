@@ -2,7 +2,6 @@
 import os
 import pandas as pd
 from sdevpy.utilities import filemanager
-from sdevpy import settings
 
 
 def merge_tsv(path, shuffle=False):
@@ -23,6 +22,9 @@ def merge_tsv(path, shuffle=False):
 
     df.to_csv(merged_file, sep='\t', index=False)
 
+
 if __name__ == "__main__":
-    FOLDER = os.path.join(settings.WORKFOLDER, r"stovol\samples\merge")
+    from pathlib import Path
+    project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
+    FOLDER = project_path / "stovol" / "samples" / "merge"
     merge_tsv(FOLDER, shuffle=True)

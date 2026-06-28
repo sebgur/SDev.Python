@@ -5,9 +5,6 @@ import os
 USE_TF = False
 USE_PYTHONNET = False
 
-# Paths
-WORKFOLDER = r"C:\temp\sdevpy"
-
 # Scalings
 VEGA_SCALING = 0.01  # Vega shown for 1% absolute moves
 THETA_SCALING = 1.0 / 365.0  # Theta shown for 1d moves

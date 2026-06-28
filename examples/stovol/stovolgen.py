@@ -24,7 +24,7 @@ n_expiries = 10
 n_strikes = 5
 n_mc = 100 * 1000 # 100 * 1000
 points_per_year = 25 # 25
-seed = 4549# [123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42]
+seed = 4549 # 123456789, 6789, 9191, 888, 4321, 100, 4444, 72, 1234, 42
 
 print(">> Set up runtime configuration")
 project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))

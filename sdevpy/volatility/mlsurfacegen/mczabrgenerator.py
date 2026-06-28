@@ -3,7 +3,6 @@ import os
 import numpy as np
 import pandas as pd
 import scipy.stats as sp
-from sdevpy import settings
 from sdevpy.volatility.impliedvol.models import mczabr
 from sdevpy.analytics import bachelier
 from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
@@ -172,6 +171,7 @@ class McZabrGenerator(SmileGenerator):
 
 
 if __name__ == "__main__":
+    from pathlib import Path
     # Test generation
     NUM_SAMPLES = 100 #100 * 1000
     MODEL_TYPE = 'McZABR'
@@ -181,7 +181,9 @@ if __name__ == "__main__":
     SURFACE_SIZE = 50
     NUM_EXPIRIES = 10
     NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
-    project_folder = os.path.join(settings.WORKFOLDER, "stovol")
+    project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
+    project_path = project_path / "stovol"
+    project_folder = str(project_path)
     data_folder = os.path.join(project_folder, "samples")
     filemanager.check_directory(data_folder)
     file = os.path.join(data_folder, MODEL_TYPE + "_samples_tests.tsv")

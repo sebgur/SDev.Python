@@ -1,6 +1,5 @@
 """ Smile generator for Free-Boundary SABR (FBSABR) using Monte-Carlo for option prices """
 import os
-from sdevpy import settings
 from sdevpy.volatility.impliedvol.models import fbsabr
 from sdevpy.volatility.mlsurfacegen.mcsabrgenerator import McSabrGenerator
 from sdevpy.utilities import filemanager
@@ -22,6 +21,7 @@ class FbSabrGenerator(McSabrGenerator):
 
 
 if __name__ == "__main__":
+    from pathlib import Path
     NUM_SAMPLES = 1 * 1000
     NUM_MC = 1 * 1000
     POINTS_PER_YEAR = 25
@@ -29,7 +29,8 @@ if __name__ == "__main__":
     NUM_EXPIRIES = 10
     NUM_STRIKES = int(SURFACE_SIZE / NUM_EXPIRIES)
     MODEL_TYPE = 'FbSABR'
-    project_folder = os.path.join(settings.WORKFOLDER, "stovol")
+    project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
+    project_folder = str(project_path)
     data_folder = os.path.join(project_folder, "samples")
     filemanager.check_directory(data_folder)
     file = os.path.join(data_folder, MODEL_TYPE + "_samples_tests.tsv")
