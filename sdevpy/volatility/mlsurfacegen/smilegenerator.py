@@ -1,10 +1,12 @@
 """ Base framework for smile generation """
+import logging
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 import scipy.stats as sp
 from sdevpy.analytics import bachelier
 from sdevpy.machinelearning import datasets
+log = logging.getLogger(__name__)
 
 
 class SmileGenerator(ABC):
@@ -118,7 +120,7 @@ class SmileGenerator(ABC):
         for i in range(num_samples):
             if i % num_print == 0:
                 batch_id = batch_id + 1
-                print(f"Converting to normal vol, batch {batch_id:,} out of {num_batches:,}")
+                log.info(f"Converting to normal vol, batch {batch_id:,} out of {num_batches:,}")
             try:
                 nvol.append(bachelier.implied_vol_jaeckel(t[i], strike[i], self.is_call, fwd[i], price[i]))
             except Exception:

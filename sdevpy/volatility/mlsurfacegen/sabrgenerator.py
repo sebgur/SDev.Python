@@ -421,63 +421,29 @@ def sabr_obj(x, *args):
 
 
 if __name__ == "__main__":
-    # from pathlib import Path
-    import datetime as dt
-    from sdevpy.tests import conftest
-    from sdevpy.utilities import dates as dts
-
     # Define model, number of samples and fit direction
-    n_samples = 200 #100 * 1000
-    model_type = 'SABR'
     shift = 0.03
-    use_direct = False
-
-    # Set path
-    data_path = conftest.dataset_path() / "stovol" / model_type
-    data_path.mkdir(parents=True, exist_ok=True)
 
     # Create generator
     generator = SabrGenerator(shift)
 
-    # Parameter ranges
-    ranges = {'Ttm': [1.0 / 12.0, 35.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041],
-              'LnVol': [0.05, 0.50], 'Beta': [0.1, 0.9], 'Nu': [0.1, 1.0], 'Rho': [-0.6, 0.6]}
-    print(f"Generating {n_samples} samples")
+    # Test price ref
+    NUM_STRIKES = 100
+    PARAMS = {'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25}
+    FWD = 0.028
 
-    # Generating data
-    print("Generating data")
-    if use_direct:
-        data_df_ = generator.generate_samples(n_samples, ranges)
-        # print(data_df_)
-        print("Cleansing data")
-        data_df_ = generator.to_nvol(data_df_)
-        file = data_path / (dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + "_direct.tsv")
-    else:
-        spreads = [-200, -100, -75, -50, -25, -10, 0, 10, 25, 50, 75, 100, 200]
-        data_df_ = generator.generate_samples_inverse(n_samples, ranges, spreads)
-        file = data_path / (dt.datetime.now().strftime(dts.DATE_FILE_FORMAT) + "_inverse.tsv")
+    # Any number of expiries can be calculated, but for optimum display choose no more than 6
+    EXPIRIES = np.asarray([0.125, 0.250, 0.5, 1.00, 2.0, 5.0]).reshape(-1, 1)
+    # EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.00, 10.0, 30.0]).reshape(-1, 1)
+    NUM_EXPIRIES = EXPIRIES.shape[0]
+    METHOD = 'Percentiles'
+    PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
+    PERCENTS = np.asarray([PERCENTS] * NUM_EXPIRIES)
 
-    print(f"Output to file: {file}")
-    generator.to_file(data_df_, file)
-    print("Complete!")
+    STRIKES = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
+    ARE_CALLS = [[False] * NUM_STRIKES] * NUM_EXPIRIES # All puts
 
-    # # Test price ref
-    # NUM_STRIKES = 100
-    # PARAMS = {'LnVol': 0.20, 'Beta': 0.5, 'Nu': 0.55, 'Rho': -0.25}
-    # FWD = 0.028
-
-    # # Any number of expiries can be calculated, but for optimum display choose no more than 6
-    # EXPIRIES = np.asarray([0.125, 0.250, 0.5, 1.00, 2.0, 5.0]).reshape(-1, 1)
-    # # EXPIRIES = np.asarray([0.25, 0.50, 1.0, 5.00, 10.0, 30.0]).reshape(-1, 1)
-    # NUM_EXPIRIES = EXPIRIES.shape[0]
-    # METHOD = 'Percentiles'
-    # PERCENTS = np.linspace(0.01, 0.99, num=NUM_STRIKES)
-    # PERCENTS = np.asarray([PERCENTS] * NUM_EXPIRIES)
-
-    # STRIKES = generator.convert_strikes(EXPIRIES, PERCENTS, FWD, PARAMS, METHOD)
-    # ARE_CALLS = [[False] * NUM_STRIKES] * NUM_EXPIRIES # All puts
-
-    # ref_prices = generator.price_surface_ref(EXPIRIES, STRIKES, ARE_CALLS, FWD, PARAMS)
+    ref_prices = generator.price_surface_ref(EXPIRIES, STRIKES, ARE_CALLS, FWD, PARAMS)
 
     # # Test strike conversion
     # generator = ShiftedSabrGenerator()
