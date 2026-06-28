@@ -50,7 +50,7 @@ def get_rng(dim=1, **kwargs) -> RandomNumberGenerator:
     match rng_type.lower():
         case 'mt':
             seed = kwargs.get('seed', 42)
-            return MersenneTwiser(dim=dim, seed=seed)
+            return MersenneTwister(dim=dim, seed=seed)
         case 'sobol':
             return Sobol(dim=dim, **kwargs)
         case 'halton':
@@ -61,7 +61,7 @@ def get_rng(dim=1, **kwargs) -> RandomNumberGenerator:
             raise TypeError(f"Unknown RNG type: {rng_type}")
 
 
-class MersenneTwiser(RandomNumberGenerator):
+class MersenneTwister(RandomNumberGenerator):
     def __init__(self, dim=1, seed=42):
         super().__init__(dim)
         self.seed = seed
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     SCRAMBLE = False
     OPTIMIZATION = None
 
-    rng1 = MersenneTwiser(dim=DIM, seed=42)
+    rng1 = MersenneTwister(dim=DIM, seed=42)
     gaussians = rng1.normal(10)
     print(gaussians)
 

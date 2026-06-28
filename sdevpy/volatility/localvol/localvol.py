@@ -133,10 +133,10 @@ class TimeInterpolatedLocalVol(LocalVol):
     def dump_data(self) -> dict:
         """ Dump LV object into dictionary """
         if self.valdate is None:
-            raise ValueError("Cannot dump ConstantLocalVol: no valuation date")
+            raise ValueError("Cannot dump TimeInterpolatedLocalVol: no valuation date")
 
         if self.snapdate is None:
-            raise ValueError("Cannot dump ConstantLocalVol: no snap date")
+            raise ValueError("Cannot dump TimeInterpolatedLocalVol: no snap date")
 
         sections = []
         for section in self.sections:

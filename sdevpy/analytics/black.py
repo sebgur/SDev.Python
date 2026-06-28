@@ -1,10 +1,12 @@
 """ Utilities for Black-Scholes model """
+import logging
 import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
 from scipy.optimize import minimize_scalar
 from sdevpy.utilities.tools import isiterable
 from sdevpy.analytics.schadner import implied_vol_schadner
+log = logging.getLogger(__name__)
 
 
 def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
@@ -73,6 +75,7 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
     fwd_price = np.asarray(fwd_price, dtype=float)
     vol = np.full_like(fwd_price, 0.25) # Initial guess: flat 25%
     sqrt_t = np.sqrt(expiry)
+    converged = False
     for _ in range(max_iter):
         s = vol * sqrt_t
         d1 = np.log(fwd / strike) / s + 0.5 * s
@@ -81,13 +84,12 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
         vol -= diff / vega
         vol = np.maximum(vol, 1e-8) # Keep vol positive
         if np.all(np.abs(diff) < tol):
+            converged = True
             break
 
-    # # if len(strike) == 1 and len(fwd_price) == 1 and len(vol) == 1: # Return a scalar if inputs are scalar
-    # #     return vol[0]
-    # # else:
-    # #     return vol
-    # return (vol.item() if vol.ndim == 0 or vol.size ==1 else vol)
+    if not converged:
+        log.warning("max_iter reached without full convergence")
+
     return vol
 
 

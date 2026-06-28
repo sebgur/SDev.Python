@@ -1,6 +1,6 @@
 ---
 name: recommendations
-description: Analyse the codebase and produce ranked recommendations for bringing it to commercial FinTech quality, written to claude/output/recommendations.html. Run on demand only.
+description: Analyse the codebase and produce ranked recommendations for bringing it to commercial FinTech quality, written to claude/recommendations.html. Run on demand only.
 ---
 Analyse my code and make recommendations to bring it to the next level, as well as to a level that can be sold in the market place in Financial Technology.
 

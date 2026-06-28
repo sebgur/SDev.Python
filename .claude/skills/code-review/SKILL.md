@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Full codebase review with grade, category scorecard, and top-10 issues written to claude/output/code_review.html. Run on demand only.
+description: Full codebase review with grade, category scorecard, and top-10 issues written to claude/code_review.html. Run on demand only.
 ---
 Analyse my code and give it an overall grade.
 

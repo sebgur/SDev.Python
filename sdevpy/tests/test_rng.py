@@ -1,13 +1,13 @@
 import numpy as np
 import pytest
-from sdevpy.maths.rand.rng import gaussians, get_rng, MersenneTwiser, Sobol, Halton, LatinHypercube
+from sdevpy.maths.rand.rng import gaussians, get_rng, MersenneTwister, Sobol, Halton, LatinHypercube
 
 
 N, DIM = 64, 3
 
 
 def test_rng_mt():
-    rng = MersenneTwiser(dim=DIM, seed=0)
+    rng = MersenneTwister(dim=DIM, seed=0)
     u = rng.uniform(N)
     assert u.shape == (N, DIM)
     assert np.all(u >= 0.0) and np.all(u <= 1.0)
@@ -39,7 +39,7 @@ def test_rng_latinhypercube():
 
 def test_get_rng():
     rng = get_rng(dim=2, rng_type='MT')
-    assert isinstance(rng, MersenneTwiser)
+    assert isinstance(rng, MersenneTwister)
 
     rng = get_rng(dim=2, rng_type='sobol')
     assert isinstance(rng, Sobol)

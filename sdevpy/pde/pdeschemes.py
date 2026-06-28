@@ -40,7 +40,7 @@ class ThetaScheme(PdeScheme):
 
     def roll_forward(self, p: npt.ArrayLike, x: npt.ArrayLike, ts: float, te: float,
                      dx: float) -> npt.NDArray[np.float64]:
-        n_x = x.shape[0]
+        # n_x = x.shape[0]
         dt = te - ts
         a = 1.0 / dx**2 + 0.5 / dx
         b = 2.0 / dx**2
@@ -49,7 +49,7 @@ class ThetaScheme(PdeScheme):
         # Calculate result vector using previous probabilities
         lv = self.local_vol.value(ts, x) # Called twice in consecutive steps
         one_m_theta_dt_2 = self.one_m_theta * dt / 2.0
-        y = np.zeros(n_x)
+        # y = np.zeros(n_x)
 
         # Vectorized
         y = (1.0 - one_m_theta_dt_2 * b * lv**2) * p
@@ -59,9 +59,6 @@ class ThetaScheme(PdeScheme):
         # Calculate band vectors for tridiagonal system
         # lv = self.local_vol.value(te, x) # Use only the one at ts for lower_bound LV
         theta_dt_2 = self.theta * dt / 2.0
-        # upper = np.zeros(n_x - 1)
-        # main = np.zeros(n_x)
-        # lower = np.zeros(n_x - 1)
 
         # Vectorized
         main = 1.0 + theta_dt_2 * b * lv**2
