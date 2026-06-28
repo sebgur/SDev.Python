@@ -19,7 +19,6 @@ from sdevpy.utilities import filemanager
 from sdevpy.utilities.timer import Stopwatch
 from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
 from sdevpy.volatility.mlsurfacegen.stovolfactory import set_generator
-# from sdevpy.projects.stovol import stovolplot as xplt
 from sdevpy.analytics import bachelier
 
 
