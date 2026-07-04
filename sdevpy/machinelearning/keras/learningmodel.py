@@ -1,27 +1,29 @@
 """ Wrapper class for machine learning models, including scalers, and simplifying
     evaluation, history tracking, exporting to/importing from files, etc. """
 import os
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 import joblib
 import absl.logging
 from sdevpy.utilities import jsonmanager
 from sdevpy.utilities import filemanager
+from sdevpy.machinelearning.learningmodel import LearningModel, scaler_files
 
-class LearningModel:
-    """ Wrapper class for machine learning models, including scalers, and simplifying
-        evaluation, history tracking, exporting to/importing from files, etc. """
+
+class KerasLearningModel(LearningModel):
+    """ Keras subclass of LearningModel, using TensorFlow backend """
     def __init__(self, model, is_scaled=False, x_scaler=None, y_scaler=None):
-        self.model = model
-        if x_scaler is None:
-            x_scaler = StandardScaler(copy=True)
-        self.x_scaler = x_scaler
-        if y_scaler is None:
-            y_scaler = StandardScaler(copy=True)
-        self.y_scaler = y_scaler
-        self.is_scaled = is_scaled
-        self.topology_ = None
-        self.optimizer_ = None
+        super().__init__(model, is_scaled, x_scaler, y_scaler)
+        # self.model = model
+        # if x_scaler is None:
+        #     x_scaler = StandardScaler(copy=True)
+        # self.x_scaler = x_scaler
+        # if y_scaler is None:
+        #     y_scaler = StandardScaler(copy=True)
+        # self.y_scaler = y_scaler
+        # self.is_scaled = is_scaled
+        # self.topology_ = None
+        # self.optimizer_ = None
 
     def train(self, x_set, y_set, epochs, batch_size, callback=None,
               verbose=0, shuffle=True):
@@ -119,12 +121,6 @@ class LearningModel:
         return self.y_scaler.inverse_transform(y_data)
 
 
-def scaler_files(path):
-    """ Scaler files corresponding to model stored in path """
-    x_scaler_file = os.path.join(path, "x_scaler.h5")
-    y_scaler_file = os.path.join(path, "y_scaler.h5")
-    return x_scaler_file, y_scaler_file
-
 def load_learning_model(path, compile_=False):
     """ Load learning model from files. Note that for now, we set compile=False when loading
         the keras model as we do not know how to save and load custom components such as
@@ -144,9 +140,9 @@ def load_learning_model(path, compile_=False):
     if os.path.exists(x_scaler_file) and os.path.exists(y_scaler_file):
         x_scaler = joblib.load(x_scaler_file)
         y_scaler = joblib.load(y_scaler_file)
-        model = LearningModel(keras_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
+        model = KerasLearningModel(keras_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
     else:
-        model = LearningModel(keras_model)
+        model = KerasLearningModel(keras_model)
 
     config_file = os.path.join(path, 'config.json')
     if os.path.exists(config_file):

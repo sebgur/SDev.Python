@@ -95,7 +95,7 @@
       border-left: 4px solid var(--green);
       border-radius: 8px;
       padding: .9rem 1.2rem;
-      margin-bottom: 2.5rem;
+      margin-bottom: 1.5rem;
       font-size: .88rem;
       color: var(--muted);
     }
@@ -109,6 +109,7 @@
       padding: 1.15rem 1.4rem;
       margin-bottom: 1.1rem;
     }
+    .issue.critical { border-left-color: var(--red);    }
     .issue.high     { border-left-color: var(--orange); }
     .issue.medium   { border-left-color: var(--yellow); }
     .issue.low      { border-left-color: var(--accent); }
@@ -132,6 +133,7 @@
       border-radius: 20px; text-transform: uppercase; letter-spacing: .05em;
       white-space: nowrap; margin-top: .1rem;
     }
+    .badge.critical { background: #3d1515; color: var(--red);    }
     .badge.high     { background: #2d1e0f; color: var(--orange); }
     .badge.medium   { background: #2c2005; color: var(--yellow); }
     .badge.low      { background: #0c2a4a; color: var(--accent); }
@@ -185,38 +187,43 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-27 &nbsp;·&nbsp; <strong>12th review</strong> (full scan)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-28 &nbsp;·&nbsp; <strong>10th review</strong> (full scan)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--yellow)">B</div>
+    <div class="grade-letter" style="color:var(--green)">B+</div>
     <div class="grade-details">
-      <h2>Five 11th-review fixes landed — two new high-severity bugs introduced</h2>
+      <h2>Nine of ten fixed — new PyTorch module introduced with one type annotation bug and a missing package marker</h2>
       <p>
-        Five of the ten issues from the 11th review are resolved: <code>Sqrt.evaluate</code> now floors at zero,
-        <code>VectorLocalVol._refresh_sections</code> no longer calls <code>super().__init__()</code>,
-        the <code>Variance</code> new-contract crash is handled gracefully, <code>dump_data()</code> is guarded by
-        <code>_require_params()</code>, and the <code>CalibrationDataFileProvider</code> error message is corrected.
-        However, two new high-severity bugs were found: <code>fixings.py</code> calls <code>Path.replace(str, str)</code>
-        which is a <code>TypeError</code> (the method takes one argument and renames files), and
-        <code>SabrGenerator.calibrate</code> unpacks <code>result, nfev</code> from <code>MultiOptimizer.minimize</code>
-        which returns a single object — making <code>calibrate()</code> unconditionally broken.
-        Both production file-provider classes also import from <code>sdevpy.tests</code>, a structural coupling
-        that breaks installed-package usage.
+        Nine of the ten issues from the 9th review are fully resolved: <code>trade.notional</code> is now applied,
+        all three test-function <code>print()</code> calls are commented out, <code>check_consistency</code> dead
+        code is gone, <code>_require_params()</code> guards <code>dump_data</code> in the base class, the WIP
+        stubs are removed, calibration is now tested by <code>TestSabrGeneratorCalibrate</code>, PDE assembly
+        is vectorized, <code>implied_vol</code> uses the more accurate Schadner method, and
+        <code>shift_forward</code> defaults to <code>False</code>. The new <code>test_mlgen_sabr.py</code>
+        (25+ tests across 9 classes) is the strongest testing addition since the project started.
+        The new PyTorch <code>topology.py</code> introduces one high-severity type annotation error
+        (<code>hidden_layer_activations: int</code> instead of <code>list[str]</code>) and is missing
+        the <code>__init__.py</code> that its Keras sibling has. Two library methods still emit bare
+        <code>print()</code> calls that should be <code>log.info()</code>.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since 11th review (5 of 10):</strong>
-    <code>Sqrt.evaluate</code> now has <code>np.maximum(..., 0.0)</code> floor &nbsp;·&nbsp;
-    <code>VectorLocalVol._refresh_sections</code> no longer calls <code>super().__init__()</code> &nbsp;·&nbsp;
-    <code>Variance</code> new-contract crash removed — graceful <code>current_fixing=None</code> skip &nbsp;·&nbsp;
-    <code>dump_data()</code> guarded by <code>_require_params()</code> in <code>tssvi1</code>, <code>tssvi2</code>, <code>logmix</code> &nbsp;·&nbsp;
-    <code>CalibrationDataFileProvider.get_impliedvol_data</code> error message corrected
+    <strong>Fixed since 9th review (9 of 10):</strong>
+    <code>trade.notional</code> now multiplied into PV in <code>mcpricer.py:176</code> &nbsp;·&nbsp;
+    all 3 test-function <code>print()</code> calls commented out &nbsp;·&nbsp;
+    <code>check_consistency</code> dead code removed from <code>impliedvol_calib.py</code> &nbsp;·&nbsp;
+    <code>dump_data</code> now protected by <code>_require_params()</code> in base class &nbsp;·&nbsp;
+    WIP stubs <code>Maximum</code> and <code>BarrierDown</code> removed from <code>exotics.py</code> &nbsp;·&nbsp;
+    <code>calibrate</code> path now covered by <code>TestSabrGeneratorCalibrate</code> (4 tests) &nbsp;·&nbsp;
+    PDE matrix assembly vectorized in <code>ThetaScheme</code> and <code>ImplicitScheme</code> &nbsp;·&nbsp;
+    <code>black.implied_vol</code> now delegates to <code>implied_vol_schadner</code> &nbsp;·&nbsp;
+    <code>PdeConfig.shift_forward</code> default changed to <code>False</code>
   </div>
 
-  <div class="scorecard" style="margin-bottom:2.5rem">
+  <div class="scorecard">
     <table>
       <thead>
         <tr>
@@ -227,42 +234,42 @@
         <tr>
           <td>Architecture</td><td>8 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy and module layout; both file-provider classes couple production code to the test layer via <code>sdevpy.tests.conftest</code></td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy maintained; PyTorch module added as a new subpackage but missing <code>__init__.py</code> unlike its Keras sibling</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Two new high-severity bugs: <code>Path.replace(str,str)</code> in <code>fixings.py</code> and <code>calibrate()</code> tuple-unpacking in <code>sabrgenerator.py</code>; negative-variance <code>nan</code> in <code>black_calib</code> still open</td>
-        </tr>
-        <tr>
-          <td>Error Handling</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>np.seterr(divide='raise')</code> not reset on exception; bare <code>except Exception: n_vol=-9999</code> swallows all errors silently; <code>implied_vol_newton</code> has no convergence failure signal</td>
-        </tr>
-        <tr>
-          <td>Testing</td><td>7 / 10</td>
+          <td>Correctness</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good coverage growth; <code>sabrgenerator.calibrate</code> and Dupire calibration remain untested; new <code>test_rng.py</code> file staged</td>
+          <td style="color:var(--muted);font-size:.83rem"><code>trade.notional</code> fixed; variance swap still silently drops the first return for new contracts instead of raising</td>
+        </tr>
+        <tr>
+          <td>Error Handling</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>_require_params()</code> guard added to base class; <code>check_consistency</code> dead code gone; overall meaningfully improved</td>
+        </tr>
+        <tr>
+          <td>Testing</td><td>8 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Best addition yet: <code>test_mlgen_sabr.py</code> has 25+ tests across 9 classes covering calibrate, price_straddles_mod, generate_samples_inverse and more</td>
         </tr>
         <tr>
           <td>Code Quality</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>__main__</code> blocks with <code>print()</code> calls in 9+ library modules; <code>MersenneTwiser</code> class name typo in public API; dead <code>np.zeros</code> allocation in <code>ThetaScheme</code></td>
+          <td style="color:var(--muted);font-size:.83rem">Live <code>print()</code> in <code>mczabrgenerator.generate_samples()</code> and <code>sabrgenerator.retrieve_inverse_datasets_no_shuffle()</code>; wrong type annotation in new code</td>
         </tr>
         <tr>
           <td>Maintainability</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Test-layer imports in production file-providers; test ticker names hardcoded in module-level production map in <code>calibration/provider.py</code></td>
+          <td style="color:var(--muted);font-size:.83rem">Good overall; <code>settings.WORKFOLDER</code> hardcoded Windows path still committed; <code>sabrgenerator __main__</code> still imports <code>conftest</code></td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>_require_params()</code> guard now present; <code>t: float=None</code> in <code>forwardpde.py</code> should be <code>float | None</code>; most new test helpers are unannotated</td>
+          <td>Type Safety</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>hidden_layer_activations: int</code> in new <code>topology.py</code> is a wrong annotation; <code>_require_params</code> guard in base class is a good addition</td>
         </tr>
         <tr>
           <td>Documentation</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Wrong class name in <code>TimeInterpolatedLocalVol.dump_data</code> error message; open <code>ToDo</code> in <code>Average</code> docstring; copy-paste error in <code>logmix_df</code> docstring</td>
+          <td style="color:var(--muted);font-size:.83rem">New <code>compose_model</code> has a useful docstring; <code>_get_activation</code> has a minimal one-liner; existing module coverage adequate</td>
         </tr>
       </tbody>
     </table>
@@ -274,202 +281,195 @@
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>fixings.py</code> calls <code>Path.replace(str, str)</code> — <code>TypeError</code> whenever duplicates are found</span>
+      <span class="issue-title"><code>hidden_layer_activations</code> annotated as <code>int</code> — should be <code>list[str]</code></span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/market/fixings.py · line 94</span>
+    <span class="loc">sdevpy/machinelearning/pytorch/topology.py · line 41</span>
     <p>
-      <strong>Why it's bad:</strong> <code>data_file()</code> returns a <code>pathlib.Path</code>.
-      <code>Path.replace(target)</code> is the OS rename/move call — it takes exactly one argument
-      (the destination path). Calling it with two string arguments raises
-      <code>TypeError: replace() takes 2 positional arguments but 3 were given</code>
-      the moment any CSV file contains duplicate dates. The error path that is supposed to detect
-      and isolate bad data instead crashes itself, producing a confusing traceback that points
-      away from the actual problem.
+      <strong>Why it's bad:</strong> The signature of the new <code>compose_model</code> reads:
     </p>
-    <pre>dupe_file = file.replace(<span class="st">".csv"</span>, <span class="st">".dupes.csv"</span>)  <span class="c"># TypeError — Path.replace takes 1 arg</span></pre>
+    <pre><span class="kw">def</span> <span class="fn">compose_model</span>(n_inputs: <span class="fn">int</span>, n_outputs: <span class="fn">int</span>, hidden_layer_activations: <span class="rm">int</span>, neurons: <span class="fn">int</span>, ...):</pre>
+    <p>
+      The body immediately iterates over it with <code>for activation_name in hidden_layer_activations</code>,
+      proving it must be a sequence of strings. The wrong annotation will cause every type-checker
+      (mypy, pyright, the IDE) to flag a valid call like
+      <code>compose_model(7, 1, ['softplus', 'softplus', 'softplus'], 16)</code> as a type error,
+      and it actively misleads anyone reading the signature.
+    </p>
     <p><strong>Fix:</strong></p>
-    <pre><span class="rm">dupe_file = file.replace(".csv", ".dupes.csv")</span>
-<span class="ok">dupe_file = file.with_name(file.stem + ".dupes.csv")</span></pre>
+    <pre><span class="rm">def compose_model(n_inputs: int, n_outputs: int, hidden_layer_activations: int, ...</span>
+<span class="ok">def compose_model(n_inputs: int, n_outputs: int, hidden_layer_activations: list[str], ...</span></pre>
   </div>
 
   <!-- 2 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>SabrGenerator.calibrate</code> unpacks a single object as a 2-tuple — unconditionally broken</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Five live <code>print()</code> calls inside <code>McZabrGenerator.generate_samples()</code></span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · line 389</span>
+    <span class="loc">sdevpy/volatility/mlsurfacegen/mczabrgenerator.py · lines 24–28, 31</span>
     <p>
-      <strong>Why it's bad:</strong> <code>MultiOptimizer.minimize</code>
-      (<code>maths/optimization.py:135</code>) returns a single <code>scipy.OptimizeResult</code>
-      object. <code>SabrGenerator.calibrate</code> unpacks it as a two-tuple:
+      <strong>Why it's bad:</strong> These fire on every call to <code>generate_samples()</code>,
+      including in tests. The sibling <code>SabrGenerator.generate_samples()</code> correctly uses
+      <code>log.info()</code> for identical messages — the inconsistency means
+      <code>McZabrGenerator</code> cannot be silenced without redirecting stdout.
     </p>
-    <pre>result, nfev = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)</pre>
-    <p>
-      This raises <code>ValueError: too many values to unpack</code> on every single call to
-      <code>calibrate()</code>. The method is entirely unusable. The value <code>nfev</code>
-      is already available as <code>result.nfev</code>.
-    </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="rm">result, nfev = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)</span>
-<span class="ok">result = optim.minimize(sabr_obj, x0=init_point, args=args, bounds=bounds)
-nfev = result.nfev</span></pre>
+    <pre><span class="rm">print(f"Number of strikes: {self.num_strikes:,}")
+print(f"Number of expiries: {self.num_expiries:,}")
+print(f"Surface size: {self.surface_size:,}")
+print(f"Number of samples: {num_samples:,}")
+print(f"Number of surfaces/parameter samples: {num_surfaces:,}")</span>
+<span class="ok">log.info(f"Number of strikes: {self.num_strikes:,}")
+log.info(f"Number of expiries: {self.num_expiries:,}")
+log.info(f"Surface size: {self.surface_size:,}")
+log.info(f"Number of samples: {num_samples:,}")
+log.info(f"Number of surfaces/parameter samples: {num_surfaces:,}")</span></pre>
+    <p>Add <code>log = logging.getLogger(__name__)</code> at module level, matching <code>sabrgenerator.py</code>.</p>
   </div>
 
   <!-- 3 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title">Both production file-providers import from <code>sdevpy.tests</code> — breaks installed-package usage</span>
+      <span class="issue-title">Stray <code>print()</code> inside <code>SabrGenerator.retrieve_inverse_datasets_no_shuffle()</code></span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/market/fileprovider.py · line 16 &nbsp;·&nbsp; sdevpy/calibration/fileprovider.py · line 5</span>
+    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · line 346</span>
     <p>
-      <strong>Why it's bad:</strong> Both production classes use
-      <code>from sdevpy.tests import conftest</code> to fall back to the test data directory
-      when no root is provided. If <code>sdevpy</code> is installed from a wheel (standard for
-      any published package), the <code>tests/</code> subtree is absent and any code constructing
-      a file-provider without an explicit root crashes with <code>ModuleNotFoundError</code> at
-      import time. It also means a no-arg provider silently resolves to test-data paths in
-      production.
+      <strong>Why it's bad:</strong> Every other diagnostic message in this method uses
+      <code>log.info()</code>, but one line reverts to bare <code>print()</code>:
     </p>
-    <pre><span class="kw">from</span> sdevpy.tests <span class="kw">import</span> conftest  <span class="c"># production module depending on test layer</span>
-<span class="c">...</span>
-self.root = (Path(root) <span class="kw">if</span> root <span class="kw">is not None else</span> conftest.marketdata_path())</pre>
+    <pre><span class="rm">print("> Number of strikes: " + str(n_strikes))</span>
+<span class="ok">log.info(f"Number of strikes: {n_strikes:,}")</span></pre>
     <p>
-      <strong>Fix:</strong> Require <code>root</code> explicitly, or resolve it from an
-      environment variable / application-level config:
+      This fires every time <code>retrieve_inverse_datasets_no_shuffle</code> is called —
+      including during test runs — and cannot be suppressed via the logging configuration.
     </p>
-    <pre><span class="rm">self.root = (Path(root) if root is not None else conftest.marketdata_path())</span>
-<span class="ok">if root is None:
-    raise ValueError("root path must be provided explicitly")
-self.root = Path(root)</span></pre>
   </div>
 
   <!-- 4 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title"><code>np.seterr(divide='raise')</code> not restored on exception — global numpy state corrupted</span>
+      <span class="issue-title">Missing <code>__init__.py</code> in <code>sdevpy/machinelearning/pytorch/</code></span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · lines 104, 171</span>
+    <span class="loc">sdevpy/machinelearning/pytorch/ · (file absent)</span>
     <p>
-      <strong>Why it's bad:</strong> <code>generate_samples_inverse</code> sets the global numpy
-      floating-point error mode to <code>'raise'</code> at line 104 and resets it at line 171 —
-      but only on the success path. If any exception is raised in between (e.g. inside
-      <code>price_straddles_ref</code>), the reset is skipped. All subsequent numpy operations
-      in the process — in every unrelated module — will then raise on divide-by-zero instead
-      of returning <code>inf</code>, producing impossible-to-trace failures.
+      <strong>Why it's bad:</strong> The sibling <code>sdevpy/machinelearning/keras/</code> has an
+      <code>__init__.py</code>; the new <code>pytorch/</code> directory does not. Python 3 namespace
+      packages mean imports may work incidentally, but the subpackage will be invisible to
+      <code>setuptools</code> / <code>find_packages()</code>, will not appear in
+      <code>pkg_resources</code> listings, and the inconsistency misleads contributors about where
+      the package boundary is. Depending on the <code>pyproject.toml</code> configuration, the
+      module may silently be excluded from distribution builds.
     </p>
-    <pre><span class="rm">np.seterr(divide='raise')      # line 104 — set
-# ... exception possible here ...
-np.seterr(divide='warn')       # line 171 — never reached if exception thrown</span>
-
-<span class="ok">old = np.seterr(divide='raise')
-try:
-    # ... body ...
-finally:
-    np.seterr(**old)</span></pre>
+    <p>
+      <strong>Fix:</strong> Create an empty
+      <code>sdevpy/machinelearning/pytorch/__init__.py</code>, matching the pattern of every
+      other subpackage in the project.
+    </p>
   </div>
 
   <!-- 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title"><code>calib_black_from_vols</code> takes square root of potentially negative variance — silent <code>nan</code></span>
+      <span class="issue-title">Variance swap silently drops first return for new contracts (<code>current_fixing is None</code>)</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/black_calib.py · line 55</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 489–491</span>
     <p>
-      <strong>Why it's bad:</strong> The Dupire forward variance
-      <code>vole² × te − vols² × ts</code> can be negative when implied vols decrease with
-      maturity (common in rates markets). <code>np.sqrt</code> of a negative number returns
-      <code>nan</code> silently, propagating through the entire calibrated local-vol surface
-      without any diagnostic:
+      <strong>Why it's bad:</strong> For a brand-new variance swap where <code>start >= valdate</code>,
+      <code>set_valuation_date</code> leaves <code>self.current_fixing = None</code>.
+      In <code>evaluate()</code>, line 489 silently skips the first increment:
     </p>
-    <pre>lvols.append(np.sqrt((vole**<span class="fn">2</span> * te - vols**<span class="fn">2</span> * ts) / (te - ts)))</pre>
-    <p><strong>Fix:</strong> Guard and log before the square root:</p>
-    <pre><span class="ok">fwd_var = (vole**2 * te - vols**2 * ts) / (te - ts)
-if fwd_var < 0.0:
-    log.warning(f"Negative forward variance at T={te:.3f}; flooring to 0")
-    fwd_var = 0.0
-lvols.append(np.sqrt(fwd_var))</span></pre>
+    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is not None</span>:   <span class="c"># None for new contracts → block is skipped</span>
+    var_sum = var_sum + np.power(np.log(spot_paths[:, <span class="fn">0</span>] / self.current_fixing), <span class="fn">2</span>)</pre>
+    <p>
+      The previous <code>ValueError</code> (now commented out on line 490) was a crash, but
+      at least it was audible. The current behaviour quietly mis-prices every new variance swap
+      by dropping the return from last-known spot to today, with no warning to the caller.
+    </p>
+    <p>
+      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty, set
+      <code>current_fixing</code> to the current spot from the market data provider, or
+      re-introduce the <code>ValueError</code> and document that a
+      <code>set_current_fixing(spot)</code> call is required before pricing new contracts.
+    </p>
   </div>
 
   <!-- 6 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">Test ticker names hardcoded as module-level production data in <code>calibration/provider.py</code></span>
+      <span class="issue-title"><code>settings.WORKFOLDER</code> is a hardcoded Windows-only path committed to the repo</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/calibration/provider.py · line 31</span>
+    <span class="loc">sdevpy/settings.py · line 9</span>
     <p>
-      <strong>Why it's bad:</strong> A module-level dict bakes test instrument names into
-      production code:
+      <strong>Why it's bad:</strong> <code>WORKFOLDER = r"C:\temp\sdevpy"</code> is a machine-specific
+      Windows absolute path checked into source control. Any contributor on Linux or macOS, or a Windows
+      user with a different layout, will silently be directed to a non-existent path. Scripts that
+      consume it (e.g. <code>stovolgen.py</code>, see issue #7) will fail at runtime with a
+      <code>FileNotFoundError</code> that looks like a bug rather than a missing configuration.
     </p>
-    <pre>name_model_map = {<span class="st">'ABC'</span>: <span class="st">'BiExp'</span>, <span class="st">'KLM'</span>: <span class="st">'VSVI'</span>, <span class="st">'XYZ'</span>: <span class="st">'Matrix'</span>}</pre>
-    <p>
-      <code>ABC</code>, <code>KLM</code>, and <code>XYZ</code> are the test fixtures from
-      <code>sdevpy/tests/data/</code>. <code>get_localvol_or_new</code> uses this map to infer
-      a model when <code>model_name=None</code> is passed — any real instrument not in this dict
-      results in a <code>KeyError</code>. Production code should not contain test instrument names.
-    </p>
-    <p>
-      <strong>Fix:</strong> Remove the map from the module and require callers to always supply
-      a <code>model_name</code>, or inject the map through a configuration mechanism.
-    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="kw">import</span> os
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="rm">WORKFOLDER = r"C:\temp\sdevpy"</span>
+<span class="ok">WORKFOLDER = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))</span></pre>
   </div>
 
   <!-- 7 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title"><code>implied_vol_newton</code> silently returns a non-converged result</span>
+      <span class="issue-title"><code>stovolgen.py</code> derives output path from the hardcoded <code>settings.WORKFOLDER</code></span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py · lines 65–80</span>
+    <span class="loc">examples/stovol/stovolgen.py · line 28</span>
     <p>
-      <strong>Why it's bad:</strong> When <code>max_iter</code> is exhausted without meeting the
-      convergence tolerance, the Newton solver returns whatever approximation it reached last —
-      no warning, no flag, no exception. A calibration routine will receive a plausible-looking
-      but wrong volatility and proceed as if convergence occurred. The downstream effect can
-      be a fitted model that has absorbed solver error as parameter noise.
+      <strong>Why it's bad:</strong>
+      <code>project_folder = os.path.join(settings.WORKFOLDER, "stovol")</code>
+      inherits the hardcoded <code>C:\temp\sdevpy</code> from issue #6. This script is the
+      canonical data-generation entry point for the whole stovol pipeline; it is the first
+      thing a new contributor runs, and it will silently write output to a path that does
+      not exist on their machine.
     </p>
-    <p><strong>Fix:</strong> Track convergence and emit a warning when the loop exits early:</p>
-    <pre><span class="ok">converged = False
-for _ in range(max_iter):
-    # ... Newton step ...
-    if all_converged:
-        converged = True; break
-if not converged:
-    log.warning("implied_vol_newton: max_iter reached without full convergence")</span></pre>
+    <p>
+      <strong>Fix:</strong> Fixing issue #6 propagates here for free. Alternatively, read the
+      path directly without going through <code>settings</code>:
+    </p>
+    <pre><span class="rm">project_folder = os.path.join(settings.WORKFOLDER, "stovol")</span>
+<span class="ok">project_folder = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy')) / "stovol"</span></pre>
   </div>
 
   <!-- 8 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title">Dead <code>np.zeros</code> allocation in <code>ThetaScheme.roll_forward</code> immediately overwritten</span>
-      <span class="badge low">Low</span>
+      <span class="issue-title"><code>sabrgenerator.py</code> <code>__main__</code> block imports <code>conftest</code> for the dataset path</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/pde/pdeschemes.py · line 52</span>
+    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · lines 426–437</span>
     <p>
-      <strong>Why it's bad:</strong> The vectorized rewrite allocates a zeroed array that is
-      immediately discarded on the next line:
+      <strong>Why it's bad:</strong> The generation script at the bottom of a library file reads:
     </p>
-    <pre>y = np.zeros(n_x)          <span class="c"># allocated — thrown away on the very next line</span>
-y = (<span class="fn">1.0</span> - ...) * p         <span class="c"># full overwrite</span></pre>
+    <pre><span class="kw">from</span> sdevpy.tests <span class="kw">import</span> conftest
+...
+data_path = conftest.dataset_path() / <span class="st">"stovol"</span> / model_type</pre>
     <p>
-      Lines 62–64 also carry commented-out <code>np.zeros</code> allocations that were made
-      redundant by the vectorized slices but never cleaned up. The live dead allocation is
-      misleading and suggests an incomplete refactor.
+      A production data-generation entry point importing from <code>sdevpy.tests</code> couples
+      library code to test infrastructure. If the tests directory is excluded from a distribution
+      package, this import fails. The correct output location for generated datasets is not inside
+      the test tree — it belongs under <code>WORKFOLDER</code> or its own environment variable.
     </p>
     <p>
-      <strong>Fix:</strong> Delete line 52 and remove the dead commented lines at 62–64.
+      <strong>Fix:</strong> Replace the <code>conftest</code> import with the env-var pattern
+      from issue #6, and consider moving this script to <code>examples/stovol/</code> where
+      the equivalent <code>stovolgen.py</code> already lives.
     </p>
   </div>
 
@@ -477,53 +477,62 @@ y = (<span class="fn">1.0</span> - ...) * p         <span class="c"># full overw
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>MersenneTwiser</code> — public API class name has a typo; also <code># pragma: no cov</code> is invalid</span>
+      <span class="issue-title"><code>_get_activation</code> constructs all 19 activation modules on every call</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/maths/rand/rng.py · lines 39, 64</span>
+    <span class="loc">sdevpy/machinelearning/pytorch/topology.py · lines 7–33</span>
     <p>
-      <strong>Why it's bad:</strong> The class is named <code>MersenneTwiser</code> (missing a
-      't'). Because it is exported as a public API symbol, a rename requires a deprecation alias
-      to avoid breaking callers — and the longer this stays, the more callers accumulate.
-      Separately, line 39 has <code># pragma: no cov</code>, which is not a recognised coverage
-      pragma. The correct directive is <code># pragma: no cover</code>. The current typo means
-      the abstract method is <em>not</em> actually excluded from coverage reports, silently
-      reducing measured coverage.
+      <strong>Why it's bad:</strong> The <code>activations</code> dict is rebuilt from scratch inside
+      the function body on every call, constructing all 19 <code>nn.Module</code> instances even
+      though only one is returned and used. For a 3-layer model, <code>compose_model</code> allocates
+      57 modules and discards 54. The idiomatic pattern is a module-level dict of class references
+      (factories) that instantiate only what is requested:
     </p>
-    <pre><span class="rm">class MersenneTwiser(RandomNumberGenerator): ...    # line 64</span>
-<span class="rm">    pass  # pragma: no cov                           # line 39</span>
+    <pre><span class="c"># Current — 19 modules constructed, 18 discarded per call:</span>
+<span class="kw">def</span> <span class="fn">_get_activation</span>(name: str) -> nn.Module:
+    activations = {<span class="st">'relu'</span>: nn.ReLU(), <span class="st">'tanh'</span>: nn.Tanh(), ...}
+    <span class="kw">return</span> activations[name]
 
-<span class="ok">class MersenneTwister(RandomNumberGenerator): ...
-    pass  # pragma: no cover
-
-MersenneTwiser = MersenneTwister  # backward-compatible alias</span></pre>
+<span class="c"># Fix — 1 module constructed per call:</span>
+<span class="ok">_ACTIVATION_FACTORIES: dict[str, type[nn.Module]] = {
+    'relu': nn.ReLU, 'tanh': nn.Tanh, 'sigmoid': nn.Sigmoid, ...
+}
+def _get_activation(name: str) -> nn.Module:
+    if name not in _ACTIVATION_FACTORIES:
+        raise ValueError(f"Unsupported activation: {name}")
+    return _ACTIVATION_FACTORIES[name]()</span></pre>
+    <p>
+      Moving <code>_ACTIVATION_FACTORIES</code> to module level also makes it easy to enumerate
+      all supported activations without calling the function.
+    </p>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>TimeInterpolatedLocalVol.dump_data</code> names the wrong class in its error message</span>
+      <span class="issue-title"><code>test_mlgen.py</code> has a <code>__main__</code> block that calls test methods directly</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol.py · line 136</span>
+    <span class="loc">sdevpy/tests/test_mlgen.py · lines 540–543</span>
     <p>
-      <strong>Why it's bad:</strong> The method raises:
+      <strong>Why it's bad:</strong> The file ends with:
     </p>
-    <pre><span class="kw">raise</span> ValueError(<span class="st">"Cannot dump ConstantLocalVol: ..."</span>)</pre>
+    <pre><span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    test = TestMcZabrGeneratorInit()
+    test.test_stores_mc_params()</pre>
     <p>
-      but the code lives in <code>TimeInterpolatedLocalVol</code>. The error message was
-      copy-pasted from a neighbouring class. A developer seeing this traceback will look at the
-      wrong class entirely, wasting debugging time. The same copy-paste habit produced the
-      string <code>"subpayoofs"</code> (double 'o') in the docstrings of <code>Max</code>,
-      <code>Min</code>, and <code>Basket</code> in <code>basic.py</code>.
+      Running the file directly executes only this one test, bypassing the full suite and
+      giving a false impression of coverage. The block appears to have been added for local
+      debugging and never removed. Test files should not have <code>__main__</code> guards —
+      use <code>pytest sdevpy/tests/test_mlgen.py::TestMcZabrGeneratorInit::test_stores_mc_params -v</code>
+      to run a single test instead.
     </p>
-    <pre><span class="rm">raise ValueError("Cannot dump ConstantLocalVol: ...")</span>
-<span class="ok">raise ValueError("Cannot dump TimeInterpolatedLocalVol: ...")</span></pre>
+    <p><strong>Fix:</strong> Remove lines 540–543 entirely.</p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #12 &nbsp;·&nbsp; 2026-06-27 (full scan)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #10 &nbsp;·&nbsp; 2026-06-28 (full scan)
   </footer>
 </div>
 </body>
