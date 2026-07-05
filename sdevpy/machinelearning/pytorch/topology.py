@@ -38,8 +38,8 @@ def _get_activation(name: str) -> nn.Module:
     return activations[name]
 
 
-def compose_model(n_inputs: int, n_outputs: int, hidden_layer_activations: int, neurons: int,
-                  dropout: float=0.2) -> nn.Sequential:
+def compose_mlp(n_inputs: int, n_outputs: int, hidden_layer_activations: int, neurons: int,
+                dropout: float=0.2) -> nn.Sequential:
     """ Create a PyTorch Multi-Layer Perceptron.
         Args:
             - n_inputs: number of inputs (dimension)

@@ -1,7 +1,6 @@
 """ Wrapper class for machine learning models, including scalers, and simplifying
     evaluation, history tracking, exporting to/importing from files, etc. """
 import os
-# from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 import joblib
 import absl.logging
@@ -14,16 +13,6 @@ class KerasLearningModel(LearningModel):
     """ Keras subclass of LearningModel, using TensorFlow backend """
     def __init__(self, model, is_scaled=False, x_scaler=None, y_scaler=None):
         super().__init__(model, is_scaled, x_scaler, y_scaler)
-        # self.model = model
-        # if x_scaler is None:
-        #     x_scaler = StandardScaler(copy=True)
-        # self.x_scaler = x_scaler
-        # if y_scaler is None:
-        #     y_scaler = StandardScaler(copy=True)
-        # self.y_scaler = y_scaler
-        # self.is_scaled = is_scaled
-        # self.topology_ = None
-        # self.optimizer_ = None
 
     def train(self, x_set, y_set, epochs, batch_size, callback=None,
               verbose=0, shuffle=True):
@@ -76,7 +65,6 @@ class KerasLearningModel(LearningModel):
 
         # Save additional config
         jsonmanager.serialize(config_data, config_file)
-
 
     def calculate(self, x_test, diff=False):
         """ Predict with calculation of differentials or not """
