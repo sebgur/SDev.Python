@@ -1,10 +1,9 @@
 """ Utilities for Black-Scholes model """
-# import numpy as np
 import scipy.stats
-# from scipy.optimize import minimize_scalar
 import tensorflow as tf
 import tensorflow_probability as tfp
 from sdevpy import settings
+
 
 N = scipy.stats.norm.cdf
 tf_n = tfp.distributions.Normal(0.0, 1.0)

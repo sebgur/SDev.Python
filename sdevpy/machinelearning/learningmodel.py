@@ -25,31 +25,25 @@ class LearningModel(ABC):
         self.optimizer_ = None
         self.verbose = verbose
 
+    def set_callback(self, callback=None) -> None:
+        """ Set specific callback """
+        self.callback = callback
+
     def train(self, x_set: npt.ArrayLike, y_set: npt.ArrayLike, epochs: int, batch_size: int,
-              callback=None, shuffle: bool=True) -> npt.ArrayLike:
+              shuffle: bool=True) -> npt.ArrayLike:
         """ Scale on first call, then train """
         if not self.is_scaled:
             self.x_scaler.fit(x_set)
             self.y_scaler.fit(y_set)
             self.is_scaled = True
 
-        callbacks = []
-        if callback is not None:
-            callback.set_scalers(self.x_scaler, self.y_scaler)
-            callback.total_epochs = epochs
-            callback.batch_size = batch_size
-            callback.shuffle = shuffle
-            callback.set_size = x_set.shape[0]
-            callbacks = [callback]
-
         x_scaled = self.x_scaler.transform(x_set)
         y_scaled = self.y_scaler.transform(y_set)
 
-        return self.train_raw(x_scaled, y_scaled, epochs, batch_size, shuffle, callbacks)
+        return self.train_raw(x_scaled, y_scaled, epochs, batch_size, shuffle)
 
     @abstractmethod
-    def train_raw(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs, batch_size, shuffle,
-                  callbacks=None):
+    def train_raw(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs: int, batch_size: int, shuffle: bool):
         """ Training (scaling already done) """
         pass
 

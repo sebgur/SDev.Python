@@ -1,43 +1,37 @@
 """ Wrapper class for machine learning models, including scalers, and simplifying
     evaluation, history tracking, exporting to/importing from files, etc. """
-import os
+from pathlib import Path
+import numpy.typing as npt
 import tensorflow as tf
 import joblib
 import absl.logging
-from sdevpy.utilities import jsonmanager
-from sdevpy.utilities import filemanager
+from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.machinelearning.learningmodel import LearningModel, scaler_files
 
 
 class KerasLearningModel(LearningModel):
     """ Keras subclass of LearningModel, using TensorFlow backend """
-    def __init__(self, model, is_scaled=False, x_scaler=None, y_scaler=None):
+    def __init__(self, model, is_scaled: bool=False, x_scaler=None, y_scaler=None):
         super().__init__(model, is_scaled, x_scaler, y_scaler)
+        self.callback = None
+        self.history = None
+        self.verbose = 0
 
-    def train(self, x_set, y_set, epochs, batch_size, callback=None,
-              verbose=0, shuffle=True):
-        """ Scale on first call, then train """
-        if not self.is_scaled:
-            self.x_scaler.fit(x_set)
-            self.y_scaler.fit(y_set)
-            self.is_scaled = True
-
-        callbacks = []
-        if callback is not None:
-            callback.set_scalers(self.x_scaler, self.y_scaler)
-            callback.total_epochs = epochs
-            callback.batch_size = batch_size
-            callback.shuffle = shuffle
-            callback.set_size = x_set.shape[0]
-            callbacks = [callback]
-
-        x_scaled = self.x_scaler.transform(x_set)
-        y_scaled = self.y_scaler.transform(y_set)
+    def train_raw(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs: int, batch_size: int, shuffle: bool):
+        """ Training (scaling already done) """
+        keras_callbacks = []
+        if self.callback is not None:
+            self.callback.set_scalers(self.x_scaler, self.y_scaler)
+            self.callback.total_epochs = epochs
+            self.callback.batch_size = batch_size
+            self.callback.shuffle = shuffle
+            self.callback.set_size = x_scaled.shape[0]
+            keras_callbacks = [self.callback]
 
         history = self.model.fit(x_scaled, y_scaled, epochs=epochs, batch_size=batch_size,
-                                 shuffle=shuffle, verbose=verbose, callbacks=callbacks)
+                                 shuffle=shuffle, verbose=self.verbose, callbacks=keras_callbacks)
 
-        return history
+        self.history = history
 
     def predict(self, x_test):
         """ Predict, including scaling inputs/outputs """
@@ -46,13 +40,13 @@ class KerasLearningModel(LearningModel):
         y_test = self.y_scaler.inverse_transform(y_scaled)
         return y_test
 
-    def save(self, path):
+    def save(self, path: Path):
         """ Save model and its scalers to files """
-        filemanager.check_directory(path)
+        path.mkdir(parents=True, exist_ok=True)
         # Save keras model first. Turn dummy warning off temporarily.
         verbosity = absl.logging.get_verbosity()
         absl.logging.set_verbosity(absl.logging.ERROR)
-        model_file = os.path.join(path, "model.keras")
+        model_file = path / "model.keras"
         self.model.save(model_file)
         absl.logging.set_verbosity(verbosity)
 
@@ -60,11 +54,11 @@ class KerasLearningModel(LearningModel):
         x_scaler_file, y_scaler_file = scaler_files(path)
         joblib.dump(self.x_scaler, x_scaler_file)
         joblib.dump(self.y_scaler, y_scaler_file)
-        config_data = { 'topology': self.topology_, 'optimizer': self.optimizer_ }
-        config_file = os.path.join(path, 'config.json')
+        config_data = {'topology': self.topology_, 'optimizer': self.optimizer_}
+        config_file = path / 'config.json'
 
         # Save additional config
-        jsonmanager.serialize(config_data, config_file)
+        jsm.serialize(config_data, config_file)
 
     def calculate(self, x_test, diff=False):
         """ Predict with calculation of differentials or not """
@@ -109,7 +103,7 @@ class KerasLearningModel(LearningModel):
         return self.y_scaler.inverse_transform(y_data)
 
 
-def load_learning_model(path, compile_=False):
+def load_learning_model(path: Path, compile_=False):
     """ Load learning model from files. Note that for now, we set compile=False when loading
         the keras model as we do not know how to save and load custom components such as
         the scheduler or the callback. To restart the training after loading the model from
@@ -117,24 +111,23 @@ def load_learning_model(path, compile_=False):
 
         One possibility could be to implement additional custom saving, recreate those components
         by hand, and then compile again. """
+    if not path.exists():
+        raise RuntimeError(f"Model folder does not exist: {path}")
 
-    if os.path.exists(path) is False:
-        raise RuntimeError("Model folder does not exist: " + path)
-
-    model_file = os.path.join(path, "model.keras")
+    model_file = path / "model.keras"
     keras_model = tf.keras.models.load_model(model_file, compile=compile_)
 
     x_scaler_file, y_scaler_file = scaler_files(path)
-    if os.path.exists(x_scaler_file) and os.path.exists(y_scaler_file):
+    if x_scaler_file.exists() and y_scaler_file.exists():
         x_scaler = joblib.load(x_scaler_file)
         y_scaler = joblib.load(y_scaler_file)
         model = KerasLearningModel(keras_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
     else:
         model = KerasLearningModel(keras_model)
 
-    config_file = os.path.join(path, 'config.json')
-    if os.path.exists(config_file):
-        config_data = jsonmanager.deserialize(config_file)
+    config_file = path / 'config.json'
+    if config_file.exists():
+        config_data = jsm.deserialize(config_file)
         model.topology_ = config_data['topology']
         model.optimizer_ = config_data['optimizer']
 

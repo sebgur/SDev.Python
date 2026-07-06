@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy.typing as npt
 import torch
 from torch.utils.data import TensorDataset, DataLoader
+from torch.optim.lr_scheduler import LRScheduler
 import joblib
 # from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.machinelearning.learningmodel import LearningModel, scaler_files
@@ -28,19 +29,18 @@ class TorchLearningModel(LearningModel):
         """ Set loss function """
         self.loss = loss
 
-    def set_optimizer(self, optimizer_type, lr_scheduler) -> None:
+    def set_optimizer(self, optimizer_type, lr_scheduler: LRScheduler) -> None:
         """ Set optimizer """
         match optimizer_type.lower():
             case 'adam':
-                init_lr = lr_scheduler.init_lr
+                init_lr = lr_scheduler.initial_lr
                 self.optimizer = torch.optim.Adam(self.model.parameters(), lr=init_lr)
             case _:
                 raise ValueError(f"Unknown optimizer type: {optimizer_type}")
 
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=lr_scheduler.step_function)
 
-    def train_raw(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs, batch_size, shuffle,
-                  callbacks=None):
+    def train_raw(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs: int, batch_size: int, shuffle: bool):
         """ Training (scaling already done) """
         if self.loss is None:
             raise ValueError("Training aborted: loss function not set")
@@ -53,7 +53,7 @@ class TorchLearningModel(LearningModel):
         y_t = torch.tensor(y_scaled, dtype=torch.float32).to(self.device)
 
         # DataLoader
-        loader = DataLoader(TensorDataset(x_t, y_t), batch_size=batch_size, shuffle=True)
+        loader = DataLoader(TensorDataset(x_t, y_t), batch_size=batch_size, shuffle=shuffle)
 
         # Training history
         self.hist_epochs, self.hist_losses, self.hist_lr, sampled_epochs, test_losses = [], [], [], [], []
@@ -81,10 +81,6 @@ class TorchLearningModel(LearningModel):
             self.hist_epochs.append(epoch)
             self.hist_losses.append(avg_loss)
             self.hist_lr.append(current_lr)
-
-            if callbacks is not None:
-                for callback in callbacks:
-                    callback.call(epoch, avg_loss, current_lr)
 
     def predict_raw(self, x_scaled: npt.ArrayLike) -> npt.ArrayLike:
         """ Predict (x-scaling already done, y-scaling not done) """
