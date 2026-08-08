@@ -9,13 +9,9 @@ from sdevpy import logger
 logger.configure()
 
 
-# ################ Runtime configuration ##########################################################
+# ################ Runtime configuration ##############################################################################
 n_samples = 100_000
-model_type = 'SABR'
-# model_type = "McSABR"
-# model_type = "FbSABR"
-# model_type = "McZABR"
-# model_type = "McHeston"
+model_type = 'SABR' # SABR, McSABR, FbSABR, McZABR, McHeston
 shift = 0.03
 use_direct = True
 
@@ -36,11 +32,10 @@ print(f"> Data folder: {dataset_path}")
 
 # Create generator
 # generator = SabrGenerator(shift)
-# ################ Select model ###################################################################
-generator = stovolfactory.set_generator(model_type, shift, n_expiries, n_strikes, n_mc,
-                                        points_per_year, seed)
+# ################ Select model #######################################################################################
+generator = stovolfactory.set_generator(model_type, shift, n_expiries, n_strikes, n_mc, points_per_year, seed)
 
-# ################ Select training ranges #########################################################
+# ################ Select training ranges #############################################################################
 # SABR
 ranges = {'Ttm': [1.0 / 12.0, 35.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041], 'LnVol': [0.05, 0.5],
           'Beta': [0.1, 0.9], 'Nu': [0.1, 1.0], 'Rho': [-0.6, 0.6]}
@@ -56,7 +51,7 @@ ranges = {'Ttm': [1.0 / 12.0, 35.0], 'K': [0.01, 0.99], 'F': [-0.009, 0.041], 'L
 #           'Kappa': [0.25, 4.00], 'Theta': [0.05**2, 0.25**2], 'Xi': [0.10, 0.50],
 #           'Rho': [-0.40, 0.40]}
 
-# ################ Generate dataset ###############################################################
+# ################ Generate dataset ###################################################################################
 print(">> Generate dataset")
 print(f"> Generate {n_samples:,} samples")
 timer_gen = Stopwatch("Generating Samples")
@@ -78,7 +73,7 @@ else:
     timer_gen.stop()
 
 
-# ################ Output to file #################################################################
+# ################ Output to file #####################################################################################
 timer_out = Stopwatch("File Output")
 timer_out.trigger()
 file = dataset_path / f"{n_samples}_{seed}.tsv"

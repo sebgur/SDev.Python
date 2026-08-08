@@ -22,11 +22,7 @@ from sdevpy.projects.stovol import stovolplot as xplt
 
 
 # ################ Runtime configuration ##########################################################
-MODEL_TYPE = "SABR"
-# MODEL_TYPE = "McSABR"
-# MODEL_TYPE = "FbSABR"
-# MODEL_TYPE = "McZABR"
-# MODEL_TYPE = "McHeston"
+MODEL_TYPE = "SABR" # SABR, McSABR, FbSABR, McZABR, McHeston
 # MODEL_ID = "SABR_3L_64n" # For pre-trained model ID (we can pre-train several versions)
 MODEL_ID = MODEL_TYPE # For pre-trained model ID (we can pre-train several versions)
 SHIFT = 0.03
