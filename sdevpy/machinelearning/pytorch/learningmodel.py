@@ -26,7 +26,7 @@ class TorchLearningModel(LearningModel):
         self.loss = None
         self.optimizer = None
         self.scheduler = None
-        self.epoch_sampling, self.x_test_scaled, self.y_test_scaled = None, None, None
+        self.epoch_sampling, self.x_test, self.y_test = None, None, None
 
     def set_loss(self, loss) -> None:
         """ Set loss function """
@@ -84,7 +84,7 @@ class TorchLearningModel(LearningModel):
         log.info("<><><><><><><><><><><><><><><><><><><><><><><><>")
 
         for epoch in range(epochs):
-            log.info(f"Epoch {epoch}/{epochs}")
+            log.info(f"Epoch {epoch + 1}/{epochs}")
             self.model.train()
             epoch_loss = 0.0
             for batch_x, batch_y in loader:
@@ -111,11 +111,15 @@ class TorchLearningModel(LearningModel):
     def sample_test(self, epoch: int) -> None:
         """ Estimate the model on test set """
         if self.epoch_sampling is not None:
-            if epoch % self.epoch_sampling == 0:
+            if epoch == 0: # Scale the data only once
+                self.x_test = torch.tensor(self.x_scaler.transform(self.x_test), dtype=torch.float32).to(self.device)
+                self.y_test = torch.tensor(self.y_scaler.transform(self.y_test), dtype=torch.float32).to(self.device)
+
+            if epoch == 0 or (epoch + 1) % self.epoch_sampling == 0:
                 self.model.eval()
                 with torch.no_grad():
-                    y_pred_scaled = self.model(self.x_test_scaled)
-                    test_loss = self.loss(y_pred_scaled, self.y_test_scaled).item()
+                    y_pred_scaled = self.model(self.x_test)
+                    test_loss = self.loss(y_pred_scaled, self.y_test).item()
                 self.test_epochs.append(epoch)
                 self.test_losses.append(test_loss)
                 log.info(f"Test loss: {test_loss:.2f}")
@@ -129,12 +133,10 @@ class TorchLearningModel(LearningModel):
         """
         self.epoch_sampling = epoch_sampling
         if self.epoch_sampling is not None:
+            self.x_test, self.y_test = x_test, y_test
             # Check test data is provided
             if x_test is None or y_test is None:
                 raise ValueError("Invalid test data provided")
-            # Scale test data
-            self.x_test_scaled = self.x_scaler.transform(x_test)
-            self.y_test_scaled = self.y_scaler.transform(y_test)
 
     def predict_on_scaled(self, x_scaled: npt.ArrayLike) -> npt.ArrayLike:
         """ Predict (on scaled x, outputting scaled y) """
