@@ -3,20 +3,20 @@
 import logging
 from pathlib import Path
 import numpy.typing as npt
+from abc import abstractmethod
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-# from torch.optim import Optimizer
 import joblib
-# from sdevpy.utilities import jsonmanager as jsm
-from sdevpy.machinelearning.learningmodel import LearningModel, scaler_files
+from sdevpy.machinelearning.learningmodel import LearningModel, scaler_files, MlpTopology
 from sdevpy.machinelearning.pytorch import learningschedules as lrmod
+from sdevpy.machinelearning.pytorch.topology import compose_mlp
 log = logging.getLogger(__name__)
 
 
 class TorchLearningModel(LearningModel):
     """ PyTorch subclass of LearningModel """
-    def __init__(self, model, is_scaled=False, x_scaler=None, y_scaler=None, device=None):
-        super().__init__(model, is_scaled, x_scaler, y_scaler)
+    def __init__(self, torch_model, is_scaled=False, x_scaler=None, y_scaler=None, device=None):
+        super().__init__(torch_model, is_scaled, x_scaler, y_scaler)
         if device is None:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
@@ -148,8 +148,41 @@ class TorchLearningModel(LearningModel):
         return y_t.cpu().numpy()
 
     def save(self, path: Path):
-        """ Save model and its scalers to files """
+        """ Save model and its scalers to files in the provided path """
+        path.mkdir(parents=True, exist_ok=True)
+
+        # Save topology
+        topology_file = path / "topology.json"
+        self.save_topology(topology_file)
+
+        # Save weights
+        weight_file = path / "weights.pt"
+        torch.save(self.model.state_dict(), weight_file)
+
+        # Save scalers
+        self.save_scalers(path)
+
+    @abstractmethod
+    def save_topology(self, file: Path) -> None:
+        """ Save topology to file """
         pass
+
+
+class TorchMultiLayerPerceptron(TorchLearningModel):
+    """ Multi-layer perceptron wrapper for easier input """
+    def __init__(self, input_dim: int, output_dim: int, hidden_activations: list[str], n_neurons: int,
+                 dropout: float=0.0, is_scaled=False, x_scaler=None, y_scaler=None, device=None):
+        """ Args:
+                - hidden_activations: a list of strings representing the activation functions for each
+                                      hidden layer
+                - n_neurons: number of neurons per hidden layer
+        """
+        self.topology = MlpTopology(input_dim, output_dim, hidden_activations, n_neurons, dropout)
+        torch_model = compose_mlp(self.topology)
+        super().__init__(torch_model, is_scaled, x_scaler, y_scaler, device)
+
+    def save_topology(self, file: Path) -> None:
+        self.topology.to_json(file)
 
 
 def load_model(path: Path) -> TorchLearningModel:
@@ -157,10 +190,16 @@ def load_model(path: Path) -> TorchLearningModel:
     if not path.exists():
         raise RuntimeError(f"Model folder does not exist: {path}")
 
-    model_file = path / "torchmodel.pt"
-    # torch_model = tf.keras.models.load_model(model_file)
-    torch_model = 'todo' + model_file
+    # Load topology
+    topology_file = path / "topology.json"
+    topology = MlpTopology.from_json(topology_file)
+    torch_model = compose_mlp(topology)
 
+    # Load weights
+    weight_file = path / "weights.pt"
+    torch_model.load_state_dict(torch.load(weight_file, weights_only=True))
+
+    # Load scalers and model
     x_scaler_file, y_scaler_file = scaler_files(path)
     if x_scaler_file.exists() and y_scaler_file.exists():
         x_scaler = joblib.load(x_scaler_file)
@@ -168,10 +207,5 @@ def load_model(path: Path) -> TorchLearningModel:
         model = TorchLearningModel(torch_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
     else:
         model = TorchLearningModel(torch_model)
-
-    # config_file = path / 'config.json'
-    # if config_file.exists():
-    #     config_data = jsm.deserialize(config_file)
-    #     model.topology_ = config_data['topology']
 
     return model

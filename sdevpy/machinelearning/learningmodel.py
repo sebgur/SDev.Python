@@ -1,12 +1,12 @@
 """ Wrapper class for machine learning models, including scalers, and simplifying
     evaluation, history tracking, exporting to/importing from files, etc. """
 from pathlib import Path
+import joblib
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, asdict
 import numpy.typing as npt
 from sklearn.preprocessing import StandardScaler
-# import absl.logging
-# from sdevpy.utilities import jsonmanager
-# from sdevpy.utilities import filemanager
+from sdevpy.utilities import jsonmanager as jsm
 
 
 class LearningModel(ABC):
@@ -76,6 +76,12 @@ class LearningModel(ABC):
         """ Scale back outputs """
         return self.y_scaler.inverse_transform(y_data)
 
+    def save_scalers(self, path: Path) -> None:
+        """ Save x and y scalers to path """
+        x_scaler_file, y_scaler_file = scaler_files(path)
+        joblib.dump(self.x_scaler, x_scaler_file)
+        joblib.dump(self.y_scaler, y_scaler_file)
+
 
 def scaler_files(path: Path) -> tuple[Path, Path]:
     """ Scaler files corresponding to model stored in path """
@@ -84,33 +90,19 @@ def scaler_files(path: Path) -> tuple[Path, Path]:
     return x_scaler_file, y_scaler_file
 
 
-# def load_learning_model(path, compile_=False):
-#     """ Load learning model from files. Note that for now, we set compile=False when loading
-#         the keras model as we do not know how to save and load custom components such as
-#         the scheduler or the callback. To restart the training after loading the model from
-#         file, we would have to be able to properly save and load those custom components.
+@dataclass
+class MlpTopology:
+    input_dim: int
+    output_dim: int
+    layers: list[str]
+    neurons: int
+    dropout: float
 
-#         One possibility could be to implement additional custom saving, recreate those components
-#         by hand, and then compile again. """
+    def to_json(self, path: Path) -> None:
+        """ Dump to json """
+        jsm.serialize(asdict(self), path)
 
-#     if os.path.exists(path) is False:
-#         raise RuntimeError("Model folder does not exist: " + path)
+    @classmethod
+    def from_json(cls, path: Path) -> "MlpTopology":
+        return cls(**jsm.deserialize(path))
 
-#     model_file = os.path.join(path, "model.keras")
-#     keras_model = tf.keras.models.load_model(model_file, compile=compile_)
-
-#     x_scaler_file, y_scaler_file = scaler_files(path)
-#     if os.path.exists(x_scaler_file) and os.path.exists(y_scaler_file):
-#         x_scaler = joblib.load(x_scaler_file)
-#         y_scaler = joblib.load(y_scaler_file)
-#         model = KerasLearningModel(keras_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
-#     else:
-#         model = KerasLearningModel(keras_model)
-
-#     config_file = os.path.join(path, 'config.json')
-#     if os.path.exists(config_file):
-#         config_data = jsonmanager.deserialize(config_file)
-#         model.topology_ = config_data['topology']
-#         model.optimizer_ = config_data['optimizer']
-
-#     return model
