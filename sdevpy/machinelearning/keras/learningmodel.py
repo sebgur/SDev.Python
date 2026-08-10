@@ -17,8 +17,9 @@ class KerasLearningModel(LearningModel):
         self.history = None
         self.verbose = 0
 
-    def train_raw(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs: int, batch_size: int, shuffle: bool):
-        """ Training (scaling already done) """
+    def train_on_scaled(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs: int, batch_size: int,
+                        shuffle: bool) -> None:
+        """ Training on scaled data (both x and y) """
         keras_callbacks = []
         if self.callback is not None:
             self.callback.set_scalers(self.x_scaler, self.y_scaler)

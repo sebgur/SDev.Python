@@ -1,4 +1,7 @@
-""" Custom learning rate schedules for PyTorch """
+""" Custom learning rate schedules for PyTorch.
+    Uses the decorator-based registry design, so new subclasses automatically register provided
+    they are decorated.
+"""
 import math
 from torch.optim.lr_scheduler import (LRScheduler, StepLR, MultiStepLR, ExponentialLR, CosineAnnealingLR,
     OneCycleLR, LambdaLR)
@@ -7,14 +10,20 @@ from torch.optim.lr_scheduler import (LRScheduler, StepLR, MultiStepLR, Exponent
 _SCHEDULER_REGISTRY = {}
 
 
-def register_scheduler(name):
+def register_scheduler(name: str):
+    """ Register scheduler class corresponding to name string """
     def decorator(cls):
+        """ This is the decorator that gets added at compile time by register.
+            It is then called when the class object (not an instance) is built by the compiler.
+            So it is when the class object is built by the compiler that the name gets registered.
+        """
         _SCHEDULER_REGISTRY[name] = cls
         return cls
     return decorator
 
 
-def create_scheduler(name, optimizer, **kwargs):
+def create_scheduler(name: str, optimizer, **kwargs):
+    """ Create a learning rate scheduler given its name, the optimizer, and parameters """
     try:
         cls = _SCHEDULER_REGISTRY[name]
     except KeyError as e:
@@ -23,16 +32,21 @@ def create_scheduler(name, optimizer, **kwargs):
     return cls(optimizer, **kwargs)
 
 
-# Register built-ins
-for _name, _cls in {
-    "step": StepLR,
-    "multistep": MultiStepLR,
-    "exponential": ExponentialLR,
-    "cosine": CosineAnnealingLR,
-    "onecycle": OneCycleLR,
-    "lambda": LambdaLR,
-}.items():
+# Register built-in schedulers (note that LambdaLR is multiplicative by definition)
+built_ins = {"step": StepLR, "multistep": MultiStepLR, "exponential": ExponentialLR,
+             "cosine": CosineAnnealingLR, "onecycle": OneCycleLR, "lambda": LambdaLR}
+for _name, _cls in built_ins.items():
     register_scheduler(_name)(_cls)
+
+
+@register_scheduler("constant")
+class ConstantLR(LRScheduler):
+    """ The learning rate is constant, as set by init_lr in the optimizer """
+    def __init__(self, optimizer, last_epoch: int=-1):
+        super().__init__(optimizer, last_epoch)
+
+    def get_lr(self):
+        return list(self.base_lrs)
 
 
 @register_scheduler("warmup_cosine")
@@ -54,7 +68,7 @@ class WarmupCosineLR(LRScheduler):
         ]
 
 
-@register_scheduler("floored_exponential_decay")
+@register_scheduler("floored_exponentialdecay")
 class FlooredExponentialDecay(LRScheduler):
     """ Exponentially decays LR between initial_lr and final_lr over target_epoch epochs """
     def __init__(self, optimizer, num_samples: int, batch_size: int, target_epoch: int,
@@ -75,7 +89,7 @@ class FlooredExponentialDecay(LRScheduler):
         return [lr for _ in self.optimizer.param_groups]
 
 
-@register_scheduler("cyclical_exponential_decay")
+@register_scheduler("cyclical_exponentialdecay")
 class CyclicalExponentialDecay(LRScheduler):
     """ Exponentially decays LR amplitude with a cosine oscillation over each period """
     def __init__(self, optimizer, num_samples: int, batch_size: int, target_epoch: int,

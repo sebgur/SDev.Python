@@ -5,10 +5,11 @@ from pathlib import Path
 import numpy.typing as npt
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from torch.optim.lr_scheduler import LRScheduler
+# from torch.optim import Optimizer
 import joblib
 # from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.machinelearning.learningmodel import LearningModel, scaler_files
+from sdevpy.machinelearning.pytorch import learningschedules as lrmod
 log = logging.getLogger(__name__)
 
 
@@ -24,29 +25,46 @@ class TorchLearningModel(LearningModel):
         self.model = self.model.to(device)
         self.loss = None
         self.optimizer = None
+        self.scheduler = None
+        self.epoch_sampling, self.x_test_scaled, self.y_test_scaled = None, None, None
 
     def set_loss(self, loss) -> None:
         """ Set loss function """
         self.loss = loss
 
-    def set_optimizer(self, optimizer_type, lr_scheduler: LRScheduler) -> None:
-        """ Set optimizer """
+    def set_optimizer(self, optimizer_type: str, init_lr: float, **kwargs) -> None:
+        """ Set optimizer. Also sets the default learning rate scheduler to be constant at
+            init_lr. To set a different LR scheduler, call set_lr_scheduler() after setting the
+            optimizer
+        """
         match optimizer_type.lower():
             case 'adam':
-                init_lr = lr_scheduler.initial_lr
                 self.optimizer = torch.optim.Adam(self.model.parameters(), lr=init_lr)
             case _:
                 raise ValueError(f"Unknown optimizer type: {optimizer_type}")
 
-        self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=lr_scheduler.step_function)
+        # Set constant scheduler by default
+        self.scheduler = lrmod.create_scheduler("constant", self.optimizer)
 
-    def train_raw(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs: int, batch_size: int, shuffle: bool):
-        """ Training (scaling already done) """
+    def set_lr_scheduler(self, name: str, **kwargs) -> None:
+        """ Set learning rate scheduler. If not called, the learning rate with default to constant
+            with the initial LR value set during set_optimizer().
+        """
+        if self.optimizer is None:
+            raise ValueError("Optimizer not set. Set the optimizer before setting the LR scheduler")
+        self.scheduler = lrmod.create_scheduler(name, self.optimizer, **kwargs)
+
+    def train_on_scaled(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs: int, batch_size: int,
+                        shuffle: bool) -> None:
+        """ Training on scaled data (both x and y) """
         if self.loss is None:
             raise ValueError("Training aborted: loss function not set")
 
         if self.optimizer is None:
             raise ValueError("Training aborted: optimizer not set")
+
+        if self.scheduler is None:
+            raise ValueError("Training aborted: scheduler not set")
 
         # Convert to tensors
         x_t = torch.tensor(x_scaled, dtype=torch.float32).to(self.device)
@@ -56,7 +74,8 @@ class TorchLearningModel(LearningModel):
         loader = DataLoader(TensorDataset(x_t, y_t), batch_size=batch_size, shuffle=shuffle)
 
         # Training history
-        self.hist_epochs, self.hist_losses, self.hist_lr, sampled_epochs, test_losses = [], [], [], [], []
+        self.hist_epochs, self.hist_losses, self.hist_lr = [], [], []
+        self.test_epochs, self.test_losses = [], []
 
         log.info("<><><><><><><><> TRAINING START <><><><><><><><>")
         log.info(f"Epochs: {epochs}")
@@ -65,6 +84,7 @@ class TorchLearningModel(LearningModel):
         log.info("<><><><><><><><><><><><><><><><><><><><><><><><>")
 
         for epoch in range(epochs):
+            log.info(f"Epoch {epoch}/{epochs}")
             self.model.train()
             epoch_loss = 0.0
             for batch_x, batch_y in loader:
@@ -78,12 +98,46 @@ class TorchLearningModel(LearningModel):
 
             avg_loss = epoch_loss / len(loader)
             current_lr = self.scheduler.get_last_lr()[0]
+            log.info(f"Loss: {avg_loss:.2f}, LR: {current_lr:.6f}")
             self.hist_epochs.append(epoch)
             self.hist_losses.append(avg_loss)
             self.hist_lr.append(current_lr)
 
-    def predict_raw(self, x_scaled: npt.ArrayLike) -> npt.ArrayLike:
-        """ Predict (x-scaling already done, y-scaling not done) """
+            # Run sample test (if set)
+            self.sample_test(epoch)
+
+            log.info("<><><><><><><><><><><><><><><><>")
+
+    def sample_test(self, epoch: int) -> None:
+        """ Estimate the model on test set """
+        if self.epoch_sampling is not None:
+            if epoch % self.epoch_sampling == 0:
+                self.model.eval()
+                with torch.no_grad():
+                    y_pred_scaled = self.model(self.x_test_scaled)
+                    test_loss = self.loss(y_pred_scaled, self.y_test_scaled).item()
+                self.test_epochs.append(epoch)
+                self.test_losses.append(test_loss)
+                log.info(f"Test loss: {test_loss:.2f}")
+
+    def set_sample_testing(self, epoch_sampling: int=None,
+                           x_test: npt.ArrayLike=None, y_test: npt.ArrayLike=None) -> None:
+        """ Set sample testing to run every epoch_sampling epochs
+            Args:
+                - epoch_sampling: number of epoch length at which we sample. Defaults to None meaning no sampling.
+                - x_test, y_test: data on which to test the model
+        """
+        self.epoch_sampling = epoch_sampling
+        if self.epoch_sampling is not None:
+            # Check test data is provided
+            if x_test is None or y_test is None:
+                raise ValueError("Invalid test data provided")
+            # Scale test data
+            self.x_test_scaled = self.x_scaler.transform(x_test)
+            self.y_test_scaled = self.y_scaler.transform(y_test)
+
+    def predict_on_scaled(self, x_scaled: npt.ArrayLike) -> npt.ArrayLike:
+        """ Predict (on scaled x, outputting scaled y) """
         self.model.eval()
         with torch.no_grad():
             x_t = torch.tensor(x_scaled, dtype=torch.float32).to(self.device)

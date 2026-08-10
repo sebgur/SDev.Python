@@ -40,22 +40,26 @@ class LearningModel(ABC):
         x_scaled = self.x_scaler.transform(x_set)
         y_scaled = self.y_scaler.transform(y_set)
 
-        return self.train_raw(x_scaled, y_scaled, epochs, batch_size, shuffle)
+        return self.train_on_scaled(x_scaled, y_scaled, epochs, batch_size, shuffle)
 
     @abstractmethod
-    def train_raw(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs: int, batch_size: int, shuffle: bool):
+    def train_on_scaled(self, x_scaled: npt.ArrayLike, y_scaled: npt.ArrayLike, epochs: int, batch_size: int,
+                        shuffle: bool) -> None:
         """ Training (scaling already done) """
         pass
 
     def predict(self, x_test: npt.ArrayLike) -> npt.ArrayLike:
         """ Predict, including x-scaling and y-scaling """
+        # Scale inputs
         x_scaled = self.x_scaler.transform(x_test)
-        y_scaled = self.predict_raw(x_scaled)
+        # Predict scaled outputs
+        y_scaled = self.predict_on_scaled(x_scaled)
+        # Unscale outputs
         y_test = self.y_scaler.inverse_transform(y_scaled)
         return y_test
 
     @abstractmethod
-    def predict_raw(self, x_scaled: npt.ArrayLike) -> npt.ArrayLike:
+    def predict_on_scaled(self, x_scaled: npt.ArrayLike) -> npt.ArrayLike:
         """ Predict (x-scaling already done, y-scaling not done) """
         pass
 
