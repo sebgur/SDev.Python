@@ -2,11 +2,13 @@
     evaluation, history tracking, exporting to/importing from files, etc. """
 import logging
 from pathlib import Path
+import numpy as np
 import numpy.typing as npt
 from abc import abstractmethod
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 import joblib
+import random
 from sdevpy.machinelearning.learningmodel import LearningModel, scaler_files, MlpTopology
 from sdevpy.machinelearning.pytorch import learningschedules as lrmod
 from sdevpy.machinelearning.pytorch.topology import compose_mlp
@@ -15,8 +17,8 @@ log = logging.getLogger(__name__)
 
 class TorchLearningModel(LearningModel):
     """ PyTorch subclass of LearningModel """
-    def __init__(self, torch_model, device=None): #, is_scaled=False, x_scaler=None, y_scaler=None, device=None):
-        super().__init__(torch_model)#, is_scaled, x_scaler, y_scaler)
+    def __init__(self, torch_model, device=None):
+        super().__init__(torch_model)
         if device is None:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
@@ -34,7 +36,7 @@ class TorchLearningModel(LearningModel):
     def set_optimizer(self, optimizer_type: str, init_lr: float, **kwargs) -> None:
         """ Set optimizer. Also sets the default learning rate scheduler to be constant at
             init_lr. To set a different LR scheduler, call set_lr_scheduler() after setting the
-            optimizer
+            optimizer.
         """
         match optimizer_type.lower():
             case 'adam':
@@ -107,6 +109,8 @@ class TorchLearningModel(LearningModel):
 
             log.info("<><><><><><><><><><><><><><><><>")
 
+        log.info("<><><><><><><><> TRAINING END <><><><><><><><>")
+
     def sample_test(self, epoch: int) -> None:
         """ Estimate the model on test set """
         if self.epoch_sampling is not None:
@@ -166,6 +170,47 @@ class TorchLearningModel(LearningModel):
         """ Save topology to file """
         pass
 
+    def diagnose_gradients(self, x_set: npt.ArrayLike, y_set: npt.ArrayLike,
+                           batch_size: int = 256, use_dropout=True) -> dict:
+        """ Run a single forward/backward pass on a batch and report gradient stats per layer """
+        if self.loss is None or self.optimizer is None:
+            raise ValueError("Set loss and optimizer before running gradient diagnostics")
+
+        # Trigger the computation of the gradients
+        if use_dropout:
+            # With dropout effect, mimicking training. But has dropout noise so less reproducible.
+            self.base_model.train()
+        else:
+            # No dropout effect, reproducible results. But not exactly what happens during training.
+            self.base_model.eval()
+
+        x_scaled = self.x_scaler.transform(x_set)
+        y_scaled = self.y_scaler.transform(y_set)
+        x_t = torch.tensor(x_scaled[:batch_size], dtype=torch.float32).to(self.device)
+        y_t = torch.tensor(y_scaled[:batch_size], dtype=torch.float32).to(self.device)
+
+        self.optimizer.zero_grad() # To reset gradient accumulation
+        pred = self.base_model(x_t)
+        loss = self.loss(pred, y_t)
+        loss.backward()
+
+        return self._compute_gradient_stats()
+
+    def _compute_gradient_stats(self) -> dict:
+        """ Per-parameter gradient statistics after a backward pass has populated .grad """
+        stats = {}
+        for name, param in self.base_model.named_parameters():
+            if param.grad is None:
+                continue
+            grad = param.grad.detach()
+            stats[name] = {
+                'mean_abs': grad.abs().mean().item(),
+                'std': grad.std(unbiased=False).item(),
+                'norm': grad.norm().item(),
+                'max_abs': grad.abs().max().item(),
+            }
+        return stats
+
 
 class TorchMultiLayerPerceptron(TorchLearningModel):
     """ Multi-layer perceptron wrapper for easier input """
@@ -192,7 +237,6 @@ def load_model(path: Path) -> TorchLearningModel:
     topology_file = path / "topology.json"
     topology = MlpTopology.from_json(topology_file)
     model = TorchMultiLayerPerceptron(topology)
-    # torch_model = compose_mlp(topology)
 
     # Load weights
     weight_file = path / "weights.pt"
@@ -204,8 +248,16 @@ def load_model(path: Path) -> TorchLearningModel:
         x_scaler = joblib.load(x_scaler_file)
         y_scaler = joblib.load(y_scaler_file)
         model.set_scalers(x_scaler, y_scaler)
-    #     model = TorchLearningModel(torch_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
-    # else:
-    #     model = TorchLearningModel(torch_model)
 
     return model
+
+
+def set_seed(seed: int) -> None:
+    """ Fix random seed for reproducible results """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False

@@ -106,3 +106,12 @@ class MlpTopology:
     def from_json(cls, path: Path) -> "MlpTopology":
         return cls(**jsm.deserialize(path))
 
+    def pretty_print(self) -> None:
+        """ Print characteristics """
+        print(f"Input dimension: {self.input_dim}")
+        print(f"Output dimension: {self.output_dim}")
+        print(f"Hidden layers: {len(self.layers)}")
+        print(f"Activations: {self.layers}")
+        print(f"Neurons per layer: {self.neurons}")
+        print(f"Drop-out: {self.dropout}")
+
