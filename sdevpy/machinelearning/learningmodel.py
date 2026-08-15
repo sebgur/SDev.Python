@@ -12,22 +12,22 @@ from sdevpy.utilities import jsonmanager as jsm
 class LearningModel(ABC):
     """ Wrapper class for machine learning models, including scalers, and simplifying
         evaluation, history tracking, exporting to/importing from files, etc. """
-    def __init__(self, model, is_scaled: bool=False, x_scaler=None, y_scaler=None, verbose: bool=False):
-        self.model = model
-        if x_scaler is None:
-            x_scaler = StandardScaler(copy=True)
+    def __init__(self, base_model): #, is_scaled: bool=False, x_scaler=None, y_scaler=None):
+        self.base_model = base_model
+        # if x_scaler is None:
+        x_scaler = StandardScaler(copy=True)
         self.x_scaler = x_scaler
-        if y_scaler is None:
-            y_scaler = StandardScaler(copy=True)
+        # if y_scaler is None:
+        y_scaler = StandardScaler(copy=True)
         self.y_scaler = y_scaler
-        self.is_scaled = is_scaled
-        self.topology_ = None
-        self.optimizer_ = None
-        self.verbose = verbose
+        self.is_scaled = False
+        # self.is_scaled = is_scaled
+        self.topology = None
+        self.optimizer = None
 
-    def set_callback(self, callback=None) -> None:
-        """ Set specific callback """
-        self.callback = callback
+    def set_scalers(self, x_scaler, y_scaler) -> None:
+        """ Set scalers for inputs (x) and outputs (y) """
+        self.x_scaler, self.y_scaler, self.is_scaled = x_scaler, y_scaler, True
 
     def train(self, x_set: npt.ArrayLike, y_set: npt.ArrayLike, epochs: int, batch_size: int,
               shuffle: bool=True) -> npt.ArrayLike:

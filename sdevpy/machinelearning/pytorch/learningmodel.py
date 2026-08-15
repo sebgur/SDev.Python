@@ -15,16 +15,15 @@ log = logging.getLogger(__name__)
 
 class TorchLearningModel(LearningModel):
     """ PyTorch subclass of LearningModel """
-    def __init__(self, torch_model, is_scaled=False, x_scaler=None, y_scaler=None, device=None):
-        super().__init__(torch_model, is_scaled, x_scaler, y_scaler)
+    def __init__(self, torch_model, device=None): #, is_scaled=False, x_scaler=None, y_scaler=None, device=None):
+        super().__init__(torch_model)#, is_scaled, x_scaler, y_scaler)
         if device is None:
             self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         else:
             self.device = device
 
-        self.model = self.model.to(device)
+        self.base_model = self.base_model.to(device)
         self.loss = None
-        self.optimizer = None
         self.scheduler = None
         self.epoch_sampling, self.x_test, self.y_test = None, None, None
 
@@ -39,7 +38,7 @@ class TorchLearningModel(LearningModel):
         """
         match optimizer_type.lower():
             case 'adam':
-                self.optimizer = torch.optim.Adam(self.model.parameters(), lr=init_lr)
+                self.optimizer = torch.optim.Adam(self.base_model.parameters(), lr=init_lr)
             case _:
                 raise ValueError(f"Unknown optimizer type: {optimizer_type}")
 
@@ -85,11 +84,11 @@ class TorchLearningModel(LearningModel):
 
         for epoch in range(epochs):
             log.info(f"Epoch {epoch + 1}/{epochs}")
-            self.model.train()
+            self.base_model.train()
             epoch_loss = 0.0
             for batch_x, batch_y in loader:
                 self.optimizer.zero_grad() # Reset the gradients
-                pred = self.model(batch_x) # Feed-forward
+                pred = self.base_model(batch_x) # Feed-forward
                 loss = self.loss(pred, batch_y) # Calculate loss
                 loss.backward() # Propagate backwards
                 self.optimizer.step() # Modify weights
@@ -116,9 +115,9 @@ class TorchLearningModel(LearningModel):
                 self.y_test = torch.tensor(self.y_scaler.transform(self.y_test), dtype=torch.float32).to(self.device)
 
             if epoch == 0 or (epoch + 1) % self.epoch_sampling == 0:
-                self.model.eval()
+                self.base_model.eval()
                 with torch.no_grad():
-                    y_pred_scaled = self.model(self.x_test)
+                    y_pred_scaled = self.base_model(self.x_test)
                     test_loss = self.loss(y_pred_scaled, self.y_test).item()
                 self.test_epochs.append(epoch)
                 self.test_losses.append(test_loss)
@@ -140,10 +139,10 @@ class TorchLearningModel(LearningModel):
 
     def predict_on_scaled(self, x_scaled: npt.ArrayLike) -> npt.ArrayLike:
         """ Predict (on scaled x, outputting scaled y) """
-        self.model.eval()
+        self.base_model.eval()
         with torch.no_grad():
             x_t = torch.tensor(x_scaled, dtype=torch.float32).to(self.device)
-            y_t = self.model(x_t)
+            y_t = self.base_model(x_t)
 
         return y_t.cpu().numpy()
 
@@ -157,7 +156,7 @@ class TorchLearningModel(LearningModel):
 
         # Save weights
         weight_file = path / "weights.pt"
-        torch.save(self.model.state_dict(), weight_file)
+        torch.save(self.base_model.state_dict(), weight_file)
 
         # Save scalers
         self.save_scalers(path)
@@ -170,16 +169,15 @@ class TorchLearningModel(LearningModel):
 
 class TorchMultiLayerPerceptron(TorchLearningModel):
     """ Multi-layer perceptron wrapper for easier input """
-    def __init__(self, input_dim: int, output_dim: int, hidden_activations: list[str], n_neurons: int,
-                 dropout: float=0.0, is_scaled=False, x_scaler=None, y_scaler=None, device=None):
+    def __init__(self, topology: MlpTopology, device=None):
         """ Args:
                 - hidden_activations: a list of strings representing the activation functions for each
                                       hidden layer
                 - n_neurons: number of neurons per hidden layer
         """
-        self.topology = MlpTopology(input_dim, output_dim, hidden_activations, n_neurons, dropout)
-        torch_model = compose_mlp(self.topology)
-        super().__init__(torch_model, is_scaled, x_scaler, y_scaler, device)
+        torch_model = compose_mlp(topology)
+        super().__init__(torch_model, device)
+        self.topology = topology
 
     def save_topology(self, file: Path) -> None:
         self.topology.to_json(file)
@@ -193,19 +191,21 @@ def load_model(path: Path) -> TorchLearningModel:
     # Load topology
     topology_file = path / "topology.json"
     topology = MlpTopology.from_json(topology_file)
-    torch_model = compose_mlp(topology)
+    model = TorchMultiLayerPerceptron(topology)
+    # torch_model = compose_mlp(topology)
 
     # Load weights
     weight_file = path / "weights.pt"
-    torch_model.load_state_dict(torch.load(weight_file, weights_only=True))
+    model.base_model.load_state_dict(torch.load(weight_file, weights_only=True))
 
     # Load scalers and model
     x_scaler_file, y_scaler_file = scaler_files(path)
     if x_scaler_file.exists() and y_scaler_file.exists():
         x_scaler = joblib.load(x_scaler_file)
         y_scaler = joblib.load(y_scaler_file)
-        model = TorchLearningModel(torch_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
-    else:
-        model = TorchLearningModel(torch_model)
+        model.set_scalers(x_scaler, y_scaler)
+    #     model = TorchLearningModel(torch_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
+    # else:
+    #     model = TorchLearningModel(torch_model)
 
     return model

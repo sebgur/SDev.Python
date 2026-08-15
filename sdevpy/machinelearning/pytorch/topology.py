@@ -38,9 +38,7 @@ def _get_activation(name: str) -> nn.Module:
     return activations[name]
 
 
-# def compose_mlp(n_inputs: int, n_outputs: int, hidden_layer_activations: int, neurons: int,
-#                 dropout: float=0.2) -> nn.Sequential:
-def compose_mlp(topology: MlpTopology) -> nn.Sequential:
+def compose_mlp(topology: MlpTopology, bias: float=0.1) -> nn.Sequential:
     """ Create a PyTorch Multi-Layer Perceptron.
         Args:
             - n_inputs: number of inputs (dimension)
@@ -60,7 +58,7 @@ def compose_mlp(topology: MlpTopology) -> nn.Sequential:
     for activation_name in hidden_layer_activations:
         linear = nn.Linear(in_features, neurons)
         nn.init.xavier_normal_(linear.weight) # Equivalent to Glorot in Keras
-        nn.init.constant_(linear.bias, 0.1) # bias = 0.1
+        nn.init.constant_(linear.bias, bias)
         layers.append(linear)
         layers.append(_get_activation(activation_name))
         layers.append(nn.Dropout(p=dropout))

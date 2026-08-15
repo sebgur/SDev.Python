@@ -11,8 +11,9 @@ from sdevpy.machinelearning.learningmodel import LearningModel, scaler_files
 
 class KerasLearningModel(LearningModel):
     """ Keras subclass of LearningModel, using TensorFlow backend """
-    def __init__(self, model, is_scaled: bool=False, x_scaler=None, y_scaler=None):
-        super().__init__(model, is_scaled, x_scaler, y_scaler)
+    def __init__(self, base_model): #, is_scaled: bool=False, x_scaler=None, y_scaler=None):
+        super().__init__(base_model) #, is_scaled, x_scaler, y_scaler)
+        # Now need to call set_scalers() instead
         self.callback = None
         self.history = None
         self.verbose = 0
@@ -29,7 +30,7 @@ class KerasLearningModel(LearningModel):
             self.callback.set_size = x_scaled.shape[0]
             keras_callbacks = [self.callback]
 
-        history = self.model.fit(x_scaled, y_scaled, epochs=epochs, batch_size=batch_size,
+        history = self.base_model.fit(x_scaled, y_scaled, epochs=epochs, batch_size=batch_size,
                                  shuffle=shuffle, verbose=self.verbose, callbacks=keras_callbacks)
 
         self.history = history
@@ -37,7 +38,7 @@ class KerasLearningModel(LearningModel):
     def predict(self, x_test):
         """ Predict, including scaling inputs/outputs """
         x_scaled = self.x_scaler.transform(x_test)
-        y_scaled = self.model(x_scaled)
+        y_scaled = self.base_model(x_scaled)
         y_test = self.y_scaler.inverse_transform(y_scaled)
         return y_test
 
@@ -48,14 +49,14 @@ class KerasLearningModel(LearningModel):
         verbosity = absl.logging.get_verbosity()
         absl.logging.set_verbosity(absl.logging.ERROR)
         model_file = path / "model.keras"
-        self.model.save(model_file)
+        self.base_model.save(model_file)
         absl.logging.set_verbosity(verbosity)
 
         # Save scalers
         x_scaler_file, y_scaler_file = scaler_files(path)
         joblib.dump(self.x_scaler, x_scaler_file)
         joblib.dump(self.y_scaler, y_scaler_file)
-        config_data = {'topology': self.topology_, 'optimizer': self.optimizer_}
+        config_data = {'topology': self.topology, 'optimizer': self.optimizer}
         config_file = path / 'config.json'
 
         # Save additional config
@@ -86,7 +87,7 @@ class KerasLearningModel(LearningModel):
         with tf.GradientTape() as t:
             t.watch(md_x_tensor)
             md_x_scaled = (md_x_tensor - tf_x_mean) / tf_x_scale
-            md_y_scaled = self.model(md_x_scaled)
+            md_y_scaled = self.base_model(md_x_scaled)
             md_y = md_y_scaled * tf_y_scale + tf_y_mean
 
         # Retrieve results
@@ -102,6 +103,10 @@ class KerasLearningModel(LearningModel):
     def scaleback_outputs(self, y_data):
         """ Scale back outputs """
         return self.y_scaler.inverse_transform(y_data)
+
+    def set_callback(self, callback=None) -> None:
+        """ Set specific callback """
+        self.callback = callback
 
 
 def load_learning_model(path: Path, compile_=False):
@@ -129,7 +134,7 @@ def load_learning_model(path: Path, compile_=False):
     config_file = path / 'config.json'
     if config_file.exists():
         config_data = jsm.deserialize(config_file)
-        model.topology_ = config_data['topology']
-        model.optimizer_ = config_data['optimizer']
+        model.topology = config_data['topology']
+        model.optimizer = config_data['optimizer']
 
     return model
