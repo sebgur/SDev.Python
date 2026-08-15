@@ -101,6 +101,18 @@
     }
     .progress-banner strong { color: var(--text); }
 
+    .regress-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--red);
+      border-radius: 8px;
+      padding: .9rem 1.2rem;
+      margin-bottom: 2.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .regress-banner strong { color: var(--text); }
+
     .issue {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -187,40 +199,45 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-06-28 &nbsp;·&nbsp; <strong>10th review</strong> (full scan)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-08-15 &nbsp;·&nbsp; <strong>11th review</strong> (full scan, including files excluded from packaging/coverage)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--green)">B+</div>
+    <div class="grade-letter" style="color:var(--orange)">C</div>
     <div class="grade-details">
-      <h2>Nine of ten fixed — new PyTorch module introduced with one type annotation bug and a missing package marker</h2>
+      <h2>Half of the 10th review's issues are fixed, but a full-depth scan (this review's first, per the request) surfaced three critical bugs the previous diff-focused reviews never reached</h2>
       <p>
-        Nine of the ten issues from the 9th review are fully resolved: <code>trade.notional</code> is now applied,
-        all three test-function <code>print()</code> calls are commented out, <code>check_consistency</code> dead
-        code is gone, <code>_require_params()</code> guards <code>dump_data</code> in the base class, the WIP
-        stubs are removed, calibration is now tested by <code>TestSabrGeneratorCalibrate</code>, PDE assembly
-        is vectorized, <code>implied_vol</code> uses the more accurate Schadner method, and
-        <code>shift_forward</code> defaults to <code>False</code>. The new <code>test_mlgen_sabr.py</code>
-        (25+ tests across 9 classes) is the strongest testing addition since the project started.
-        The new PyTorch <code>topology.py</code> introduces one high-severity type annotation error
-        (<code>hidden_layer_activations: int</code> instead of <code>list[str]</code>) and is missing
-        the <code>__init__.py</code> that its Keras sibling has. Two library methods still emit bare
-        <code>print()</code> calls that should be <code>log.info()</code>.
+        5 of the 10th review's 10 issues are resolved: <code>MlpTopology</code> replaced the wrongly-typed
+        <code>compose_model</code> parameter list, <code>pytorch/__init__.py</code> was added, the hardcoded
+        <code>WORKFOLDER</code> path is gone (env-var pattern in <code>stovolgen.py</code> and elsewhere), and
+        <code>sabrgenerator.py</code> no longer imports <code>conftest</code>. But this is the first review to
+        inspect every <code>*.py</code>/<code>*.ipynb</code> file rather than just recent diffs, and it surfaced
+        pre-existing, untested defects that had never been in scope before: <code>KerasLearningModel</code>
+        cannot be instantiated at all (its abstract method is never implemented), the entire
+        <code>sdevpy/llms/gpt/</code> subpackage has broken imports left over from a package move, and — most
+        pressing — the currently-open <code>StoVol Training.torch.ipynb</code> notebook trains on the full
+        dataset instead of the split training set, silently invalidating its own test-set RMSE. All three areas
+        share zero test coverage, which is exactly why they went unnoticed.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since 9th review (9 of 10):</strong>
-    <code>trade.notional</code> now multiplied into PV in <code>mcpricer.py:176</code> &nbsp;·&nbsp;
-    all 3 test-function <code>print()</code> calls commented out &nbsp;·&nbsp;
-    <code>check_consistency</code> dead code removed from <code>impliedvol_calib.py</code> &nbsp;·&nbsp;
-    <code>dump_data</code> now protected by <code>_require_params()</code> in base class &nbsp;·&nbsp;
-    WIP stubs <code>Maximum</code> and <code>BarrierDown</code> removed from <code>exotics.py</code> &nbsp;·&nbsp;
-    <code>calibrate</code> path now covered by <code>TestSabrGeneratorCalibrate</code> (4 tests) &nbsp;·&nbsp;
-    PDE matrix assembly vectorized in <code>ThetaScheme</code> and <code>ImplicitScheme</code> &nbsp;·&nbsp;
-    <code>black.implied_vol</code> now delegates to <code>implied_vol_schadner</code> &nbsp;·&nbsp;
-    <code>PdeConfig.shift_forward</code> default changed to <code>False</code>
+    <strong>Fixed since 10th review (5 of 10):</strong>
+    <code>hidden_layer_activations: int</code> mistype gone — <code>compose_mlp</code> now takes an <code>MlpTopology</code> dataclass with correctly-typed fields &nbsp;·&nbsp;
+    <code>sdevpy/machinelearning/pytorch/__init__.py</code> added &nbsp;·&nbsp;
+    <code>settings.WORKFOLDER</code> hardcoded path removed &nbsp;·&nbsp;
+    <code>stovolgen.py</code> now reads <code>SDEVPY_DATA</code> env var with a home-folder fallback &nbsp;·&nbsp;
+    <code>sabrgenerator.py</code> no longer imports <code>sdevpy.tests.conftest</code>
+  </div>
+
+  <div class="regress-banner">
+    <strong>Still open from 10th review (5 of 10):</strong>
+    <code>McZabrGenerator.generate_samples()</code> print pollution — now <em>worse</em>, a 6th <code>print()</code> was added inside the per-surface loop &nbsp;·&nbsp;
+    <code>sabrgenerator.py:346</code> stray <code>print()</code> &nbsp;·&nbsp;
+    new variance swaps still silently drop the first return (<code>current_fixing is None</code>) &nbsp;·&nbsp;
+    <code>_get_activation</code> still rebuilds all 19 activation modules on every call &nbsp;·&nbsp;
+    <code>test_mlgen.py</code> still has a leftover <code>__main__</code> block calling one test directly
   </div>
 
   <div class="scorecard">
@@ -232,44 +249,44 @@
       </thead>
       <tbody>
         <tr>
-          <td>Architecture</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy maintained; PyTorch module added as a new subpackage but missing <code>__init__.py</code> unlike its Keras sibling</td>
-        </tr>
-        <tr>
-          <td>Correctness</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>trade.notional</code> fixed; variance swap still silently drops the first return for new contracts instead of raising</td>
-        </tr>
-        <tr>
-          <td>Error Handling</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>_require_params()</code> guard added to base class; <code>check_consistency</code> dead code gone; overall meaningfully improved</td>
-        </tr>
-        <tr>
-          <td>Testing</td><td>8 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Best addition yet: <code>test_mlgen_sabr.py</code> has 25+ tests across 9 classes covering calibrate, price_straddles_mod, generate_samples_inverse and more</td>
-        </tr>
-        <tr>
-          <td>Code Quality</td><td>6 / 10</td>
+          <td>Architecture</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Live <code>print()</code> in <code>mczabrgenerator.generate_samples()</code> and <code>sabrgenerator.retrieve_inverse_datasets_no_shuffle()</code>; wrong type annotation in new code</td>
+          <td style="color:var(--muted);font-size:.83rem">Core PDE/MC/ABC hierarchy still clean; <code>KerasLearningModel</code> shows the ABC contract can be silently violated with nothing catching it; <code>llms/gpt/</code> shows signs of an unfinished package move</td>
         </tr>
         <tr>
-          <td>Maintainability</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good overall; <code>settings.WORKFOLDER</code> hardcoded Windows path still committed; <code>sabrgenerator __main__</code> still imports <code>conftest</code></td>
+          <td>Correctness</td><td>4 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f85149"></div></div><span class="score-lbl">Weak</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Active notebook trains on leaked data; Greeks silently wrong for batched inputs; a validation check that can never fail; an extrapolation <code>eps</code> override silently ignored</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>hidden_layer_activations: int</code> in new <code>topology.py</code> is a wrong annotation; <code>_require_params</code> guard in base class is a good addition</td>
+          <td>Error Handling</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>download_file</code> swallows every failure and returns silently; <code>smilegenerator</code>/<code>sabrgenerator</code> catch <code>Exception</code> into a <code>-9999</code> sentinel with no logging</td>
         </tr>
         <tr>
-          <td>Documentation</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">New <code>compose_model</code> has a useful docstring; <code>_get_activation</code> has a minimal one-liner; existing module coverage adequate</td>
+          <td>Testing</td><td>4 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f85149"></div></div><span class="score-lbl">Weak</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Zero tests for <code>machinelearning/pytorch</code>, <code>machinelearning/keras</code>, <code>tensorflow/</code>, and <code>llms/gpt/</code> — and <code>pyproject.toml</code>'s coverage <code>omit</code> list actively hides this gap from reports</td>
+        </tr>
+        <tr>
+          <td>Code Quality</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Recurring <code>print()</code>-in-library pattern spread to a 3rd generator (<code>McHestonGenerator</code>) and got worse in a 2nd; ~13 test files carry the same leftover-<code>__main__</code> anti-pattern already flagged once</td>
+        </tr>
+        <tr>
+          <td>Maintainability</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good progress on the hardcoded-path front in the main pipeline, but 9+ other scripts/notebooks still hardcode machine-specific paths; two provider classes still import <code>sdevpy.tests.conftest</code> for production defaults</td>
+        </tr>
+        <tr>
+          <td>Type Safety</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>build_timegrid(config: dict)</code> is accessed via attributes everywhere; <code>fbsabr.price(parameters: list[float])</code> is actually used as a dict; <code>mcpricer.build</code>'s dict annotations don't match what's passed/returned</td>
+        </tr>
+        <tr>
+          <td>Documentation</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>get_pde_config</code> documents an <code>iv_surface</code> feature that doesn't exist; <code>NoneExtrapolator</code> docstring says it raises but it returns NaN instead; <code>vsvi.py</code> mislabels a vol check as a "variance" check</td>
         </tr>
       </tbody>
     </table>
@@ -278,261 +295,284 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
-  <div class="issue high">
+  <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>hidden_layer_activations</code> annotated as <code>int</code> — should be <code>list[str]</code></span>
-      <span class="badge high">High</span>
+      <span class="issue-title">The currently-open training notebook trains on the full dataset, not the training split — test-set RMSE is data-leaked</span>
+      <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/machinelearning/pytorch/topology.py · line 41</span>
+    <span class="loc">notebooks/stovol/StoVol Training.torch.ipynb · cell 5 (split) vs. cell 10 (train call)</span>
     <p>
-      <strong>Why it's bad:</strong> The signature of the new <code>compose_model</code> reads:
+      <strong>Why it's bad:</strong> The dataset is correctly split:
     </p>
-    <pre><span class="kw">def</span> <span class="fn">compose_model</span>(n_inputs: <span class="fn">int</span>, n_outputs: <span class="fn">int</span>, hidden_layer_activations: <span class="rm">int</span>, neurons: <span class="fn">int</span>, ...):</pre>
+    <pre><span class="c"># cell 5</span>
+x_train, y_train, x_test, y_test = datasets.prepare_sets(x_set, y_set, train_percent)</pre>
+    <p>but training uses the full, unsplit set instead of the training split:</p>
+    <pre><span class="c"># cell 10</span>
+model.set_sample_testing(epoch_sampling, x_test, y_test)
+<span class="rm">model.train(x_set, y_set, epochs, batch_size, shuffle=True)</span></pre>
     <p>
-      The body immediately iterates over it with <code>for activation_name in hidden_layer_activations</code>,
-      proving it must be a sequence of strings. The wrong annotation will cause every type-checker
-      (mypy, pyright, the IDE) to flag a valid call like
-      <code>compose_model(7, 1, ['softplus', 'softplus', 'softplus'], 16)</code> as a type error,
-      and it actively misleads anyone reading the signature.
+      Since <code>x_test</code>/<code>y_test</code> are subsets of <code>x_set</code>/<code>y_set</code>, the model
+      is trained on every row it is later "tested" against in cell 12
+      (<code>test_pred = model.predict(x_test)</code>). The reported test RMSE is therefore not a held-out
+      generalization metric at all — it's measuring memorized training data, exactly the failure mode the
+      split exists to catch. The sibling TensorFlow notebook <code>StoVol Training.ipynb</code> calls
+      <code>model.train(x_train, y_train, ...)</code> correctly, confirming this is a deviation, not the
+      intended pattern.
     </p>
     <p><strong>Fix:</strong></p>
-    <pre><span class="rm">def compose_model(n_inputs: int, n_outputs: int, hidden_layer_activations: int, ...</span>
-<span class="ok">def compose_model(n_inputs: int, n_outputs: int, hidden_layer_activations: list[str], ...</span></pre>
+    <pre><span class="rm">model.train(x_set, y_set, epochs, batch_size, shuffle=True)</span>
+<span class="ok">model.train(x_train, y_train, epochs, batch_size, shuffle=True)</span></pre>
   </div>
 
   <!-- 2 -->
-  <div class="issue medium">
+  <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title">Five live <code>print()</code> calls inside <code>McZabrGenerator.generate_samples()</code></span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>KerasLearningModel</code> cannot be instantiated — its required abstract method was never implemented</span>
+      <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/volatility/mlsurfacegen/mczabrgenerator.py · lines 24–28, 31</span>
+    <span class="loc">sdevpy/machinelearning/keras/learningmodel.py · lines 12-43 &nbsp;·&nbsp; sdevpy/machinelearning/learningmodel.py · lines 61-64</span>
     <p>
-      <strong>Why it's bad:</strong> These fire on every call to <code>generate_samples()</code>,
-      including in tests. The sibling <code>SabrGenerator.generate_samples()</code> correctly uses
-      <code>log.info()</code> for identical messages — the inconsistency means
-      <code>McZabrGenerator</code> cannot be silenced without redirecting stdout.
+      <strong>Why it's bad:</strong> The base class declares
+      <code>predict_on_scaled</code> as <code>@abstractmethod</code>. <code>KerasLearningModel</code> only
+      defines the concrete method <code>predict</code> (line 38) — <code>predict_on_scaled</code> is never
+      implemented anywhere in its MRO. Python refuses to construct any class with an unimplemented abstract
+      method, so <code>KerasLearningModel(...)</code> raises
+      <code>TypeError: Can't instantiate abstract class KerasLearningModel without an implementation for
+      abstract method 'predict_on_scaled'</code> on every call — including both branches inside
+      <code>load_learning_model</code> (lines 130 and 132). The Keras backend of this wrapper library is
+      entirely non-functional as written. A second, independent bug in the same call is masked by this one:
+      <code>load_learning_model</code> line 130 passes <code>is_scaled=True, x_scaler=x_scaler,
+      y_scaler=y_scaler</code>, but <code>__init__(self, base_model)</code> (line 14) only accepts
+      <code>base_model</code> — those kwargs were commented out and never restored.
     </p>
-    <pre><span class="rm">print(f"Number of strikes: {self.num_strikes:,}")
-print(f"Number of expiries: {self.num_expiries:,}")
-print(f"Surface size: {self.surface_size:,}")
-print(f"Number of samples: {num_samples:,}")
-print(f"Number of surfaces/parameter samples: {num_surfaces:,}")</span>
-<span class="ok">log.info(f"Number of strikes: {self.num_strikes:,}")
-log.info(f"Number of expiries: {self.num_expiries:,}")
-log.info(f"Surface size: {self.surface_size:,}")
-log.info(f"Number of samples: {num_samples:,}")
-log.info(f"Number of surfaces/parameter samples: {num_surfaces:,}")</span></pre>
-    <p>Add <code>log = logging.getLogger(__name__)</code> at module level, matching <code>sabrgenerator.py</code>.</p>
+    <p><strong>Fix:</strong> Implement <code>predict_on_scaled</code> (the existing <code>predict</code>
+    already does scaling — split out the scaled-only portion), and restore the constructor's
+    <code>is_scaled</code>/<code>x_scaler</code>/<code>y_scaler</code> parameters to match the call site.</p>
   </div>
 
   <!-- 3 -->
-  <div class="issue medium">
+  <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title">Stray <code>print()</code> inside <code>SabrGenerator.retrieve_inverse_datasets_no_shuffle()</code></span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>sdevpy/llms/gpt/</code> — three files import from a package path that no longer exists</span>
+      <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · line 346</span>
+    <span class="loc">sdevpy/llms/gpt/gpt.py · line 10 &nbsp;·&nbsp; chat.py · lines 3-4 &nbsp;·&nbsp; training.py · line 5</span>
+    <p><strong>Why it's bad:</strong> All three do a top-level import from <code>sdevpy.machinelearning.llms</code>
+    or <code>sdevpy.machinelearning.gpt</code> — neither exists; the real package is <code>sdevpy.llms.gpt</code>:</p>
+    <pre><span class="c"># gpt.py:10</span>
+<span class="rm">from sdevpy.machinelearning.llms.attention import MultiHeadAttention</span>
+
+<span class="c"># chat.py:3-4</span>
+<span class="rm">from sdevpy.machinelearning.gpt import GPTModel
+import sdevpy.machinelearning.llms.textgen as tg</span>
+
+<span class="c"># training.py:5</span>
+<span class="rm">import sdevpy.machinelearning.llms.textgen as tg</span></pre>
     <p>
-      <strong>Why it's bad:</strong> Every other diagnostic message in this method uses
-      <code>log.info()</code>, but one line reverts to bare <code>print()</code>:
+      Every one of these raises <code>ModuleNotFoundError</code> immediately on import — this looks like a
+      leftover from moving the package from <code>machinelearning/llms</code> to <code>llms/gpt</code>. Beyond
+      the import path, <code>chat.py</code> calls <code>tg.text_to_token_ids</code>,
+      <code>tg.generate_text_simple</code>, and <code>tg.token_ids_to_text</code> — none of which exist in
+      <code>textgen.py</code> (the real names are <code>text_to_tokens</code>, <code>generate</code>,
+      <code>tokens_to_text</code>). And <code>chat.py</code> has no <code>if __name__ == "__main__":</code>
+      guard at all: model loading from a hardcoded <code>C:\temp\llms\model-save.pth</code> and text generation
+      run at module import time, not on demand. No test in <code>sdevpy/tests/</code> imports anything from
+      <code>llms/gpt/</code>, which is why none of this was caught.
     </p>
-    <pre><span class="rm">print("> Number of strikes: " + str(n_strikes))</span>
-<span class="ok">log.info(f"Number of strikes: {n_strikes:,}")</span></pre>
-    <p>
-      This fires every time <code>retrieve_inverse_datasets_no_shuffle</code> is called —
-      including during test runs — and cannot be suppressed via the logging configuration.
-    </p>
+    <p><strong>Fix:</strong> Update the three import paths to <code>sdevpy.llms.gpt.*</code>, rename the
+    <code>chat.py</code>/<code>training.py</code> calls to match <code>textgen.py</code>'s actual function
+    names, and wrap <code>chat.py</code>'s executable body in <code>if __name__ == "__main__":</code>.</p>
   </div>
 
   <!-- 4 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title">Missing <code>__init__.py</code> in <code>sdevpy/machinelearning/pytorch/</code></span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>tssvi2</code> is excluded from the packaged distribution but imported at module level by the factory that builds it</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/machinelearning/pytorch/ · (file absent)</span>
+    <span class="loc">pyproject.toml · line 32 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/impliedvol_factory.py · line 3</span>
+    <p><strong>Why it's bad:</strong> <code>pyproject.toml</code> excludes the module from the built package:</p>
+    <pre>exclude = [<span class="st">"sdevpy/volatility/impliedvol/models/tssvi2*"</span>]</pre>
+    <p>but <code>impliedvol_factory.py</code> does a top-level, unconditional import of it:</p>
+    <pre>from sdevpy.volatility.impliedvol.models.tssvi2 import TsSvi2</pre>
     <p>
-      <strong>Why it's bad:</strong> The sibling <code>sdevpy/machinelearning/keras/</code> has an
-      <code>__init__.py</code>; the new <code>pytorch/</code> directory does not. Python 3 namespace
-      packages mean imports may work incidentally, but the subpackage will be invisible to
-      <code>setuptools</code> / <code>find_packages()</code>, will not appear in
-      <code>pkg_resources</code> listings, and the inconsistency misleads contributors about where
-      the package boundary is. Depending on the <code>pyproject.toml</code> configuration, the
-      module may silently be excluded from distribution builds.
+      This works fine when running from the source checkout (which is why it hasn't been noticed), but in any
+      <code>pip install</code>-built distribution, <code>tssvi2.py</code> is absent while
+      <code>impliedvol_factory.py</code> ships normally — so importing <code>impliedvol_factory</code> itself
+      fails with <code>ModuleNotFoundError</code> for anyone using the installed package, breaking every model
+      the factory builds (SVI, LogMix, TsSvi1), not just TsSvi2.
     </p>
-    <p>
-      <strong>Fix:</strong> Create an empty
-      <code>sdevpy/machinelearning/pytorch/__init__.py</code>, matching the pattern of every
-      other subpackage in the project.
-    </p>
+    <p><strong>Fix:</strong> Either remove the <code>tssvi2*</code> exclusion from <code>pyproject.toml</code>
+    (if the model is meant to be public), or make the import lazy/local inside the one function that needs it
+    so the rest of the factory still works without it.</p>
   </div>
 
   <!-- 5 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title">Variance swap silently drops first return for new contracts (<code>current_fixing is None</code>)</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>EqVolSurfaceData</code>'s size-consistency check can never fail</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 489–491</span>
+    <span class="loc">sdevpy/market/eqvolsurface.py · lines 24-31</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre>self.input_strikes = [np.asarray(s[<span class="st">'strikes'</span>]) for s in sections]
+self.vols = [np.asarray(s[<span class="st">'vols'</span>]) for s in sections]
+
+n_times = len(self.expiries)
+if any(len(x) != n_times for x in (self.input_strikes, self.vols)):
+    raise ValueError(<span class="st">"Incompatible size along time direction..."</span>)</pre>
     <p>
-      <strong>Why it's bad:</strong> For a brand-new variance swap where <code>start >= valdate</code>,
-      <code>set_valuation_date</code> leaves <code>self.current_fixing = None</code>.
-      In <code>evaluate()</code>, line 489 silently skips the first increment:
+      <code>self.input_strikes</code> and <code>self.vols</code> are list comprehensions with exactly one entry
+      per section by construction — so <code>len(self.input_strikes) == len(self.vols) == n_times</code> is
+      always true, regardless of whether an individual section's <code>strikes</code>/<code>vols</code> arrays
+      are mismatched in length or malformed. The check tests the wrong object (the outer list) instead of each
+      inner array, so it can never raise — malformed market data for a single expiry passes through silently.
     </p>
-    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is not None</span>:   <span class="c"># None for new contracts → block is skipped</span>
-    var_sum = var_sum + np.power(np.log(spot_paths[:, <span class="fn">0</span>] / self.current_fixing), <span class="fn">2</span>)</pre>
-    <p>
-      The previous <code>ValueError</code> (now commented out on line 490) was a crash, but
-      at least it was audible. The current behaviour quietly mis-prices every new variance swap
-      by dropping the return from last-known spot to today, with no warning to the caller.
-    </p>
-    <p>
-      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty, set
-      <code>current_fixing</code> to the current spot from the market data provider, or
-      re-introduce the <code>ValueError</code> and document that a
-      <code>set_current_fixing(spot)</code> call is required before pricing new contracts.
-    </p>
+    <p><strong>Fix:</strong> Check each section's own arrays, e.g. validate
+    <code>len(s['strikes']) == len(s['vols'])</code> per section during the list-comprehension pass, and check
+    <code>len(self.expiries) == len(sections)</code> for the outer dimension.</p>
   </div>
 
   <!-- 6 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title"><code>settings.WORKFOLDER</code> is a hardcoded Windows-only path committed to the repo</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Custom extrapolation <code>eps</code> is silently dropped — extrapolators always fall back to the tiny default and can return NaN</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/settings.py · line 9</span>
+    <span class="loc">sdevpy/maths/interpolation.py · lines 21-33 (drop point) &nbsp;·&nbsp; lines 201-220 (<code>FlatExtrapolator</code>)</span>
+    <p><strong>Why it's bad:</strong> <code>create_extrapolator</code> doesn't accept or forward <code>**kwargs</code>:</p>
+    <pre><span class="kw">def</span> <span class="fn">create_extrapolator</span>(interpolator, type: str=<span class="st">'builtin'</span>):
+    <span class="kw">match</span> type.lower():
+        <span class="kw">case</span> <span class="st">'flat'</span>: <span class="kw">return</span> <span class="rm">FlatExtrapolator()</span>  <span class="c"># no kwargs passed through</span></pre>
     <p>
-      <strong>Why it's bad:</strong> <code>WORKFOLDER = r"C:\temp\sdevpy"</code> is a machine-specific
-      Windows absolute path checked into source control. Any contributor on Linux or macOS, or a Windows
-      user with a different layout, will silently be directed to a non-existent path. Scripts that
-      consume it (e.g. <code>stovolgen.py</code>, see issue #7) will fail at runtime with a
-      <code>FileNotFoundError</code> that looks like a bug rather than a missing configuration.
+      but <code>FlatExtrapolator.__init__(self, **kwargs)</code> does accept a custom <code>eps</code>
+      (<code>self.eps = kwargs.get('eps', constants.EPS)</code> via its base class) — it just never receives it,
+      since <code>create_extrapolator</code> constructs it with no arguments at all. Any caller who passes
+      <code>create_interpolation(..., eps=0.5)</code> silently gets the library default
+      (<code>constants.EPS = 1e-11</code>) instead. Reproduced directly: with a custom
+      <code>eps=0.5</code>, evaluating a point 0.3 outside the grid returns <code>NaN</code> instead of the
+      intended flat-extrapolated value, because the boundary check in <code>FlatExtrapolator.value()</code>
+      uses the wrong (much smaller) tolerance.
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="kw">import</span> os
-<span class="kw">from</span> pathlib <span class="kw">import</span> Path
-<span class="rm">WORKFOLDER = r"C:\temp\sdevpy"</span>
-<span class="ok">WORKFOLDER = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))</span></pre>
+    <p><strong>Fix:</strong> Change <code>create_extrapolator</code> to accept and forward
+    <code>**kwargs</code>: <code>return FlatExtrapolator(**kwargs)</code>, etc.</p>
   </div>
 
   <!-- 7 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title"><code>stovolgen.py</code> derives output path from the hardcoded <code>settings.WORKFOLDER</code></span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>calculate_with_greeks</code> returns a base value from row 0 only, misaligned with full-batch gradients</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">examples/stovol/stovolgen.py · line 28</span>
+    <span class="loc">sdevpy/machinelearning/keras/learningmodel.py · lines 94-96</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre>base = md_y[<span class="fn">0</span>].numpy()          <span class="c"># only the first row of the batch</span>
+grads = t.gradient(md_y, md_x_tensor)
+diffs = grads.numpy()          <span class="c"># covers the entire batch</span>
+<span class="kw">return</span> base, diffs</pre>
     <p>
-      <strong>Why it's bad:</strong>
-      <code>project_folder = os.path.join(settings.WORKFOLDER, "stovol")</code>
-      inherits the hardcoded <code>C:\temp\sdevpy</code> from issue #6. This script is the
-      canonical data-generation entry point for the whole stovol pipeline; it is the first
-      thing a new contributor runs, and it will silently write output to a path that does
-      not exist on their machine.
+      For any <code>x_test</code> with more than one row, <code>base</code> corresponds to sample 0 while
+      <code>diffs</code> covers every sample in the batch — the two returned quantities describe different
+      inputs. Any caller combining base value and Greeks for a batch of more than one point (the normal use
+      case for a vectorized risk calculation) gets a base value that is silently wrong for every row except
+      the first.
     </p>
-    <p>
-      <strong>Fix:</strong> Fixing issue #6 propagates here for free. Alternatively, read the
-      path directly without going through <code>settings</code>:
-    </p>
-    <pre><span class="rm">project_folder = os.path.join(settings.WORKFOLDER, "stovol")</span>
-<span class="ok">project_folder = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy')) / "stovol"</span></pre>
+    <p><strong>Fix:</strong> <code>base = md_y.numpy()</code> (drop the <code>[0]</code> indexing) so it
+    covers the same batch as <code>diffs</code>.</p>
   </div>
 
   <!-- 8 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>sabrgenerator.py</code> <code>__main__</code> block imports <code>conftest</code> for the dataset path</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Zero test coverage for <code>machinelearning/{pytorch,keras,tensorflow}</code> and <code>llms/gpt</code> — and the coverage config actively hides the gap</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · lines 426–437</span>
+    <span class="loc">sdevpy/tests/ · (no matches for "pytorch"/"keras"/"tensorflow"/<code>llms.gpt</code> anywhere) &nbsp;·&nbsp; pyproject.toml · lines 57-59</span>
     <p>
-      <strong>Why it's bad:</strong> The generation script at the bottom of a library file reads:
+      <strong>Why it's bad:</strong> No file under <code>sdevpy/tests/</code> imports anything from
+      <code>sdevpy.machinelearning.pytorch</code>, <code>sdevpy.machinelearning.keras</code>,
+      <code>sdevpy.tensorflow</code>, or <code>sdevpy.llms.gpt</code> — confirmed by searching every test file
+      for each package name. This is precisely why issues #2, #3, #6 (in <code>keras/learningmodel.py</code>)
+      and the still-open activation/print issues in <code>pytorch/topology.py</code> have gone unnoticed for
+      multiple reviews. Worse, <code>pyproject.toml</code>'s coverage config actively excludes these same
+      directories from measurement:
     </p>
-    <pre><span class="kw">from</span> sdevpy.tests <span class="kw">import</span> conftest
-...
-data_path = conftest.dataset_path() / <span class="st">"stovol"</span> / model_type</pre>
+    <pre>[tool.coverage.run]
+omit = [
+    ...
+    <span class="rm">"sdevpy/tensorflow/*",
+    "sdevpy/machinelearning/*",
+    "sdevpy/llms/*"</span>
+]</pre>
     <p>
-      A production data-generation entry point importing from <code>sdevpy.tests</code> couples
-      library code to test infrastructure. If the tests directory is excluded from a distribution
-      package, this import fails. The correct output location for generated datasets is not inside
-      the test tree — it belongs under <code>WORKFOLDER</code> or its own environment variable.
+      so a coverage report never shows these as gaps at all — the metric that would normally surface "we have
+      0% coverage here" is configured to stay silent about it instead.
     </p>
-    <p>
-      <strong>Fix:</strong> Replace the <code>conftest</code> import with the env-var pattern
-      from issue #6, and consider moving this script to <code>examples/stovol/</code> where
-      the equivalent <code>stovolgen.py</code> already lives.
-    </p>
+    <p><strong>Fix:</strong> At minimum, add a smoke test per subpackage (construct a model, run one
+    forward/backward pass, save/load round-trip) to catch import- and instantiation-level breakage like #2 and
+    #3. Separately, remove <code>machinelearning/*</code> and <code>llms/*</code> from the coverage
+    <code>omit</code> list once tests exist, so future gaps are visible in reports rather than hidden by
+    config.</p>
   </div>
 
   <!-- 9 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>_get_activation</code> constructs all 19 activation modules on every call</span>
-      <span class="badge low">Low</span>
+      <span class="issue-title"><code>WorstOfBarrier</code> only evaluates the barrier at expiry, not through time — self-documented as unfinished but exported without a runtime guard</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/machinelearning/pytorch/topology.py · lines 7–33</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 8-9 (docstring), 19-36 (<code>evaluate</code>), 41-45 (<code>set_valuation_date</code>)</span>
     <p>
-      <strong>Why it's bad:</strong> The <code>activations</code> dict is rebuilt from scratch inside
-      the function body on every call, constructing all 19 <code>nn.Module</code> instances even
-      though only one is returned and used. For a 3-layer model, <code>compose_model</code> allocates
-      57 modules and discards 54. The idiomatic pattern is a module-level dict of class references
-      (factories) that instantiate only what is requested:
+      <strong>Why it's bad:</strong> The class docstring is candid about the limitation —
+      <em>"Not doing by algebra yet. Will need implementation of barrier monitoring first."</em> But nothing
+      stops a caller from constructing and pricing it anyway: <code>set_valuation_date</code> sets
+      <code>self.eventdates = [self.expiry]</code> — the <em>only</em> event date ever registered — so
+      <code>evaluate()</code>'s <code>knocked = (min_path &lt; self.barrier).any(axis=1)</code> (which reads as
+      if it monitors the barrier across multiple time points) degenerates to a single check at expiry.
+      This silently prices a continuously-monitored barrier as if it were a European condition at expiry only
+      — for any barrier level the underlying could have breached and recovered from before expiry, this
+      overstates the surviving payoff. <code>sdevpy/tests/test_mc.py:38</code> sets the barrier far out of
+      range, so no test would ever exercise (or catch) the missing monitoring.
     </p>
-    <pre><span class="c"># Current — 19 modules constructed, 18 discarded per call:</span>
-<span class="kw">def</span> <span class="fn">_get_activation</span>(name: str) -> nn.Module:
-    activations = {<span class="st">'relu'</span>: nn.ReLU(), <span class="st">'tanh'</span>: nn.Tanh(), ...}
-    <span class="kw">return</span> activations[name]
-
-<span class="c"># Fix — 1 module constructed per call:</span>
-<span class="ok">_ACTIVATION_FACTORIES: dict[str, type[nn.Module]] = {
-    'relu': nn.ReLU, 'tanh': nn.Tanh, 'sigmoid': nn.Sigmoid, ...
-}
-def _get_activation(name: str) -> nn.Module:
-    if name not in _ACTIVATION_FACTORIES:
-        raise ValueError(f"Unsupported activation: {name}")
-    return _ACTIVATION_FACTORIES[name]()</span></pre>
-    <p>
-      Moving <code>_ACTIVATION_FACTORIES</code> to module level also makes it easy to enumerate
-      all supported activations without calling the function.
-    </p>
+    <p><strong>Fix:</strong> Either implement genuine path-wise barrier monitoring (register all monitoring
+    dates as event dates, not just expiry), or — matching how the equivalent WIP-stub issue was resolved in
+    the 9th/10th review cycle — don't export the class from the public payoffs namespace until it's real,
+    so a caller can't accidentally price a fake barrier.</p>
   </div>
 
   <!-- 10 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>test_mlgen.py</code> has a <code>__main__</code> block that calls test methods directly</span>
-      <span class="badge low">Low</span>
+      <span class="issue-title"><code>get_pde_config</code>'s docstring and <code>t</code> parameter describe an <code>iv_surface</code>-based feature that doesn't exist in the function</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/test_mlgen.py · lines 540–543</span>
+    <span class="loc">sdevpy/pde/forwardpde.py · lines 163-177</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre><span class="kw">def</span> <span class="fn">get_pde_config</span>(t: float=<span class="kw">None</span>, **kwargs) -> PdeConfig:
+    <span class="st">""" ...The time argument is only used if the volatility surface is passed too (iv_surface),
+        in which case it is used to estimate the mesh vol at ATM. """</span></pre>
     <p>
-      <strong>Why it's bad:</strong> The file ends with:
+      The function body never references <code>t</code>, and <code>iv_surface</code> does not appear anywhere
+      in <code>forwardpde.py</code> (confirmed by search). Either the feature was removed and the
+      docstring/parameter were never cleaned up, or it was never implemented — either way, a caller reading the
+      docstring believes passing <code>t</code> changes behavior when it silently does nothing.
     </p>
-    <pre><span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
-    test = TestMcZabrGeneratorInit()
-    test.test_stores_mc_params()</pre>
-    <p>
-      Running the file directly executes only this one test, bypassing the full suite and
-      giving a false impression of coverage. The block appears to have been added for local
-      debugging and never removed. Test files should not have <code>__main__</code> guards —
-      use <code>pytest sdevpy/tests/test_mlgen.py::TestMcZabrGeneratorInit::test_stores_mc_params -v</code>
-      to run a single test instead.
-    </p>
-    <p><strong>Fix:</strong> Remove lines 540–543 entirely.</p>
+    <p><strong>Fix:</strong> Remove the unused <code>t</code> parameter and the paragraph describing the
+    <code>iv_surface</code> behavior, or implement the described ATM-mesh-vol estimation if it's still wanted.</p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #10 &nbsp;·&nbsp; 2026-06-28 (full scan)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #11 &nbsp;·&nbsp; 2026-08-15 (full scan, including <code>sdevpy/thirdparty</code>-excluded review)
   </footer>
 </div>
 </body>

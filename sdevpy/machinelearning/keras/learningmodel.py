@@ -11,8 +11,8 @@ from sdevpy.machinelearning.learningmodel import LearningModel, scaler_files
 
 class KerasLearningModel(LearningModel):
     """ Keras subclass of LearningModel, using TensorFlow backend """
-    def __init__(self, base_model): #, is_scaled: bool=False, x_scaler=None, y_scaler=None):
-        super().__init__(base_model) #, is_scaled, x_scaler, y_scaler)
+    def __init__(self, base_model):
+        super().__init__(base_model)
         # Now need to call set_scalers() instead
         self.callback = None
         self.history = None
@@ -35,12 +35,10 @@ class KerasLearningModel(LearningModel):
 
         self.history = history
 
-    def predict(self, x_test):
-        """ Predict, including scaling inputs/outputs """
-        x_scaled = self.x_scaler.transform(x_test)
+    def predict_on_scaled(self, x_scaled: npt.ArrayLike) -> npt.ArrayLike:
+        """ Predict (on scaled x, outputting scaled y) """
         y_scaled = self.base_model(x_scaled)
-        y_test = self.y_scaler.inverse_transform(y_scaled)
-        return y_test
+        return y_scaled
 
     def save(self, path: Path):
         """ Save model and its scalers to files """
@@ -91,7 +89,8 @@ class KerasLearningModel(LearningModel):
             md_y = md_y_scaled * tf_y_scale + tf_y_mean
 
         # Retrieve results
-        base = md_y[0].numpy()
+        base = md_y.numpy() # Check with below if no longer working
+        # base = md_y[0].numpy()
         grads = t.gradient(md_y, md_x_tensor)
         diffs = grads.numpy()
         return base, diffs

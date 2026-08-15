@@ -537,6 +537,6 @@ def test_mczabr_price_gamma_one_close_to_mcsabr():
     assert np.abs(z[0, 0] - s[0, 0]) < 5e-4  # within 0.5bp forward
 
 
-if __name__ == "__main__":
-    test = TestMcZabrGeneratorInit()
-    test.test_stores_mc_params()
+# if __name__ == "__main__":
+#     test = TestMcZabrGeneratorInit()
+#     test.test_stores_mc_params()

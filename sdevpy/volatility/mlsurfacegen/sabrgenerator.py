@@ -343,7 +343,7 @@ class SabrGenerator(SmileGenerator):
 
         # Add prices prices
         n_strikes = data_df.shape[1] - 6
-        print("> Number of strikes: " + str(n_strikes))
+        log.info("Number of strikes: " + str(n_strikes))
         for i in range(n_strikes):
             header = 'K' + str(i)
             x_set = np.column_stack((x_set, data_df[header]))

@@ -12,23 +12,23 @@ def create_interpolation(**kwargs):
     l_extrap = kwargs.get('l_extrap', 'builtin')
     r_extrap = kwargs.get('r_extrap', 'builtin')
     interpolator = create_interpolator(interp, **kwargs)
-    l_extrapolator = create_extrapolator(interpolator, l_extrap)
-    r_extrapolator = create_extrapolator(interpolator, r_extrap)
+    l_extrapolator = create_extrapolator(interpolator, l_extrap, **kwargs)
+    r_extrapolator = create_extrapolator(interpolator, r_extrap, **kwargs)
     interpolation = Interpolation(interpolator, l_extrapolator, r_extrapolator, **kwargs)
     return interpolation
 
 
-def create_extrapolator(interpolator, type: str='builtin'):
+def create_extrapolator(interpolator, type: str='builtin', **kwargs):
     type_dn = type.lower()
     match type_dn:
         case 'none':
-            return NoneExtrapolator()
+            return NoneExtrapolator(**kwargs)
         case 'builtin':
             return interpolator
         case 'flat':
-            return FlatExtrapolator()
+            return FlatExtrapolator(**kwargs)
         case 'linear':
-            return LinearInterpolator()
+            return LinearInterpolator(**kwargs)
         case _:
             raise TypeError(f"Unknown extrapolator type: {type}")
 

@@ -20,15 +20,23 @@ class EqVolSurfaceData:
         # Sort by increasing date
         sections.sort(key=lambda x: x['expiry'])
 
+        # Size checks
+        for idx in range(len(sections)):
+            s = sections[idx]
+            if len(s['strikes']) != len(s['vols']):
+                raise ValueError(f"Mismatch in sizes between strikes and vols on section index {idx}")
+
         # Extract
         self.expiries = np.asarray([s['expiry'] for s in sections])
         self.input_strikes = [np.asarray(s['strikes']) for s in sections]
         self.vols = [np.asarray(s['vols']) for s in sections]
 
         # Size checks
-        n_times = len(self.expiries)
-        if any(len(x) != n_times for x in (self.input_strikes, self.vols)):
-            raise ValueError("Incompatible size along time direction between expiries, forwards, strikes and vols")
+        if len(self.expiries) != len(sections):
+            raise ValueError("Mismatch in sizes between expiries and sections")
+        # n_times = len(self.expiries)
+        # if any(len(x) != n_times for x in (self.input_strikes, self.vols)):
+        #     raise ValueError("Incompatible size along time direction between expiries, forwards, strikes and vols")
 
     def get_prices(self, fwd_curve: EqForwardCurve, option_type: str='call') -> npt.ArrayLike:
         """ Retrieve prices """

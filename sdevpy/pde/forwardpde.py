@@ -160,11 +160,8 @@ def calculate_densities(maturities: npt.NDArray[np.float64], lv: LocalVol, pde_c
     return reports
 
 
-def get_pde_config(t: float=None, **kwargs) -> PdeConfig:
-    """ Inspect the kwargs and retrieve PDE config.
-        The time argument is only used if the volatility surface is passed too (iv_surface),
-        in which case it is used to estimate the mesh vol at ATM.
-    """
+def get_pde_config(**kwargs) -> PdeConfig:
+    """ Inspect the kwargs and retrieve PDE config """
     pde_config = kwargs.get('pde_config', None)
     if pde_config is None: # Set using the other arguments
         n_timesteps = kwargs.get('n_timesteps', 100)
@@ -225,7 +222,8 @@ def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], str
     expiry_times = timegrids.model_time(valdate, expiries)
 
     # Set PDE config
-    pde_config = get_pde_config(expiry_times[0], **kwargs)
+    pde_config = get_pde_config(**kwargs)
+    # pde_config = get_pde_config(expiry_times[0], **kwargs)
 
     # Run PDE to calculate densities at each maturity
     density_reports = calculate_densities(expiry_times, lv, pde_config)
@@ -262,7 +260,8 @@ def price_vanillas(valdate: dt.datetime, expiry: dt.datetime, strikes: list[floa
     expiry_time = timegrids.model_time(valdate, expiry)
 
     # Set PDE config
-    pde_config = get_pde_config(expiry_time, **kwargs)
+    pde_config = get_pde_config(**kwargs)
+    # pde_config = get_pde_config(expiry_time, **kwargs)
 
     # Build sparse grid
     start_time = FWD_PDE_START_TIME

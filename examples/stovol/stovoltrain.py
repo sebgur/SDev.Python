@@ -142,7 +142,6 @@ if TRAIN:
     FINAL_LR = 1.0e-4
     TARGET_EPOCH = EPOCHS * 0.90  # Epoch by which we plan to be down to 110% of final LR
     PERIODS = 10  # Number of oscillation periods until target epoch
-    # lr_schedule = FlooredExponentialDecay(INIT_LR, FINAL_LR, DECAY, STEPS)
     lr_schedule = FlooredExponentialDecay(NUM_SAMPLES, BATCH_SIZE, TARGET_EPOCH, INIT_LR, FINAL_LR)
 
     # Optimizer

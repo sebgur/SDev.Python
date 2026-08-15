@@ -3,6 +3,9 @@
     "allow": [
       "Read(**)",
       "Read(//tmp/**)",
+      "Agent(**)",
+      "Skill(**)",
+      "Write(/claude/**)",
       "Bash(**)",
       "Bash(grep*)",
       "Bash(awk*)",
@@ -21,7 +24,22 @@
       "PowerShell(git status*)",
       "Edit(/.claude/skills/code-review/**)",
       "Edit(/.claude/skills/recommendations/**)",
-      "Edit(/.claude/skills/test-review/**)"
+      "Edit(/.claude/skills/test-review/**)",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/algos/get_data.ipynb\")",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/algos/get_yahoo.ipynb\")",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/algos/ndel_cointegration.ipynb\")",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/jansen/linear_regression.ipynb\")",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/llms/chat_gpt2.ipynb\")",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/mc/MC-Payoffs.ipynb\")",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/pinns/Deep Learning a PDE for Call Options.ipynb\")",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/pinns/Deep Learning a PDE for Worst Of Options.ipynb\")",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/stovol/StoVol Training.torch.ipynb\")",
+      "Bash(python3 /tmp/dump_nb.py \"notebooks/stovol/StoVol Training.ipynb\")",
+      "Bash(cat > *)",
+      "Bash(rm -f /tmp/dump_nb.py /tmp/dump_nb2.py)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }

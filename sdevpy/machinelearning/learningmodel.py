@@ -12,16 +12,13 @@ from sdevpy.utilities import jsonmanager as jsm
 class LearningModel(ABC):
     """ Wrapper class for machine learning models, including scalers, and simplifying
         evaluation, history tracking, exporting to/importing from files, etc. """
-    def __init__(self, base_model): #, is_scaled: bool=False, x_scaler=None, y_scaler=None):
+    def __init__(self, base_model):
         self.base_model = base_model
-        # if x_scaler is None:
         x_scaler = StandardScaler(copy=True)
         self.x_scaler = x_scaler
-        # if y_scaler is None:
         y_scaler = StandardScaler(copy=True)
         self.y_scaler = y_scaler
         self.is_scaled = False
-        # self.is_scaled = is_scaled
         self.topology = None
         self.optimizer = None
 

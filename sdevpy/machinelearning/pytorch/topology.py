@@ -47,6 +47,11 @@ def compose_mlp(topology: MlpTopology, bias: float=0.1) -> nn.Sequential:
             - neurons: number of neurons per hidden layer
             - dropout: drop-out rate
     """
+    # The MLP has learnable weights:
+    #   - between the input layer and the first hidden layer (n_inputs x neurons)
+    #   - between hidden layer and hidden layer (neurons x neurons)
+    #   - between the last hidden layer and the output layer (neurons x n_outputs)
+    # PyTorch then requires appending activations and drop-out "layers".
     n_inputs = topology.input_dim
     n_outputs = topology.output_dim
     hidden_layer_activations = topology.layers
