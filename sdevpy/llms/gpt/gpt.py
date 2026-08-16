@@ -10,6 +10,15 @@ import numpy as np
 from sdevpy.llms.attention import MultiHeadAttention
 
 
+############ TODO #################################################################################
+# * Get a fresh GPT model to run from weights and config
+# * Plug under local_model design to harmonize chat/instruction design
+# * Cleanup training algorithm and try it on runpod
+# * Refresh notebook to work on email/trade booking instructions
+# * Cleanup Raschka samples
+# * Write LORA routine to train on trade booking
+
+
 class GPTModel(nn.Module):
     """ The model's forward method takes in a batch of sequences of token IDs and it outputs
         a batch of sequences with the same size, i.e. representing the same number of tokens.

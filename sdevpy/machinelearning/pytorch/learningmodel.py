@@ -24,7 +24,7 @@ class TorchLearningModel(LearningModel):
         else:
             self.device = device
 
-        self.base_model = self.base_model.to(device)
+        self.base_model = self.base_model.to(self.device)
         self.loss = None
         self.scheduler = None
         self.epoch_sampling, self.x_test, self.y_test = None, None, None
