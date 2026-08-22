@@ -1,25 +1,45 @@
-# Copyright (c) Sebastian Raschka under Apache License 2.0 (see LICENSE.txt).
-# Source for "Build a Large Language Model From Scratch"
-#   - https://www.manning.com/books/build-a-large-language-model-from-scratch
-# Code: https://github.com/rasbt/LLMs-from-scratch
-import os
+""" Download the GPT2 weights as released by Open AI. Then create a GPT2 model object in PyTorch and save its weights.
+    This allows a conversion of the weight format from the format released by Open AI using tensorflow to
+    the PyTorch format which we use in the rest of the library.
+"""
+import os, gc
+from pathlib import Path
 import urllib.request
-
-# import requests
 import json
 import numpy as np
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress all messages except errors
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # Disable oneDNN messages
 import tensorflow as tf
 from tqdm import tqdm
+import torch
+from sdevpy.llms.gpt import gpt
+from sdevpy.utilities import jsonmanager as jsm
 
 
-def download_and_load_gpt2(model_size, models_dir):
+def download_and_load_gpt2(model_size: str, model_dir: str):
+    """ Download Open AI model weights and retrieve settings/parameters """
+    download_gpt2(model_size, model_dir)
+    model_dir = os.path.join(model_dir, model_size)
+    return load_gpt2(model_dir)
+
+
+def load_gpt2(model_dir: str):
+    """ Retrieve settings/parameters given model save location """
+    tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
+    settings = json.load(open(os.path.join(model_dir, "hparams.json"), encoding="utf-8"))
+    params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
+    return settings, params
+
+
+def download_gpt2(model_size: str, model_dir: str):
+    """ Download Open AI model weights """
     # Validate model size
     allowed_sizes = ("124M", "355M", "774M", "1558M")
     if model_size not in allowed_sizes:
         raise ValueError(f"Model size not in {allowed_sizes}")
 
     # Define paths
-    model_dir = os.path.join(models_dir, model_size)
+    model_dir = os.path.join(model_dir, model_size)
     base_url = "https://openaipublic.blob.core.windows.net/gpt-2/models"
     backup_base_url = "https://f001.backblazeb2.com/file/LLMs-from-scratch/gpt2"
     filenames = [
@@ -35,13 +55,6 @@ def download_and_load_gpt2(model_size, models_dir):
         backup_url = os.path.join(backup_base_url, model_size, filename)
         file_path = os.path.join(model_dir, filename)
         download_file(file_url, file_path, backup_url)
-
-    # Load settings and params
-    tf_ckpt_path = tf.train.latest_checkpoint(model_dir)
-    settings = json.load(open(os.path.join(model_dir, "hparams.json"), encoding="utf-8"))
-    params = load_gpt2_params_from_tf_ckpt(tf_ckpt_path, settings)
-
-    return settings, params
 
 
 def download_file(url, destination, backup_url=None):
@@ -95,37 +108,6 @@ def download_file(url, destination, backup_url=None):
         print(f"An unexpected error occurred: {e}")
 
 
-# Alternative way using `requests`
-"""
-def download_file(url, destination):
-    # Send a GET request to download the file in streaming mode
-    response = requests.get(url, stream=True)
-
-    # Get the total file size from headers, defaulting to 0 if not present
-    file_size = int(response.headers.get("content-length", 0))
-
-    # Check if file exists and has the same size
-    if os.path.exists(destination):
-        file_size_local = os.path.getsize(destination)
-        if file_size == file_size_local:
-            print(f"File already exists and is up-to-date: {destination}")
-            return
-
-    # Define the block size for reading the file
-    block_size = 1024  # 1 Kilobyte
-
-    # Initialize the progress bar with total file size
-    progress_bar_description = url.split("/")[-1]  # Extract filename from URL
-    with tqdm(total=file_size, unit="iB", unit_scale=True, desc=progress_bar_description) as progress_bar:
-        # Open the destination file in binary write mode
-        with open(destination, "wb") as file:
-            # Iterate over the file data in chunks
-            for chunk in response.iter_content(block_size):
-                progress_bar.update(len(chunk))  # Update progress bar
-                file.write(chunk)  # Write the chunk to the file
-"""
-
-
 def load_gpt2_params_from_tf_ckpt(ckpt_path, settings):
     # Initialize parameters dictionary with empty blocks for each layer
     params = {"blocks": [{} for _ in range(settings["n_layer"])]}
@@ -153,3 +135,42 @@ def load_gpt2_params_from_tf_ckpt(ckpt_path, settings):
         target_dict[last_key] = variable_array
 
     return params
+
+
+if __name__ == "__main__":
+    # Choose export path and model size
+    project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
+    project_path = project_path / "llms" / "gpt"
+    model_size = "355M" # 124M, 355M, 774M, 1558M
+
+    print(f"Project path: {project_path}")
+
+    # Retrieve model topology and parameters
+    settings, params = download_and_load_gpt2(model_size, project_path)
+    print("Settings: ", settings)
+    print("Param dict keys: ", params.keys())
+
+    # Create model
+    print("Creating model from its topology")
+    GPT_CONFIG = {"vocab_size": settings['n_vocab'], "context_length": settings['n_ctx'],
+                  "emb_dim": settings['n_embd'], "n_heads": settings['n_head'],
+                  "n_layers": settings['n_layer'], "drop_rate": 0.1, "qkv_bias": True}
+    model = gpt.GPTModel(GPT_CONFIG)
+    model.eval() # Not sure we really need this
+
+    # Load parameters into model
+    print("Loading weights for GPT-2 model size: " + model_size)
+    gpt.load_weights(model, params)
+    print("Done loading weights!")
+
+    # Save model into PyTorch format
+    model_path = project_path / f"gpt2-{model_size}"
+    model_path.mkdir(parents=True, exist_ok=True)
+    weight_file = model_path / "weights.pth"
+    torch.save({"model_state_dict": model.state_dict()}, weight_file)
+    config_file = model_path / "config.json"
+    jsm.serialize(GPT_CONFIG, config_file)
+
+    # Delete model from memory
+    del model
+    gc.collect()

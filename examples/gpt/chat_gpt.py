@@ -51,7 +51,6 @@ if __name__ == "__main__":
     # Choose token generator
     token_gen = tg.NextTokenGenerator(top_k=15, temperature=1.5)
     # token_gen = tg.NextTokenGenerator()
-    # token_gen = tg.SimpleTokenGenerator()
 
     # Initialize chat generator
     chat_gen = tg.ChatGenerator(device, model, tokenizer, context_length, token_gen,

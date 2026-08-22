@@ -2,8 +2,8 @@ from importlib.metadata import version
 import torch
 import torch.nn as nn
 import tiktoken
-# import matplotlib.pyplot as plt
-from sdevpy.machinelearning.llms.gpt import DummyGPTModel, LayerNorm, FeedForward, TransformerBlock, GPTModel
+from raschka.raschka_dummpy_gpt import DummyGPTModel
+from sdevpy.llms.gpt.gpt import LayerNorm, FeedForward, TransformerBlock, GPTModel
 from sdevpy.projects.raschka import raschka_dnn
 import sdevpy.machinelearning.llms.textgen as tg
 
