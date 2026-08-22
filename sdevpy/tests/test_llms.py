@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 from sdevpy.llms.local_model import LocalModel
 from sdevpy.llms import huggingface
 from sdevpy.llms.transformers_model import TransformersModel
-from sdevpy.llms.llama_model import LlamaModel, get_model
+from sdevpy.llms.llama_model import LlamaModel
 from sdevpy.llms import llmfactory
 
 
@@ -279,14 +279,6 @@ class TestLlamaModelLoad:
             repo_id="org/repo", filename="m.gguf", n_ctx=0, verbose=False
         )
 
-    # @patch("sdevpy.llms.llama_model.Llama")
-    # def test_max_context_tokens_passed_as_n_ctx(self, mock_llama_cls):
-    #     m = LlamaModel({"repo_id": "org/repo", "filename": "m.gguf"})
-    #     m.load(max_context_tokens=4096)
-    #     mock_llama_cls.from_pretrained.assert_called_once_with(
-    #         repo_id="org/repo", filename="m.gguf", n_ctx=4096, verbose=False
-    #     )
-
 
 class TestLlamaModelUnload:
     def test_calls_gc_collect(self):
@@ -295,18 +287,6 @@ class TestLlamaModelUnload:
         with patch("sdevpy.llms.llama_model.gc") as mock_gc:
             m.unload()
             mock_gc.collect.assert_called_once()
-
-
-class TestGetModel:
-    @patch("sdevpy.llms.llama_model.Llama")
-    def test_returns_llama_instance(self, mock_llama_cls):
-        sentinel = MagicMock()
-        mock_llama_cls.from_pretrained.return_value = sentinel
-        result = get_model("org/repo", "model.gguf", n_ctx=512)
-        assert result is sentinel
-        mock_llama_cls.from_pretrained.assert_called_once_with(
-            repo_id="org/repo", filename="model.gguf", n_ctx=512, verbose=False
-        )
 
 
 #### llmfactory ###################################################################################
@@ -327,11 +307,6 @@ class TestGetLlmConfig:
         config = llmfactory.get_llm_config("tiny-gpt2")
         assert config["type"] == "transformers"
         assert "repo_id" in config
-
-    # def test_raises_for_unknown_id(self):
-    #     with pytest.raises(ValueError, match="No model config"):
-    #         llmfactory.get_llm_config("does-not-exist")
-
 
 class TestListModels:
     @patch("sdevpy.llms.llmfactory.huggingface.list_available_models", return_value=[])

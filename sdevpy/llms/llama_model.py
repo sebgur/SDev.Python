@@ -71,11 +71,6 @@ class LlamaModel(LocalModel):
         gc.collect()
 
 
-def get_model(repo_id: str, filename: str="*.gguf", n_ctx: int=0) -> Llama:
-    """ Retrieve Llama model """
-    return Llama.from_pretrained(repo_id=repo_id, filename=filename, n_ctx=n_ctx, verbose=False)
-
-
 if __name__ == "__main__":
     repo_id, filename, no_think = "unsloth/Qwen3.5-27B-GGUF", "Qwen3.5-27B-Q4_K_M.gguf", True
     config = {"repo_id": repo_id, "filename": filename}
