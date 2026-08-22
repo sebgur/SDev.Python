@@ -141,7 +141,7 @@ if __name__ == "__main__":
     # Choose export path and model size
     project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
     project_path = project_path / "llms" / "gpt"
-    model_size = "355M" # 124M, 355M, 774M, 1558M
+    model_size = "1558M" # 124M, 355M, 774M, 1558M
 
     print(f"Project path: {project_path}")
 

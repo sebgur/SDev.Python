@@ -1,7 +1,3 @@
-import os
-import json
-import urllib.request
-from tqdm import tqdm
 import torch
 import torch.nn as nn
 import numpy as np
@@ -9,11 +5,9 @@ from sdevpy.llms.gpt.attention import MultiHeadAttention
 
 
 ############ TODO #################################################################################
-# * Get a fresh GPT model to run from weights and config
 # * Plug under local_model design to harmonize chat/instruction design
 # * Cleanup training algorithm and try it on runpod
 # * Refresh notebook to work on email/trade booking instructions
-# * Write LORA routine to train on trade booking
 
 
 class GPTModel(nn.Module):
