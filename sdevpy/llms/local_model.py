@@ -37,7 +37,7 @@ class LocalModel(ABC):
         return self.model
 
     @abstractmethod
-    def load(self, max_context_tokens: int=None) -> None: # pragma: no cov
+    def load(self, max_context_tokens: int=None, device=None) -> None: # pragma: no cov
         """ Load underlying model into memory """
         pass
 

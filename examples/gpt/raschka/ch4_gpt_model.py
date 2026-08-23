@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import tiktoken
 from raschka.raschka_dummpy_gpt import DummyGPTModel
-from sdevpy.llms.gpt.gpt import LayerNorm, FeedForward, TransformerBlock, GPTModel
+from sdevpy.llms.gpt.gpt import LayerNorm, FeedForward, TransformerBlock, GptModule
 from sdevpy.projects.raschka import raschka_dnn
 import sdevpy.machinelearning.llms.textgen as tg
 
@@ -124,7 +124,7 @@ print("Output shape: ", output.shape)
 
 print("<><><><> GPT Model")
 torch.manual_seed(123)
-model = GPTModel(GPT_CONFIG_124M)
+model = GptModule(GPT_CONFIG_124M)
 out = model(batch)
 print("Input shape: ", batch.shape)
 print("Input batch\n", batch, "\n")

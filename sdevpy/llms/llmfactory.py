@@ -4,6 +4,7 @@ from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.llms.local_model import LocalModel
 from sdevpy.llms.transformers_model import TransformersModel
 from sdevpy.llms.llama_model import LlamaModel
+from sdevpy.llms.gpt_model import GptModel
 from sdevpy.llms import huggingface
 from sdevpy.tests import conftest as tst
 
@@ -88,7 +89,7 @@ def get_llm_config(model_id: str) -> dict:
 
 
 def from_pretrained(model_id: str, max_context_tokens: int=None) -> LocalModel:
-    """ Load LocalModel knowing its internal ID. Unifies Transformers and Llama models under one interface. """
+    """ Load LocalModel knowing its internal ID. Unifies Transformers, Llama and GPT models under one interface. """
     config = get_llm_config(model_id)
     model_type = config['type'].lower()
     match model_type:
@@ -96,6 +97,8 @@ def from_pretrained(model_id: str, max_context_tokens: int=None) -> LocalModel:
             model = TransformersModel(config)
         case 'llama':
             model = LlamaModel(config)
+        case 'gpt':
+            model = GptModel(config)
         case _: # pragma: no cov
             raise ValueError(f"Unknown model type: {model_type}")
 
@@ -107,14 +110,18 @@ if __name__ == "__main__":
     df = list_model_info()
     print(df)
 
+    model_id = 'gpt2-124M'
     # model_id = "tiny-gpt2"
-    model_id = "qwen3.5-0.8B"
+    # model_id = "qwen3.5-0.8B"
     # model_id = "llama-3.2-1B-Instruct"
     print()
     print(f"Chatting with: {model_id}")
 
     # Load model
     model = from_pretrained(model_id)
+
+    # Print model details
+    model.pretty_print()
 
     prompt = "Why is the sky blue?"
     print()

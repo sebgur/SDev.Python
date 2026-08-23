@@ -29,7 +29,7 @@ model_path = project_path / f"gpt2-{model_size}"
 weight_file = model_path / "weights.pth"
 config_file = model_path / "config.json"
 model_config = jsm.deserialize(config_file)
-model = gpt.GPTModel(model_config)
+model = gpt.GptModule(model_config)
 checkpoint = torch.load(weight_file, map_location=device)
 model.load_state_dict(checkpoint["model_state_dict"])
 context_length = model_config["context_length"]

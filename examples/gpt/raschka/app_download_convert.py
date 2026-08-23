@@ -155,7 +155,7 @@ if __name__ == "__main__":
     GPT_CONFIG = {"vocab_size": settings['n_vocab'], "context_length": settings['n_ctx'],
                   "emb_dim": settings['n_embd'], "n_heads": settings['n_head'],
                   "n_layers": settings['n_layer'], "drop_rate": 0.1, "qkv_bias": True}
-    model = gpt.GPTModel(GPT_CONFIG)
+    model = gpt.GptModule(GPT_CONFIG)
     model.eval() # Not sure we really need this
 
     # Load parameters into model

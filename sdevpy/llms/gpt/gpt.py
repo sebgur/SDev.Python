@@ -10,7 +10,7 @@ from sdevpy.llms.gpt.attention import MultiHeadAttention
 # * Plug under local_model design to harmonize chat/instruction design
 
 
-class GPTModel(nn.Module):
+class GptModule(nn.Module):
     """ The model's forward method takes in a batch of sequences of token IDs and it outputs
         a batch of sequences with the same size, i.e. representing the same number of tokens.
         However, these tokens are now represented by a whole dimension of logits, rather than
@@ -20,6 +20,7 @@ class GPTModel(nn.Module):
     """
     def __init__(self, cfg):
         super().__init__()
+        self.config = cfg
         self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
         self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
         self.drop_emb = nn.Dropout(cfg["drop_rate"])
@@ -167,7 +168,7 @@ def load_weights(gpt, params):
     gpt.out_head.weight = assign(gpt.out_head.weight, params["wte"])
 
 
-def load_model_from_path(path: str|Path, device=None) -> GPTModel:
+def load_model_from_path(path: str|Path, device=None) -> GptModule:
     """ Load model from saved weights and config """
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -175,13 +176,13 @@ def load_model_from_path(path: str|Path, device=None) -> GPTModel:
     weight_file = path / "weights.pth"
     config_file = path / "config.json"
     model_config = jsm.deserialize(config_file)
-    model = GPTModel(model_config)
+    model = GptModule(model_config)
     checkpoint = torch.load(weight_file, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
     return model
 
 
-def save_model_to_path(model: GPTModel, model_config: dict, path: str|Path) -> None:
+def save_model_to_path(model: GptModule, model_config: dict, path: str|Path) -> None:
     """ Save model (weights and config) to path """
     path.mkdir(parents=True, exist_ok=True)
     weight_file = path / "weights.pth"

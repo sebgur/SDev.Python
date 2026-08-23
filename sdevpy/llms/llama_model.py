@@ -53,7 +53,7 @@ class LlamaModel(LocalModel):
         size_gb = os.path.getsize(self.model.model_path) / (1024**3)
         print(f"File size (GB): {size_gb:.3f}")
 
-    def load(self, max_context_tokens: int=None) -> None:
+    def load(self, max_context_tokens: int=None, device=None) -> None:
         """ Load Llama model from Hugging Face into memory.
             n_ctx: restrict max context size, default=0 (no restriction, maximum available)
         """

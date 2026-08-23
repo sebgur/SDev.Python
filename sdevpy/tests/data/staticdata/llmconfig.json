@@ -30,5 +30,10 @@
     "tiny-gpt2": {
         "type": "transformers",
         "repo_id": "sshleifer/tiny-gpt2"
-    }
+    },
+	"gpt2-124M": {
+		"type": "gpt",
+		"name": "gpt2-124M",
+		"path": "C:/temp/sdevpy/llms/gpt/gpt2-124M"
+	}
 }

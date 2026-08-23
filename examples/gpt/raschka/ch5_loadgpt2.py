@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import tiktoken
 from sdevpy.projects.raschka.raschka_gpt_download import download_and_load_gpt2
-from sdevpy.machinelearning.llms.gpt import GPTModel
+from sdevpy.machinelearning.llms.gpt import GptModule
 import sdevpy.machinelearning.llms.textgen as tg
 
 
@@ -34,7 +34,7 @@ NEW_CONFIG.update(model_configs[model_name])
 NEW_CONFIG.update({"context_length": 1024})
 NEW_CONFIG.update({"qkv_bias": True})
 
-gpt = GPTModel(NEW_CONFIG)
+gpt = GptModule(NEW_CONFIG)
 gpt.eval()
 
 

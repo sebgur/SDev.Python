@@ -80,7 +80,7 @@ class TransformersModel(LocalModel):
         size_gb = total_size / (1024**3) # Convert to GB
         print(f"Size(GB): {size_gb:.3f}")
 
-    def load(self, max_context_tokens: int=None) -> None:
+    def load(self, max_context_tokens: int=None, device=None) -> None:
         """ Load Transformers model from Hugging Face into memory """
         hf_repo_id = self.config.get("repo_id")
         model_config = AutoConfig.from_pretrained(hf_repo_id)
