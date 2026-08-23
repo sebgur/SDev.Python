@@ -3,13 +3,12 @@ from torch.utils.data import Dataset, DataLoader
 import tiktoken
 
 
-class GPTDatasetV1(Dataset):
+class GPTDataset(Dataset):
     """ A Dataset is an object that takes a piece of text and creates the input and target
-        chunks out of it, to be used for training.
-
-        Note that the target chunk is always the result of shifting the input chunk by 1 token.
-
-        The stride is by how many tokens we shift along the sequence to create the next input chunk.
+        chunks out of it, to be used for training. Note that the target chunk is always the result of shifting
+        the input chunk by 1 token. The stride is by how many tokens we shift along the sequence to create the
+        next input chunk.
+        This class was called V1 in Raschka.
     """
     def __init__(self, txt, tokenizer, max_length, stride):
         self.input_ids = []
@@ -36,17 +35,20 @@ class GPTDatasetV1(Dataset):
         return self.text_size_
 
 
-def create_dataloader_v1(txt, batch_size=4, max_length=256, stride=128, shuffle=True, drop_last=True,
-                         num_workers=0):
+def create_dataloader(txt: str, batch_size: int=4, max_length: int=256, stride: int=128,
+                      shuffle: bool=True, drop_last: bool=True, num_workers: int=0) -> DataLoader:
     """ A DataLoader is an object that takes a Dataset and construct batches (lists) of tensors of
-        length 2 each containing a pair made out of the input and its target window. """
+        length 2 each containing a pair made out of the input and its target window.
+        This method was called v1 in Raschka.
+    """
     tokenizer = tiktoken.get_encoding("gpt2")
-    dataset = GPTDatasetV1(txt, tokenizer, max_length, stride)
+    dataset = GPTDataset(txt, tokenizer, max_length, stride)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last,
                             num_workers=num_workers)
 
     # return dataset, dataloader # If we want to see the dataset object
     return dataloader
+
 
 if __name__ == "__main__":
     file = "datasets/llms/the-verdict.txt"
@@ -61,8 +63,8 @@ if __name__ == "__main__":
     BATCH_SIZE = 5
     MAX_LENGTH = 4
     STRIDE = 3  # When STRIDE = MAX_LENGTH, the next input start right after the previous
-    dataloader = create_dataloader_v1(raw_text, batch_size=BATCH_SIZE, max_length=MAX_LENGTH, stride=STRIDE,
-                                      shuffle=False)
+    dataloader = create_dataloader(raw_text, batch_size=BATCH_SIZE, max_length=MAX_LENGTH, stride=STRIDE,
+                                   shuffle=False)
 
     data_iter = iter(dataloader)
 

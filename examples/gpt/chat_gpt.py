@@ -1,17 +1,17 @@
-import os, gc
-from pathlib import Path
+import gc
 import torch
 import tiktoken
 from sdevpy.llms.gpt import gpt
 from sdevpy.llms.gpt import textgen as tg
 from sdevpy.utilities import jsonmanager as jsm
+from sdevpy.utilities.tools import workpath
 
 
-model_size = "1558M" # 124M, 355M, 774M, 1558M
-project_path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
+model_size = "124M" # 124M, 355M, 774M, 1558M
 max_sentences = 2
 
-project_path = project_path / "llms" / "gpt"
+project_path = workpath() / "llms" / "gpt"
+print(f"Project path: {project_path}")
 
 torch.manual_seed(123)
 tokenizer = tiktoken.get_encoding("gpt2")

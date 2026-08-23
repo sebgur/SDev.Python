@@ -3,7 +3,7 @@ from importlib.metadata import version
 import tiktoken
 import torch
 from raschka.raschka_tokenizers import SimpleTokenizerV1, SimpleTokenizerV2
-from raschka import raschka_datasetloader as tdsl
+from sdevpy.llms.gpt import datasetloader as dsl
 
 print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)
@@ -136,8 +136,8 @@ output_dim = 256
 token_embedding_layer = torch.nn.Embedding(vocab_size, output_dim)
 
 max_length = 4
-dataloader = tdsl.create_dataloader_v1(raw_text, batch_size=8, max_length=max_length,
-                                       stride=max_length, shuffle=False)
+dataloader = dsl.create_dataloader(raw_text, batch_size=8, max_length=max_length,
+                                   stride=max_length, shuffle=False)
 data_iter = iter(dataloader)
 inputs, targets = next(data_iter)
 print("Token IDs:\n", inputs)

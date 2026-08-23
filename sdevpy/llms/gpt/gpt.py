@@ -1,13 +1,13 @@
+from pathlib import Path
 import torch
 import torch.nn as nn
 import numpy as np
+from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.llms.gpt.attention import MultiHeadAttention
 
 
 ############ TODO #################################################################################
 # * Plug under local_model design to harmonize chat/instruction design
-# * Cleanup training algorithm and try it on runpod
-# * Refresh notebook to work on email/trade booking instructions
 
 
 class GPTModel(nn.Module):
@@ -165,6 +165,29 @@ def load_weights(gpt, params):
 
     # This looks like the so-called 'weight tying'
     gpt.out_head.weight = assign(gpt.out_head.weight, params["wte"])
+
+
+def load_model_from_path(path: str|Path, device=None) -> GPTModel:
+    """ Load model from saved weights and config """
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    weight_file = path / "weights.pth"
+    config_file = path / "config.json"
+    model_config = jsm.deserialize(config_file)
+    model = GPTModel(model_config)
+    checkpoint = torch.load(weight_file, map_location=device)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    return model
+
+
+def save_model_to_path(model: GPTModel, model_config: dict, path: str|Path) -> None:
+    """ Save model (weights and config) to path """
+    path.mkdir(parents=True, exist_ok=True)
+    weight_file = path / "weights.pth"
+    torch.save({"model_state_dict": model.state_dict()}, weight_file)
+    config_file = path / "config.json"
+    jsm.serialize(model_config, config_file)
 
 
 if __name__ == "__main__":

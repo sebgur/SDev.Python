@@ -27,13 +27,13 @@ class ChatGenerator:
         return end_text
 
     def end_text(self, start_text):
-        start_tokens = text_to_tokens(start_text, self.tokenizer).to(self.device)
+        start_tokens = text_to_token_ids(start_text, self.tokenizer).to(self.device)
         tokens = generate(self.model, start_tokens, max_new_tokens=self.max_new_tokens,
                           context_size=self.context_length, token_generator=self.token_generator,
                           eos_ids=self.eos_tokens, max_sentences=self.max_sentences,
                           eot_ids=self.eot_tokens)
 
-        return tokens_to_text(tokens, self.tokenizer)
+        return token_ids_to_text(tokens, self.tokenizer)
 
 
 def format_answer(start_text, answer_text):
@@ -109,12 +109,28 @@ class NextTokenGenerator:
         return idx_next
 
 
-def text_to_tokens(text, tokenizer):
+def generate_text_simple(model, idx, max_new_tokens: int, context_size: int) -> str:
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:, -context_size:]
+        with torch.no_grad():
+            logits = model(idx_cond)
+
+        logits = logits[:, -1, :]
+        probas = torch.softmax(logits, dim=-1)
+        idx_next = torch.argmax(probas, dim=-1, keepdim=True)
+        idx = torch.cat((idx, idx_next), dim=1)
+
+    return idx
+
+
+def text_to_token_ids(text: str, tokenizer):
+    """ Transform text to tokens """
     encoded = tokenizer.encode(text, allowed_special={'<|endoftext|>'})
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
     return encoded_tensor
 
 
-def tokens_to_text(token_ids, tokenizer):
+def token_ids_to_text(token_ids, tokenizer) -> str:
+    """ Transform token IDs to text """
     flat = token_ids.squeeze(0)
     return tokenizer.decode(flat.tolist())

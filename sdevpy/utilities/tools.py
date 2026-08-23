@@ -1,4 +1,6 @@
 """ Various utilities for software versions and so on """
+import os
+from pathlib import Path
 import struct
 import pandas as pd
 import numpy as np
@@ -6,6 +8,14 @@ import numpy.typing as npt
 from collections.abc import Iterable
 import random
 from sdevpy.maths.constants import EPS
+
+
+def workpath() -> str:
+    """ Local path for input/output of text files. Returns the content of the environment variable SDEVPY_DATA if present.
+        If absent, return home/sdevpy
+    """
+    path = Path(os.environ.get('SDEVPY_DATA', Path.home() / 'sdevpy'))
+    return path
 
 
 def isequal(a: npt.ArrayLike, b: npt.ArrayLike, tol: float=EPS) -> bool:
@@ -41,6 +51,7 @@ def print_python_bit_version() -> None:
 
 
 def rand_str() -> str:
+    """ Random string (based on random integers with 10 digits) """
     return str(rand_n_digits(10))
 
 

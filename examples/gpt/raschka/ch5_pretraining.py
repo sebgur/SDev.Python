@@ -2,10 +2,11 @@ from importlib.metadata import version
 import torch
 import tiktoken
 import matplotlib.pyplot as plt
-from sdevpy.machinelearning.llms.gpt import GPTModel
-import sdevpy.machinelearning.llms.textgen as tg
-from sdevpy.projects.raschka import raschka_datasetloader as ds
-from sdevpy.machinelearning.llms.training import calc_loss_loader
+from sdevpy.llms.gpt import GPTModel
+import sdevpy.llms.textgen as tg
+from sdevpy.llms.gpt import datasetloader as dsl
+from sdevpy.llms.gpt.training import calc_loss_loader
+
 
 print("tiktoken version:", version("tiktoken"))
 print("pytorch version: ", torch.__version__)
@@ -118,15 +119,15 @@ train_data = text_data[:split_idx]
 val_data = text_data[split_idx:]
 
 torch.manual_seed(123)
-train_loader = ds.create_dataloader_v1(train_data, batch_size=2,
-                                       max_length=GPT_CONFIG_124M["context_length"],
-                                       stride=GPT_CONFIG_124M["context_length"],
-                                       drop_last=True, shuffle=True, num_workers=0)
-
-val_loader = ds.create_dataloader_v1(val_data, batch_size=2,
+train_loader = dsl.create_dataloader(train_data, batch_size=2,
                                      max_length=GPT_CONFIG_124M["context_length"],
                                      stride=GPT_CONFIG_124M["context_length"],
-                                     drop_last=False, shuffle=False, num_workers=0)
+                                     drop_last=True, shuffle=True, num_workers=0)
+
+val_loader = dsl.create_dataloader(val_data, batch_size=2,
+                                   max_length=GPT_CONFIG_124M["context_length"],
+                                   stride=GPT_CONFIG_124M["context_length"],
+                                   drop_last=False, shuffle=False, num_workers=0)
 
 print("Train loader:")
 for x, y in train_loader:
@@ -155,10 +156,10 @@ print("Validation loss: ", val_loss)
 # model.to(device)
 # optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
 # num_epochs = 10
-# train_losses, val_losses, tokens_seen = train_model_simple(model, train_loader, val_loader, optimizer,
-#                                                            device, num_epochs=num_epochs, eval_freq=5,
-#                                                            eval_iter=5, start_context=start_text,
-#                                                            tokenizer=tokenizer)
+# train_losses, val_losses, tokens_seen = train_gpt_model(model, train_loader, val_loader, optimizer,
+#                                                         device, num_epochs=num_epochs, eval_freq=5,
+#                                                         eval_iter=5, start_context=start_text,
+#                                                         tokenizer=tokenizer)
 
 # # file_save = "model-save.pth"
 # # torch.save({"model_state_dict": model.state_dict(), "optimizer_state_dict": optimizer.state_dict(),}, file_save)

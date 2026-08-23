@@ -1,28 +1,10 @@
 import torch
 import torch.nn
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
-import sdevpy.llms.textgen as tg
+import sdevpy.llms.gpt.textgen as tg
 
 
-def plot_losses(epochs_seen, tokens_seen, train_losses, val_losses):
-    fig, ax1 = plt.subplots(figsize=(5, 3))
-    ax1.plot(epochs_seen, train_losses, label="Training loss")
-    ax1.plot(
-    epochs_seen, val_losses, linestyle="-.", label="Validation loss")
-    ax1.set_xlabel("Epochs")
-    ax1.set_ylabel("Loss")
-    ax1.legend(loc="upper right")
-    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
-    ax2 = ax1.twiny()
-    ax2.plot(tokens_seen, train_losses, alpha=0)
-    ax2.set_xlabel("Tokens seen")
-    fig.tight_layout()
-    plt.show()
-
-
-def train_model_simple(model, train_loader, val_loader, optimizer, device, num_epochs,
-                       eval_freq, eval_iter, start_context, tokenizer):
+def train_gpt_model(model, train_loader, val_loader, optimizer, device, num_epochs,
+                    eval_freq, eval_iter, start_context, tokenizer):
     train_losses, val_losses, track_tokens_seen = [], [], []
     tokens_seen, global_step = 0, -1
 
@@ -30,7 +12,7 @@ def train_model_simple(model, train_loader, val_loader, optimizer, device, num_e
         model.train() # Set to training mode
         for input_batch, target_batch in train_loader:
             optimizer.zero_grad() # Reset loss gradients from the previous back iteration
-            loss = calc_loss_batch(input_batch, target_batch, model, device)
+            loss = _calc_loss_batch(input_batch, target_batch, model, device)
             loss.backward() # Calculate loss gradients
             optimizer.step() # Updates model weights using loss gradients
             tokens_seen += input_batch.numel()
@@ -38,7 +20,7 @@ def train_model_simple(model, train_loader, val_loader, optimizer, device, num_e
 
             # At some batches
             if global_step % eval_freq == 0:
-                train_loss, val_loss = evaluate_model(model, train_loader, val_loader, device, eval_iter)
+                train_loss, val_loss = _evaluate_model(model, train_loader, val_loader, device, eval_iter)
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
                 track_tokens_seen.append(tokens_seen)
@@ -46,12 +28,12 @@ def train_model_simple(model, train_loader, val_loader, optimizer, device, num_e
                       f"Val loss {val_loss:.3f}")
 
         # At each epoch
-        generate_and_print_sample(model, tokenizer, device, start_context)
+        _generate_and_print_sample(model, tokenizer, device, start_context)
 
     return train_losses, val_losses, track_tokens_seen
 
 
-def evaluate_model(model, train_loader, val_loader, device, eval_iter):
+def _evaluate_model(model, train_loader, val_loader, device, eval_iter):
     model.eval()
     with torch.no_grad():
         train_loss = calc_loss_loader(train_loader, model, device, num_batches=eval_iter)
@@ -61,7 +43,7 @@ def evaluate_model(model, train_loader, val_loader, device, eval_iter):
     return train_loss, val_loss
 
 
-def generate_and_print_sample(model, tokenizer, device, start_context):
+def _generate_and_print_sample(model, tokenizer, device, start_context):
     model.eval()
     context_size = model.pos_emb.weight.shape[0]
     encoded = tg.text_to_token_ids(start_context, tokenizer).to(device)
@@ -84,7 +66,7 @@ def calc_loss_loader(data_loader, model, device, num_batches=None):
 
     for i, (input_batch, target_batch) in enumerate(data_loader):
         if i < num_batches:
-            loss = calc_loss_batch(input_batch, target_batch, model, device)
+            loss = _calc_loss_batch(input_batch, target_batch, model, device)
             total_loss += loss.item()
         else:
             break
@@ -92,10 +74,30 @@ def calc_loss_loader(data_loader, model, device, num_batches=None):
     return total_loss / num_batches
 
 
-def calc_loss_batch(input_batch, target_batch, model, device):
+def _calc_loss_batch(input_batch, target_batch, model, device):
     input_batch = input_batch.to(device)
     target_batch = target_batch.to(device)
     logits = model(input_batch)
     loss = torch.nn.functional.cross_entropy(logits.flatten(0, 1), target_batch.flatten())
 
     return loss
+
+
+def plot_losses(epochs_seen, tokens_seen, train_losses, val_losses):
+    """ Plot training diagnostics """
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import MaxNLocator
+
+    fig, ax1 = plt.subplots(figsize=(5, 3))
+    ax1.plot(epochs_seen, train_losses, label="Training loss")
+    ax1.plot(
+    epochs_seen, val_losses, linestyle="-.", label="Validation loss")
+    ax1.set_xlabel("Epochs")
+    ax1.set_ylabel("Loss")
+    ax1.legend(loc="upper right")
+    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax2 = ax1.twiny()
+    ax2.plot(tokens_seen, train_losses, alpha=0)
+    ax2.set_xlabel("Tokens seen")
+    fig.tight_layout()
+    plt.show()
