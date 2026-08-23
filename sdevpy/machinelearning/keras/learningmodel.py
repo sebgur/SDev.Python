@@ -126,7 +126,8 @@ def load_learning_model(path: Path, compile_=False):
     if x_scaler_file.exists() and y_scaler_file.exists():
         x_scaler = joblib.load(x_scaler_file)
         y_scaler = joblib.load(y_scaler_file)
-        model = KerasLearningModel(keras_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)
+        model = KerasLearningModel(keras_model)
+        model.set_scalers(x_scaler, y_scaler)
     else:
         model = KerasLearningModel(keras_model)
 

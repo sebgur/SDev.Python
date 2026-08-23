@@ -8,7 +8,7 @@ from sdevpy.utilities import timer
 
 
 def price(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_calls: npt.ArrayLike, fwd: float,
-          parameters: list[float], num_mc: int=10000, points_per_year: int=10, scheme: str='Andersen'):
+          parameters: dict, num_mc: int=10000, points_per_year: int=10, scheme: str='Andersen'):
     """ Calculate vanilla prices under Free-Boundary SABR model by Monte-Carlo simulation"""
     floor = 0.00001
 

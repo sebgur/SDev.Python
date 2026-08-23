@@ -1,5 +1,5 @@
 """ Smile generator for Heston model using Monte-Carlo to calculate option prices """
-import os
+import os, logging
 import numpy as np
 import pandas as pd
 import scipy.stats as sp
@@ -8,6 +8,7 @@ from sdevpy.analytics import bachelier
 from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
 from sdevpy.utilities import filemanager
 from sdevpy.utilities import timer
+log = logging.getLogger(__name__)
 
 
 class McHestonGenerator(SmileGenerator):
@@ -21,14 +22,14 @@ class McHestonGenerator(SmileGenerator):
     def generate_samples(self, num_samples, rg):
         shift = self.shift
 
-        print(f"Number of strikes: {self.num_strikes:,}")
-        print(f"Number of expiries: {self.num_expiries:,}")
-        print(f"Surface size: {self.surface_size:,}")
-        print(f"Number of samples: {num_samples:,}")
+        log.info(f"Number of strikes: {self.num_strikes:,}")
+        log.info(f"Number of expiries: {self.num_expiries:,}")
+        log.info(f"Surface size: {self.surface_size:,}")
+        log.info(f"Number of samples: {num_samples:,}")
 
         # Derive number of surfaces to generate
         num_surfaces = int(num_samples / self.surface_size)# + 1)
-        print(f"Number of surfaces/parameter samples: {num_surfaces:,}")
+        log.info(f"Number of surfaces/parameter samples: {num_surfaces:,}")
 
         # Draw parameters
         lnvol = self.rng.uniform(rg['LnVol'][0], rg['LnVol'][1], num_surfaces)
@@ -48,7 +49,7 @@ class McHestonGenerator(SmileGenerator):
         rhos = []
         prices = []
         for j in range(num_surfaces):
-            print(f"Surface generation number {j+1:,}/{num_surfaces:,}")
+            log.info(f"Surface generation number {j+1:,}/{num_surfaces:,}")
             expiries = self.rng.uniform(rg['Ttm'][0], rg['Ttm'][1], self.num_expiries)
             # Need to sort these expiries
             expiries = np.unique(expiries)

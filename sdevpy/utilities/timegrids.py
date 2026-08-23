@@ -39,7 +39,7 @@ def build_sparse_timegrid(t: float, term_tol: float=1.0/52.0) -> list[float]:
     return np.asarray(step_grid)
 
 
-def build_timegrid(t_start: float, t_end: float, config: dict) -> npt.NDArray[np.float64]:
+def build_timegrid(t_start: float, t_end: float, config) -> npt.NDArray[np.float64]:
     """ Very simple time grid for now, to be replaced by TimeGridBuilder """
     n_steps = config.n_timesteps
     return np.linspace(t_start, t_end, n_steps + 1)
