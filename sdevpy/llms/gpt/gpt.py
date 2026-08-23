@@ -1,13 +1,11 @@
 from pathlib import Path
+import logging
 import torch
 import torch.nn as nn
 import numpy as np
 from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.llms.gpt.attention import MultiHeadAttention
-
-
-############ TODO #################################################################################
-# * Plug under local_model design to harmonize chat/instruction design
+log = logging.getLogger(__name__)
 
 
 class GptModule(nn.Module):
@@ -173,12 +171,20 @@ def load_model_from_path(path: str|Path, device=None) -> GptModule:
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    weight_file = path / "weights.pth"
     config_file = path / "config.json"
+    if not config_file.exists():
+        raise ValueError(f"Config file not found: {config_file}")
+
     model_config = jsm.deserialize(config_file)
     model = GptModule(model_config)
-    checkpoint = torch.load(weight_file, map_location=device)
-    model.load_state_dict(checkpoint["model_state_dict"])
+
+    weight_file = path / "weights.pth"
+    if weight_file.exists():
+        checkpoint = torch.load(weight_file, map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+    else:
+        log.warning("Weight file not found: random weight initialization")
+
     return model
 
 

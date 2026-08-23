@@ -1,9 +1,12 @@
-import gc
+import gc, logging
 from pathlib import Path
 import torch, tiktoken
 from sdevpy.llms.local_model import LocalModel
 from sdevpy.llms.gpt import gpt
 from sdevpy.llms.gpt import textgen as tg
+from sdevpy.llms.gpt import datasetloader as dsl
+from sdevpy.llms.gpt.training import train_gpt_model
+log = logging.getLogger(__name__)
 
 
 class GptModel(LocalModel):
@@ -42,6 +45,39 @@ class GptModel(LocalModel):
 
         return self.respond_prompt(prompt, **kwargs)
 
+    def train(self, text_data: str, **kwargs) -> None:
+        """ Train weights on given text """
+        train_ratio = kwargs.get('train_ratio', 0.90)
+        batch_size = kwargs.get('batch_size', 2)
+        epochs = kwargs.get('epochs', 1)
+        init_lr = kwargs.get('init_lr', 0.0004)
+        start_text = kwargs.get('test_prompt', "Why is the sky blue?")
+
+        # Fix seed for reproducibility
+        torch.manual_seed(123)
+
+        log.info("Create dataset loaders")
+        split_idx = int(train_ratio * len(text_data))
+        train_data = text_data[:split_idx]
+        val_data = text_data[split_idx:]
+
+        train_loader = dsl.create_dataloader(train_data, batch_size=batch_size, max_length=self.ctx_length,
+                                             stride=self.ctx_length, drop_last=True, shuffle=True, num_workers=0)
+
+        val_loader = dsl.create_dataloader(val_data, batch_size=batch_size, max_length=self.ctx_length,
+                                           stride=self.ctx_length, drop_last=False, shuffle=False, num_workers=0)
+
+        log.info("<><><><><><><><> Start training <><><><><><><><>")
+        log.info("Test prompt: " + start_text)
+
+        # Initialize model
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=init_lr, weight_decay=0.1)
+
+        train_losses, val_losses, tokens_seen = train_gpt_model(self.model, train_loader, val_loader, optimizer,
+                                                                self.device, num_epochs=epochs, eval_freq=5,
+                                                                eval_iter=5, start_context=start_text,
+                                                                tokenizer=self.tokenizer)
+
     def pretty_print(self) -> None: # pragma: no cov
         """ Display information about the GPT model """
         model_config = self.model.config
@@ -78,5 +114,24 @@ class GptModel(LocalModel):
 
 
 if __name__ == "__main__":
-    print("Hello")
-    # See llmfactory example
+    from sdevpy.tests import conftest as tst
+    test_path = tst.calibdata_path() / "gpt" / "gpt2-test"
+    repo_config = {"type": "gpt", "name": "gpt2-test", "path": test_path}
+    print(test_path)
+
+    data_file = tst.dataset_path() / "llms" / "the-verdict.txt"
+    with open(data_file, encoding="utf-8") as f:
+        text_data = f.read()
+
+    # print(text_data)
+
+    model = GptModel(repo_config)
+    model.load()
+
+    model.train(text_data)
+
+    print("Testing pretrained")
+    print(model.respond_prompt("Why is the sky green?"))
+
+    model.unload()
+

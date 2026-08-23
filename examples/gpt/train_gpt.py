@@ -7,8 +7,8 @@ from sdevpy.utilities.tools import workpath
 
 
 ####################### Runtime configuration #########################################################################
-model_name = "testgpt"
-start_version = 2 # When start_version = 0, the model is started from scratch
+model_name = "pytestgpt"
+start_version = 0 # When start_version = 0, the model is started from scratch
 start_model_name = f"{model_name}-{start_version:03d}"
 end_model_name = f"{model_name}-{start_version + 1:03d}"
 print(f"Start model: {start_model_name}")
@@ -18,13 +18,13 @@ print(f"End model: {end_model_name}")
 dataset_name = "the-verdict"
 
 # Model config
-gpt_config = {"vocab_size": 50257, "context_length": 256, "emb_dim": 768, "n_heads": 4, "n_layers": 6,
+gpt_config = {"vocab_size": 50257, "context_length": 16, "emb_dim": 64, "n_heads": 2, "n_layers": 2,
               "drop_rate": 0.1, "qkv_bias": False}
 # # 124M
 # gpt_config = {"vocab_size": 50257, "context_length": 256, "emb_dim": 768, "n_heads": 12, "n_layers": 12,
 #               "drop_rate": 0.1, "qkv_bias": False}
 
-epochs = 10
+epochs = 1
 batch_size = 2
 train_ratio = 0.90
 init_lr = 0.0004

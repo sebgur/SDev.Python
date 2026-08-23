@@ -1,6 +1,8 @@
+import logging
 import torch
 import torch.nn
 import sdevpy.llms.gpt.textgen as tg
+log = logging.getLogger(__name__)
 
 
 def train_gpt_model(model, train_loader, val_loader, optimizer, device, num_epochs,
@@ -24,8 +26,8 @@ def train_gpt_model(model, train_loader, val_loader, optimizer, device, num_epoc
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
                 track_tokens_seen.append(tokens_seen)
-                print(f"Ep {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f},"
-                      f"Val loss {val_loss:.3f}")
+                log.info(f"Epoch {epoch+1} (Step {global_step:06d}): Train loss {train_loss:.3f}, "
+                         f"Val loss {val_loss:.3f}")
 
         # At each epoch
         _generate_and_print_sample(model, tokenizer, device, start_context)
