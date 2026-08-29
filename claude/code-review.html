@@ -199,53 +199,50 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-08-15 &nbsp;·&nbsp; <strong>14th review</strong> (full scan, 8 commits / 52 files since last review)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-08-29 &nbsp;·&nbsp; <strong>15th review</strong> (first true full scan: every <code>*.py</code>/<code>*.ipynb</code> file including <code>examples/</code>, <code>scripts/</code>, <code>docs/</code>, <code>notebooks/</code> and files normally excluded by <code>pyproject.toml</code>)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--yellow)">B-</div>
+    <div class="grade-letter" style="color:var(--orange)">C</div>
     <div class="grade-details">
-      <h2>A large restructuring of <code>sdevpy/llms/</code> — genuine test coverage finally landed, but the moved <code>examples/gpt/raschka/</code> demo scripts are almost entirely broken, and two new bugs shipped in the rewritten core</h2>
+      <h2>Scanning every file rather than just the diff surfaced two silent-wrong-price bugs in the Monte-Carlo engine, plus a wide tail of documentation/implementation mismatches across the pricing library</h2>
       <p>
-        This was the biggest single change set reviewed so far: 8 commits reorganizing
-        <code>sdevpy/llms/gpt/</code>, adding a new <code>GptModel</code> wrapper
-        (<code>sdevpy/llms/gpt_model.py</code>), and moving <code>examples/raschka/</code> to
-        <code>examples/gpt/raschka/</code>. All previously-tracked fixes from the 13th review are
-        confirmed still in place, plus several more landed in this pass: the
-        <code>TorchLearningModel</code> device bug is fixed, <code>KerasLearningModel</code>'s
-        constructor kwarg mismatch is fixed, <code>McHestonGenerator</code>'s print pollution is
-        fixed, and — the standout improvement — <code>sdevpy/llms/</code> went from zero test
-        coverage to a genuinely thorough test suite (<code>test_llms.py</code>, 30+ tests) plus a
-        real end-to-end integration test for the GPT stack (<code>test_gpt.py</code>). Two of the
-        library's own known-broken files (<code>modelconverter.py</code>, dead
-        <code>datasets.py</code>) were deleted outright rather than left to rot. However, the
-        <code>examples/gpt/raschka/</code> directory that everything was moved into has broken
-        imports in the majority of its files — a mix of stale pre-refactor paths and sibling-import
-        issues from the move itself — and the rewritten core introduced two new bugs: multi-turn
-        chat history is silently dropped in <code>GptModel.chat()</code>, and
-        <code>load_model_from_path</code> still never actually moves the loaded model to the
-        target device.
+        Every top-10 item from the 14th review's <code>sdevpy/llms/</code> pass is confirmed still fixed
+        (<code>GptModel.chat()</code> now accumulates messages, <code>load_model_from_path</code> now
+        moves the model to device, <code>ChatGenerator.dialog()</code> calls the module-level
+        <code>format_answer</code>, <code>app_dnn.py</code>'s <code>GELU()</code> is no longer passed as
+        a <code>bias</code> argument, <code>tools.workpath()</code> is correctly typed). But this is the
+        first review to read every file rather than the commits since last time, and that turned up two
+        critical, previously-undetected correctness bugs — a vol-path aliasing bug that silently zeroes
+        the drift-correction term in the SABR/free-boundary-SABR Andersen Monte-Carlo scheme (the
+        <em>default</em> scheme for free-boundary SABR), and a crash in the core Monte-Carlo pricer for
+        any multi-leg trade whose legs don't share the same cashflow count. Alongside these sit an
+        inverted docstring on the PDE's theta-scheme (labels implicit and explicit backwards), a
+        compounding date-drift bug in the calendar's schedule generator, a hardcoded FX-inversion table
+        that silently mis-signs any currency pair outside its 11 entries, and a GPT inference path that
+        never switches the model out of training mode. None of these are exotic edge cases — most are
+        reachable through default arguments or public APIs with no validation to catch them.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Confirmed fixed since 13th review (verified via direct file reads, not diff stats alone):</strong>
-    <code>TorchLearningModel.__init__</code> now correctly does <code>self.base_model.to(self.device)</code> — GPU training works &nbsp;·&nbsp;
-    <code>KerasLearningModel.load_learning_model</code> now uses <code>set_scalers()</code> instead of invalid constructor kwargs &nbsp;·&nbsp;
-    <code>McHestonGenerator.generate_samples()</code>'s <code>print()</code> calls converted to <code>log.info()</code> &nbsp;·&nbsp;
-    <code>gpt.py::load_model_from_path</code> now takes a proper <code>device</code> parameter with <code>map_location</code> and gracefully handles a missing weight file &nbsp;·&nbsp;
-    the admittedly-broken <code>modelconverter.py</code> (240+ lines, author's own docstring said it didn't work) deleted entirely &nbsp;·&nbsp;
-    dead <code>datasets.py</code> (<code>InstructionDataset</code>, unused anywhere) deleted &nbsp;·&nbsp;
-    <code>sdevpy/llms/</code> now has 30+ tests across <code>local_model</code>/<code>transformers_model</code>/<code>llama_model</code>/<code>llmfactory</code>, plus a real end-to-end integration test for the GPT stack in <code>test_gpt.py</code>
+    <strong>Confirmed fixed since 14th review (verified via direct file reads):</strong>
+    <code>GptModel.chat()</code> now correctly does <code>prompt += new_prompt + "\n"</code>, no longer dropping earlier messages &nbsp;·&nbsp;
+    <code>gpt.py::load_model_from_path</code> now ends with <code>model = model.to(device)</code> &nbsp;·&nbsp;
+    <code>ChatGenerator.dialog()</code> now calls the module-level <code>format_answer(...)</code> instead of the nonexistent <code>self.format_answer</code> &nbsp;·&nbsp;
+    <code>examples/gpt/raschka/app_dnn.py</code>'s <code>nn.Linear(...)</code> calls no longer pass <code>GELU()</code> as the <code>bias</code> argument &nbsp;·&nbsp;
+    <code>sdevpy/utilities/tools.py::workpath()</code> now correctly annotated <code>-&gt; Path</code> &nbsp;·&nbsp;
+    <code>ch5_pretraining.py</code> / <code>ch7_instruction_finetuning.py</code> now route through <code>tools.workpath()</code> instead of a hardcoded <code>C:\temp\llms\...</code> path
   </div>
 
   <div class="regress-banner">
-    <strong>New in this pass, or still open:</strong>
-    <code>GptModel.chat()</code> silently drops all but the last message in a conversation — see #1 &nbsp;·&nbsp;
-    <code>load_model_from_path</code> still doesn't move the model to the resolved device — see #2 &nbsp;·&nbsp;
-    most of <code>examples/gpt/raschka/</code> has broken imports post-move — see #3 &nbsp;·&nbsp;
-    the <code>nn.Linear(..., GELU())</code> activation-as-bias bug survived the rename to <code>app_dnn.py</code> — see #4
+    <strong>Still open, or newly found in this full scan:</strong>
+    <code>examples/gpt/raschka/ch2_working_with_text.py</code> still imports the nonexistent <code>raschka.raschka_tokenizers</code> module, unchanged since the 14th review &nbsp;·&nbsp;
+    <code>ch4_gpt_model.py</code> still has a broken sibling import — now a new typo, <code>app_dummpy_gpt</code> instead of <code>app_dummy_gpt</code> &nbsp;·&nbsp;
+    <code>sdevpy/machinelearning/{pytorch,keras}</code> and <code>sdevpy/tensorflow</code> still have zero test coverage &nbsp;·&nbsp;
+    <code>test_gpt.py</code> still pins its only assertion to one exact generated string &nbsp;·&nbsp;
+    two brand-new critical bugs found this pass: the SABR/fbSABR Andersen scheme aliasing bug (#1) and the ragged-leg Monte-Carlo pricer crash (#2)
   </div>
 
   <div class="scorecard">
@@ -259,42 +256,42 @@
         <tr>
           <td>Architecture</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>GptModel</code>/<code>GptModule</code>/<code>LocalModel</code> layering is sound and mirrors the existing <code>TransformersModel</code>/<code>LlamaModel</code> pattern well; the near-identical class names are a readability hazard</td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchies (PDE schemes, local-vol sections, trees) and solid MC/PDE/vol separation; the <code>machinelearning</code>&nbsp;→&nbsp;<code>machinelearning/{keras,pytorch}</code> split left several examples/notebooks importing modules that no longer exist at the old path</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Real fixes landed (device bug, kwarg mismatch), but two new bugs shipped in the same pass — chat history dropped, device-move gap — plus a dead <code>self.format_answer</code> call in <code>ChatGenerator.dialog()</code></td>
+          <td>Correctness</td><td>4 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f85149"></div></div><span class="score-lbl">Weak</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Two silently-wrong-price bugs in the MC engine (#1, #2), plus unchecked tree probabilities, a compounding schedule-drift bug, a silent FX mis-sign default, and a Newton solver that can return NaN vols without raising</td>
         </tr>
         <tr>
           <td>Error Handling</td><td>5 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Unchanged from prior reviews outside the touched files — <code>WorstOfBarrier</code>, smile-generator sentinel-value catches remain out of scope for this pass</td>
+          <td style="color:var(--muted);font-size:.83rem">Good graceful-fallback pattern in <code>get_localvol_or_new</code>; no equivalent for implied vol, so a missing calibration file crashes with an unhelpful <code>AttributeError</code> two calls downstream (#9)</td>
         </tr>
         <tr>
-          <td>Testing</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Big jump for <code>sdevpy/llms/</code> — from zero to genuinely thorough; <code>machinelearning/{pytorch,keras,tensorflow}</code> still has zero tests, and <code>test_gpt.py</code>'s exact-string assertion is fragile</td>
+          <td>Testing</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Reasonable breadth of unit tests overall, but several golden-master reference values in <code>test_pde.py</code>/<code>test_mc.py</code> were edited in place with the old expected value left commented out next to the new one — weakens confidence they'd catch a real regression; three live <code>print()</code> calls remain in <code>test_gpt.py</code></td>
         </tr>
         <tr>
-          <td>Code Quality</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good dead-code cleanup (<code>modelconverter.py</code>, <code>datasets.py</code> removed); <code>examples/gpt/raschka/</code>'s broken imports are a large regression in this category for that subtree</td>
+          <td>Code Quality</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Large duplicated <code>generate_samples</code> body across <code>mcsabrgenerator.py</code>/<code>mczabrgenerator.py</code>/<code>mchestongenerator.py</code>; pervasive commented-out dead code left in place across PDE, local-vol calibration, and analytics modules rather than deleted</td>
         </tr>
         <tr>
           <td>Maintainability</td><td>4 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f85149"></div></div><span class="score-lbl">Weak</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">The <code>examples/raschka/</code> → <code>examples/gpt/raschka/</code> move broke the majority of files in that directory — imports weren't updated to match either the new location or the current <code>sdevpy.llms.gpt.*</code> layout</td>
+          <td style="color:var(--muted);font-size:.83rem">Several docstrings actively describe the opposite of what the code does (theta-scheme labels, local-vol pillar convention) — a maintainer trusting the docs will misconfigure the model; multiple examples/notebooks are unrunnable against the current API</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>fbsabr.price</code>'s and <code>build_timegrid</code>'s wrong annotations fixed; new <code>tools.workpath()</code> is annotated <code>-> str</code> but returns a <code>Path</code></td>
+          <td>Type Safety</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">A shared mutable <code>PdeConfig()</code> default argument in <code>NumericalImpliedVol</code>; <code>price_straddles</code> declares <code>npt.ArrayLike</code> but crashes on a plain list; <code>np.full_like</code> silently truncates a float fill value when the input array is integer-typed</td>
         </tr>
         <tr>
-          <td>Documentation</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Unchanged from prior review outside touched files; new code has reasonable docstrings where present</td>
+          <td>Documentation</td><td>4 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f85149"></div></div><span class="score-lbl">Weak</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>ThetaScheme</code>'s class docstring has theta=0.0 and theta=1.0 exactly swapped relative to what the code computes (#3); <code>vsvi.py</code> raises "Negative variance" for a quantity that is <code>vol</code>, not variance, copy-pasted from <code>svi.py</code></td>
         </tr>
       </tbody>
     </table>
@@ -303,252 +300,326 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
-  <div class="issue high">
+  <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title"><code>GptModel.chat()</code> silently drops every message except the last one</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Andersen scheme's drift-correction term is always exactly zero due to array aliasing — silently wrong Monte-Carlo prices</span>
+      <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/llms/gpt_model.py · lines 41-46</span>
-    <p><strong>Why it's bad:</strong></p>
-    <pre>prompt = <span class="st">''</span>
-<span class="kw">for</span> message <span class="kw">in</span> messages:
-    new_prompt = message.get(<span class="st">"content"</span>, <span class="st">""</span>)
-    <span class="rm">prompt = new_prompt + "\n"</span>
-<span class="kw">return</span> self.respond_prompt(prompt, **kwargs)</pre>
+    <span class="loc">sdevpy/volatility/impliedvol/models/fbsabr.py · lines 72, 76, 82-84 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/models/mcsabr.py · lines 74-78, 95-97</span>
     <p>
-      Each loop iteration <strong>overwrites</strong> <code>prompt</code> instead of accumulating it —
-      after the loop, <code>prompt</code> only ever contains the <em>last</em> message's content. Every
-      earlier message in the conversation, including any system prompt passed through
-      <code>LocalModel.respond_instruction</code>, is silently discarded before the model ever sees it.
-      The method's own comment (line 38-40: <em>"we just write back the answer to the concatenated
-      list of inputs"</em>) states the intended behavior — concatenation — which the code doesn't
-      actually do. This is on a live path: <code>llmfactory.run_instruction</code> →
-      <code>LocalModel.respond_instruction</code> → <code>GptModel.chat</code> → this loop.
+      <strong>Why it's bad:</strong> In <code>fbsabr.py</code>, <code>scheme='Andersen'</code> is the
+      <strong>default</strong> value in <code>price(...)</code>'s signature (line 11):
+    </p>
+    <pre>vols = vol
+abs_f = np.maximum(np.abs(spot), floor)
+
+<span class="c"># Evolve vol</span>
+vol *= np.exp(-<span class="fn">0.5</span> * nu2 * dt + nu * dz1)
+
+<span class="c"># Evolve spot</span>
+elif scheme == <span class="st">'Andersen'</span>:
+    vole = vol
+    spot = spot + alpha * abs_f**beta * (sqrtmrho2 * vols * dz0 + rho / nu * (vole - vols))</pre>
+    <p>
+      <code>vols = vol</code> binds a <em>reference</em> to the same ndarray, not a copy. The next line,
+      <code>vol *= np.exp(...)</code>, mutates that array <strong>in place</strong>, so <code>vols</code>
+      silently becomes the post-update vol too. Then <code>vole = vol</code> aliases the same
+      already-updated array again, so <code>vole - vols</code> is identically <code>0.0</code> for every
+      path and every time step — the entire drift-correction term of the Andersen discretization
+      vanishes, and the diffusion term uses the new vol instead of the old vol. This produces silently
+      wrong Monte-Carlo prices on every call that doesn't override <code>scheme</code>.
+    </p>
+    <p>The identical pattern is repeated in <code>mcsabr.py</code>'s <code>'Andersen'</code> branch
+    (reachable when a caller explicitly requests it — the default there is <code>'LogAndersen'</code>,
+    which correctly avoids the bug by writing <code>vols = vol * avolc</code>, a genuine new array via
+    multiplication):</p>
+    <pre>else:
+    vols = vol
+...
+vol *= np.exp(-<span class="fn">0.5</span> * nu2 * dt + nu * dz1)
+...
+elif scheme == <span class="st">'Andersen'</span>: <span class="c"># Does not work well</span>
+    vole = vol
+    spot += alpha * np.abs(spot)**beta * (sqrtmrho2 * vols * dz0 + rho / nu * (vole - vols))</pre>
+    <p>
+      The existing <code># Does not work well</code> comment on the <code>mcsabr.py</code> branch
+      strongly suggests this was already observed and misattributed to the model rather than to this
+      aliasing bug.
     </p>
     <p><strong>Fix:</strong></p>
-    <pre><span class="rm">prompt = new_prompt + "\n"</span>
-<span class="ok">prompt += new_prompt + "\n"</span></pre>
+    <pre><span class="rm">vols = vol</span>
+<span class="ok">vols = vol.copy()</span></pre>
   </div>
 
   <!-- 2 -->
-  <div class="issue high">
+  <div class="issue critical">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>load_model_from_path</code> resolves a device correctly but never actually moves the model there</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Monte-Carlo pricer crashes on any multi-leg trade whose legs have different cashflow counts</span>
+      <span class="badge critical">Critical</span>
     </div>
-    <span class="loc">sdevpy/llms/gpt/gpt.py · lines 169-188 &nbsp;·&nbsp; reachable via sdevpy/llms/gpt_model.py · line 104</span>
+    <span class="loc">sdevpy/montecarlo/mcpricer.py · line 176</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre>results[<span class="st">'pv'</span>] = trade.notional * np.asarray(leg_cf_pvs).sum(axis=<span class="fn">1</span>).sum()</pre>
     <p>
-      <strong>Why it's bad:</strong> <code>device</code> is correctly resolved and passed to
-      <code>torch.load(weight_file, map_location=device)</code> (line 183), fixing the crash this had in
-      the 13th review. But <code>model = GptModule(model_config)</code> (line 179) constructs the model
-      fresh on CPU, and <code>model.load_state_dict(...)</code> (line 184) only copies parameter
-      <em>values</em> in place — it does not move the model's own tensors to a different device. The
-      function returns <code>model</code> still sitting on CPU regardless of what <code>device</code>
-      resolved to. <code>GptModel.load()</code> calls this with <code>self.device</code> already
-      correctly computed (<code>gpt_model.py:104</code>), so on a GPU machine the returned model is
-      silently left on CPU while later code may pass it CUDA tensors — the same class of
-      device-mismatch bug already found and fixed once this session in
-      <code>TorchLearningModel.__init__</code>.
+      <code>leg_cf_pvs</code> is a list of per-leg lists of scalar cashflow PVs. <code>np.asarray()</code>
+      requires every leg to have the <strong>same number</strong> of cashflows to form a rectangular
+      array. Any instrument whose legs don't line up — a swap with quarterly fixed vs. monthly floating
+      cashflows, or any leg carrying an extra notional-exchange or fee cashflow — raises:
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre>model.load_state_dict(checkpoint[<span class="st">"model_state_dict"</span>])
-<span class="ok">model = model.to(device)</span></pre>
+    <pre><span class="c">ValueError: setting an array element with a sequence. The requested array has an
+inhomogeneous shape after 1 dimensions.</span></pre>
+    <p>
+      This crashes <code>MonteCarloPricer.build()</code> for realistic ragged-leg trades; it goes
+      unnoticed because <code>test_mc.py</code>'s trades all happen to have equal-length legs.
+    </p>
+    <p><strong>Fix:</strong> sum each leg first, then sum the leg totals, instead of forcing a ragged list into a rectangular array:</p>
+    <pre><span class="rm">results['pv'] = trade.notional * np.asarray(leg_cf_pvs).sum(axis=1).sum()</span>
+<span class="ok">results['pv'] = trade.notional * sum(sum(leg) for leg in leg_cf_pvs)</span></pre>
   </div>
 
   <!-- 3 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title">Most of <code>examples/gpt/raschka/</code> has broken imports after the move from <code>examples/raschka/</code></span>
+      <span class="issue-title"><code>ThetaScheme</code>'s docstring has theta=0.0 and theta=1.0 exactly backwards</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">examples/gpt/raschka/ch3_coding_attention.py, ch4_gpt_model.py, ch5_loadgpt2.py, ch5_pretraining.py, app_dnn.py</span>
-    <p><strong>Why it's bad:</strong> Verified by tracing every import against the actual filesystem. Three distinct broken patterns, several files hitting more than one:</p>
-    <pre><span class="c"># Pattern A — sdevpy.projects doesn't exist anywhere in the repo</span>
-<span class="rm">from sdevpy.projects.raschka import raschka_dnn</span>                          <span class="c"># ch4_gpt_model.py:7</span>
-<span class="rm">from sdevpy.projects.raschka.raschka_gpt_download import ...</span>              <span class="c"># ch5_loadgpt2.py:4</span>
-
-<span class="c"># Pattern B — stale pre-refactor package path</span>
-<span class="rm">from sdevpy.machinelearning.llms.attention import ...</span>                     <span class="c"># ch3_coding_attention.py:3-4</span>
-<span class="rm">from sdevpy.machinelearning.llms.gpt import GELU</span>                          <span class="c"># app_dnn.py:3</span>
-<span class="rm">import sdevpy.machinelearning.llms.textgen as tg</span>                          <span class="c"># ch4_gpt_model.py:8, ch5_loadgpt2.py:6</span>
-
-<span class="c"># Pattern C — sibling files renamed during the move, callers not updated</span>
-<span class="rm">from raschka.raschka_tokenizers import ...</span>       <span class="c"># ch2_working_with_text.py:5 — now app_tokenizers.py</span>
-<span class="rm">from raschka.raschka_dummpy_gpt import DummyGPTModel</span>  <span class="c"># ch4_gpt_model.py:5 — now app_dummy_gpt.py</span>
-
-<span class="c"># Bonus — even the "correct-looking" path fails, since __init__.py is empty</span>
-<span class="rm">from sdevpy.llms.gpt import GptModule</span>             <span class="c"># ch5_pretraining.py:5 — needs .gpt.gpt, not .gpt</span></pre>
+    <span class="loc">sdevpy/pde/pdeschemes.py · lines 31-70 (docstring at 32-35), cross-checked against ImplicitScheme (73-98) and ExplicitScheme (101-121)</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre><span class="kw">class</span> <span class="fn">ThetaScheme</span>(PdeScheme):
+    <span class="st">""" Mixing scheme with particular sub-cases:
+            Theta = 0.0: Implicit
+            Theta = 0.5: Crank-Nicolson
+            Theta = 1.0: Explicit """</span></pre>
     <p>
-      Of the files under <code>examples/gpt/raschka/</code>, only <code>app_dummy_gpt.py</code> and
-      <code>app_tokenizers.py</code> have no import issues. Even the sibling-import pattern
-      (<code>from raschka.X import Y</code>) is structurally fragile beyond the wrong filenames: it only
-      resolves if the <em>parent</em> of the <code>raschka</code> package is on <code>sys.path</code>,
-      which isn't the case when running a script directly from inside its own directory.
+      Tracing the actual coefficients: at <code>theta=1.0</code>, <code>one_m_theta_dt_2</code> is
+      <code>0</code>, so the explicit right-hand side reduces to <code>y = p</code> (unmodified), and
+      <code>theta_dt_2 * b</code>/<code>a</code>/<code>c</code> exactly reproduce
+      <code>ImplicitScheme</code>'s tridiagonal coefficients — <code>ThetaScheme(1.0)</code> <em>is</em>
+      <code>ImplicitScheme</code>. Symmetrically, at <code>theta=0.0</code> the tridiagonal matrix
+      collapses to the identity and <code>y</code> exactly reproduces <code>ExplicitScheme</code>'s
+      output. So <strong>theta=0.0 is Explicit and theta=1.0 is Implicit</strong> — precisely the
+      opposite of what the docstring states. This is reachable through <code>PdeConfig(scheme='theta',
+      theta=&lt;value&gt;)</code> via the <code>scheme()</code> factory (line 131): a caller who reads
+      the docstring and sets <code>theta=0.0</code> expecting unconditional stability instead silently
+      gets the unconditionally-unstable explicit scheme.
     </p>
-    <p><strong>Fix:</strong> Update each import to its current location
-    (<code>sdevpy.llms.gpt.attention</code>, <code>sdevpy.llms.gpt.gpt</code>,
-    <code>sdevpy.llms.gpt.textgen</code>, local files by their new names), and run these scripts end to
-    end at least once to catch what a read-through misses.</p>
+    <p><strong>Fix:</strong> Swap the docstring's labels to match the code (0.0 → Explicit, 1.0 → Implicit), and add a test pinning <code>ThetaScheme(1.0)</code>/<code>ThetaScheme(0.0)</code> against <code>ImplicitScheme</code>/<code>ExplicitScheme</code> output to prevent silent re-drift.</p>
   </div>
 
   <!-- 4 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title"><code>nn.Linear(in, out, GELU())</code> — activation passed as the <code>bias</code> argument, survived the file's rename</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>Calendar.make_schedule</code> produces drifting roll dates — each period anchors off the previous adjusted date instead of the original schedule</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">examples/gpt/raschka/app_dnn.py · lines 25-29</span>
+    <span class="loc">sdevpy/utilities/scalendar.py · lines 70-75</span>
     <p><strong>Why it's bad:</strong></p>
-    <pre>nn.Sequential(nn.Linear(layer_sizes[0], layer_sizes[1], GELU())),
-nn.Sequential(nn.Linear(layer_sizes[1], layer_sizes[2], GELU())),
-<span class="c">... (5 layers total, same pattern)</span></pre>
+    <pre><span class="kw">def</span> <span class="fn">make_schedule</span>(self, start, end, term, convention=BDC.F, convert_to_datetime=<span class="kw">False</span>):
+    <span class="st">""" Simplified schedule generation for now (forward) """</span>
+    schedule_dates, d = [], self.adjust(start, convention)
+    <span class="kw">while</span> d &lt;= end:
+        schedule_dates.append(d)
+        d = self.adjust(d + dts.period(term), convention)</pre>
     <p>
-      <code>nn.Linear</code>'s third positional parameter is <code>bias: bool</code>, not an activation
-      module. <code>GELU()</code> is truthy, so it's silently accepted as <code>bias=True</code> and then
-      discarded — no activation is ever applied between layers, and the "deep" network this class is
-      meant to demonstrate (for illustrating vanishing/exploding gradients with shortcut connections) is
-      actually a stack of purely linear transformations. This exact bug was flagged when the file was
-      still named <code>raschka_dnn.py</code>; it carried over unchanged through the rename to
-      <code>app_dnn.py</code>. It's also currently unreachable due to #3's broken <code>GELU</code>
-      import, compounding the two issues.
+      Each new roll date is computed by adding the period to the <strong>previously
+      business-day-adjusted</strong> date, not to the original unadjusted anchor. Business-day
+      adjustments therefore compound period over period: a monthly schedule anchored on 2024-01-31
+      drifts to 2024-12-04 by year end once weekend/holiday adjustments accumulate, instead of tracking
+      end-of-month. Contrast with <code>make_schedule_fancy</code> in the same file (lines 86-134),
+      which correctly generates all unadjusted roll dates first and adjusts once at the end — the fix
+      pattern already exists two methods away. <code>make_schedule</code> is public API; any caller
+      building a schedule with it gets silently corrupted roll dates with no error.
     </p>
-    <p><strong>Fix:</strong> <code>nn.Sequential(nn.Linear(layer_sizes[0], layer_sizes[1]), GELU())</code> — <code>GELU()</code> as a separate item in the <code>Sequential</code>, not an argument to <code>Linear</code>.</p>
+    <p><strong>Fix:</strong> Track the raw unadjusted anchor separately, adding the period to that on every iteration, and adjust only the date that gets appended to the schedule — mirroring <code>make_schedule_fancy</code>'s two-pass approach.</p>
   </div>
 
   <!-- 5 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title"><code>ChatGenerator.dialog()</code> calls a method that doesn't exist</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">FX pairs missing from a hardcoded 11-entry table are silently treated as "not inverted"</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/llms/gpt/textgen.py · lines 21-27, 39-45</span>
+    <span class="loc">sdevpy/timeseries/timeseriestools.py · lines 77-85, used at lines 106, 113</span>
     <p><strong>Why it's bad:</strong></p>
-    <pre><span class="kw">def</span> <span class="fn">dialog</span>(self, start_text):
-    ...
-    print(<span class="st">"Output text:\n"</span>, <span class="rm">self.format_answer(start_text, end_text)</span>)</pre>
+    <pre><span class="kw">def</span> <span class="fn">is_inverted_quote</span>(key):
+    is_inverted = <span class="kw">False</span>
+    bbg_dict = {<span class="st">'EURUSD Curncy'</span>: <span class="kw">False</span>, ... <span class="st">'CNHUSD Curncy'</span>: <span class="kw">True</span>} <span class="c"># 11 entries total</span>
+    is_inverted = bbg_dict.get(key)
+    <span class="kw">return</span> is_inverted</pre>
     <p>
-      <code>format_answer</code> is a module-level function (line 39), not a method of
-      <code>ChatGenerator</code> — calling <code>self.format_answer(...)</code> raises
-      <code>AttributeError</code>. Currently dead/untested code: nothing in the codebase calls
-      <code>.dialog()</code> (the production path uses <code>ChatGenerator.end_text()</code> directly,
-      per <code>gpt_model.py:33</code>), which is exactly why this went unnoticed.
+      For any ticker not in the 11-entry dictionary (e.g. <code>'MXNUSD Curncy'</code>,
+      <code>'BRLUSD Curncy'</code>, <code>'HKDUSD Curncy'</code>), <code>.get(key)</code> returns
+      <code>None</code>. <code>create_position</code> uses this as
+      <code>if is_inverted_quote(name_list[x]):</code> — <code>None</code> is falsy, so the pair is
+      silently treated as <strong>not</strong> inverted. This flows directly into
+      <code>weights_market_convention</code> and <code>usd_amount</code>, the position-sizing/direction
+      output consumed by <code>cointegration.py</code>, giving a silently wrong notional and sign for
+      any currency outside the hardcoded list — with no error or warning raised anywhere.
     </p>
-    <p><strong>Fix:</strong> <code>print("Output text:\n", format_answer(start_text, end_text))</code> — call the module-level function directly, not through <code>self</code>.</p>
+    <p><strong>Fix:</strong> Raise on an unrecognized ticker instead of defaulting through a falsy <code>None</code>: <code>if key not in bbg_dict: raise ValueError(f"Unknown FX ticker: {key}")</code>.</p>
   </div>
 
   <!-- 6 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">Hardcoded machine-specific paths in active (not actually commented-out) code</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>implied_vol_newton</code> can silently return NaN vols for deep ITM/OTM strikes instead of failing loudly</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">examples/gpt/raschka/ch5_pretraining.py · line 173 &nbsp;·&nbsp; ch7_instruction_finetuning.py · line 15 &nbsp;·&nbsp; examples/marketdataapis/{set_limits,update_db}.py</span>
+    <span class="loc">sdevpy/analytics/black.py · lines 79-93</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre><span class="kw">for</span> _ <span class="kw">in</span> range(max_iter):
+    s = vol * sqrt_t
+    d1 = np.log(fwd / strike) / s + <span class="fn">0.5</span> * s
+    vega = fwd * norm.pdf(d1) * sqrt_t
+    diff = price(expiry, strike, is_call, fwd, vol) - fwd_price
+    vol -= diff / vega
+    vol = np.maximum(vol, <span class="fn">1e-8</span>)
+    <span class="kw">if</span> np.all(np.abs(diff) &lt; tol):
+        converged = <span class="kw">True</span>
+        <span class="kw">break</span>
+
+<span class="kw">if</span> <span class="kw">not</span> converged:
+    log.warning(<span class="st">"max_iter reached without full convergence"</span>)
+
+<span class="kw">return</span> vol</pre>
     <p>
-      <strong>Why it's bad:</strong> <code>ch5_pretraining.py:173</code>'s hardcoded
-      <code>C:\temp\llms\model-save.pth</code> sits under a section header comment that reads like it's
-      disabled, but the code itself (including the <code>torch.load(file, ...)</code> call) is not
-      commented out and will execute, raising <code>FileNotFoundError</code> for anyone without that
-      exact path. Contrast with <code>chat_gpt.py</code>/<code>train_gpt.py</code>/
-      <code>app_download_convert.py</code> in the same restructuring, which correctly use the new
-      <code>tools.workpath()</code> helper (env-var aware, falls back to <code>~/sdevpy</code>).
+      For deep ITM/OTM strikes (common on real vol surfaces), <code>vega</code> can be extremely small,
+      making <code>diff / vega</code> blow up or become <code>NaN</code>. <code>np.abs(diff) &lt; tol</code>
+      evaluates <code>False</code> for <code>NaN</code>, so the loop simply runs to <code>max_iter</code>
+      and, for a batch call, <code>vol</code> comes back with the bad strikes silently holding
+      <code>NaN</code> mixed in with the good strikes' converged values — only a generic
+      "max_iter reached" warning is logged, with no indication of which points failed or why.
     </p>
-    <p><strong>Fix:</strong> Route these through <code>tools.workpath()</code> like the sibling scripts already do.</p>
+    <p><strong>Fix:</strong> Floor <code>vega</code> (e.g. <code>np.maximum(np.abs(vega), eps)</code>) or mask points below a vega threshold and fall back to <code>implied_vol_brent</code> for those, as the function's own docstring already suggests investigating.</p>
   </div>
 
   <!-- 7 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title">Zero test coverage for <code>machinelearning/{pytorch,keras,tensorflow}</code> remains — only <code>llms/</code> improved</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Binomial/trinomial tree risk-neutral probabilities are never validated to lie in [0,1]</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/tests/ · pyproject.toml lines 57-59</span>
+    <span class="loc">sdevpy/tree/trees.py · lines 71-78 (BinomialTree), 107-119 (TrinomialTree)</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre><span class="kw">def</span> <span class="fn">calculate_probabilities</span>(self, dt, drift, vol):
+    stdev = vol * np.sqrt(dt)
+    self.u = np.exp(stdev)
+    self.d = <span class="fn">1.0</span> / self.u
+    self.p = (np.exp(drift * dt) - self.d) / (self.u - self.d)</pre>
     <p>
-      <strong>Why it's bad:</strong> This review's positive headline — <code>sdevpy/llms/</code> now has
-      real coverage — doesn't extend to <code>sdevpy/machinelearning/pytorch</code> or
-      <code>keras</code>, which are still referenced by zero tests (confirmed: no test file mentions
-      <code>TorchMultiLayerPerceptron</code>, <code>KerasLearningModel</code>, or
-      <code>TorchLearningModel</code>). The coverage <code>omit</code> list in
-      <code>pyproject.toml</code> also hasn't been updated to drop <code>sdevpy/llms/*</code> now that
-      it's genuinely tested — it's currently hiding real progress instead of a real gap, the opposite
-      problem from before.
+      Same pattern in <code>TrinomialTree.calculate_probabilities</code> for <code>pu</code>/<code>pd</code>/<code>pm</code>.
+      With few steps and a drift large relative to <code>vol*sqrt(dt)</code> (e.g. a large rate/dividend
+      differential combined with a coarse step count), <code>p</code> can go negative or exceed 1 —
+      arithmetically valid Python but financially meaningless, producing non-monotone or outright wrong
+      option prices with no warning at all.
     </p>
-    <p><strong>Fix:</strong> Apply the same testing investment made for <code>llms/</code> to the ML
-    wrapper packages; remove <code>sdevpy/llms/*</code> from the coverage <code>omit</code> list now
-    that it has genuine tests.</p>
+    <p><strong>Fix:</strong> After computing the probabilities, assert/clip them into <code>[0, 1]</code> and raise a clear error (naming the offending step count/vol/drift combination) if they fall outside that range.</p>
   </div>
 
   <!-- 8 -->
-  <div class="issue low">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>GptModel</code> (wrapper) and <code>GptModule</code> (network) — a one-letter naming collision</span>
-      <span class="badge low">Low</span>
+      <span class="issue-title">GPT text generation never switches the model to evaluation mode — dropout stays active at inference</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/llms/gpt_model.py · line 12 &nbsp;·&nbsp; sdevpy/llms/gpt/gpt.py · line 11</span>
+    <span class="loc">sdevpy/llms/gpt_model.py · lines 17-34, 93-106 &nbsp;·&nbsp; sdevpy/llms/gpt/textgen.py · lines 77-109</span>
+    <p><strong>Why it's bad:</strong>
+    <code>NextTokenGenerator.next()</code> — the function every generation call goes through
+    (<code>respond_prompt</code> → <code>ChatGenerator.end_text</code> → this) — only wraps the forward
+    pass in <code>torch.no_grad():</code>:</p>
+    <pre><span class="kw">def</span> <span class="fn">next</span>(self, model, idx, context_size):
+    idx_cond = idx[:, -context_size:]
+    <span class="kw">with</span> torch.no_grad():
+        logits = model(idx_cond)</pre>
     <p>
-      <strong>Why it's bad:</strong> Not a functional bug — traced both classes and confirmed
-      <code>GptModel</code> genuinely just wraps <code>GptModule</code> via
-      <code>gpt.load_model_from_path</code>, no duplicated logic. But the two names differing by a
-      single letter (<code>Model</code> vs. <code>Module</code>) is a real maintainability hazard:
-      searching for "GptModel" won't surface the actual transformer architecture class, and a future
-      contributor skimming either name could easily conflate the two.
+      <code>torch.no_grad()</code> disables gradient tracking but does <strong>not</strong> disable
+      <code>nn.Dropout</code>. <code>GptModel.load()</code> never calls <code>.eval()</code> either, and
+      since a freshly constructed <code>nn.Module</code> defaults to <code>training=True</code>, every
+      call to <code>respond_prompt</code>/<code>chat</code> runs generation with dropout layers active.
+      Worse, <code>training.py</code>'s own train loop leaves the model in <code>.train()</code> mode
+      after the final logging call (line 57), so post-training inference is affected too — generation is
+      non-deterministic (beyond the seeded weights) and quality is degraded by unintended dropout noise
+      on every response.
     </p>
-    <p><strong>Fix:</strong> Rename one — e.g. <code>GptModule</code> → <code>GptTransformer</code> or
-    <code>GptModel</code> → <code>GptBackend</code> — to make the distinction unambiguous at a glance.</p>
+    <p><strong>Fix:</strong> Call <code>self.model.eval()</code> in <code>GptModel.load()</code> (and again after <code>train()</code> completes), or at the top of <code>ChatGenerator.end_text</code>/<code>NextTokenGenerator.next</code>.</p>
   </div>
 
   <!-- 9 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>test_gpt.py</code>'s only assertion pins an exact, unseeded-beyond-one-call generated string</span>
-      <span class="badge low">Low</span>
+      <span class="issue-title"><code>get_impliedvol</code> crashes with an unclear <code>AttributeError</code> when no calibration file exists, unlike the local-vol path</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/test_gpt.py · lines 22-29</span>
+    <span class="loc">sdevpy/calibration/provider.py · lines 17-21 &nbsp;·&nbsp; sdevpy/calibration/fileprovider.py · lines 15-21 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/impliedvol_factory.py · lines 7-11</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre><span class="c"># fileprovider.py — returns None when the calibration file is absent</span>
+<span class="kw">def</span> <span class="fn">get_impliedvol_data</span>(self, name, date, model_name):
+    file = self.impliedvol_data_file(name, date, model_name)
+    <span class="kw">return</span> jsm.deserialize(file) <span class="kw">if</span> file.exists() <span class="kw">else</span> <span class="kw">None</span>
+
+<span class="c"># provider.py</span>
+<span class="kw">def</span> <span class="fn">get_impliedvol</span>(name, date, model_name, cal_prov):
+    data = cal_prov.get_impliedvol_data(name, date, model_name)
+    <span class="kw">return</span> ivf.get_impliedvol_from_data(data) <span class="c"># data may be None</span>
+
+<span class="c"># impliedvol_factory.py</span>
+<span class="kw">def</span> <span class="fn">get_impliedvol_from_data</span>(data: dict) -&gt; ImpliedVol:
+    type_ = data.get(<span class="st">'type'</span>, <span class="kw">None</span>) <span class="c"># AttributeError if data is None</span></pre>
     <p>
-      <strong>Why it's bad:</strong> The test genuinely exercises the full stack end-to-end (load, train,
-      generate) — a real improvement over having nothing — but its only check is
-      <code>assert response[:15] == "he, was\n,. had."</code>, an exact match against one specific
-      training run's output. This is fragile to PyTorch version differences, CPU/GPU execution
-      differences, or any op-level nondeterminism beyond the single <code>torch.manual_seed(123)</code>
-      call in <code>GptModel.train()</code> — a passing/failing result here says more about
-      bit-for-bit reproducibility than about model correctness.
+      When no calibration file exists, <code>get_impliedvol_data</code> returns <code>None</code>, and
+      <code>get_impliedvol</code> passes it straight through — the crash lands two calls downstream as
+      <code>AttributeError: 'NoneType' object has no attribute 'get'</code>, with no indication that the
+      real cause is a missing file. The local-vol path in the very same module has an explicit
+      <code>get_localvol_or_new</code> wrapper that gracefully initializes a fresh model when the stored
+      data is <code>None</code>; there is no equivalent for implied vol.
     </p>
-    <p><strong>Fix:</strong> Assert on structural properties instead (response is non-empty, correct
-    type, roughly expected length) rather than an exact string, or clearly mark this as a golden/regression
-    test if pinning exact output is intentional.</p>
+    <p><strong>Fix:</strong> Check <code>data is None</code> in <code>get_impliedvol</code> and raise a clear, actionable error, or add a <code>get_impliedvol_or_new</code> fallback mirroring the local-vol pattern.</p>
   </div>
 
   <!-- 10 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>tools.workpath()</code> is annotated <code>-&gt; str</code> but returns a <code>Path</code></span>
-      <span class="badge low">Low</span>
+      <span class="issue-title">Integer truncation in chart-grid sizing silently drops the last panel — or produces zero rows for a single-expiry surface</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/utilities/tools.py · lines 13-17</span>
+    <span class="loc">sdevpy/volatility/impliedvol/optionsurface.py · lines 193-204</span>
     <p><strong>Why it's bad:</strong></p>
-    <pre><span class="kw">def</span> <span class="fn">workpath</span>() -> str:
-    path = Path(os.environ.get(<span class="st">'SDEVPY_DATA'</span>, Path.home() / <span class="st">'sdevpy'</span>))
-    <span class="kw">return</span> path</pre>
+    <pre>num_charts = expiries.shape[<span class="fn">0</span>]
+num_cols = <span class="fn">2</span>
+num_rows = int(num_charts / num_cols)
+...
+fig, axs = plt.subplots(num_rows, num_cols, layout=<span class="st">"constrained"</span>)
+...
+<span class="kw">for</span> i <span class="kw">in</span> range(num_rows):
+    <span class="kw">for</span> j <span class="kw">in</span> range(num_cols):
+        k = num_cols * i + j
+        axs[i, j].plot(strikes[k], ref_disp[k], color=<span class="st">'blue'</span>, label=ref_name)</pre>
     <p>
-      A nice new helper — it centralizes the <code>SDEVPY_DATA</code> env-var pattern that was
-      previously duplicated across <code>stovolgen.py</code>, <code>stovoltrain.py</code>, and several
-      notebooks, and it's already correctly adopted by <code>chat_gpt.py</code>/<code>train_gpt.py</code>.
-      The only issue is the return type: it returns a <code>Path</code> object, not a <code>str</code>.
+      <code>int(num_charts / num_cols)</code> truncates rather than rounds up. With 5 expiries,
+      <code>num_rows = int(5/2) = 2</code>, so only indices <code>k=0..3</code> are ever plotted — the
+      5th expiry's chart is silently never drawn, with no warning. With a single expiry
+      (<code>num_charts=1</code>), <code>num_rows = 0</code>: <code>plt.subplots(0, 2, ...)</code> is
+      called and the loop body never executes, producing no chart at all. This function
+      (<code>plot_transform_surface</code>) is used from <code>examples/stovol/stovoltrain.py</code> and
+      several StoVol training notebooks for diagnostic plots.
     </p>
-    <p><strong>Fix:</strong> <code>def workpath() -> Path:</code></p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">num_rows = int(num_charts / num_cols)</span>
+<span class="ok">num_rows = -(-num_charts // num_cols)  # ceiling division</span></pre>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #14 &nbsp;·&nbsp; 2026-08-15 (full scan, verified via direct file reads and two parallel research passes)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #15 &nbsp;·&nbsp; 2026-08-29 (full scan of every <code>*.py</code>/<code>*.ipynb</code> file outside <code>sdevpy/thirdparty</code>, verified via direct file reads across seven parallel research passes)
   </footer>
 </div>
 </body>

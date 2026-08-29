@@ -226,13 +226,34 @@ def to_datetime(date) -> dt.datetime:
 
 
 CCY_CALENDARS = {
-        "WE": lambda y: {},
-        "USD": lambda y: holidays.US(years=y),
-        "GBP": lambda y: holidays.UK(years=y),
+        "AUD": lambda y: holidays.AU(years=y),
+        "ARS": lambda y: holidays.AR(years=y),
+        "BRL": lambda y: holidays.BR(years=y),
+        "CAD": lambda y: holidays.CA(years=y),
+        "CNY": lambda y: holidays.CN(years=y),
         "EUR": lambda y: holidays.ECB(years=y), # TARGET calendar
+        "GBP": lambda y: holidays.UK(years=y),
+        "HKD": lambda y: holidays.HK(years=y),
+        "INR": lambda y: holidays.IN(years=y),
+        "IDR": lambda y: holidays.ID(years=y),
         "JPY": lambda y: holidays.JP(years=y),
+        "KRW": lambda y: holidays.KR(years=y),
+        "KZT": lambda y: holidays.KZ(years=y),
+        "MXN": lambda y: holidays.MX(years=y),
+        "MYR": lambda y: holidays.MY(years=y),
+        "NZD": lambda y: holidays.NZ(years=y),
+        "PHP": lambda y: holidays.PH(years=y),
+        "RUB": lambda y: holidays.RU(years=y),
+        "SAR": lambda y: holidays.SA(years=y),
+        "SGD": lambda y: holidays.SG(years=y),
+        "THB": lambda y: holidays.TH(years=y),
+        "TRY": lambda y: holidays.TR(years=y),
+        "TWD": lambda y: holidays.TW(years=y),
+        "USD": lambda y: holidays.US(years=y),
+        "VND": lambda y: holidays.VN(years=y),
+        "WE": lambda y: {},
+        "ZAR": lambda y: holidays.ZA(years=y),
     }
-
 
 if __name__ == "__main__":
     # View holidays

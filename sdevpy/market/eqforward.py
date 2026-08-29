@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
+from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.maths import interpolation as itp
 
 
@@ -22,8 +23,9 @@ class EqForwardData:
 
     def dump(self, file, indent=2):
         data = self.dump_data()
-        with open(file, 'w') as f:
-            json.dump(data, f, indent=indent)
+        jsm.serialize(data, file, indent)
+        # with open(file, 'w') as f:
+        #     json.dump(data, f, indent=indent)
 
     def dump_data(self):
         pillars = []

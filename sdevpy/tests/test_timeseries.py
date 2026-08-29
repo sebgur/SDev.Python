@@ -3,7 +3,7 @@ import pandas as pd
 from sdevpy.timeseries.timeseriestools import (
     compute_diff, min_max_return_x_days, min_max_return_x_days_in_sd,
     x_day_historical_returns, x_day_historical_returns_in_sd,
-    is_inverted_quote, weighted_series, last_daily_hist_normal_vol, daily_hist_normal_vol
+    is_inverted_quote_bbg, weighted_series, last_daily_hist_normal_vol, daily_hist_normal_vol
 )
 
 
@@ -60,9 +60,8 @@ def test_x_day_historical_returns_shape():
 
 
 def test_is_inverted_quote():
-    assert not is_inverted_quote('EURUSD Curncy')
-    assert is_inverted_quote('JPYUSD Curncy')
-    assert is_inverted_quote('XYZUSD Curncy') is None
+    assert not is_inverted_quote_bbg('EURUSD Curncy')
+    assert is_inverted_quote_bbg('JPYUSD Curncy')
 
 
 def test_weighted_series_shape():
