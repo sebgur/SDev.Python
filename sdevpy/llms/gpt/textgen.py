@@ -22,7 +22,7 @@ class ChatGenerator:
         print("Input text:\n", start_text)
         print()
         end_text = self.end_text(start_text)
-        print("Output text:\n", self.format_answer(start_text, end_text))
+        print("Output text:\n", format_answer(start_text, end_text))
         print()
         return end_text
 

@@ -1,7 +1,6 @@
-# from importlib.metadata import version
 import torch
-from sdevpy.machinelearning.llms.attention import SelfAttentionV1, SelfAttentionV2, CausalAttention
-from sdevpy.machinelearning.llms.attention import MultiHeadAttentionWrapper, MultiHeadAttention
+from sdevpy.llms.gpt.attention import SelfAttentionV1, SelfAttentionV2, CausalAttention
+from sdevpy.llms.gpt.attention import MultiHeadAttentionWrapper, MultiHeadAttention
 
 print("pytorch version: ", torch.__version__)
 

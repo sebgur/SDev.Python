@@ -41,7 +41,7 @@ class GptModel(LocalModel):
         prompt = ''
         for message in messages:
             new_prompt = message.get("content", "")
-            prompt = new_prompt + "\n"
+            prompt += new_prompt + "\n"
 
         return self.respond_prompt(prompt, **kwargs)
 

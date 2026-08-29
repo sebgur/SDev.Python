@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from sdevpy.machinelearning.llms.gpt import GELU
+from sdevpy.llms.gpt.gpt import GELU
 
 
 def print_gradients(model, x):
@@ -22,11 +22,11 @@ class ExampleDeepNeuralNetwork(nn.Module):
         super().__init__()
         self.use_shortcut = use_shortcut
         self.layers = nn.ModuleList([
-            nn.Sequential(nn.Linear(layer_sizes[0], layer_sizes[1], GELU())),
-            nn.Sequential(nn.Linear(layer_sizes[1], layer_sizes[2], GELU())),
-            nn.Sequential(nn.Linear(layer_sizes[2], layer_sizes[3], GELU())),
-            nn.Sequential(nn.Linear(layer_sizes[3], layer_sizes[4], GELU())),
-            nn.Sequential(nn.Linear(layer_sizes[4], layer_sizes[5], GELU())),
+            nn.Sequential(nn.Linear(layer_sizes[0], layer_sizes[1]), GELU()),
+            nn.Sequential(nn.Linear(layer_sizes[1], layer_sizes[2]), GELU()),
+            nn.Sequential(nn.Linear(layer_sizes[2], layer_sizes[3]), GELU()),
+            nn.Sequential(nn.Linear(layer_sizes[3], layer_sizes[4]), GELU()),
+            nn.Sequential(nn.Linear(layer_sizes[4], layer_sizes[5]), GELU()),
         ])
 
     def forward(self, x):

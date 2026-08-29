@@ -10,7 +10,7 @@ import random
 from sdevpy.maths.constants import EPS
 
 
-def workpath() -> str:
+def workpath() -> Path:
     """ Local path for input/output of text files. Returns the content of the environment variable SDEVPY_DATA if present.
         If absent, return home/sdevpy
     """

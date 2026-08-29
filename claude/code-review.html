@@ -34,18 +34,6 @@
     header h1 { font-size: 1.75rem; color: var(--accent); letter-spacing: -.02em; }
     header p  { color: var(--muted); margin-top: .35rem; font-size: .9rem; }
 
-    .correction-banner {
-      background: var(--surface);
-      border: 1px solid #3d1515;
-      border-left: 4px solid var(--red);
-      border-radius: 8px;
-      padding: 1rem 1.2rem;
-      margin-bottom: 2rem;
-      font-size: .88rem;
-      color: var(--muted);
-    }
-    .correction-banner strong { color: var(--text); }
-
     .grade-card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -211,60 +199,53 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-08-15 (correction pass) &nbsp;·&nbsp; <strong>13th review</strong> (full scan)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-08-15 &nbsp;·&nbsp; <strong>14th review</strong> (full scan, 8 commits / 52 files since last review)</p>
   </header>
 
-  <div class="correction-banner">
-    <strong>Correction to the 12th review:</strong> that review ran <code>git show --stat HEAD | head -20</code>
-    to see what commit <code>ce0884c</code> changed, which silently truncated the file list — the commit
-    actually touched 23 files, not 14. Nine were missed, and several fixes in them were wrongly reported as
-    "still open": <code>eqvolsurface.py</code>'s validation check, <code>interpolation.py</code>'s dropped
-    <code>eps</code>, <code>forwardpde.py</code>'s stale docstring, and the <code>print()</code>→
-    <code>log.info()</code> cleanup in <code>mczabrgenerator.py</code>, <code>sabrgenerator.py</code>, and
-    <code>test_mlgen.py</code>. All were, in fact, already fixed as of the 12th review. This review re-verifies
-    every file directly (no truncated commands) and corrects the record.
-  </div>
-
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--green)">B+</div>
+    <div class="grade-letter" style="color:var(--yellow)">B-</div>
     <div class="grade-details">
-      <h2>Once the 12th review's missed fixes are counted, this was a genuinely strong cleanup pass — 9 of 12th review's 10 issues resolved</h2>
+      <h2>A large restructuring of <code>sdevpy/llms/</code> — genuine test coverage finally landed, but the moved <code>examples/gpt/raschka/</code> demo scripts are almost entirely broken, and two new bugs shipped in the rewritten core</h2>
       <p>
-        Re-checking every file directly against the current working tree (via <code>git diff HEAD</code> and
-        raw file timestamps, not summarized diff stats) confirms commit <code>ce0884c</code> fixed far more
-        than previously credited: the vacuous size-consistency check in <code>EqVolSurfaceData</code> now
-        validates each section correctly, <code>create_extrapolator</code> forwards <code>eps</code> and other
-        kwargs to all three extrapolator types, <code>get_pde_config</code>'s dead parameter and misleading
-        docstring are gone, three generator/test files had their <code>print()</code> pollution and leftover
-        <code>__main__</code> block cleaned up. What remains open: the <code>llms/gpt</code> import fix is still
-        incomplete (paths shortened but not corrected), <code>examples/stovol/stovoltrain.py</code> still
-        imports from a package layout that no longer exists anywhere in the repo, <code>KerasLearningModel</code>'s
-        <code>load_learning_model</code> still passes constructor kwargs it doesn't accept, and there is still
-        no test coverage for <code>machinelearning/{pytorch,keras,tensorflow}</code> or <code>llms/gpt</code> —
-        which is exactly how the incomplete <code>llms/gpt</code> fix went unnoticed.
+        This was the biggest single change set reviewed so far: 8 commits reorganizing
+        <code>sdevpy/llms/gpt/</code>, adding a new <code>GptModel</code> wrapper
+        (<code>sdevpy/llms/gpt_model.py</code>), and moving <code>examples/raschka/</code> to
+        <code>examples/gpt/raschka/</code>. All previously-tracked fixes from the 13th review are
+        confirmed still in place, plus several more landed in this pass: the
+        <code>TorchLearningModel</code> device bug is fixed, <code>KerasLearningModel</code>'s
+        constructor kwarg mismatch is fixed, <code>McHestonGenerator</code>'s print pollution is
+        fixed, and — the standout improvement — <code>sdevpy/llms/</code> went from zero test
+        coverage to a genuinely thorough test suite (<code>test_llms.py</code>, 30+ tests) plus a
+        real end-to-end integration test for the GPT stack (<code>test_gpt.py</code>). Two of the
+        library's own known-broken files (<code>modelconverter.py</code>, dead
+        <code>datasets.py</code>) were deleted outright rather than left to rot. However, the
+        <code>examples/gpt/raschka/</code> directory that everything was moved into has broken
+        imports in the majority of its files — a mix of stale pre-refactor paths and sibling-import
+        issues from the move itself — and the rewritten core introduced two new bugs: multi-turn
+        chat history is silently dropped in <code>GptModel.chat()</code>, and
+        <code>load_model_from_path</code> still never actually moves the loaded model to the
+        target device.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Confirmed fixed since 11th review (9 of 10, verified via <code>git diff HEAD</code> against each file — zero diff means the fix is committed and current):</strong>
-    Data-leakage bug in the training notebook — file replaced, both successor notebooks train on <code>x_train</code>/<code>y_train</code> &nbsp;·&nbsp;
-    <code>KerasLearningModel.predict_on_scaled</code> implemented — class is instantiable &nbsp;·&nbsp;
-    <code>calculate_with_greeks</code> batch/shape mismatch fixed &nbsp;·&nbsp;
-    <code>tssvi2</code> packaging exclusion removed &nbsp;·&nbsp;
-    <code>FlooredExponentialDecay</code>/<code>CyclicalExponentialDecay</code>/<code>WarmupCosineLR</code> redundant-<code>initial_lr</code>/units bugs resolved &nbsp;·&nbsp;
-    <code>EqVolSurfaceData</code>'s vacuous size check replaced with a real per-section validation &nbsp;·&nbsp;
-    <code>create_extrapolator</code> now forwards <code>eps</code>/kwargs to all extrapolator types &nbsp;·&nbsp;
-    <code>get_pde_config</code>'s dead <code>t</code> parameter and stale <code>iv_surface</code> docstring removed &nbsp;·&nbsp;
-    <code>print()</code> → <code>log.info()</code> in <code>mczabrgenerator.py</code> (6 calls) and <code>sabrgenerator.py</code>; leftover <code>__main__</code> block commented out in <code>test_mlgen.py</code>
+    <strong>Confirmed fixed since 13th review (verified via direct file reads, not diff stats alone):</strong>
+    <code>TorchLearningModel.__init__</code> now correctly does <code>self.base_model.to(self.device)</code> — GPU training works &nbsp;·&nbsp;
+    <code>KerasLearningModel.load_learning_model</code> now uses <code>set_scalers()</code> instead of invalid constructor kwargs &nbsp;·&nbsp;
+    <code>McHestonGenerator.generate_samples()</code>'s <code>print()</code> calls converted to <code>log.info()</code> &nbsp;·&nbsp;
+    <code>gpt.py::load_model_from_path</code> now takes a proper <code>device</code> parameter with <code>map_location</code> and gracefully handles a missing weight file &nbsp;·&nbsp;
+    the admittedly-broken <code>modelconverter.py</code> (240+ lines, author's own docstring said it didn't work) deleted entirely &nbsp;·&nbsp;
+    dead <code>datasets.py</code> (<code>InstructionDataset</code>, unused anywhere) deleted &nbsp;·&nbsp;
+    <code>sdevpy/llms/</code> now has 30+ tests across <code>local_model</code>/<code>transformers_model</code>/<code>llama_model</code>/<code>llmfactory</code>, plus a real end-to-end integration test for the GPT stack in <code>test_gpt.py</code>
   </div>
 
   <div class="regress-banner">
-    <strong>Still genuinely open (re-verified via direct file reads, not diff-stat summaries):</strong>
-    <code>llms/gpt/{gpt,chat,training}.py</code> import fix is incomplete — see #1 &nbsp;·&nbsp;
-    <code>examples/stovol/stovoltrain.py</code> imports 4 modules that don't exist anywhere in the repo — see #2 &nbsp;·&nbsp;
-    <code>KerasLearningModel.load_learning_model</code> constructor kwarg mismatch — see #3 &nbsp;·&nbsp;
-    zero test coverage for <code>machinelearning/{pytorch,keras,tensorflow}</code> and <code>llms/gpt</code> — see #4
+    <strong>New in this pass, or still open:</strong>
+    <code>GptModel.chat()</code> silently drops all but the last message in a conversation — see #1 &nbsp;·&nbsp;
+    <code>load_model_from_path</code> still doesn't move the model to the resolved device — see #2 &nbsp;·&nbsp;
+    most of <code>examples/gpt/raschka/</code> has broken imports post-move — see #3 &nbsp;·&nbsp;
+    the <code>nn.Linear(..., GELU())</code> activation-as-bias bug survived the rename to <code>app_dnn.py</code> — see #4
   </div>
 
   <div class="scorecard">
@@ -278,234 +259,296 @@
         <tr>
           <td>Architecture</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Most of the keras/pytorch split's rough edges are cleaned up; <code>llms/gpt/</code> and <code>stovoltrain.py</code> are the remaining signs of an incomplete migration</td>
+          <td style="color:var(--muted);font-size:.83rem"><code>GptModel</code>/<code>GptModule</code>/<code>LocalModel</code> layering is sound and mirrors the existing <code>TransformersModel</code>/<code>LlamaModel</code> pattern well; the near-identical class names are a readability hazard</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Data leakage, Greeks batch mismatch, vacuous validation, dropped <code>eps</code> — all fixed and re-verified; <code>WorstOfBarrier</code>'s expiry-only check and <code>mchestongenerator.py</code>'s print pollution remain</td>
+          <td>Correctness</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Real fixes landed (device bug, kwarg mismatch), but two new bugs shipped in the same pass — chat history dropped, device-move gap — plus a dead <code>self.format_answer</code> call in <code>ChatGenerator.dialog()</code></td>
         </tr>
         <tr>
           <td>Error Handling</td><td>5 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Unchanged — <code>download_file</code> and the smile-generator sentinel-value catches were outside this cleanup pass's scope</td>
+          <td style="color:var(--muted);font-size:.83rem">Unchanged from prior reviews outside the touched files — <code>WorstOfBarrier</code>, smile-generator sentinel-value catches remain out of scope for this pass</td>
         </tr>
         <tr>
-          <td>Testing</td><td>4 / 10</td>
+          <td>Testing</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Big jump for <code>sdevpy/llms/</code> — from zero to genuinely thorough; <code>machinelearning/{pytorch,keras,tensorflow}</code> still has zero tests, and <code>test_gpt.py</code>'s exact-string assertion is fragile</td>
+        </tr>
+        <tr>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good dead-code cleanup (<code>modelconverter.py</code>, <code>datasets.py</code> removed); <code>examples/gpt/raschka/</code>'s broken imports are a large regression in this category for that subtree</td>
+        </tr>
+        <tr>
+          <td>Maintainability</td><td>4 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f85149"></div></div><span class="score-lbl">Weak</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Still zero tests for <code>machinelearning/{pytorch,keras,tensorflow}</code> or <code>llms/gpt</code> — the one remaining category unimproved by this pass, and the reason #1 shipped broken</td>
+          <td style="color:var(--muted);font-size:.83rem">The <code>examples/raschka/</code> → <code>examples/gpt/raschka/</code> move broke the majority of files in that directory — imports weren't updated to match either the new location or the current <code>sdevpy.llms.gpt.*</code> layout</td>
         </tr>
         <tr>
-          <td>Code Quality</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Real improvement: <code>print()</code> pollution cleaned up in 2 of 3 flagged generators, leftover test <code>__main__</code> block removed, scheduler redesign converts epochs to steps correctly</td>
-        </tr>
-        <tr>
-          <td>Maintainability</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>stovoltrain.py</code> still points at a pre-split package layout (<code>machinelearning/topology.py</code>, <code>machinelearning/callbacks.py</code>, <code>sdevpy/projects/stovol/</code> — none exist)</td>
-        </tr>
-        <tr>
-          <td>Type Safety</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Unchanged — <code>build_timegrid(config: dict)</code> and <code>fbsabr.price(parameters: list[float])</code> issues outside this pass's scope</td>
+          <td>Type Safety</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>fbsabr.price</code>'s and <code>build_timegrid</code>'s wrong annotations fixed; new <code>tools.workpath()</code> is annotated <code>-> str</code> but returns a <code>Path</code></td>
         </tr>
         <tr>
           <td>Documentation</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>get_pde_config</code>'s misleading docstring fixed; new explanatory comment added to <code>compose_mlp</code> on the MLP's weight-layer structure</td>
+          <td style="color:var(--muted);font-size:.83rem">Unchanged from prior review outside touched files; new code has reasonable docstrings where present</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <div class="section-title">Top Issues</div>
+  <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title">The <code>llms/gpt</code> import fix shortened the wrong paths but didn't correct them — still broken</span>
+      <span class="issue-title"><code>GptModel.chat()</code> silently drops every message except the last one</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/llms/gpt/chat.py · lines 3-4 &nbsp;·&nbsp; gpt.py · line 10 &nbsp;·&nbsp; training.py · line 5 &nbsp;·&nbsp; sdevpy/llms/gpt/__init__.py (empty)</span>
-    <p><strong>Why it's bad:</strong> Re-read directly, current content:</p>
-    <pre><span class="c"># chat.py:3-4</span>
-<span class="rm">from sdevpy.llms.gpt import GPTModel</span>          <span class="c"># __init__.py is empty — GPTModel isn't re-exported</span>
-<span class="rm">import sdevpy.llms.textgen as tg</span>              <span class="c"># real module is sdevpy.llms.gpt.textgen</span>
-
-<span class="c"># gpt.py:10</span>
-<span class="rm">from sdevpy.llms.attention import MultiHeadAttention</span>  <span class="c"># real module is sdevpy.llms.gpt.attention</span></pre>
+    <span class="loc">sdevpy/llms/gpt_model.py · lines 41-46</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre>prompt = <span class="st">''</span>
+<span class="kw">for</span> message <span class="kw">in</span> messages:
+    new_prompt = message.get(<span class="st">"content"</span>, <span class="st">""</span>)
+    <span class="rm">prompt = new_prompt + "\n"</span>
+<span class="kw">return</span> self.respond_prompt(prompt, **kwargs)</pre>
     <p>
-      All three still raise <code>ModuleNotFoundError</code>/<code>ImportError</code>. The
-      <code>machinelearning.</code> prefix was removed, but the required <code>.gpt</code> subpackage segment
-      was never added. <code>chat.py</code>'s calls to <code>tg.text_to_token_ids</code>/
-      <code>tg.generate_text_simple</code>/<code>tg.token_ids_to_text</code> — which don't exist in
-      <code>textgen.py</code> (real names: <code>text_to_tokens</code>, <code>generate</code>,
-      <code>tokens_to_text</code>) — were also never touched.
+      Each loop iteration <strong>overwrites</strong> <code>prompt</code> instead of accumulating it —
+      after the loop, <code>prompt</code> only ever contains the <em>last</em> message's content. Every
+      earlier message in the conversation, including any system prompt passed through
+      <code>LocalModel.respond_instruction</code>, is silently discarded before the model ever sees it.
+      The method's own comment (line 38-40: <em>"we just write back the answer to the concatenated
+      list of inputs"</em>) states the intended behavior — concatenation — which the code doesn't
+      actually do. This is on a live path: <code>llmfactory.run_instruction</code> →
+      <code>LocalModel.respond_instruction</code> → <code>GptModel.chat</code> → this loop.
     </p>
     <p><strong>Fix:</strong></p>
-    <pre><span class="rm">from sdevpy.llms.gpt import GPTModel
-import sdevpy.llms.textgen as tg</span>
-<span class="ok">from sdevpy.llms.gpt.gpt import GPTModel
-import sdevpy.llms.gpt.textgen as tg</span></pre>
-    <p>plus renaming <code>chat.py</code>'s three calls to match <code>textgen.py</code>'s actual function names.</p>
+    <pre><span class="rm">prompt = new_prompt + "\n"</span>
+<span class="ok">prompt += new_prompt + "\n"</span></pre>
   </div>
 
   <!-- 2 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>examples/stovol/stovoltrain.py</code> imports four modules that no longer exist anywhere in the repo</span>
+      <span class="issue-title"><code>load_model_from_path</code> resolves a device correctly but never actually moves the model there</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">examples/stovol/stovoltrain.py · lines 12-21</span>
-    <p><strong>Why it's bad:</strong> Verified against the actual filesystem, not just the code:</p>
-    <pre>from sdevpy.machinelearning.topology <span class="kw">import</span> compose_model         <span class="c"># MISSING</span>
-from sdevpy.machinelearning.learningschedules <span class="kw">import</span> ...           <span class="c"># MISSING — now under machinelearning/keras/</span>
-from sdevpy.machinelearning.callbacks <span class="kw">import</span> RefCallback          <span class="c"># MISSING — now under machinelearning/keras/</span>
-from sdevpy.projects.stovol <span class="kw">import</span> stovolplot as xplt              <span class="c"># MISSING — sdevpy/projects/ doesn't exist at all</span></pre>
+    <span class="loc">sdevpy/llms/gpt/gpt.py · lines 169-188 &nbsp;·&nbsp; reachable via sdevpy/llms/gpt_model.py · line 104</span>
     <p>
-      This script predates the split of <code>sdevpy/machinelearning/</code> into <code>keras/</code> and
-      <code>pytorch/</code> subpackages. It fails with <code>ModuleNotFoundError</code> on its first custom
-      import, before any of its 145 lines of training logic run. The one-line diff in the latest commit
-      (removing a stale comment) did not touch the imports.
+      <strong>Why it's bad:</strong> <code>device</code> is correctly resolved and passed to
+      <code>torch.load(weight_file, map_location=device)</code> (line 183), fixing the crash this had in
+      the 13th review. But <code>model = GptModule(model_config)</code> (line 179) constructs the model
+      fresh on CPU, and <code>model.load_state_dict(...)</code> (line 184) only copies parameter
+      <em>values</em> in place — it does not move the model's own tensors to a different device. The
+      function returns <code>model</code> still sitting on CPU regardless of what <code>device</code>
+      resolved to. <code>GptModel.load()</code> calls this with <code>self.device</code> already
+      correctly computed (<code>gpt_model.py:104</code>), so on a GPU machine the returned model is
+      silently left on CPU while later code may pass it CUDA tensors — the same class of
+      device-mismatch bug already found and fixed once this session in
+      <code>TorchLearningModel.__init__</code>.
     </p>
-    <p><strong>Fix:</strong> Update the four paths to <code>sdevpy.machinelearning.keras.{topology,learningschedules,callbacks}</code>, and restore or remove the <code>sdevpy.projects.stovol.stovolplot</code> dependency.</p>
+    <p><strong>Fix:</strong></p>
+    <pre>model.load_state_dict(checkpoint[<span class="st">"model_state_dict"</span>])
+<span class="ok">model = model.to(device)</span></pre>
   </div>
 
   <!-- 3 -->
-  <div class="issue medium">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>load_learning_model</code> still passes constructor kwargs <code>KerasLearningModel.__init__</code> doesn't accept</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Most of <code>examples/gpt/raschka/</code> has broken imports after the move from <code>examples/raschka/</code></span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/machinelearning/keras/learningmodel.py · line 129 vs. line 14</span>
-    <p><strong>Why it's bad:</strong> Now that <code>predict_on_scaled</code> is implemented (fixed), this is
-    the next thing that will actually surface for anyone loading a model with saved scalers:</p>
-    <pre><span class="kw">def</span> <span class="fn">__init__</span>(self, base_model):  <span class="c"># one parameter</span>
-<span class="rm">model = KerasLearningModel(keras_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)</span></pre>
-    <p>Raises <code>TypeError: __init__() got an unexpected keyword argument 'is_scaled'</code>. The base
-    class's <code>set_scalers(x_scaler, y_scaler)</code> — referenced by the constructor's own comment ("Now
-    need to call set_scalers() instead") — is the intended replacement, but was never applied here.</p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="rm">model = KerasLearningModel(keras_model, is_scaled=True, x_scaler=x_scaler, y_scaler=y_scaler)</span>
-<span class="ok">model = KerasLearningModel(keras_model)
-model.set_scalers(x_scaler, y_scaler)</span></pre>
+    <span class="loc">examples/gpt/raschka/ch3_coding_attention.py, ch4_gpt_model.py, ch5_loadgpt2.py, ch5_pretraining.py, app_dnn.py</span>
+    <p><strong>Why it's bad:</strong> Verified by tracing every import against the actual filesystem. Three distinct broken patterns, several files hitting more than one:</p>
+    <pre><span class="c"># Pattern A — sdevpy.projects doesn't exist anywhere in the repo</span>
+<span class="rm">from sdevpy.projects.raschka import raschka_dnn</span>                          <span class="c"># ch4_gpt_model.py:7</span>
+<span class="rm">from sdevpy.projects.raschka.raschka_gpt_download import ...</span>              <span class="c"># ch5_loadgpt2.py:4</span>
+
+<span class="c"># Pattern B — stale pre-refactor package path</span>
+<span class="rm">from sdevpy.machinelearning.llms.attention import ...</span>                     <span class="c"># ch3_coding_attention.py:3-4</span>
+<span class="rm">from sdevpy.machinelearning.llms.gpt import GELU</span>                          <span class="c"># app_dnn.py:3</span>
+<span class="rm">import sdevpy.machinelearning.llms.textgen as tg</span>                          <span class="c"># ch4_gpt_model.py:8, ch5_loadgpt2.py:6</span>
+
+<span class="c"># Pattern C — sibling files renamed during the move, callers not updated</span>
+<span class="rm">from raschka.raschka_tokenizers import ...</span>       <span class="c"># ch2_working_with_text.py:5 — now app_tokenizers.py</span>
+<span class="rm">from raschka.raschka_dummpy_gpt import DummyGPTModel</span>  <span class="c"># ch4_gpt_model.py:5 — now app_dummy_gpt.py</span>
+
+<span class="c"># Bonus — even the "correct-looking" path fails, since __init__.py is empty</span>
+<span class="rm">from sdevpy.llms.gpt import GptModule</span>             <span class="c"># ch5_pretraining.py:5 — needs .gpt.gpt, not .gpt</span></pre>
+    <p>
+      Of the files under <code>examples/gpt/raschka/</code>, only <code>app_dummy_gpt.py</code> and
+      <code>app_tokenizers.py</code> have no import issues. Even the sibling-import pattern
+      (<code>from raschka.X import Y</code>) is structurally fragile beyond the wrong filenames: it only
+      resolves if the <em>parent</em> of the <code>raschka</code> package is on <code>sys.path</code>,
+      which isn't the case when running a script directly from inside its own directory.
+    </p>
+    <p><strong>Fix:</strong> Update each import to its current location
+    (<code>sdevpy.llms.gpt.attention</code>, <code>sdevpy.llms.gpt.gpt</code>,
+    <code>sdevpy.llms.gpt.textgen</code>, local files by their new names), and run these scripts end to
+    end at least once to catch what a read-through misses.</p>
   </div>
 
   <!-- 4 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title">Zero test coverage for <code>machinelearning/{pytorch,keras,tensorflow}</code> and <code>llms/gpt</code></span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>nn.Linear(in, out, GELU())</code> — activation passed as the <code>bias</code> argument, survived the file's rename</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/ · pyproject.toml · lines 57-59</span>
-    <p><strong>Why it's bad:</strong> Still no test imports anything from these packages, and the coverage
-    <code>omit</code> list still hides the gap. This is exactly why the incomplete <code>llms/gpt</code> fix
-    (#1) could be committed looking complete and still not work — nothing runs it.</p>
-    <p><strong>Fix:</strong> A single smoke test per subpackage (import + construct + one forward pass) would
-    catch #1 and #2 immediately.</p>
+    <span class="loc">examples/gpt/raschka/app_dnn.py · lines 25-29</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre>nn.Sequential(nn.Linear(layer_sizes[0], layer_sizes[1], GELU())),
+nn.Sequential(nn.Linear(layer_sizes[1], layer_sizes[2], GELU())),
+<span class="c">... (5 layers total, same pattern)</span></pre>
+    <p>
+      <code>nn.Linear</code>'s third positional parameter is <code>bias: bool</code>, not an activation
+      module. <code>GELU()</code> is truthy, so it's silently accepted as <code>bias=True</code> and then
+      discarded — no activation is ever applied between layers, and the "deep" network this class is
+      meant to demonstrate (for illustrating vanishing/exploding gradients with shortcut connections) is
+      actually a stack of purely linear transformations. This exact bug was flagged when the file was
+      still named <code>raschka_dnn.py</code>; it carried over unchanged through the rename to
+      <code>app_dnn.py</code>. It's also currently unreachable due to #3's broken <code>GELU</code>
+      import, compounding the two issues.
+    </p>
+    <p><strong>Fix:</strong> <code>nn.Sequential(nn.Linear(layer_sizes[0], layer_sizes[1]), GELU())</code> — <code>GELU()</code> as a separate item in the <code>Sequential</code>, not an argument to <code>Linear</code>.</p>
   </div>
 
   <!-- 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title"><code>WorstOfBarrier</code> only evaluates the barrier at expiry, not through time</span>
+      <span class="issue-title"><code>ChatGenerator.dialog()</code> calls a method that doesn't exist</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 8-9, 19-36, 41-45</span>
-    <p><strong>Why it's bad:</strong> Re-verified unchanged (file not touched by the latest commit). The class
-    docstring admits barrier monitoring isn't implemented, but <code>set_valuation_date</code> registers only
-    the expiry as an event date — <code>evaluate()</code>'s barrier check silently degenerates to a European
-    condition at expiry, and nothing stops a caller from pricing it as if it were a real barrier.</p>
-    <p><strong>Fix:</strong> Implement real path-wise monitoring, or don't export the class until it's real.</p>
+    <span class="loc">sdevpy/llms/gpt/textgen.py · lines 21-27, 39-45</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre><span class="kw">def</span> <span class="fn">dialog</span>(self, start_text):
+    ...
+    print(<span class="st">"Output text:\n"</span>, <span class="rm">self.format_answer(start_text, end_text)</span>)</pre>
+    <p>
+      <code>format_answer</code> is a module-level function (line 39), not a method of
+      <code>ChatGenerator</code> — calling <code>self.format_answer(...)</code> raises
+      <code>AttributeError</code>. Currently dead/untested code: nothing in the codebase calls
+      <code>.dialog()</code> (the production path uses <code>ChatGenerator.end_text()</code> directly,
+      per <code>gpt_model.py:33</code>), which is exactly why this went unnoticed.
+    </p>
+    <p><strong>Fix:</strong> <code>print("Output text:\n", format_answer(start_text, end_text))</code> — call the module-level function directly, not through <code>self</code>.</p>
   </div>
 
   <!-- 6 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title"><code>McHestonGenerator.generate_samples()</code> still has the print-pollution pattern its two siblings just had fixed</span>
+      <span class="issue-title">Hardcoded machine-specific paths in active (not actually commented-out) code</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/mlsurfacegen/mchestongenerator.py · lines 24-27, 31, 51</span>
-    <p><strong>Why it's bad:</strong> <code>mczabrgenerator.py</code> and <code>sabrgenerator.py</code> just had
-    their equivalent <code>print()</code> calls converted to <code>log.info()</code> in this same commit —
-    <code>mchestongenerator.py</code> has the identical pattern (confirmed unchanged: file not in the commit's
-    file list) and was missed.</p>
-    <p><strong>Fix:</strong> Apply the same <code>log = logging.getLogger(__name__)</code> +
-    <code>log.info(...)</code> conversion, matching the pattern just applied to its two siblings.</p>
+    <span class="loc">examples/gpt/raschka/ch5_pretraining.py · line 173 &nbsp;·&nbsp; ch7_instruction_finetuning.py · line 15 &nbsp;·&nbsp; examples/marketdataapis/{set_limits,update_db}.py</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>ch5_pretraining.py:173</code>'s hardcoded
+      <code>C:\temp\llms\model-save.pth</code> sits under a section header comment that reads like it's
+      disabled, but the code itself (including the <code>torch.load(file, ...)</code> call) is not
+      commented out and will execute, raising <code>FileNotFoundError</code> for anyone without that
+      exact path. Contrast with <code>chat_gpt.py</code>/<code>train_gpt.py</code>/
+      <code>app_download_convert.py</code> in the same restructuring, which correctly use the new
+      <code>tools.workpath()</code> helper (env-var aware, falls back to <code>~/sdevpy</code>).
+    </p>
+    <p><strong>Fix:</strong> Route these through <code>tools.workpath()</code> like the sibling scripts already do.</p>
   </div>
 
   <!-- 7 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title"><code>download_file</code> swallows every failure and returns silently</span>
+      <span class="issue-title">Zero test coverage for <code>machinelearning/{pytorch,keras,tensorflow}</code> remains — only <code>llms/</code> improved</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/llms/gpt/gpt.py · lines 166-214, called from <code>download_gpt2</code> lines 132-154</span>
-    <p><strong>Why it's bad:</strong> Every failure branch — primary URL fails, backup URL fails, or an
-    unexpected exception — just <code>print()</code>s and lets the function return <code>None</code> implicitly.
-    <code>download_gpt2</code> calls it in a loop without checking the return value, so a failed download for
-    any of the 7 required files surfaces later as a confusing "file not found" instead of a clear error at the
-    point of failure.</p>
-    <p><strong>Fix:</strong> Raise on failure (or return a success flag the caller actually checks) instead of
-    printing and continuing.</p>
+    <span class="loc">sdevpy/tests/ · pyproject.toml lines 57-59</span>
+    <p>
+      <strong>Why it's bad:</strong> This review's positive headline — <code>sdevpy/llms/</code> now has
+      real coverage — doesn't extend to <code>sdevpy/machinelearning/pytorch</code> or
+      <code>keras</code>, which are still referenced by zero tests (confirmed: no test file mentions
+      <code>TorchMultiLayerPerceptron</code>, <code>KerasLearningModel</code>, or
+      <code>TorchLearningModel</code>). The coverage <code>omit</code> list in
+      <code>pyproject.toml</code> also hasn't been updated to drop <code>sdevpy/llms/*</code> now that
+      it's genuinely tested — it's currently hiding real progress instead of a real gap, the opposite
+      problem from before.
+    </p>
+    <p><strong>Fix:</strong> Apply the same testing investment made for <code>llms/</code> to the ML
+    wrapper packages; remove <code>sdevpy/llms/*</code> from the coverage <code>omit</code> list now
+    that it has genuine tests.</p>
   </div>
 
   <!-- 8 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title"><code>fbsabr.price</code>'s <code>parameters</code> is typed as <code>list[float]</code> but used as a dict everywhere</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>GptModel</code> (wrapper) and <code>GptModule</code> (network) — a one-letter naming collision</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/models/fbsabr.py · line 11</span>
-    <p><strong>Why it's bad:</strong> The function body does <code>parameters['LnVol']</code>,
-    <code>parameters['Beta']</code>, etc. — every real caller, including <code>test_mlgen.py</code>, passes a
-    dict. The annotation actively misleads anyone relying on it (type checkers, IDEs) about the expected shape.</p>
-    <p><strong>Fix:</strong> <code>parameters: dict</code> (or a typed mapping) instead of <code>list[float]</code>.</p>
+    <span class="loc">sdevpy/llms/gpt_model.py · line 12 &nbsp;·&nbsp; sdevpy/llms/gpt/gpt.py · line 11</span>
+    <p>
+      <strong>Why it's bad:</strong> Not a functional bug — traced both classes and confirmed
+      <code>GptModel</code> genuinely just wraps <code>GptModule</code> via
+      <code>gpt.load_model_from_path</code>, no duplicated logic. But the two names differing by a
+      single letter (<code>Model</code> vs. <code>Module</code>) is a real maintainability hazard:
+      searching for "GptModel" won't surface the actual transformer architecture class, and a future
+      contributor skimming either name could easily conflate the two.
+    </p>
+    <p><strong>Fix:</strong> Rename one — e.g. <code>GptModule</code> → <code>GptTransformer</code> or
+    <code>GptModel</code> → <code>GptBackend</code> — to make the distinction unambiguous at a glance.</p>
   </div>
 
   <!-- 9 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>InterpolatedLocalVolSection.dump()</code> crashes after a JSON round-trip</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>test_gpt.py</code>'s only assertion pins an exact, unseeded-beyond-one-call generated string</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol.py · lines 223-227</span>
-    <p><strong>Why it's bad:</strong> <code>dump()</code> calls <code>self.logm_list.tolist()</code>/
-    <code>self.vol_list.tolist()</code>, but <code>__init__</code> stores whatever it's given with no
-    <code>np.asarray()</code> conversion, and <code>create_interpolated_section()</code> feeds JSON-loaded plain
-    Python lists straight through. Re-dumping a section that was loaded from disk raises
-    <code>AttributeError: 'list' object has no attribute 'tolist'</code>.</p>
-    <p><strong>Fix:</strong> Wrap in <code>np.asarray(...)</code> at construction time in
-    <code>InterpolatedLocalVolSection.__init__</code>.</p>
+    <span class="loc">sdevpy/tests/test_gpt.py · lines 22-29</span>
+    <p>
+      <strong>Why it's bad:</strong> The test genuinely exercises the full stack end-to-end (load, train,
+      generate) — a real improvement over having nothing — but its only check is
+      <code>assert response[:15] == "he, was\n,. had."</code>, an exact match against one specific
+      training run's output. This is fragile to PyTorch version differences, CPU/GPU execution
+      differences, or any op-level nondeterminism beyond the single <code>torch.manual_seed(123)</code>
+      call in <code>GptModel.train()</code> — a passing/failing result here says more about
+      bit-for-bit reproducibility than about model correctness.
+    </p>
+    <p><strong>Fix:</strong> Assert on structural properties instead (response is non-empty, correct
+    type, roughly expected length) rather than an exact string, or clearly mark this as a golden/regression
+    test if pinning exact output is intentional.</p>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>build_timegrid</code>'s <code>config</code> is typed as <code>dict</code> but accessed via attributes</span>
+      <span class="issue-title"><code>tools.workpath()</code> is annotated <code>-&gt; str</code> but returns a <code>Path</code></span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/utilities/timegrids.py · lines 42-45</span>
-    <p><strong>Why it's bad:</strong> <code>n_steps = config.n_timesteps</code> requires an object with
-    attribute access; every real caller (<code>McConfig</code>, <code>PdeConfig</code>) already satisfies this,
-    so it's not a live crash today — but the <code>dict</code> annotation is simply wrong and would mislead
-    anyone passing a real dict, or any type checker validating the signature.</p>
-    <p><strong>Fix:</strong> Change the annotation to whatever protocol/base class <code>McConfig</code>/<code>PdeConfig</code> share, not <code>dict</code>.</p>
+    <span class="loc">sdevpy/utilities/tools.py · lines 13-17</span>
+    <p><strong>Why it's bad:</strong></p>
+    <pre><span class="kw">def</span> <span class="fn">workpath</span>() -> str:
+    path = Path(os.environ.get(<span class="st">'SDEVPY_DATA'</span>, Path.home() / <span class="st">'sdevpy'</span>))
+    <span class="kw">return</span> path</pre>
+    <p>
+      A nice new helper — it centralizes the <code>SDEVPY_DATA</code> env-var pattern that was
+      previously duplicated across <code>stovolgen.py</code>, <code>stovoltrain.py</code>, and several
+      notebooks, and it's already correctly adopted by <code>chat_gpt.py</code>/<code>train_gpt.py</code>.
+      The only issue is the return type: it returns a <code>Path</code> object, not a <code>str</code>.
+    </p>
+    <p><strong>Fix:</strong> <code>def workpath() -> Path:</code></p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #13 &nbsp;·&nbsp; 2026-08-15 (correction pass, full scan, verified via direct file reads)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #14 &nbsp;·&nbsp; 2026-08-15 (full scan, verified via direct file reads and two parallel research passes)
   </footer>
 </div>
 </body>

@@ -2,10 +2,11 @@ from importlib.metadata import version
 import torch
 import tiktoken
 import matplotlib.pyplot as plt
-from sdevpy.llms.gpt import GptModule
-import sdevpy.llms.textgen as tg
+from sdevpy.llms.gpt.gpt import GptTransformer
+import sdevpy.llms.gpt.textgen as tg
 from sdevpy.llms.gpt import datasetloader as dsl
 from sdevpy.llms.gpt.training import calc_loss_loader
+from sdevpy.utilities import tools
 
 
 print("tiktoken version:", version("tiktoken"))
@@ -35,7 +36,7 @@ print("<><><><><><><><> Using GPT  <><><><><><><><><><><><><><><><><><><><><><><
 print("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>\n")
 print("<><><><> Generate text (untrained) <><><><>")
 torch.manual_seed(123)
-model = GptModule(GPT_CONFIG_124M)
+model = GptTransformer(GPT_CONFIG_124M)
 model.eval()
 
 start_context = "Every effort moves you"
@@ -152,7 +153,7 @@ print("Validation loss: ", val_loss)
 # torch.manual_seed(123)
 # start_text = "Every effort moves you"
 # print("Starting text: " + start_text)
-# model = GptModule(GPT_CONFIG_124M)
+# model = GptTransformer(GPT_CONFIG_124M)
 # model.to(device)
 # optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
 # num_epochs = 10
@@ -170,11 +171,11 @@ print("Validation loss: ", val_loss)
 
 # ############### LOAD SAVED MODEL #############################################################
 print("<><> Load saved model")
-file = r"C:\\temp\\llms\\model-save.pth"
+file = str(tools.workpath() / "llms" / "model-save.pth")
 # torch.manual_seed(123)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 checkpoint = torch.load(file, map_location=device)
-model = GptModule(GPT_CONFIG_124M)
+model = GptTransformer(GPT_CONFIG_124M)
 model.load_state_dict(checkpoint["model_state_dict"])
 optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, weight_decay=0.1)
 optimizer.load_state_dict(checkpoint["optimizer_state_dict"])

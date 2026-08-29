@@ -3,13 +3,14 @@
 if __name__ == "__main__":
     import datetime as dt
     from sdevpy.utilities import dates as dts
+    from sdevpy.utilities import tools
     from openbb import obb
     obb.user.preferences.output_type = "dataframe"
 
     names = ['SPY', 'VTV', 'VUG', 'VBR', 'VBK', 'VGK', 'VPL']
     colors = ['blue', 'red', 'green', 'brown', 'orange', 'yellow']
     today = dt.date.today()
-    db_root = r'C:\\temp\\database'
+    db_root = tools.workpath() / "database"
 
     print(today.strftime('%d-%b-%Y'))
 

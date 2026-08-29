@@ -66,7 +66,7 @@ print("Test start: " + start_text)
 
 # Initialize model
 if start_version == 0:
-    model = gpt.GptModule(gpt_config)
+    model = gpt.GptTransformer(gpt_config)
 else:
     # Read from previous
     start_model_path = model_path / start_model_name

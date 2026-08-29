@@ -1,4 +1,5 @@
 import json
+from sdevpy.utilities import tools
 
 
 def format_input(entry):
@@ -12,7 +13,7 @@ def format_input(entry):
 
 
 ######## Inspect dataset #################################################
-file = r"C:\\temp\\llms\\datasets\\instruction-data.json"
+file = tools.workpath() / "llms" / "datasets" / "instruction-data.json"
 with open(file) as f:
     data = json.load(f)
 

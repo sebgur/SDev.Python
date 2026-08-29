@@ -8,7 +8,7 @@ from sdevpy.llms.gpt.attention import MultiHeadAttention
 log = logging.getLogger(__name__)
 
 
-class GptModule(nn.Module):
+class GptTransformer(nn.Module):
     """ The model's forward method takes in a batch of sequences of token IDs and it outputs
         a batch of sequences with the same size, i.e. representing the same number of tokens.
         However, these tokens are now represented by a whole dimension of logits, rather than
@@ -166,7 +166,7 @@ def load_weights(gpt, params):
     gpt.out_head.weight = assign(gpt.out_head.weight, params["wte"])
 
 
-def load_model_from_path(path: str|Path, device=None) -> GptModule:
+def load_model_from_path(path: str|Path, device=None) -> GptTransformer:
     """ Load model from saved weights and config """
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -176,7 +176,7 @@ def load_model_from_path(path: str|Path, device=None) -> GptModule:
         raise ValueError(f"Config file not found: {config_file}")
 
     model_config = jsm.deserialize(config_file)
-    model = GptModule(model_config)
+    model = GptTransformer(model_config)
 
     weight_file = path / "weights.pth"
     if weight_file.exists():
@@ -185,10 +185,11 @@ def load_model_from_path(path: str|Path, device=None) -> GptModule:
     else:
         log.warning("Weight file not found: random weight initialization")
 
+    model = model.to(device)
     return model
 
 
-def save_model_to_path(model: GptModule, model_config: dict, path: str|Path) -> None:
+def save_model_to_path(model: GptTransformer, model_config: dict, path: str|Path) -> None:
     """ Save model (weights and config) to path """
     path.mkdir(parents=True, exist_ok=True)
     weight_file = path / "weights.pth"
