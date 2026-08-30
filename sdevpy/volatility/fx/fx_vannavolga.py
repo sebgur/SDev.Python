@@ -25,7 +25,6 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
-# from scipy.optimize import brentq
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
 from sdevpy.volatility.fx.fx_smilecalib import calibrate_smile_strangle
@@ -67,25 +66,25 @@ def vv_weights(strike: npt.ArrayLike, k_put: float, k_atm: float, k_call: float,
     return w1 * vega / v1, w2 * vega / v2, w3 * vega / v3
 
 
-def _implied_vol_bisect(fwd_price: npt.ArrayLike, fwd: float, strike: npt.ArrayLike, expiry: float, is_call: bool,
-                        vol_lo: float = 1e-8, vol_hi: float = 5.0, max_iter: int = 200,
-                        tol: float = 1e-14) -> npt.NDArray[np.float64]:
-    """ Invert an undiscounted forward price to a Black vol by bisection.
-        Deliberately not black.implied_vol_newton: Newton divides by vega, which collapses in
-        the deep wings where a VV smile is most often queried, and returns NaN silently. Price
-        is strictly increasing in vol, so bisection cannot diverge. """
-    target = _arr(fwd_price)
-    k = np.broadcast_to(_arr(strike), target.shape)
-    lo = np.full(target.shape, vol_lo)
-    hi = np.full(target.shape, vol_hi)
-    for _ in range(max_iter):
-        mid = 0.5 * (lo + hi)
-        go_up = (black.price(expiry, k, is_call, fwd, mid) - target) < 0.0
-        lo = np.where(go_up, mid, lo)
-        hi = np.where(go_up, hi, mid)
-        if np.nanmax(hi - lo) < tol:
-            break
-    return 0.5 * (lo + hi)
+# def _implied_vol_bisect(fwd_price: npt.ArrayLike, fwd: float, strike: npt.ArrayLike, expiry: float, is_call: bool,
+#                         vol_lo: float = 1e-8, vol_hi: float = 5.0, max_iter: int = 200,
+#                         tol: float = 1e-14) -> npt.NDArray[np.float64]:
+#     """ Invert an undiscounted forward price to a Black vol by bisection.
+#         Deliberately not black.implied_vol_newton: Newton divides by vega, which collapses in
+#         the deep wings where a VV smile is most often queried, and returns NaN silently. Price
+#         is strictly increasing in vol, so bisection cannot diverge. """
+#     target = _arr(fwd_price)
+#     k = np.broadcast_to(_arr(strike), target.shape)
+#     lo = np.full(target.shape, vol_lo)
+#     hi = np.full(target.shape, vol_hi)
+#     for _ in range(max_iter):
+#         mid = 0.5 * (lo + hi)
+#         go_up = (black.price(expiry, k, is_call, fwd, mid) - target) < 0.0
+#         lo = np.where(go_up, mid, lo)
+#         hi = np.where(go_up, hi, mid)
+#         if np.nanmax(hi - lo) < tol:
+#             break
+#     return 0.5 * (lo + hi)
 
 
 def atm_dns_strike(fwd: float, atm_vol: float, expiry: float, prem_adjusted: bool = False) -> float:
@@ -158,6 +157,27 @@ class VannaVolgaSmile:
         w1, w2, w3 = lagrange_weights(strike, self.k_put, self.k_atm, self.k_call)
         return w1 * self.vol_put + w2 * self.atm_vol + w3 * self.vol_call
 
+    # def _exact_vol(self, k: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    #     # Calls and puts imply the same vol (the VV correction is identical by put-call parity),
+    #     # so invert whichever is OTM -- better conditioned.
+    #     is_call = np.asarray(k >= self.fwd)
+    #     vol = np.empty(np.broadcast(k, is_call).shape, dtype=float)
+    #     for flag in (True, False):
+    #         mask = (is_call == flag)
+    #         if not np.any(mask):
+    #             continue
+    #         k_sub = np.broadcast_to(k, vol.shape)[mask]
+    #         price = self.price(k_sub, is_call=flag)
+    #         if flag:
+    #             intrinsic = np.maximum(self.fwd - k_sub, 0.0)
+    #             upper = np.full_like(k_sub, self.fwd)
+    #         else:
+    #             intrinsic = np.maximum(k_sub - self.fwd, 0.0)
+    #             upper = k_sub
+    #         solved = _implied_vol_bisect(price, self.fwd, k_sub, self.expiry, flag)
+    #         vol[mask] = np.where((price > intrinsic) & (price < upper), solved, np.nan)
+    #     return vol
+
     def _exact_vol(self, k: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
         # Calls and puts imply the same vol (the VV correction is identical by put-call parity),
         # so invert whichever is OTM -- better conditioned.
@@ -169,14 +189,9 @@ class VannaVolgaSmile:
                 continue
             k_sub = np.broadcast_to(k, vol.shape)[mask]
             price = self.price(k_sub, is_call=flag)
-            if flag:
-                intrinsic = np.maximum(self.fwd - k_sub, 0.0)
-                upper = np.full_like(k_sub, self.fwd)
-            else:
-                intrinsic = np.maximum(k_sub - self.fwd, 0.0)
-                upper = k_sub
-            solved = _implied_vol_bisect(price, self.fwd, k_sub, self.expiry, flag)
-            vol[mask] = np.where((price > intrinsic) & (price < upper), solved, np.nan)
+            solved = black.implied_vol(self.expiry, k_sub, flag, self.fwd, price)
+            repriced = black.price(self.expiry, k_sub, flag, self.fwd, solved)
+            vol[mask] = np.where(np.abs(repriced - price) < 1e-8, solved, np.nan)
         return vol
 
     def vol_at_delta(self, delta: float, is_call: bool, tol: float = 1e-10,
@@ -211,28 +226,6 @@ class VannaVolgaSmile:
             sigma = sigma_new
 
         raise RuntimeError(f"vol_at_delta did not converge for delta={delta} after {max_iter} iterations")
-
-
-# def market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, ms: float,
-#                     delta: float = 0.25, prem_adjusted: bool=False, **kwargs) -> tuple:
-#     """ Resolve the broker's market strangle: a *price*, not a vol. Both wing strikes are struck
-#         off the single volatility atm_vol + ms, and the quote is the sum of the two premia at
-#         that vol. Returns (k_put, k_call, fwd_price, vol_ms); the strikes stay fixed during
-#         the smile-butterfly calibration. """
-#     vol_ms = atm_vol + ms
-#     fwd = spot * np.exp((r_d - r_f) * expiry)
-#     call_kwargs = dict(kwargs)
-#     call_kwargs.setdefault('double_root_preference', 'large')
-
-#     sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
-#     sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
-#     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
-#         raise ValueError(f"Could not solve market-strangle strikes at {delta}-delta "
-#                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
-
-#     k_put, k_call = float(sol_put.k), float(sol_call.k)
-#     price = float(black.price(expiry, k_call, True, fwd, vol_ms) + black.price(expiry, k_put, False, fwd, vol_ms))
-#     return k_put, k_call, price, vol_ms
 
 
 def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, prem_adjusted, extrapolation,

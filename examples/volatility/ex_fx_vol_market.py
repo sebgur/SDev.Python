@@ -1,6 +1,7 @@
 """ Show examples of definitions of FX market for vols, delta-strike inversion and interpolation """
 import datetime as dt
 import numpy as np
+import matplotlib.pyplot as plt
 from sdevpy.market import fxspot
 from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file
 from sdevpy.utilities import dates as dts
@@ -9,10 +10,21 @@ from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.volatility.fx import fx_vannavolga
 
 
+################## TODO ###########################################################################
+# * Show charts in strike/deltas
+# * Use delta inversion and illustrate it
+# * Retrieve the pillar call/put vols on the original deltas
+# * Do it twice and compare strangle vs butterfly results
+# * Implement the direct spline (flat outside 25s). Maybe use a quick build_smile() in terms of strikes
+#   to get the market strangle to butterfly conversion, and then define the interpolation in terms of
+#   deltas.
+# * Implement the completed spline (using exact VV to create 10D and 5D, make those choosable)
+
+
 # Choose test case
 pair = "USDJPY"
 valdate = dt.datetime(2025, 12, 15)
-view_expiry_idx = 0
+view_expiry_idx = 2
 
 # Get market data provider
 provider = MarketDataFileProvider()
@@ -64,14 +76,20 @@ print(f"Domestic rate: {r_dom}")
 
 
 # Calculate
-rr, bf = 0.01, 0.0025
+fwd = spot * df_for / df_dom
+print(f"Forward: {fwd}")
 
 
 # Build smile
-s = fx_vannavolga.smile_from_quotes(spot=spot, r_d=r_dom, r_f=r_for, expiry=t, atm_vol=atm_vol, rr=-0.01, bf=0.0025)
-print(f"Pillars: K={s.k_put:.4f}/{s.k_atm:.4f}/{s.k_call:.4f} vol={s.vol_put:.4f}/{s.atm_vol:.4f}/{s.vol_call:.4f}")
-for k in np.linspace(0.95, 1.35, 9):
-    print(f"  K={k:.4f}  vv={float(s.vol(k)):.6f} 1st-order={float(s.vol(k, 'first_order')):.6f}")
+s = fx_vannavolga.smile_from_quotes(spot=spot, r_d=r_dom, r_f=r_for, expiry=t, atm_vol=atm_vol, rr=-0.01, bf=0.025)
+strikes = np.linspace(0.9 * fwd, 1.1 * fwd, 50)
+vols = []
+for strike in strikes:
+    vols.append(s.vol(strike)) #float(s.vol(k, 'first_order')
+
+plt.plot(strikes, vols)
+plt.show()
+
 
 # Write examples for strike inversion and round-trip
 
