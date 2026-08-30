@@ -34,9 +34,6 @@ class EqVolSurfaceData:
         # Size checks
         if len(self.expiries) != len(sections):
             raise ValueError("Mismatch in sizes between expiries and sections")
-        # n_times = len(self.expiries)
-        # if any(len(x) != n_times for x in (self.input_strikes, self.vols)):
-        #     raise ValueError("Incompatible size along time direction between expiries, forwards, strikes and vols")
 
     def get_prices(self, fwd_curve: EqForwardCurve, option_type: str='call') -> npt.ArrayLike:
         """ Retrieve prices """
@@ -88,8 +85,6 @@ class EqVolSurfaceData:
         """ Dump data to file """
         data = self.dump_data()
         jsm.serialize(data, file, indent=indent)
-        # with open(file, 'w') as f:
-        #     json.dump(data, f, indent=indent)
 
     def dump_data(self) -> dict:
         """ Dump data as dictionary """
@@ -130,8 +125,6 @@ class EqVolSurfaceData:
 
 def eqvolsurfacedata_from_file(file: str) -> EqVolSurfaceData:
     """ Retrieve EqVolSurfaceData from file """
-    # with open(file) as f:
-    #     data = json.load(f)
     data = jsm.deserialize(file)
 
     name = data.get('name')

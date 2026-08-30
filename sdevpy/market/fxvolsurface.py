@@ -8,6 +8,8 @@ import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import jsonmanager as jsm
+from sdevpy.market import fxspot
+from sdevpy.tests import conftest
 
 
 class FxVolSurfaceData:
@@ -79,7 +81,7 @@ class FxVolSurfaceData:
         print(sep)
 
 
-def fxvolsurfacedata_from_file(file: str | Path) -> FxVolSurfaceData:
+def fxvolsurfacedata_from_file(file: str|Path) -> FxVolSurfaceData:
     """ Retrieve FxVolSurfaceData from file """
     data = jsm.deserialize(file)
 
