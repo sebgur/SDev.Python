@@ -6,7 +6,6 @@ from enum import Enum
 from scipy.optimize import least_squares
 from sdevpy.utilities import timegrids, dates
 from sdevpy.utilities.tools import isequal
-# from sdevpy.volatility.localvol import localvol_factory as lvf
 from sdevpy.volatility.localvol.localvol import TimeInterpolatedLocalVol
 from sdevpy.volatility.impliedvol.optionsurface import calibration_targets
 from sdevpy.pde.pdeschemes import PdeConfig
@@ -14,7 +13,7 @@ from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
-from sdevpy.market.provider import MarketDataProvider, get_eq_forward_curves
+from sdevpy.market.provider import MarketDataProvider#, get_eq_forward_curves
 from sdevpy.calibration import provider as cal_prov_mod
 from sdevpy.calibration.provider import CalibrationDataProvider
 from sdevpy.instruments.constants import string_to_optiontype, OptionType
@@ -30,7 +29,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, md_pr
     model_name = config.get('model_name', 'VSVI')
 
     # Retrieve forward curve
-    fwd_curve = get_eq_forward_curves([name], valdate, md_prov)[0]
+    fwd_curve = md_prov.get_eq_forward_curves([name], valdate)[0]
 
     # Retrieve target market option data
     surface_data = md_prov.get_eq_vol_data(name, valdate)

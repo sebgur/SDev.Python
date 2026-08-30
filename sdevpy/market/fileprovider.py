@@ -13,10 +13,11 @@ from sdevpy.market.spot import SpotData
 from sdevpy.market.eqforward import EqForwardData
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
+from sdevpy.market.provider import MarketDataProvider
 from sdevpy.tests import conftest
 
 
-class MarketDataFileProvider:
+class MarketDataFileProvider(MarketDataProvider):
     """ Reads market data from files on disk """
     def __init__(self, root: str|Path=None):
         self.root = (Path(root) if root is not None else conftest.marketdata_path())

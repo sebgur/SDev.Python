@@ -37,7 +37,7 @@ def price_book(valdate: dt.datetime, book: Book, ctx: PricingContext, **kwargs) 
     names = book.names
     disc_curve = md_prov.get_yieldcurve(book.csa_curve_id, valdate)
     spot = md_prov.get_spots(names, valdate)
-    fwd_curves = mdp.get_eq_forward_curves(names, valdate, md_prov)
+    fwd_curves = md_prov.get_eq_forward_curves(names, valdate)
     lvs = cal_prov_mod.get_local_vols(names, valdate, cal_prov, **kwargs)
     corr = md_prov.get_correlations(names, valdate)
 

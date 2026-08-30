@@ -11,13 +11,13 @@ from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
-from sdevpy.market import provider as mdp
+# from sdevpy.market import provider as mdp
 from sdevpy.calibration import provider as cdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.impliedvol.models.cubicvol import (
     create_section, cubicvol_check_params, calculate_epsilon,
-    is_valid_left, is_valid_right, sample_params
+    is_valid_left, is_valid_right#, sample_params
 )
 from scipy.stats import norm as scipy_norm
 from sdevpy.volatility.impliedvol.models.logmix import (
@@ -477,7 +477,7 @@ def test_numerical_impliedvol_calculate_call_put_parity():
 def test_tssvi1_calibrate():
     """ Full round-trip: load market data → calibrate → check RMSE and validity """
     md = MarketDataFileProvider()
-    fwd_curve = mdp.get_eq_forward_curves([_CALIB_NAME], _CALIB_DATE, md)[0]
+    fwd_curve = md.get_eq_forward_curves([_CALIB_NAME], _CALIB_DATE)[0]
     option_data = md.get_eq_vol_data(_CALIB_NAME, _CALIB_DATE)
     mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
 

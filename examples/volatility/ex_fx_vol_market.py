@@ -3,6 +3,7 @@ import datetime as dt
 from sdevpy.market import fxspot
 from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file
 from sdevpy.utilities import dates as dts
+from sdevpy.market import provider as mdprov
 from sdevpy.market.fileprovider import MarketDataFileProvider
 
 
@@ -41,6 +42,7 @@ print(f"RRs: {rr}")
 print(f"BFs: {bf}")
 
 # Retrieve spot
+mdprov.get_fx_spot(forccy, domccy, valdate, provider)
 
 
 # Retrieve rate curves
