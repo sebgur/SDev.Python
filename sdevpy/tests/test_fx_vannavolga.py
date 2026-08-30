@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from itertools import pairwise
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quotes, vv_weights,
                                                 lagrange_weights, atm_dns_strike, bs_vega,
@@ -154,7 +155,7 @@ class TestMarketStrangleCalibration:
     def test_correction_grows_with_skew(self):
         gaps = [calibrate_smile_butterfly(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=r, ms=0.0025)
                 for r in (-0.005, -0.01, -0.02, -0.04)]
-        assert all(b > a for a, b in zip(gaps, gaps[1:]))
+        assert all(b > a for a, b in pairwise(gaps))
 
     def test_flag_off_uses_the_quote_directly(self):
         s = _smile(rr=-0.02, bf=0.0025, market_strangle_quote=False)

@@ -1,26 +1,25 @@
 """ Vanna-Volga (VV) smile construction for FX options.
 
-The market quotes three instruments per expiry -- ATM, 25-delta risk reversal and 25-delta
-butterfly -- fixing the vol at three strikes. VV builds the vol at any other strike from the
-cost of hedging the target's vega, vanna and volga with those three traded instruments.
+The market quotes three instruments per expiry: ATM, 25-delta RR and 25-delta BF, fixing the vol at three strikes.
+VV builds the vol at any other strike from the cost of hedging the target's vega, vanna and volga with those three
+traded instruments.
 
-No calibration/optimizer: the hedge weights are closed form (Castagna & Mercurio, Risk 2007) --
-quadratic Lagrange coefficients in log-strike scaled by vega ratios. At K = K_i they collapse to
-the Kronecker delta, so the construction reprices the three quotes exactly (verified to 1e-16).
+No calibration/optimizer: the hedge weights are closed form (Castagna & Mercurio, Risk 2007): quadratic Lagrange
+coefficients in log-strike scaled by vega ratios. At K = K_i they collapse to the Kronecker delta, so the construction
+reprices the three quotes exactly (verified to 1e-16).
 
 Methods:
-  'exact'       -- build the VV price, invert numerically to a vol (the definition).
-  'first_order' -- leading term only: quadratic Lagrange interpolation of the three vols in
-                   log-strike. No root-find; agrees with 'exact' to ~1e-5 inside the quoted
-                   range, degrades in the wings.
+  'exact': build the VV price, invert numerically to a vol (the definition).
+  'first_order': leading term only: quadratic Lagrange interpolation of the three vols in log-strike. No root search,
+                 agrees with 'exact' to ~1e-5 inside the quoted range, degrades in the wings.
 
-Extrapolation: beyond the outer pillars the formula is unconstrained, so extrapolation='flat'
-(default) holds vol at the pillar level outside [k_put, k_call]. 'none' runs the raw formula.
+Extrapolation: beyond the outer pillars the formula is unconstrained, so extrapolation='flat' (default) holds vol at
+the pillar level outside [k_put, k_call]. 'none' runs the raw formula.
 
-Premium-adjusted note: the PA call delta is not monotonic in K, so a 25-delta PA call has two
-strikes. Only the OTM (larger) root is a meaningful smile pillar -- the smaller root is deep ITM
-(e.g. 0.286 against a 1.122 forward) and produces non-monotonic pillars. This module therefore
-requests double_root_preference='large' by default; pass it explicitly to override.
+Premium-adjusted note: the PA call delta is not monotonic in K, so a 25-delta PA call has two strikes. Only the OTM
+(larger) root is a meaningful smile pillar, the smaller root is deep ITM (e.g. 0.286 against a 1.122 forward) and
+produces non-monotonic pillars. This module therefore requests double_root_preference='large' by default and passes
+it explicitly to override.
 """
 from dataclasses import dataclass
 import numpy as np
@@ -67,12 +66,10 @@ def vv_weights(strike: npt.ArrayLike, k_put: float, k_atm: float, k_call: float,
     return w1 * vega / v1, w2 * vega / v2, w3 * vega / v3
 
 
-def _implied_vol_bisect(fwd_price: npt.ArrayLike, fwd: float, strike: npt.ArrayLike,
-                        expiry: float, is_call: bool, vol_lo: float = 1e-8,
-                        vol_hi: float = 5.0, max_iter: int = 200,
+def _implied_vol_bisect(fwd_price: npt.ArrayLike, fwd: float, strike: npt.ArrayLike, expiry: float, is_call: bool,
+                        vol_lo: float = 1e-8, vol_hi: float = 5.0, max_iter: int = 200,
                         tol: float = 1e-14) -> npt.NDArray[np.float64]:
     """ Invert an undiscounted forward price to a Black vol by bisection.
-
         Deliberately not black.implied_vol_newton: Newton divides by vega, which collapses in
         the deep wings where a VV smile is most often queried, and returns NaN silently. Price
         is strictly increasing in vol, so bisection cannot diverge. """
@@ -90,8 +87,7 @@ def _implied_vol_bisect(fwd_price: npt.ArrayLike, fwd: float, strike: npt.ArrayL
     return 0.5 * (lo + hi)
 
 
-def atm_dns_strike(fwd: float, atm_vol: float, expiry: float,
-                   prem_adjusted: bool = False) -> float:
+def atm_dns_strike(fwd: float, atm_vol: float, expiry: float, prem_adjusted: bool = False) -> float:
     """ Delta-neutral-straddle ATM strike (the FX convention, not ATM-forward).
         Non premium-adjusted: F exp(+0.5 sigma^2 T); premium-adjusted: F exp(-0.5 sigma^2 T). """
     sign = -1.0 if prem_adjusted else 1.0
@@ -121,7 +117,7 @@ class VannaVolgaSmile:
             raise ValueError(f"Pillar strikes must be increasing, got: "
                              f"{self.k_put}, {self.k_atm}, {self.k_call}")
 
-    def price(self, strike: npt.ArrayLike, is_call: bool = True) -> npt.NDArray[np.float64]:
+    def price(self, strike: npt.ArrayLike, is_call: bool=True) -> npt.NDArray[np.float64]:
         """ VV-adjusted undiscounted forward price (multiply by exp(-r_d T) to settle) """
         k = _arr(strike)
         x1, x2, x3 = vv_weights(k, self.k_put, self.k_atm, self.k_call,
@@ -137,7 +133,7 @@ class VannaVolgaSmile:
                 + x2 * _corr(self.k_atm, self.atm_vol)
                 + x3 * _corr(self.k_call, self.vol_call))
 
-    def vol(self, strike: npt.ArrayLike, method: str = 'exact') -> npt.NDArray[np.float64]:
+    def vol(self, strike: npt.ArrayLike, method: str='exact') -> npt.NDArray[np.float64]:
         """ Smile vol at the given strike(s) """
         k = _arr(strike)
         if method == 'first_order':
@@ -179,9 +175,8 @@ class VannaVolgaSmile:
         return vol
 
 
-def market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float,
-                    ms: float, delta: float = 0.25, prem_adjusted: bool = False,
-                    **kwargs) -> tuple:
+def market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, ms: float,
+                    delta: float = 0.25, prem_adjusted: bool=False, **kwargs) -> tuple:
     """ Resolve the broker's market strangle: a *price*, not a vol. Both wing strikes are struck
         off the single volatility atm_vol + ms, and the quote is the sum of the two premia at
         that vol. Returns (k_put, k_call, fwd_price, vol_ms); the strikes stay fixed during
@@ -205,8 +200,8 @@ def market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol:
     return k_put, k_call, price, vol_ms
 
 
-def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta,
-                                prem_adjusted, extrapolation, **kwargs) -> VannaVolgaSmile:
+def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, prem_adjusted, extrapolation,
+                                **kwargs) -> VannaVolgaSmile:
     """ Build the smile treating `bf` as a smile (vol) butterfly """
     vol_call = atm_vol + bf + 0.5 * rr
     vol_put = atm_vol + bf - 0.5 * rr
@@ -230,9 +225,8 @@ def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta,
                            extrapolation=extrapolation, smile_butterfly=float(bf))
 
 
-def calibrate_smile_butterfly(spot: float, r_d: float, r_f: float, expiry: float,
-                              atm_vol: float, rr: float, ms: float, delta: float = 0.25,
-                              prem_adjusted: bool = False, tol: float = 1e-12,
+def calibrate_smile_butterfly(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, rr: float,
+                              ms: float, delta: float = 0.25, prem_adjusted: bool = False, tol: float = 1e-12,
                               max_expand: int = 60, **kwargs) -> float:
     """ Convert a broker market-strangle quote into the smile butterfly that reproduces it.
 
@@ -249,8 +243,8 @@ def calibrate_smile_butterfly(spot: float, r_d: float, r_f: float, expiry: float
     def objective(bf):
         # extrapolation='none': the market-strangle strikes can sit marginally outside the
         # pillar strikes, and flat extrapolation there would stall the solve.
-        smile = _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf,
-                                            delta, prem_adjusted, 'none', **kwargs)
+        smile = _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta,
+                                            prem_adjusted, 'none', **kwargs)
         vol_put, vol_call = float(smile.vol(k_put_ms)), float(smile.vol(k_call_ms))
         if not (np.isfinite(vol_put) and np.isfinite(vol_call)):
             raise ValueError(f"VV smile is not arbitrage-free at the market-strangle strikes "
@@ -292,44 +286,37 @@ def calibrate_smile_butterfly(spot: float, r_d: float, r_f: float, expiry: float
         step *= 2.0
 
     if not bracketed:
-        raise ValueError(f"Could not bracket the smile butterfly for atm={atm_vol}, "
-                         f"rr={rr}, ms={ms}")
+        raise ValueError(f"Could not bracket the smile butterfly for atm={atm_vol}, rr={rr}, ms={ms}")
 
     return float(brentq(objective, lo, hi, xtol=tol))
 
 
-def smile_from_quotes(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float,
-                      rr: float, bf: float, delta: float = 0.25, prem_adjusted: bool = False,
-                      extrapolation: str = 'flat', market_strangle_quote: bool = False,
-                      **kwargs) -> VannaVolgaSmile:
+def smile_from_quotes(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, rr: float, bf: float,
+                      delta: float=0.25, prem_adjusted: bool=False, extrapolation: str='flat',
+                      market_strangle_quote: bool=False, **kwargs) -> VannaVolgaSmile:
     """ Build a VV smile from the standard FX quote triple.
 
         rr = vol_call - vol_put (negative means a put skew, typical for EURUSD)
         delta: the delta the RR/BF are quoted at (0.25 or 0.10)
 
         market_strangle_quote:
-            False (default) -- `bf` is a *smile* butterfly, used directly.
-            True -- `bf` is the broker's *market* strangle; the smile butterfly is solved for so
-                the smile reprices that strangle. Costs a root-find per smile. The correction is
-                ~0.3bp for rr=-0.5%, ~1.5bp for rr=-1%, ~28bp for rr=-4%, so it matters most for
-                wide smiles and 10-delta quotes.
+            False (default): `bf` is a *smile* butterfly, used directly.
+            True: `bf` is the broker's *market* strangle; the smile butterfly is solved for so the smile reprices that
+                  strangle. Costs a root-find per smile. The correction is ~0.3bp for rr=-0.5%, ~1.5bp for rr=-1%,
+                  ~28bp for rr=-4%, so it matters most for wide smiles and 10-delta quotes.
     """
-    smile_bf = (calibrate_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf,
-                                          delta, prem_adjusted, **kwargs)
+    smile_bf = (calibrate_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, prem_adjusted, **kwargs)
                 if market_strangle_quote else bf)
 
-    smile = _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, smile_bf,
-                                        delta, prem_adjusted, extrapolation, **kwargs)
+    smile = _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, smile_bf, delta,
+                                        prem_adjusted, extrapolation, **kwargs)
     if market_strangle_quote:
         smile.market_butterfly = float(bf)
     return smile
 
 
 if __name__ == "__main__":
-    s = smile_from_quotes(spot=1.10, r_d=0.04, r_f=0.02, expiry=1.0,
-                          atm_vol=0.10, rr=-0.01, bf=0.0025)
-    print(f"Pillars: K={s.k_put:.4f}/{s.k_atm:.4f}/{s.k_call:.4f}  "
-          f"vol={s.vol_put:.4f}/{s.atm_vol:.4f}/{s.vol_call:.4f}")
+    s = smile_from_quotes(spot=1.10, r_d=0.04, r_f=0.02, expiry=1.0, atm_vol=0.10, rr=-0.01, bf=0.0025)
+    print(f"Pillars: K={s.k_put:.4f}/{s.k_atm:.4f}/{s.k_call:.4f} vol={s.vol_put:.4f}/{s.atm_vol:.4f}/{s.vol_call:.4f}")
     for k in np.linspace(0.95, 1.35, 9):
-        print(f"  K={k:.4f}  vv={float(s.vol(k)):.6f}  "
-              f"1st-order={float(s.vol(k, 'first_order')):.6f}")
+        print(f"  K={k:.4f}  vv={float(s.vol(k)):.6f} 1st-order={float(s.vol(k, 'first_order')):.6f}")
