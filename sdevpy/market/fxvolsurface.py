@@ -8,8 +8,6 @@ import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import jsonmanager as jsm
-from sdevpy.market import fxspot
-from sdevpy.tests import conftest
 
 
 class FxVolSurfaceData:
@@ -98,6 +96,28 @@ def fxvolsurfacedata_from_file(file: str|Path) -> FxVolSurfaceData:
     return FxVolSurfaceData(dt.datetime.strptime(valdate, dts.DATE_FORMAT), sections,
                             name=name, snapdate=dt.datetime.strptime(snapdate, dts.DATETIME_FORMAT),
                             market_strangle_quote=market_strangle_quote)
+
+
+def callputvols_from_butterfly(atm_vol: float, rr: float, bf: float) -> float:
+    """ Call/put vols at the quoted delta, given atm_vol/rr/bf where bf is the butterfly """
+    vol_call = atm_vol + bf + 0.5 * rr
+    vol_put = atm_vol + bf - 0.5 * rr
+    return vol_put, vol_call
+
+
+def callputvols_from_marketstrangle(spot, r_d, r_f, expiry, atm_vol, rr, ms, delta=0.25,
+                                    prem_adjusted=False, **kwargs):
+    """ Call/put vols at the given delta, given atm_vol/rr/ms where ms is the market strangle
+        quote (not yet a smile butterfly).
+
+        To solve this we need to find the smile butterfly that reprices the market strangle at
+        its own two strikes (calibrate_smile_butterfly), which requires knowing where those strikes
+        actually are. That's a genuine correction, not pure algebra: it equals the naive smile-butterfly
+        formula only when rr == 0, and grows with the size of the skew (roughly 0.3bp at rr=-0.5%,
+        up to ~28bp at rr=-4%). """
+    bf = fx_vannavolga.calibrate_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, ms,
+                                                 delta=delta, prem_adjusted=prem_adjusted, **kwargs)
+    return callputvols_from_butterfly(atm_vol, rr, bf)
 
 
 if __name__ == "__main__":

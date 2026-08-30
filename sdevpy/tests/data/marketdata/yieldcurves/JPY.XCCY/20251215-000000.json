@@ -1,0 +1,33 @@
+{
+  "name": "USD.SOFR.1D",
+  "valdate": "15-Dec-2025",
+  "snapdate": "15-Dec-2025 00:00:00",
+  "interp_var": "zerorate",
+  "interp_type": "linear",
+  "pillars": [
+    {
+      "expiry": "15-Feb-2026",
+      "df": 0.9972
+    },
+    {
+      "expiry": "15-Jul-2026",
+      "df": 0.9932
+    },
+    {
+      "expiry": "15-Jan-2027",
+      "df": 0.9815
+    },
+    {
+      "expiry": "15-Jan-2031",
+      "df": 0.8857
+    },
+    {
+      "expiry": "15-Jan-2036",
+      "df": 0.7796
+    },
+    {
+      "expiry": "15-Jan-2056",
+      "df": 0.4263
+    }
+  ]
+}

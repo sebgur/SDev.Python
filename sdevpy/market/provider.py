@@ -11,7 +11,7 @@ from sdevpy.market.fixings import FixingHandler
 from sdevpy.market import fxspot
 
 
-RFR_CURVES = {fxspot.USD: 'USD.SOFR'}
+RFR_CURVES = {fxspot.USD: 'USD.SOFR.1D'}
 
 
 # @runtime_checkable

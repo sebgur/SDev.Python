@@ -175,9 +175,9 @@ def strike_from_delta(spot: npt.ArrayLike, r_d: npt.ArrayLike, r_f: npt.ArrayLik
     delta: the *signed* target delta (e.g. +0.25 for a 25-delta call, -0.25 for a 25-delta put), expressed in
            whichever convention (spot vs forward, premium-adjusted or not) is implied by the other flags below
            option_type : 'C'/'P' (any case) or +1/-1, broadcastable with the other inputs
-    prem_adjusted: bool or bool array -- whether *each* quote uses premium-adjusted delta (currency-pair/market
-                   dependent; this function does not hardcode a currency-pair table since conventions can change --
-                   pass it explicitly per quote or as a single bool for all quotes)
+    prem_adjusted: bool or bool array whether *each* quote uses premium-adjusted delta. Currency-pair/market
+                   dependent. This function does not hardcode a currency-pair table since conventions can change.
+                   Pass it explicitly per quote or as a single bool for all quotes.
     spot_delta: optional bool/bool-array override. If None (default), the convention is chosen automatically
                 per element: spot delta for T <= spot_delta_cutoff, forward delta for T > spot_delta_cutoff. This
                 is the standard market rule (spot delta becomes a poor hedge-ratio proxy for long-dated options

@@ -25,9 +25,10 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
-from scipy.optimize import brentq
+# from scipy.optimize import brentq
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
+from sdevpy.volatility.fx.fx_smilecalib import calibrate_smile_strangle
 
 
 def _arr(x) -> npt.NDArray[np.float64]:
@@ -109,6 +110,10 @@ class VannaVolgaSmile:
     extrapolation: str = 'flat'
     smile_butterfly: float = None
     market_butterfly: float = None
+    spot: float = None
+    r_d: float = None
+    r_f: float = None
+    prem_adjusted: bool = False
 
     def __post_init__(self):
         if self.extrapolation not in ('flat', 'none'):
@@ -174,30 +179,60 @@ class VannaVolgaSmile:
             vol[mask] = np.where((price > intrinsic) & (price < upper), solved, np.nan)
         return vol
 
+    def vol_at_delta(self, delta: float, is_call: bool, tol: float = 1e-10,
+                     max_iter: int = 100, **strike_kwargs) -> float:
+        """ Vol at the given (unsigned) target delta -- the inverse of vol(strike).
 
-def market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, ms: float,
-                    delta: float = 0.25, prem_adjusted: bool=False, **kwargs) -> tuple:
-    """ Resolve the broker's market strangle: a *price*, not a vol. Both wing strikes are struck
-        off the single volatility atm_vol + ms, and the quote is the sum of the two premia at
-        that vol. Returns (k_put, k_call, fwd_price, vol_ms); the strikes stay fixed during
-        the smile-butterfly calibration. """
-    vol_ms = atm_vol + ms
-    fwd = spot * np.exp((r_d - r_f) * expiry)
-    call_kwargs = dict(kwargs)
-    call_kwargs.setdefault('double_root_preference', 'large')
+            Since the strike for a given delta depends on the vol at that strike, and the vol depends on the smile
+            evaluated at that (unknown) strike, there is no closed form. This is the classic FX smile-strike problem.
+            We solve it here by fixed-point iteration: seed at atm_vol, find the strike for that vol via
+            strike_from_delta, read the smile vol at that strike, repeat.
 
-    sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, -delta, 'P',
-                                prem_adjusted=prem_adjusted, **kwargs)
-    sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, delta, 'C',
-                                 prem_adjusted=prem_adjusted, **call_kwargs)
-    if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
-        raise ValueError(f"Could not solve market-strangle strikes at {delta}-delta "
-                         f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
+            Converges to machine precision in a handful of iterations for a smooth smile.
 
-    k_put, k_call = float(sol_put.k), float(sol_call.k)
-    price = float(black.price(expiry, k_call, True, fwd, vol_ms)
-                  + black.price(expiry, k_put, False, fwd, vol_ms))
-    return k_put, k_call, price, vol_ms
+            Note: with extrapolation='flat' (the default), a delta whose strike falls outside [k_put, k_call] converges
+            to the flat boundary vol, not a genuine extrapolated value. The smile has no information beyond its own
+            quoted wings. """
+        if self.spot is None or self.r_d is None or self.r_f is None:
+            raise ValueError("spot/r_d/r_f not set on this smile -- build it via smile_from_quotes")
+
+        strike_kwargs.setdefault('double_root_preference', 'large')
+        signed_delta = delta if is_call else -delta
+        sigma = self.atm_vol
+        for _ in range(max_iter):
+            sol = strike_from_delta(self.spot, self.r_d, self.r_f, self.expiry, sigma, signed_delta,
+                                    'C' if is_call else 'P', prem_adjusted=self.prem_adjusted,
+                                    **strike_kwargs)
+            if not bool(np.asarray(sol.valid)):
+                raise ValueError(f"No valid strike for delta={delta} at trial vol={sigma}")
+            sigma_new = float(self.vol(float(sol.k)))
+            if abs(sigma_new - sigma) < tol:
+                return sigma_new
+            sigma = sigma_new
+
+        raise RuntimeError(f"vol_at_delta did not converge for delta={delta} after {max_iter} iterations")
+
+
+# def market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, ms: float,
+#                     delta: float = 0.25, prem_adjusted: bool=False, **kwargs) -> tuple:
+#     """ Resolve the broker's market strangle: a *price*, not a vol. Both wing strikes are struck
+#         off the single volatility atm_vol + ms, and the quote is the sum of the two premia at
+#         that vol. Returns (k_put, k_call, fwd_price, vol_ms); the strikes stay fixed during
+#         the smile-butterfly calibration. """
+#     vol_ms = atm_vol + ms
+#     fwd = spot * np.exp((r_d - r_f) * expiry)
+#     call_kwargs = dict(kwargs)
+#     call_kwargs.setdefault('double_root_preference', 'large')
+
+#     sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
+#     sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
+#     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
+#         raise ValueError(f"Could not solve market-strangle strikes at {delta}-delta "
+#                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
+
+#     k_put, k_call = float(sol_put.k), float(sol_call.k)
+#     price = float(black.price(expiry, k_call, True, fwd, vol_ms) + black.price(expiry, k_put, False, fwd, vol_ms))
+#     return k_put, k_call, price, vol_ms
 
 
 def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, prem_adjusted, extrapolation,
@@ -211,10 +246,9 @@ def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, 
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
 
-    sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_put, -delta, 'P',
-                                prem_adjusted=prem_adjusted, **kwargs)
-    sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_call, delta, 'C',
-                                 prem_adjusted=prem_adjusted, **call_kwargs)
+    sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_put, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
+    sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_call, delta, 'C', prem_adjusted=prem_adjusted,
+                                 **call_kwargs)
     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
         raise ValueError(f"Could not solve pillar strikes for {delta}-delta quotes "
                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
@@ -222,91 +256,23 @@ def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, 
     return VannaVolgaSmile(fwd=float(fwd), expiry=float(expiry), k_put=float(sol_put.k),
                            k_atm=float(k_atm), k_call=float(sol_call.k), vol_put=float(vol_put),
                            atm_vol=float(atm_vol), vol_call=float(vol_call),
-                           extrapolation=extrapolation, smile_butterfly=float(bf))
-
-
-def calibrate_smile_butterfly(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, rr: float,
-                              ms: float, delta: float = 0.25, prem_adjusted: bool = False, tol: float = 1e-12,
-                              max_expand: int = 60, **kwargs) -> float:
-    """ Convert a broker market-strangle quote into the smile butterfly that reproduces it.
-
-        Solves for sigma_bf such that the VV smile built from (atm_vol, rr, sigma_bf) reprices
-        the market strangle at its own two fixed strikes. The objective is monotonically
-        increasing in sigma_bf, so the bracket-and-solve cannot land on a spurious root.
-
-        Verified property: when rr == 0 the pillar strikes coincide with the market-strangle
-        strikes, so this returns ms unchanged (to 1e-15). """
-    k_put_ms, k_call_ms, target, _ = market_strangle(spot, r_d, r_f, expiry, atm_vol, ms,
-                                                     delta, prem_adjusted, **kwargs)
-    fwd = spot * np.exp((r_d - r_f) * expiry)
-
-    def objective(bf):
-        # extrapolation='none': the market-strangle strikes can sit marginally outside the
-        # pillar strikes, and flat extrapolation there would stall the solve.
-        smile = _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta,
-                                            prem_adjusted, 'none', **kwargs)
-        vol_put, vol_call = float(smile.vol(k_put_ms)), float(smile.vol(k_call_ms))
-        if not (np.isfinite(vol_put) and np.isfinite(vol_call)):
-            raise ValueError(f"VV smile is not arbitrage-free at the market-strangle strikes "
-                             f"for butterfly {bf}")
-        price = float(black.price(expiry, k_call_ms, True, fwd, vol_call)
-                      + black.price(expiry, k_put_ms, False, fwd, vol_put))
-        return price - target
-
-    # Anchor at bf = ms: always well-posed (it is the broker's quote, and the exact answer when
-    # rr == 0), with the root within a few 1e-3. Walk outwards in the direction the residual
-    # points, halving the step if a probe lands where the smile is not arbitrage-free.
-    f_ms = objective(ms)
-    if abs(f_ms) < 1e-16:
-        return float(ms)
-
-    bf_floor = 0.5 * abs(rr) - atm_vol + 1e-6
-    lo = hi = float(ms)
-    f_lo = f_hi = f_ms
-    step, bracketed = 1e-3, False
-    for _ in range(max_expand):
-        trial = hi + step if f_ms < 0.0 else max(lo - step, bf_floor)
-        if trial in (lo, hi):
-            break
-        try:
-            f_trial = objective(trial)
-        except ValueError:
-            step *= 0.5
-            if step < 1e-10:
-                break
-            continue
-        if f_ms < 0.0:
-            hi, f_hi = trial, f_trial
-            bracketed = f_hi > 0.0
-        else:
-            lo, f_lo = trial, f_trial
-            bracketed = f_lo < 0.0
-        if bracketed:
-            break
-        step *= 2.0
-
-    if not bracketed:
-        raise ValueError(f"Could not bracket the smile butterfly for atm={atm_vol}, rr={rr}, ms={ms}")
-
-    return float(brentq(objective, lo, hi, xtol=tol))
+                           extrapolation=extrapolation, smile_butterfly=float(bf),
+                           spot=float(spot), r_d=float(r_d), r_f=float(r_f),
+                           prem_adjusted=bool(prem_adjusted))
 
 
 def smile_from_quotes(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, rr: float, bf: float,
                       delta: float=0.25, prem_adjusted: bool=False, extrapolation: str='flat',
                       market_strangle_quote: bool=False, **kwargs) -> VannaVolgaSmile:
-    """ Build a VV smile from the standard FX quote triple.
+    if market_strangle_quote:
+        def build_smile(trial_bf):
+            return _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, trial_bf,
+                                               delta, prem_adjusted, 'none', **kwargs)
 
-        rr = vol_call - vol_put (negative means a put skew, typical for EURUSD)
-        delta: the delta the RR/BF are quoted at (0.25 or 0.10)
-
-        market_strangle_quote:
-            False (default): `bf` is a *smile* butterfly, used directly.
-            True: `bf` is the broker's *market* strangle; the smile butterfly is solved for so the smile reprices that
-                  strangle. Costs a root-find per smile. The correction is ~0.3bp for rr=-0.5%, ~1.5bp for rr=-1%,
-                  ~28bp for rr=-4%, so it matters most for wide smiles and 10-delta quotes.
-    """
-    smile_bf = (calibrate_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, prem_adjusted, **kwargs)
-                if market_strangle_quote else bf)
+        smile_bf = calibrate_smile_strangle(spot, r_d, r_f, expiry, atm_vol, rr, bf, build_smile,
+                                            delta, prem_adjusted, **kwargs)
+    else:
+        smile_bf = bf
 
     smile = _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, smile_bf, delta,
                                         prem_adjusted, extrapolation, **kwargs)

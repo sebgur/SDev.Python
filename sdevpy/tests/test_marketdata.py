@@ -199,7 +199,7 @@ class TestGetFxSpot:
 class TestXccyCurve:
     def test_usd_returns_rfr_curve(self):
         provider = FakeProvider({})
-        assert provider.get_xccycurve('USD', dt.datetime(2025, 12, 15)).name == 'USD.SOFR'
+        assert provider.get_xccycurve('USD', dt.datetime(2025, 12, 15)).name == 'USD.SOFR.1D'
 
     def test_non_usd_returns_xccy_curve(self):
         provider = FakeProvider({})
@@ -214,7 +214,7 @@ class TestXccyCurve:
 def test_get_fx_forward_curve():
     valdate = dt.datetime(2025, 8, 12)
     provider = FakeProvider({'EURUSD': 1.10}, valdate=valdate,
-                             rates={'EUR.XCCY': 0.03, 'USD.SOFR': 0.05})
+                             rates={'EUR.XCCY': 0.03, 'USD.SOFR.1D': 0.05})
     curve = provider.get_fx_forward_curve('EURUSD', valdate)
     assert curve.value(curve.spot_date()) == pytest.approx(1.10)
 
