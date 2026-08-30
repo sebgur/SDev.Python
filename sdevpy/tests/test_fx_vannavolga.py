@@ -1,0 +1,226 @@
+import pytest
+import numpy as np
+from sdevpy.analytics import black
+from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quotes, vv_weights,
+                                                lagrange_weights, atm_dns_strike, bs_vega,
+                                                calibrate_smile_butterfly, market_strangle)
+
+SPOT, R_D, R_F, EXPIRY = 1.10, 0.04, 0.02, 1.0
+ATM_VOL, RR, BF = 0.10, -0.01, 0.0025
+
+
+def _smile(**kwargs):
+    params = dict(spot=SPOT, r_d=R_D, r_f=R_F, expiry=EXPIRY, atm_vol=ATM_VOL, rr=RR, bf=BF)
+    params.update(kwargs)
+    return smile_from_quotes(**params)
+
+
+class TestPillarConstruction:
+    def test_quote_triple_maps_to_pillar_vols(self):
+        s = _smile()
+        assert s.vol_call == pytest.approx(ATM_VOL + BF + 0.5 * RR)
+        assert s.vol_put == pytest.approx(ATM_VOL + BF - 0.5 * RR)
+
+    def test_pillar_strikes_are_increasing(self):
+        s = _smile()
+        assert s.k_put < s.k_atm < s.k_call
+
+    def test_negative_rr_puts_skew_on_the_put_wing(self):
+        assert _smile().vol_put > _smile().vol_call
+
+    def test_atm_dns_strike_above_forward_when_not_prem_adjusted(self):
+        assert atm_dns_strike(1.12, 0.10, 1.0, prem_adjusted=False) > 1.12
+
+    def test_atm_dns_strike_below_forward_when_prem_adjusted(self):
+        assert atm_dns_strike(1.12, 0.10, 1.0, prem_adjusted=True) < 1.12
+
+    def test_non_increasing_pillars_raise(self):
+        with pytest.raises(ValueError):
+            VannaVolgaSmile(fwd=1.12, expiry=1.0, k_put=1.2, k_atm=1.1, k_call=1.0,
+                            vol_put=0.11, atm_vol=0.10, vol_call=0.098)
+
+    def test_bad_extrapolation_mode_raises(self):
+        with pytest.raises(ValueError):
+            _smile(extrapolation='quadratic')
+
+
+class TestWeights:
+    def test_weights_are_kronecker_delta_at_pillars(self):
+        s = _smile()
+        for i, k in enumerate([s.k_put, s.k_atm, s.k_call]):
+            w = np.asarray(vv_weights(k, s.k_put, s.k_atm, s.k_call,
+                                      s.fwd, s.expiry, s.atm_vol)).ravel()
+            expected = np.zeros(3)
+            expected[i] = 1.0
+            assert np.allclose(w, expected, atol=1e-12)
+
+    def test_lagrange_weights_sum_to_one(self):
+        s = _smile()
+        w1, w2, w3 = lagrange_weights(np.linspace(0.90, 1.40, 21), s.k_put, s.k_atm, s.k_call)
+        assert np.allclose(w1 + w2 + w3, 1.0, atol=1e-12)
+
+    def test_vega_is_positive_and_peaks_near_the_forward(self):
+        strikes = np.linspace(0.90, 1.40, 51)
+        vega = bs_vega(1.12, strikes, 1.0, 0.10)
+        assert np.all(vega > 0.0)
+        assert strikes[np.argmax(vega)] == pytest.approx(1.12, abs=0.05)
+
+
+class TestExactSmile:
+    def test_reprices_pillars_exactly(self):
+        s = _smile(extrapolation='none')
+        strikes = np.array([s.k_put, s.k_atm, s.k_call])
+        assert np.allclose(s.vol(strikes),
+                           np.array([s.vol_put, s.atm_vol, s.vol_call]), atol=1e-10)
+
+    def test_flat_input_smile_stays_flat(self):
+        s = _smile(rr=0.0, bf=0.0, extrapolation='none')
+        assert np.allclose(s.vol(np.linspace(0.85, 1.55, 15)), ATM_VOL, atol=1e-10)
+
+    def test_call_and_put_prices_satisfy_forward_parity(self):
+        s = _smile(extrapolation='none')
+        strikes = np.linspace(0.95, 1.35, 9)
+        assert np.allclose(s.price(strikes, True) - s.price(strikes, False),
+                           s.fwd - strikes, atol=1e-10)
+
+    def test_scalar_and_array_queries_agree(self):
+        s = _smile()
+        assert float(s.vol(1.15)) == pytest.approx(float(np.atleast_1d(s.vol(np.array([1.15])))[0]))
+
+
+class TestFirstOrder:
+    def test_first_order_also_reprices_pillars(self):
+        s = _smile(extrapolation='none')
+        strikes = np.array([s.k_put, s.k_atm, s.k_call])
+        assert np.allclose(s.vol(strikes, method='first_order'),
+                           np.array([s.vol_put, s.atm_vol, s.vol_call]), atol=1e-12)
+
+    def test_first_order_tracks_exact_inside_the_quoted_range(self):
+        s = _smile(extrapolation='none')
+        strikes = np.linspace(s.k_put, s.k_call, 11)
+        assert np.max(np.abs(s.vol(strikes) - s.vol(strikes, method='first_order'))) < 1e-4
+
+    def test_unknown_method_raises(self):
+        with pytest.raises(ValueError):
+            _smile().vol(1.15, method='second_order')
+
+
+class TestExtrapolation:
+    def test_flat_extrapolation_below_put_pillar(self):
+        s = _smile(extrapolation='flat')
+        assert float(s.vol(0.80)) == pytest.approx(s.vol_put)
+
+    def test_flat_extrapolation_above_call_pillar(self):
+        s = _smile(extrapolation='flat')
+        assert float(s.vol(1.80)) == pytest.approx(s.vol_call)
+
+    def test_flat_extrapolation_leaves_interior_untouched(self):
+        flat, raw = _smile(extrapolation='flat'), _smile(extrapolation='none')
+        strikes = np.linspace(flat.k_put * 1.01, flat.k_call * 0.99, 9)
+        assert np.allclose(flat.vol(strikes), raw.vol(strikes), atol=1e-12)
+
+    def test_raw_extrapolation_diverges_from_first_order_in_the_wings(self):
+        # Why 'flat' is the default: outside the pillars neither construction is pinned by
+        # market information, and they stop agreeing.
+        s = _smile(extrapolation='none')
+        assert abs(float(s.vol(0.95)) - float(s.vol(0.95, method='first_order'))) > 1e-3
+
+
+class TestMarketStrangleCalibration:
+    def test_zero_risk_reversal_leaves_butterfly_unchanged(self):
+        # With no skew the pillar strikes coincide with the market-strangle strikes, so the
+        # calibration is a provable no-op -- the strongest check on the routine.
+        bf = calibrate_smile_butterfly(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=0.0, ms=0.0025)
+        assert bf == pytest.approx(0.0025, abs=1e-11)
+
+    def test_calibrated_smile_reprices_the_market_strangle(self):
+        s = _smile(rr=-0.01, bf=0.0025, market_strangle_quote=True, extrapolation='none')
+        k_put, k_call, target, _ = market_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, 0.0025)
+        priced = (black.price(EXPIRY, k_call, True, s.fwd, float(s.vol(k_call)))
+                  + black.price(EXPIRY, k_put, False, s.fwd, float(s.vol(k_put))))
+        assert priced == pytest.approx(target, abs=1e-10)
+
+    def test_market_strangle_strikes_straddle_the_forward(self):
+        k_put, k_call, price, vol_ms = market_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, 0.0025)
+        fwd = SPOT * np.exp((R_D - R_F) * EXPIRY)
+        assert k_put < fwd < k_call
+        assert price > 0.0
+        assert vol_ms == pytest.approx(ATM_VOL + 0.0025)
+
+    def test_smile_butterfly_exceeds_market_butterfly_when_skewed(self):
+        assert calibrate_smile_butterfly(SPOT, R_D, R_F, EXPIRY, ATM_VOL,
+                                         rr=-0.02, ms=0.0025) > 0.0025
+
+    def test_correction_grows_with_skew(self):
+        gaps = [calibrate_smile_butterfly(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=r, ms=0.0025)
+                for r in (-0.005, -0.01, -0.02, -0.04)]
+        assert all(b > a for a, b in zip(gaps, gaps[1:]))
+
+    def test_flag_off_uses_the_quote_directly(self):
+        s = _smile(rr=-0.02, bf=0.0025, market_strangle_quote=False)
+        assert s.smile_butterfly == pytest.approx(0.0025)
+        assert s.market_butterfly is None
+
+    def test_flag_on_records_both_butterflies(self):
+        s = _smile(rr=-0.02, bf=0.0025, market_strangle_quote=True)
+        assert s.market_butterfly == pytest.approx(0.0025)
+        assert s.smile_butterfly > 0.0025
+
+    def test_correction_is_not_symmetric_in_the_skew(self):
+        # The DNS ATM strike sits above the forward by 0.5*sigma^2*T, so the three-strike grid
+        # is not symmetric in log-moneyness and flipping the skew does not mirror it. The gap
+        # is ~4% at T=1Y and grows with sigma^2*T (2% at 3M, 6% at 2Y).
+        pos = calibrate_smile_butterfly(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=0.02, ms=0.0025)
+        neg = calibrate_smile_butterfly(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=-0.02, ms=0.0025)
+        assert pos != pytest.approx(neg, abs=1e-6)
+        assert abs(pos - neg) / neg == pytest.approx(0.044, abs=0.005)
+
+
+class TestPremiumAdjusted:
+    def test_prem_adjusted_smile_reprices_pillars(self):
+        # Guards the double-root trap: the PA call delta is non-monotonic, and the deep-ITM
+        # root (0.286 vs a 1.122 forward) would give non-monotonic pillars.
+        s = smile_from_quotes(SPOT, R_D, R_F, EXPIRY, ATM_VOL, RR, BF,
+                              prem_adjusted=True, extrapolation='none')
+        strikes = np.array([s.k_put, s.k_atm, s.k_call])
+        assert np.allclose(s.vol(strikes),
+                           np.array([s.vol_put, s.atm_vol, s.vol_call]), atol=1e-10)
+
+    def test_prem_adjusted_call_pillar_is_the_otm_root(self):
+        s = smile_from_quotes(SPOT, R_D, R_F, EXPIRY, ATM_VOL, RR, BF, prem_adjusted=True)
+        assert s.k_call > s.fwd
+
+    def test_prem_adjusted_market_strangle_calibration(self):
+        bf = calibrate_smile_butterfly(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=-0.01, ms=0.0025,
+                                       prem_adjusted=True)
+        assert bf == pytest.approx(0.00284682, abs=1e-7)
+
+
+class TestRegression:
+    """ Reference values from an independent implementation (erf-based normal CDF, closed-form
+        plain-delta strike inversion), cross-checked against the machine-precision structural
+        properties above. Re-derive independently if the model changes -- do not rebase. """
+
+    def test_pillar_strikes(self):
+        s = _smile()
+        assert s.k_put == pytest.approx(1.05156560, abs=1e-6)
+        assert s.k_atm == pytest.approx(1.12784663, abs=1e-6)
+        assert s.k_call == pytest.approx(1.20235808, abs=1e-6)
+
+    def test_smile_values(self):
+        s = _smile(extrapolation='none')
+        strikes = np.array([1.00, 1.05, 1.10, 1.15, 1.20, 1.25, 1.30])
+        expected = np.array([0.11487651, 0.10770597, 0.10212950, 0.09879267,
+                             0.09751381, 0.09806641, 0.10026222])
+        assert np.allclose(s.vol(strikes), expected, atol=1e-7)
+
+    @pytest.mark.parametrize("rr, ms, expected", [
+        (-0.005, 0.0025, 0.00252780),
+        (-0.010, 0.0025, 0.00265021),
+        (-0.020, 0.0025, 0.00317565),
+        (-0.040, 0.0025, 0.00528512),
+        (-0.010, 0.0050, 0.00510236),
+    ])
+    def test_calibrated_butterfly(self, rr, ms, expected):
+        bf = calibrate_smile_butterfly(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=rr, ms=ms)
+        assert bf == pytest.approx(expected, abs=1e-7)
