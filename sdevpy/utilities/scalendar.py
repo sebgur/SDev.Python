@@ -154,14 +154,17 @@ class Calendar:
         return deduped
 
     def make_schedule(self, start: dt.date, end: dt.date, term: str, convention: BDC=BDC.MF,
-                      stub: str="short_front", eom: bool=False, convert_to_datetime: bool=False) -> list[dt.date]:
+                      stub: str="short_front", eom: bool=False, convert_to_datetime: bool=False,
+                      termination_convention: BDC=None) -> list[dt.date]:
         """ Generate a schedule of adjusted dates from start to end """
+        termination_convention = termination_convention or convention
         roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom)
 
         seen = set()
         adjusted = []
-        for d in roll_dates:
-            a = self.adjust(d, convention)
+        for i, d in enumerate(roll_dates):
+            conv = termination_convention if i == len(roll_dates) - 1 else convention
+            a = self.adjust(d, conv)
             if a not in seen:
                 adjusted.append(a)
                 seen.add(a)
@@ -169,15 +172,19 @@ class Calendar:
         return to_datetime(adjusted) if convert_to_datetime else adjusted
 
     def make_periods(self, start: dt.date, end: dt.date, term: str, convention: BDC = BDC.MF,
-                        stub: str="short_front", eom: bool=False) -> list["Period"]:
+                     stub: str="short_front", eom: bool=False,
+                     termination_convention: BDC=None) -> list["Period"]:
         """ Generate (unadjusted, adjusted) date pairs for each accrual period """
+        termination_convention = termination_convention or convention
         roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom)
-        adjusted = [self.adjust(d, convention) for d in roll_dates]
+
+        # adjusted = [self.adjust(d, convention) for d in roll_dates]
+        adjusted = [self.adjust(d, convention) for d in roll_dates[:-1]]
+        adjusted.append(self.adjust(roll_dates[-1], termination_convention))
 
         return [Period(roll_dates[i], roll_dates[i + 1], adjusted[i], adjusted[i + 1])
                 for i in range(len(roll_dates) - 1)]
 
-##########################################################
     def __add__(self, other: "Calendar") -> "Calendar":
         """ Combine two calendars — both holidays are observed """
         return Calendar(name=f"{self.name}+{other.name}", holiday_set=self._holidays | other._holidays)

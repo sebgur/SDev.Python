@@ -80,5 +80,25 @@ def test_make_periods():
     assert flat == rebuilt
 
 
+def test_make_schedule_termination_convention():
+    cal1 = cdr.make_calendar("USD")
+    cal2 = cdr.make_calendar("NYSE")
+    cal = cal1 + cal2
+
+    start = dt.date(2024, 1, 15)
+    end = dt.date(2025, 1, 18) # Saturday
+
+    default_sched = cal.make_schedule(start, end, '3M')
+    assert default_sched[-1] == dt.date(2025, 1, 21) # MF rolls Sat -> Mon
+
+    unadj_end_sched = cal.make_schedule(start, end, '3M', termination_convention=cdr.BDC.U)
+    assert unadj_end_sched[-1] == end  # maturity stays exactly as booked
+    assert unadj_end_sched[:-1] == default_sched[:-1]  # interior dates unaffected
+
+    periods = cal.make_periods(start, end, '3M', termination_convention=cdr.BDC.U)
+    assert periods[-1].adj_end == end
+    assert periods[-1].unadj_end == end
+
+
 if __name__ == "__main__":
     test_tenor_advance()
