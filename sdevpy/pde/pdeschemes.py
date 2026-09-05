@@ -30,9 +30,9 @@ class PdeScheme(ABC):
 
 class ThetaScheme(PdeScheme):
     """ Mixing scheme with particular sub-cases:
-            Theta = 0.0: Implicit
+            Theta = 0.0: Explicit
             Theta = 0.5: Crank-Nicolson
-            Theta = 1.0: Explicit """
+            Theta = 1.0: Implicit """
     def __init__(self, theta):
         super().__init__()
         self.theta = theta
