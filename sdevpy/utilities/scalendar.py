@@ -116,12 +116,10 @@ class Calendar:
     #             seen.add(a)
 
     #     return to_datetime(adjusted) if convert_to_datetime else adjusted
-
-    def _unadjusted_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str="short_front",
-                               eom: bool=False, roll_convention: str=None) -> list[dt.date]:
+    def _regular_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str="short_front",
+                            eom: bool=False, roll_convention: str=None) -> list[dt.date]:
         """ Generate deduplicated unadjusted roll dates from start to end (no BDC applied) """
         period = dts.period(term)
-        # use_eom = eom and is_eom(start)
         anchor = start if stub in ("short_back", "long_back") else end
         use_eom = eom and is_eom(anchor)
 
@@ -146,7 +144,6 @@ class Calendar:
             roll_dates, d = [start], start
             while True:
                 d = step(d)
-                # d += period
                 roll_dates.append(min(d, end))
                 if d >= end:
                     break
@@ -156,7 +153,6 @@ class Calendar:
             roll_dates, d = [end], end
             while True:
                 d = step_back(d)
-                # d -= period
                 roll_dates.insert(0, max(d, start))
                 if d <= start:
                     break
@@ -174,12 +170,93 @@ class Calendar:
                 seen.add(d)
         return deduped
 
+    def _unadjusted_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str="short_front",
+                               eom: bool=False, roll_convention: str=None,
+                               first_date: dt.date=None, next_to_last_date: dt.date=None) -> list[dt.date]:
+        """ Generate roll dates, honoring explicit first/next-to-last stub-boundary overrides """
+        if first_date is not None and not (start < first_date < end):
+            raise ValueError("first_date must be strictly between start and end")
+        if next_to_last_date is not None and not (start < next_to_last_date < end):
+            raise ValueError("next_to_last_date must be strictly between start and end")
+        if first_date is not None and next_to_last_date is not None and first_date >= next_to_last_date:
+            raise ValueError("first_date must precede next_to_last_date")
+
+        regular_start = first_date if first_date is not None else start
+        regular_end = next_to_last_date if next_to_last_date is not None else end
+
+        roll_dates = self._regular_roll_dates(regular_start, regular_end, term, stub, eom, roll_convention)
+
+        if first_date is not None:
+            roll_dates = [start] + roll_dates
+        if next_to_last_date is not None:
+            roll_dates = roll_dates + [end]
+
+        return roll_dates
+
+    # def _unadjusted_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str="short_front",
+    #                            eom: bool=False, roll_convention: str=None) -> list[dt.date]:
+    #     """ Generate deduplicated unadjusted roll dates from start to end (no BDC applied) """
+    #     period = dts.period(term)
+    #     anchor = start if stub in ("short_back", "long_back") else end
+    #     use_eom = eom and is_eom(anchor)
+
+    #     if roll_convention == "IMM":
+    #         total_months = period.years * 12 + period.months
+    #         if total_months <= 0 or total_months % 3 != 0 or period.days != 0:
+    #             raise ValueError(f"IMM roll convention requires a term in whole 3-month steps, got '{term}'")
+    #         n_quarters = total_months // 3
+    #         def step(d):
+    #             return _step_imm(d, n_quarters, forward=True)
+
+    #         def step_back(d):
+    #             return _step_imm(d, n_quarters, forward=False)
+    #     else:
+    #         def step(d):
+    #             return d + period
+
+    #         def step_back(d):
+    #             return d - period
+
+    #     if stub in ("short_back", "long_back"):
+    #         roll_dates, d = [start], start
+    #         while True:
+    #             d = step(d)
+    #             # d += period
+    #             roll_dates.append(min(d, end))
+    #             if d >= end:
+    #                 break
+    #         if stub == "long_back" and len(roll_dates) > 2:
+    #             roll_dates.pop(-2)
+    #     else:
+    #         roll_dates, d = [end], end
+    #         while True:
+    #             d = step_back(d)
+    #             # d -= period
+    #             roll_dates.insert(0, max(d, start))
+    #             if d <= start:
+    #                 break
+    #         if stub == "long_front" and len(roll_dates) > 2:
+    #             roll_dates.pop(1)
+
+    #     if use_eom:
+    #         roll_dates = [to_eom(d) for d in roll_dates]
+
+    #     seen = set()
+    #     deduped = []
+    #     for d in roll_dates:
+    #         if d not in seen:
+    #             deduped.append(d)
+    #             seen.add(d)
+    #     return deduped
+
     def make_schedule(self, start: dt.date, end: dt.date, term: str, convention: BDC=BDC.MF,
                       stub: str="short_front", eom: bool=False, convert_to_datetime: bool=False,
-                      termination_convention: BDC=None, roll_convention: str=None) -> list[dt.date]:
+                      termination_convention: BDC=None, roll_convention: str=None,
+                      first_date: dt.date=None, next_to_last_date: dt.date=None) -> list[dt.date]:
         """ Generate a schedule of adjusted dates from start to end """
         termination_convention = termination_convention or convention
-        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom, roll_convention)
+        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom, roll_convention,
+                                                 first_date, next_to_last_date)
 
         seen = set()
         adjusted = []
@@ -194,12 +271,13 @@ class Calendar:
 
     def make_periods(self, start: dt.date, end: dt.date, term: str, convention: BDC = BDC.MF,
                      stub: str="short_front", eom: bool=False, termination_convention: BDC=None,
-                     roll_convention: str=None) -> list["Period"]:
+                     roll_convention: str=None, first_date: dt.date=None,
+                     next_to_last_date: dt.date=None) -> list["Period"]:
         """ Generate (unadjusted, adjusted) date pairs for each accrual period """
         termination_convention = termination_convention or convention
-        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom, roll_convention)
+        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom, roll_convention,
+                                                 first_date, next_to_last_date)
 
-        # adjusted = [self.adjust(d, convention) for d in roll_dates]
         adjusted = [self.adjust(d, convention) for d in roll_dates[:-1]]
         adjusted.append(self.adjust(roll_dates[-1], termination_convention))
 

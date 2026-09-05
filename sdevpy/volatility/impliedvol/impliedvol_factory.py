@@ -6,6 +6,9 @@ from sdevpy.volatility.impliedvol.models.logmix import LogMix
 
 def get_impliedvol_from_data(data: dict) -> ImpliedVol:
     """ Create implied vol model from its data dictionary """
+    if data is None:
+        raise ValueError("Null data")
+
     type_ = data.get('type', None)
     if type_ is None:
         raise ValueError("No type found in implied vol data")

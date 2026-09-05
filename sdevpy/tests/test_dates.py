@@ -172,5 +172,61 @@ def test_eom_short_back_anchor_unaffected():
     assert roll_dates == [dt.date(2024, 1, 31), dt.date(2024, 4, 30)]  # end also snaps to month-end
 
 
+def test_first_date_override_forces_irregular_front_stub():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2024, 1, 17)
+    end = dt.date(2024, 5, 15)
+    first_date = dt.date(2024, 2, 15)
+
+    roll_dates = cal._unadjusted_roll_dates(start, end, '1M', first_date=first_date)
+    ref = [dt.date(2024, 1, 17), dt.date(2024, 2, 15), dt.date(2024, 3, 15),
+           dt.date(2024, 4, 15), dt.date(2024, 5, 15)]
+    assert roll_dates == ref
+
+
+def test_next_to_last_date_override_forces_irregular_back_stub():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2024, 1, 15)
+    end = dt.date(2024, 5, 20)
+    next_to_last_date = dt.date(2024, 4, 15)
+
+    roll_dates = cal._unadjusted_roll_dates(start, end, '1M', next_to_last_date=next_to_last_date)
+    ref = [dt.date(2024, 1, 15), dt.date(2024, 2, 15), dt.date(2024, 3, 15),
+           dt.date(2024, 4, 15), dt.date(2024, 5, 20)]
+    assert roll_dates == ref
+
+
+def test_combined_stub_overrides():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2024, 1, 17)
+    end = dt.date(2024, 5, 20)
+    first_date = dt.date(2024, 2, 15)
+    next_to_last_date = dt.date(2024, 4, 15)
+
+    roll_dates = cal._unadjusted_roll_dates(start, end, '1M',
+                                             first_date=first_date, next_to_last_date=next_to_last_date)
+    ref = [dt.date(2024, 1, 17), dt.date(2024, 2, 15), dt.date(2024, 3, 15),
+           dt.date(2024, 4, 15), dt.date(2024, 5, 20)]
+    assert roll_dates == ref
+
+
+def test_stub_override_validation():
+    cal = cdr.make_calendar("USD")
+    start, end = dt.date(2024, 1, 15), dt.date(2024, 5, 15)
+
+    try:
+        cal._unadjusted_roll_dates(start, end, '1M', first_date=dt.date(2024, 6, 1))
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
+    try:
+        cal._unadjusted_roll_dates(start, end, '1M',
+                                    first_date=dt.date(2024, 4, 1), next_to_last_date=dt.date(2024, 3, 1))
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
+
 if __name__ == "__main__":
     test_tenor_advance()
