@@ -69,7 +69,7 @@ def price(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_calls: npt.ArrayL
             dz0 = dz[:, 0].reshape(-1, 1)
             dz1 = dz[:, 1].reshape(-1, 1)
 
-            vols = vol
+            vols = vol.copy()
             abs_f = np.maximum(np.abs(spot), floor)
 
             # Evolve vol

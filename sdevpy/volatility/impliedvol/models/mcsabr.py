@@ -75,7 +75,7 @@ def price(expiries, strikes, are_calls, fwd, parameters, num_mc=10000, points_pe
                 avolc = alpha * np.minimum(spot**(beta - 1.0), 500.0 * scale**(beta - 1.0))
                 vols = vol * avolc
             else:
-                vols = vol
+                vols = vol.copy()
 
             # Evolve vol
             vol *= np.exp(-0.5 * nu2 * dt + nu * dz1)

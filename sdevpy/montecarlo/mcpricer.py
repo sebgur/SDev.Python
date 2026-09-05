@@ -173,7 +173,8 @@ class MonteCarloPricer:
                 results[leg_name] = leg_pvs
 
             # Aggregate
-            results['pv'] = trade.notional * np.asarray(leg_cf_pvs).sum(axis=1).sum()
+            # results['pv'] = trade.notional * np.asarray(leg_cf_pvs).sum(axis=1).sum() # Cash-flow alignment problem?
+            results['pv'] = trade.notional * sum(sum(leg) for leg in leg_cf_pvs)
 
             reports.append({'id': trade.id, 'results': results})
 
