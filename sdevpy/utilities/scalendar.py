@@ -17,6 +17,7 @@ class BDC(Enum):
 
 
 Period = namedtuple("Period", ["unadj_start", "unadj_end", "adj_start", "adj_end"])
+_IMM_MONTHS = (3, 6, 9, 12)
 
 
 class Calendar:
@@ -116,7 +117,6 @@ class Calendar:
 
     #     return to_datetime(adjusted) if convert_to_datetime else adjusted
 
-########################################################################
     def _unadjusted_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str = "short_front",
                                eom: bool = False) -> list[dt.date]:
         """ Generate deduplicated unadjusted roll dates from start to end (no BDC applied) """
@@ -214,6 +214,33 @@ def to_eom(d: dt.date) -> dt.date:
     """ Roll d to the last calendar day of its month """
     next_month = d.replace(day=28) + timedelta(days=4)
     return next_month - timedelta(days=next_month.day)
+
+
+def third_wednesday(year: int, month: int) -> dt.date:
+    """ Third Wednesday of the given month (standard IMM roll day) """
+    d = dt.date(year, month, 1)
+    wednesdays = [d + timedelta(days=i) for i in range(31)
+                if (d + timedelta(days=i)).month == month
+                and (d + timedelta(days=i)).weekday() == 2]
+    return wednesdays[2]
+
+
+def next_imm_date(d: dt.date) -> dt.date:
+    """ First IMM date strictly after d """
+    y, m = d.year, d.month
+    for im in _IMM_MONTHS:
+        if im > m or (im == m and third_wednesday(y, im) > d):
+            return third_wednesday(y, im)
+    return third_wednesday(y + 1, _IMM_MONTHS[0])
+
+
+def prev_imm_date(d: dt.date) -> dt.date:
+    """ First IMM date strictly before d """
+    y, m = d.year, d.month
+    for im in reversed(_IMM_MONTHS):
+        if im < m or (im == m and third_wednesday(y, im) < d):
+            return third_wednesday(y, im)
+    return third_wednesday(y - 1, _IMM_MONTHS[-1])
 
 
 def make_calendar(name: str, start_year: int=2000, end_year: int=2100):

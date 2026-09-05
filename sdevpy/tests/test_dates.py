@@ -100,5 +100,24 @@ def test_make_schedule_termination_convention():
     assert periods[-1].unadj_end == end
 
 
+def test_third_wednesday():
+    assert cdr.third_wednesday(2024, 3) == dt.date(2024, 3, 20)
+    assert cdr.third_wednesday(2024, 6) == dt.date(2024, 6, 19)
+    assert cdr.third_wednesday(2024, 9) == dt.date(2024, 9, 18)
+    assert cdr.third_wednesday(2024, 12) == dt.date(2024, 12, 18)
+
+
+def test_next_imm_date():
+    assert cdr.next_imm_date(dt.date(2024, 3, 1)) == dt.date(2024, 3, 20)
+    assert cdr.next_imm_date(dt.date(2024, 3, 20)) == dt.date(2024, 6, 19)  # on an IMM date -> rolls to next
+    assert cdr.next_imm_date(dt.date(2024, 12, 19)) == dt.date(2025, 3, 19)  # wraps into next year
+
+
+def test_prev_imm_date():
+    assert cdr.prev_imm_date(dt.date(2024, 3, 25)) == dt.date(2024, 3, 20)
+    assert cdr.prev_imm_date(dt.date(2024, 3, 20)) == dt.date(2023, 12, 20)  # on an IMM date -> rolls to prior
+    assert cdr.prev_imm_date(dt.date(2024, 1, 1)) == dt.date(2023, 12, 20)
+
+
 if __name__ == "__main__":
     test_tenor_advance()
