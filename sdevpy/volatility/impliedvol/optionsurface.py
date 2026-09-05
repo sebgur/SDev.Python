@@ -192,7 +192,8 @@ def plot_transform_surface(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_
     # Display transformed prices
     num_charts = expiries.shape[0]
     num_cols = 2
-    num_rows = int(num_charts / num_cols)
+    # num_rows = int(num_charts / num_cols)
+    num_rows = -(-num_charts // num_cols) # Ceiling division
     ylabel = 'Price' if transform == 'Price' else 'Vol'
 
     fig, axs = plt.subplots(num_rows, num_cols, layout="constrained")

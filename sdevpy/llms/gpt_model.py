@@ -78,6 +78,8 @@ class GptModel(LocalModel):
                                                                 eval_iter=5, start_context=start_text,
                                                                 tokenizer=self.tokenizer)
 
+        self.model.eval()
+
     def pretty_print(self) -> None: # pragma: no cov
         """ Display information about the GPT model """
         model_config = self.model.config
@@ -106,6 +108,8 @@ class GptModel(LocalModel):
         self.ctx_length = self.model.config.get('context_length', None)
         if self.ctx_length is None:
             raise ValueError("No context length found in GPT model config")
+
+        self.model.eval()
 
     def unload(self) -> None:
         """ Unload Llama model from memory """

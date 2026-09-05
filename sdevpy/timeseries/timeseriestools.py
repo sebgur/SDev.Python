@@ -76,16 +76,9 @@ def x_day_historical_returns(basket: pd.Series, time_in_days: int=5):
 
 
 def is_inverted_quote_bbg(key: str) -> bool:
-    # is_inverted = False
-    # bbg_dict = {'EURUSD Curncy': False, 'GBPUSD Curncy': False, 'AUDUSD Curncy': False,
-    #             'NZDUSD Curncy': False, 'JPYUSD Curncy': True, 'CADUSD Curncy': True,
-    #             'CHFUSD Curncy': True, 'NOKUSD Curncy': True, 'SEKUSD Curncy': True,
-    #             'SGDUSD Curncy': True, 'CNHUSD Curncy': True}
-
-    # is_inverted = bbg_dict.get(key)
-    # return is_inverted
     ccy = key.split('USD')[0]
     return fxspot.is_inverted_quote(ccy)
+
 
 def weighted_series(df_data: pd.DataFrame, weights: list[float]) -> pd.Series:
     """ Given time series of fx spots and the weights, compute the dot product time series """
