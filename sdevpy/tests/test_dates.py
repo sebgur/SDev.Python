@@ -27,7 +27,7 @@ def test_make_schedule():
 
     start = dt.date(2024, 1, 15)
     end = dt.date(2025, 1, 15)
-    test = cal.make_schedule_fancy(start, end, '3M')
+    test = cal.make_schedule(start, end, '3M')
     # print(test)
     ref = [dt.date(2024, 1, 16), dt.date(2024, 4, 15), dt.date(2024, 7, 15),
            dt.date(2024, 10, 15), dt.date(2025, 1, 15)]

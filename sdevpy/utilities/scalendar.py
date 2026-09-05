@@ -67,45 +67,7 @@ class Calendar:
                 count += step
         return count
 
-    # def make_schedule(self, start, end, term, convention=BDC.F, convert_to_datetime=False):
-    #     """ Simplified schedule generation for now (forward) """
-    #     schedule_dates, d = [], self.adjust(start, convention)
-    #     while d <= end:
-    #         schedule_dates.append(d)
-    #         d = self.adjust(d + dts.period(term), convention)
-
-    #     seen = set()
-    #     adjusted = []
-    #     for d in schedule_dates:
-    #         if d not in seen:
-    #             adjusted.append(d)
-    #             seen.add(d)
-
-    #     return to_datetime(adjusted) if convert_to_datetime else adjusted
-
-    # def make_schedule_new(self, start, end, term, convention=BDC.F, convert_to_datetime=False):
-    #     """ Simplified schedule generation for now (forward) """
-    #     period = dts.period(term)
-
-    #     # 1) Generate unadjusted roll dates, always stepping off the fixed anchor
-    #     raw_dates, d = [], start
-    #     while d <= end:
-    #         raw_dates.append(d)
-    #         d += period
-
-    #     # 2) Adjust each one independently, dedup
-    #     seen = set()
-    #     adjusted = []
-    #     for d in raw_dates:
-    #         a = self.adjust(d, convention)
-    #         if a not in seen:
-    #             adjusted.append(a)
-    #             seen.add(a)
-
-    #     return to_datetime(adjusted) if convert_to_datetime else adjusted
-
-    def make_schedule_fancy(self, start: dt.date, end: dt.date, term: str,
-                            convention: BDC = BDC.MF,
+    def make_schedule(self, start: dt.date, end: dt.date, term: str, convention: BDC = BDC.MF,
                             stub: str = "short_front", # short_front|long_front|short_back|long_back
                             eom: bool = False, convert_to_datetime: bool = False) -> list[dt.date]:
         """ Generate a schedule of adjusted dates from start to end """
@@ -230,9 +192,9 @@ def list_mcal_calendars() -> list[str]:
 
 
 def make_schedule(calstr, start, end, term, convention=BDC.F, convert_to_datetime=False):
-    """ Helper wrapping around the make_schedule_fancy() method of the calendard class """
+    """ Helper wrapping around the make_schedule() method of the calendard class """
     cdr = make_calendar(calstr)
-    schedule = cdr.make_schedule_fancy(start, end, term, convention=convention,
+    schedule = cdr.make_schedule(start, end, term, convention=convention,
                                  convert_to_datetime=convert_to_datetime)
     return schedule
 
@@ -309,7 +271,7 @@ if __name__ == "__main__":
 
     start = dt.date(2024, 1, 15)
     end = dt.date(2025, 1, 15)
-    schedule = cal.make_schedule_fancy(start, end, '3M', convention=BDC.MF)
+    schedule = cal.make_schedule(start, end, '3M', convention=BDC.MF)
     print(schedule)
 
     # Usage
@@ -327,7 +289,7 @@ if __name__ == "__main__":
     start = dt.datetime(2025, 11, 15)
     end = dt.datetime(2026, 12, 15)
     sch1 = make_schedule("USD", start, end, "1d")
-    # sch2 = cal.make_schedule_fancy(start, end, "1d")
+    # sch2 = cal.make_schedule(start, end, "1d")
     print(sch1)
     # print(sch2)
 
