@@ -1,3 +1,4 @@
+import logging
 import datetime as dt
 import numpy as np
 from pathlib import Path
@@ -15,6 +16,7 @@ from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 from sdevpy.market.provider import MarketDataProvider
 from sdevpy.tests import conftest
+log = logging.getLogger(__name__)
 
 
 class MarketDataFileProvider(MarketDataProvider):

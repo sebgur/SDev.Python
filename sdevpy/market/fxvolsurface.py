@@ -98,8 +98,8 @@ def fxvolsurfacedata_from_file(file: str|Path) -> FxVolSurfaceData:
                             market_strangle_quote=market_strangle_quote)
 
 
-def callputvols_from_butterfly(atm_vol: float, rr: float, bf: float) -> float:
-    """ Call/put vols at the quoted delta, given atm_vol/rr/bf where bf is the butterfly """
+def wingvols_from_butterfly(atm_vol: float, rr: float, bf: float) -> float:
+    """ Wing vols at the quoted delta, given atm_vol/rr/bf where bf is the butterfly """
     vol_call = atm_vol + bf + 0.5 * rr
     vol_put = atm_vol + bf - 0.5 * rr
     return vol_put, vol_call

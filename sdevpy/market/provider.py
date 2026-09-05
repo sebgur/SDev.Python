@@ -1,7 +1,7 @@
+import logging
 from abc import ABC, abstractmethod
 import datetime as dt
 import numpy as np
-# from typing import Protocol, runtime_checkable
 from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.market.spot import SpotData
 from sdevpy.market.eqforward import EqForwardData, EqForwardCurve
@@ -9,6 +9,7 @@ from sdevpy.market.fxforward import FxForwardCurve
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 from sdevpy.market import fxspot
+log = logging.getLogger(__name__)
 
 
 RFR_CURVES = {fxspot.USD: 'USD.SOFR.1D'}
@@ -54,9 +55,12 @@ class MarketDataProvider(ABC):
         """ Get cross-currency curve to USD for given ccy. Return USD RFR curve if ccy = USD.
             By enforced convention, the cross-currency curve to USD for e.g. EUR must be EUR.XCCY. """
         if ccy == fxspot.USD:
+            log.debug('Requested USD xccy curve: effectively USD RFR')
             return self.get_rfrcurve(fxspot.USD, date)
         else:
-            return self.get_yieldcurve(f"{ccy}.XCCY", date)
+            curve_id = f"{ccy}.XCCY"
+            log.debug(f'Requested {ccy} xccy curve: effectively {curve_id}')
+            return self.get_yieldcurve(curve_id, date)
 
     def get_eq_forward_curves(self, names: list[str], date: dt.datetime) -> list[EqForwardCurve]:
         """ Retrieve EQ forward curves """

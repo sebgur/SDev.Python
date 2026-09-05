@@ -14,6 +14,7 @@ import numpy as np
 from scipy.optimize import brentq
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
+from sdevpy.market.fxvolsurface import wingvols_from_butterfly
 
 
 def market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, ms: float,
@@ -94,3 +95,14 @@ def calibrate_smile_strangle(spot: float, r_d: float, r_f: float, expiry: float,
         raise ValueError(f"Could not bracket the smile strangle for atm={atm_vol}, rr={rr}, ms={ms}")
 
     return float(brentq(objective, lo, hi, xtol=tol))
+
+
+def wingvols_from_market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float,
+                                  rr: float, ms: float, build_smile, delta: float = 0.25,
+                                  prem_adjusted: bool = False, **kwargs) -> tuple:
+    """ Call/put vols at the given delta, given atm_vol/rr/ms where ms is the broker's raw
+        quoted/market strangle, not yet a smile strangle. Model-agnostic: build_smile is the
+        only model-specific input -- see calibrate_smile_strangle's own contract. """
+    smile_strangle = calibrate_smile_strangle(spot, r_d, r_f, expiry, atm_vol, rr, ms, build_smile,
+                                              delta, prem_adjusted, **kwargs)
+    return wingvols_from_butterfly(atm_vol, rr, smile_strangle)

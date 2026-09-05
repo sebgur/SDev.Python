@@ -5,7 +5,7 @@ LOG_COLORS = {"DEBUG": "cyan", "INFO": "green", "WARNING": "yellow", "ERROR": "r
               "CRITICAL": "bold_red"}
 
 
-def string_to_logging_level(level_str: str):
+def _string_to_logging_level(level_str: str):
     level_str = level_str.lower()
     match level_str:
         case 'debug':
@@ -38,5 +38,5 @@ def configure(root_level: str='warning', sdevpy_level: str='debug',
             raise ValueError(f"Unsupported module display mode: {module_display}")
 
     handler.setFormatter(colorlog.ColoredFormatter(module_str, log_colors=LOG_COLORS))
-    logging.basicConfig(level=string_to_logging_level(root_level), handlers=[handler], force=True)
-    logging.getLogger("sdevpy").setLevel(string_to_logging_level(sdevpy_level))
+    logging.basicConfig(level=_string_to_logging_level(root_level), handlers=[handler], force=True)
+    logging.getLogger("sdevpy").setLevel(_string_to_logging_level(sdevpy_level))

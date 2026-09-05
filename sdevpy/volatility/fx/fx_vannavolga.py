@@ -27,7 +27,7 @@ import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
-from sdevpy.volatility.fx.fx_smilecalib import calibrate_smile_strangle
+from sdevpy.volatility.fx import fx_smilecalib
 
 
 def _arr(x) -> npt.NDArray[np.float64]:
@@ -257,22 +257,37 @@ def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, 
 def smile_from_quotes(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, rr: float, bf: float,
                       delta: float=0.25, prem_adjusted: bool=False, extrapolation: str='flat',
                       market_strangle_quote: bool=False, **kwargs) -> VannaVolgaSmile:
+    """ Vanna-Volga interpolation from quotes """
     if market_strangle_quote:
         def build_smile(trial_bf):
             return _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, trial_bf,
                                                delta, prem_adjusted, 'none', **kwargs)
 
-        smile_bf = calibrate_smile_strangle(spot, r_d, r_f, expiry, atm_vol, rr, bf, build_smile,
-                                            delta, prem_adjusted, **kwargs)
+        smile_bf = fx_smilecalib.calibrate_smile_strangle(spot, r_d, r_f, expiry, atm_vol, rr, bf, build_smile,
+                                                          delta, prem_adjusted, **kwargs)
     else:
         smile_bf = bf
 
     smile = _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, smile_bf, delta,
                                         prem_adjusted, extrapolation, **kwargs)
+
     if market_strangle_quote:
         smile.market_butterfly = float(bf)
+
     return smile
 
+
+def wingvols_from_market_strangle_vv(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float,
+                                     rr: float, ms: float, delta: float = 0.25,
+                                     prem_adjusted: bool = False, **kwargs) -> tuple:
+    """ VV-specific: the only thing this adds over fx_smilecalib's generic version is the
+        build_smile closure -- how to construct a VannaVolgaSmile from a candidate strangle. """
+    def build_smile(trial_bf):
+        return _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, trial_bf, delta,
+                                           prem_adjusted, 'none', **kwargs)
+
+    return fx_smilecalib.wingvols_from_market_strangle(spot, r_d, r_f, expiry, atm_vol, rr, ms,
+                                                       build_smile, delta, prem_adjusted, **kwargs)
 
 if __name__ == "__main__":
     s = smile_from_quotes(spot=1.10, r_d=0.04, r_f=0.02, expiry=1.0, atm_vol=0.10, rr=-0.01, bf=0.0025)

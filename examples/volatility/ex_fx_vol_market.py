@@ -8,6 +8,10 @@ from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.volatility.fx import fx_vannavolga
+from sdevpy.market.fxvolsurface import wingvols_from_butterfly
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
+from sdevpy import logger
+logger.configure(module_display='partial')
 
 
 ################## TODO ###########################################################################
@@ -24,7 +28,7 @@ from sdevpy.volatility.fx import fx_vannavolga
 # Choose test case
 pair = "USDJPY"
 valdate = dt.datetime(2025, 12, 15)
-view_expiry_idx = 2
+view_expiry_idx = 0
 
 # Get market data provider
 provider = MarketDataFileProvider()
@@ -73,22 +77,43 @@ print(f"Domestic df: {df_dom}")
 r_for, r_dom = -np.log(df_for) / t, -np.log(df_dom) / t
 print(f"Foreign rate: {r_for}")
 print(f"Domestic rate: {r_dom}")
-
-
-# Calculate
 fwd = spot * df_for / df_dom
 print(f"Forward: {fwd}")
 
+# Build the full set of market points: every quoted delta level, both wings, plus ATM
+market_strikes, market_vols = [], []
+for d, r, b in zip(deltas, rr, bf, strict=True):
+    if data.market_strangle_quote:
+        vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(spot, r_dom, r_for, t, atm_vol, r, b, delta=d)
+    else:
+        vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
 
-# Build smile
-s = fx_vannavolga.smile_from_quotes(spot=spot, r_d=r_dom, r_f=r_for, expiry=t, atm_vol=atm_vol, rr=-0.01, bf=0.025)
+    k_put = float(strike_from_delta(spot, r_dom, r_for, t, vol_put, -d, 'P').k)
+    k_call = float(strike_from_delta(spot, r_dom, r_for, t, vol_call, d, 'C').k)
+    market_strikes += [k_put, k_call]
+    market_vols += [vol_put, vol_call]
+
+k_atm = fx_vannavolga.atm_dns_strike(fwd, atm_vol, t)
+market_strikes.append(k_atm)
+market_vols.append(atm_vol)
+
+# Build interpolated smile
+delta_idx = 0
+plot_delta, plot_rr, plot_bf = deltas[delta_idx], rr[delta_idx], bf[delta_idx]
+s = fx_vannavolga.smile_from_quotes(spot=spot, r_d=r_dom, r_f=r_for, expiry=t, atm_vol=atm_vol, rr=plot_rr, bf=plot_bf,
+                                    delta=plot_delta)
 strikes = np.linspace(0.9 * fwd, 1.1 * fwd, 50)
 vols = []
 for strike in strikes:
     vols.append(s.vol(strike)) #float(s.vol(k, 'first_order')
 
-plt.plot(strikes, vols)
+
+# Plot
+plt.plot(strikes, vols, label='Interpolation', color='blue')
+plt.scatter(market_strikes, market_vols, label='Market', color='red', zorder=5)
 plt.show()
+
+
 
 
 # Write examples for strike inversion and round-trip
