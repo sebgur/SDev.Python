@@ -119,5 +119,38 @@ def test_prev_imm_date():
     assert cdr.prev_imm_date(dt.date(2024, 1, 1)) == dt.date(2023, 12, 20)
 
 
+def test_make_periods_imm_roll_backward():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2024, 3, 20)   # already an IMM date
+    end = dt.date(2025, 3, 19)     # IMM date one year later (2025 IMM day differs: 19th not 20th)
+
+    roll_dates = cal._unadjusted_roll_dates(start, end, '3M', stub="short_front", roll_convention="IMM")
+    ref = [dt.date(2024, 3, 20), dt.date(2024, 6, 19), dt.date(2024, 9, 18),
+           dt.date(2024, 12, 18), dt.date(2025, 3, 19)]
+    assert roll_dates == ref
+
+
+def test_make_periods_imm_roll_forward():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2024, 3, 20)
+    end = dt.date(2025, 3, 19)
+
+    roll_dates = cal._unadjusted_roll_dates(start, end, '3M', stub="short_back", roll_convention="IMM")
+    ref = [dt.date(2024, 3, 20), dt.date(2024, 6, 19), dt.date(2024, 9, 18),
+           dt.date(2024, 12, 18), dt.date(2025, 3, 19)]
+    assert roll_dates == ref
+
+
+def test_make_periods_imm_rejects_non_quarterly_term():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2024, 3, 20)
+    end = dt.date(2025, 3, 19)
+
+    try:
+        cal._unadjusted_roll_dates(start, end, '1M', roll_convention="IMM")
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+
 if __name__ == "__main__":
     test_tenor_advance()

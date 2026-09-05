@@ -117,16 +117,34 @@ class Calendar:
 
     #     return to_datetime(adjusted) if convert_to_datetime else adjusted
 
-    def _unadjusted_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str = "short_front",
-                               eom: bool = False) -> list[dt.date]:
+    def _unadjusted_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str="short_front",
+                               eom: bool=False, roll_convention: str=None) -> list[dt.date]:
         """ Generate deduplicated unadjusted roll dates from start to end (no BDC applied) """
         period = dts.period(term)
         use_eom = eom and is_eom(start)
 
+        if roll_convention == "IMM":
+            total_months = period.years * 12 + period.months
+            if total_months <= 0 or total_months % 3 != 0 or period.days != 0:
+                raise ValueError(f"IMM roll convention requires a term in whole 3-month steps, got '{term}'")
+            n_quarters = total_months // 3
+            def step(d):
+                return _step_imm(d, n_quarters, forward=True)
+
+            def step_back(d):
+                return _step_imm(d, n_quarters, forward=False)
+        else:
+            def step(d):
+                return d + period
+
+            def step_back(d):
+                return d - period
+
         if stub in ("short_back", "long_back"):
             roll_dates, d = [start], start
             while True:
-                d += period
+                d = step(d)
+                # d += period
                 roll_dates.append(min(d, end))
                 if d >= end:
                     break
@@ -135,7 +153,8 @@ class Calendar:
         else:
             roll_dates, d = [end], end
             while True:
-                d -= period
+                d = step_back(d)
+                # d -= period
                 roll_dates.insert(0, max(d, start))
                 if d <= start:
                     break
@@ -155,10 +174,10 @@ class Calendar:
 
     def make_schedule(self, start: dt.date, end: dt.date, term: str, convention: BDC=BDC.MF,
                       stub: str="short_front", eom: bool=False, convert_to_datetime: bool=False,
-                      termination_convention: BDC=None) -> list[dt.date]:
+                      termination_convention: BDC=None, roll_convention: str=None) -> list[dt.date]:
         """ Generate a schedule of adjusted dates from start to end """
         termination_convention = termination_convention or convention
-        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom)
+        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom, roll_convention)
 
         seen = set()
         adjusted = []
@@ -172,11 +191,11 @@ class Calendar:
         return to_datetime(adjusted) if convert_to_datetime else adjusted
 
     def make_periods(self, start: dt.date, end: dt.date, term: str, convention: BDC = BDC.MF,
-                     stub: str="short_front", eom: bool=False,
-                     termination_convention: BDC=None) -> list["Period"]:
+                     stub: str="short_front", eom: bool=False, termination_convention: BDC=None,
+                     roll_convention: str=None) -> list["Period"]:
         """ Generate (unadjusted, adjusted) date pairs for each accrual period """
         termination_convention = termination_convention or convention
-        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom)
+        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom, roll_convention)
 
         # adjusted = [self.adjust(d, convention) for d in roll_dates]
         adjusted = [self.adjust(d, convention) for d in roll_dates[:-1]]
@@ -241,6 +260,12 @@ def prev_imm_date(d: dt.date) -> dt.date:
         if im < m or (im == m and third_wednesday(y, im) < d):
             return third_wednesday(y, im)
     return third_wednesday(y - 1, _IMM_MONTHS[-1])
+
+
+def _step_imm(d: dt.date, n: int, forward: bool) -> dt.date:
+    for _ in range(n):
+        d = next_imm_date(d) if forward else prev_imm_date(d)
+    return d
 
 
 def make_calendar(name: str, start_year: int=2000, end_year: int=2100):
