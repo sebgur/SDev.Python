@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from sdevpy.analytics.americantree import option_price
 from sdevpy.analytics import black
+from sdevpy.tree.trees import BinomialTree, TrinomialTree
 
 
 TTM = 1.0
@@ -71,6 +72,27 @@ def test_american_put_ge_intrinsic_value(method):
     put = option_price(TTM, STRIKE, False, True, SPOT, VOL, RF_RATE, DIV_RATE, DISC_RATE, method, N_FAST)
     intrinsic = max(STRIKE - SPOT, 0.0)
     assert put >= intrinsic - 1e-10
+
+
+def test_binomial_probability_clips():
+    tree = BinomialTree(n_steps=1)
+    tree.calculate_probabilities(dt=1.0, drift=2.0, vol=0.001)
+    assert tree.p == 1.0
+
+
+def test_trinomial_probability_clips():
+    tree = TrinomialTree(n_steps=1)
+    tree.calculate_probabilities(dt=1.0, drift=2.0, vol=0.001)
+    assert 0.0 <= tree.pu <= 1.0
+    assert 0.0 <= tree.pd <= 1.0
+    assert 0.0 <= tree.pm <= 1.0
+    assert abs(tree.pu + tree.pd + tree.pm - 1.0) < 1e-12
+
+
+def test_binomial_probability_no_clip_for_normal_params(caplog):
+    tree = BinomialTree(n_steps=50)
+    tree.calculate_probabilities(dt=1.0 / 50, drift=0.03, vol=0.2)
+    assert 0.0 < tree.p < 1.0
 
 
 if __name__ == "__main__":

@@ -2,8 +2,10 @@
     The binomial tree implementation is ours. The trinomial tree implementation design is ours
     but the numerical code comes from https://github.com/pachacutexx/Option-Pricing
 """
+import logging
 import numpy as np
 from abc import ABC, abstractmethod
+log = logging.getLogger(__name__)
 
 
 class Tree(ABC):
@@ -74,8 +76,17 @@ class BinomialTree(Tree):
         self.u = np.exp(stdev)
         self.d = 1.0 / self.u
 
+        # # Transition probability
+        # self.p = (np.exp(drift * dt) - self.d) / (self.u - self.d)
+
         # Transition probability
-        self.p = (np.exp(drift * dt) - self.d) / (self.u - self.d)
+        p = (np.exp(drift * dt) - self.d) / (self.u - self.d)
+        clipped = np.clip(p, 0.0, 1.0)
+        if np.any(p != clipped):
+            log.debug(f"Binomial risk-neutral probability {p} outside [0,1], clipped to {clipped} "
+                    f"(dt={dt}, drift={drift}, vol={vol})")
+
+        self.p = clipped
 
     def roll_back(self, step_idx, payoff, v, spot, df):
         """ Roll-back to calculate continuation value """
@@ -114,9 +125,30 @@ class TrinomialTree(Tree):
         df_vol_u = np.exp(vol * np.sqrt(dt / 2))
         df_vol_d = 1.0 / df_vol_u
 
-        self.pu = ((df_drift - df_vol_d) / (df_vol_u - df_vol_d))** 2
-        self.pd = ((df_vol_u - df_drift) / (df_vol_u - df_vol_d))** 2
-        self.pm = 1.0 - self.pu - self.pd
+        # self.pu = ((df_drift - df_vol_d) / (df_vol_u - df_vol_d))** 2
+        # self.pd = ((df_vol_u - df_drift) / (df_vol_u - df_vol_d))** 2
+        # self.pm = 1.0 - self.pu - self.pd
+
+        pu = ((df_drift - df_vol_d) / (df_vol_u - df_vol_d)) ** 2
+        pd = ((df_vol_u - df_drift) / (df_vol_u - df_vol_d)) ** 2
+
+        pu_valid = np.clip(pu, 0.0, 1.0)
+        pd_valid = np.clip(pd, 0.0, 1.0)
+        total = pu_valid + pd_valid
+        if np.any(total > 1.0):
+            scale = 1.0 / total
+            pu_valid = pu_valid * scale
+            pd_valid = pd_valid * scale
+        pm_valid = 1.0 - pu_valid - pd_valid
+
+        if np.any(pu != pu_valid) or np.any(pd != pd_valid):
+            log.debug(f"Trinomial risk-neutral probabilities out of range, clipped/rescaled to keep "
+                      f"pu+pd+pm=1 (dt={dt}, drift={drift}, vol={vol}): "
+                      f"pu={pu}->{pu_valid}, pd={pd}->{pd_valid}, pm->{pm_valid}")
+
+        self.pu = pu_valid
+        self.pd = pd_valid
+        self.pm = pm_valid
 
     def roll_back(self, step_idx, payoff, v, spot, df):
         """ Roll-back to calculate continuation value """
