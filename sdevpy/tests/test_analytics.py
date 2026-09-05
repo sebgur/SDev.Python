@@ -144,5 +144,18 @@ def test_bachelier_roundtrip_brent():
     assert np.allclose(test, ref, rtol=0.0, atol=1e-10)
 
 
+def test_implied_vol_newton_deep_itm_uses_brent_fallback():
+    expiry, fwd, vol = 0.5, 100.0, 0.25
+    strikes = np.asarray([95.0, 100.0, 105.0, 1.0]) # last strike: deep ITM call -> vega underflows to 0
+    p = black.price(expiry, strikes, True, fwd, vol)
+
+    test = black.implied_vol_newton(expiry, strikes, True, fwd, p)
+
+    # assert not np.any(np.isnan(test))
+    # assert np.allclose(test, [vol] * 4, rtol=0.0, atol=1e-4)
+    assert np.all(np.isfinite(test))
+    assert np.allclose(test[:3], [vol] * 3, rtol=0.0, atol=1e-4)
+
+
 if __name__ == "__main__":
     test_bachelier_straddle_function()

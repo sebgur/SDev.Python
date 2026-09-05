@@ -65,7 +65,8 @@ def implied_vols_brent(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
 
 
 def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float,
-                       fwd_price: npt.ArrayLike, tol: float=1e-8, max_iter: int=50) -> npt.NDArray[np.float64]:
+                       fwd_price: npt.ArrayLike, tol: float=1e-8, max_iter: int=50,
+                       vega_floor: float=1e-6) -> npt.NDArray[np.float64]:
     """ Using vectorized Newton-Raphson, with faster convergence than Brent.
         However, this method can struggle for very small vegas, so we may want to switch
         to another method (maybe Brent above) below a certain vega threshold.
@@ -76,16 +77,34 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
     vol = np.full_like(fwd_price, 0.25) # Initial guess: flat 25%
     sqrt_t = np.sqrt(expiry)
     converged = False
+    low_vega_mask = np.zeros_like(vol, dtype=bool)
+
     for _ in range(max_iter):
         s = vol * sqrt_t
         d1 = np.log(fwd / strike) / s + 0.5 * s
         vega = fwd * norm.pdf(d1) * sqrt_t
+        low_vega_mask |= np.abs(vega) < vega_floor
+
         diff = price(expiry, strike, is_call, fwd, vol) - fwd_price
-        vol -= diff / vega
+        safe_vega = np.where(low_vega_mask, 1.0, vega) # placeholder, these entries get overwritten by Brent below
+        vol = np.where(low_vega_mask, vol, vol - diff / safe_vega)
+        # vol -= diff / vega
         vol = np.maximum(vol, 1e-8) # Keep vol positive
-        if np.all(np.abs(diff) < tol):
+
+        # if np.all(np.abs(diff) < tol):
+        #     converged = True
+        #     break
+
+        active = ~low_vega_mask
+        if not np.any(active) or np.all(np.abs(diff[active]) < tol):
             converged = True
             break
+
+    if np.any(low_vega_mask):
+        n_low = int(np.sum(low_vega_mask))
+        log.debug(f"{n_low} strike(s) had vega below {vega_floor}; falling back to Brent's method")
+        for i in np.flatnonzero(low_vega_mask):
+            vol[i] = implied_vol_brent(expiry, strike[i], is_call, fwd, fwd_price[i])
 
     if not converged:
         log.warning("max_iter reached without full convergence")

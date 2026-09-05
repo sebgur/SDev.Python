@@ -76,6 +76,9 @@ def x_day_historical_returns(basket: pd.Series, time_in_days: int=5):
 
 
 def is_inverted_quote_bbg(key: str) -> bool:
+    if 'USD' not in key:
+        raise ValueError(f"Unrecognized FX ticker (expected an XXXUSD-style Bloomberg ticker): {key}")
+
     ccy = key.split('USD')[0]
     return fxspot.is_inverted_quote(ccy)
 

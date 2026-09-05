@@ -15,7 +15,6 @@ logger.configure(module_display='partial')
 
 
 ################## TODO ###########################################################################
-# * Show charts in strike/deltas
 # * Use delta inversion and illustrate it
 # * Retrieve the pillar call/put vols on the original deltas
 # * Do it twice and compare strangle vs butterfly results
