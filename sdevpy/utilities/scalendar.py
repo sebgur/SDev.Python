@@ -121,7 +121,9 @@ class Calendar:
                                eom: bool=False, roll_convention: str=None) -> list[dt.date]:
         """ Generate deduplicated unadjusted roll dates from start to end (no BDC applied) """
         period = dts.period(term)
-        use_eom = eom and is_eom(start)
+        # use_eom = eom and is_eom(start)
+        anchor = start if stub in ("short_back", "long_back") else end
+        use_eom = eom and is_eom(anchor)
 
         if roll_convention == "IMM":
             total_months = period.years * 12 + period.months

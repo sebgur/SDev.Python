@@ -152,5 +152,25 @@ def test_make_periods_imm_rejects_non_quarterly_term():
     except ValueError:
         pass
 
+
+def test_eom_uses_direction_correct_anchor():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2024, 1, 10)   # not EOM
+    end = dt.date(2024, 4, 30)     # EOM (April has 30 days)
+
+    # default stub "short_front" rolls backward from `end` -> EOM check must use `end`, not `start`
+    roll_dates = cal._unadjusted_roll_dates(start, end, '6M', eom=True)
+    assert roll_dates == [dt.date(2024, 1, 31), dt.date(2024, 4, 30)]
+
+
+def test_eom_short_back_anchor_unaffected():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2024, 1, 31) # EOM
+    end = dt.date(2024, 4, 10) # not EOM
+
+    roll_dates = cal._unadjusted_roll_dates(start, end, '6M', stub="short_back", eom=True)
+    assert roll_dates == [dt.date(2024, 1, 31), dt.date(2024, 4, 30)]  # end also snaps to month-end
+
+
 if __name__ == "__main__":
     test_tenor_advance()
