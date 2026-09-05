@@ -1,6 +1,7 @@
 import datetime as dt
 from datetime import timedelta
 from enum import Enum
+from collections import namedtuple
 import pandas_market_calendars as mcal
 import holidays
 from sdevpy.utilities import dates as dts
@@ -13,6 +14,9 @@ class BDC(Enum):
     P = "preceding"
     MP = "modified_preceding"
     U = "unadjusted"
+
+
+Period = namedtuple("Period", ["unadj_start", "unadj_end", "adj_start", "adj_end"])
 
 
 class Calendar:
@@ -67,16 +71,59 @@ class Calendar:
                 count += step
         return count
 
-    def make_schedule(self, start: dt.date, end: dt.date, term: str, convention: BDC = BDC.MF,
-                            stub: str = "short_front", # short_front|long_front|short_back|long_back
-                            eom: bool = False, convert_to_datetime: bool = False) -> list[dt.date]:
-        """ Generate a schedule of adjusted dates from start to end """
+    # def make_schedule(self, start: dt.date, end: dt.date, term: str, convention: BDC = BDC.MF,
+    #                         stub: str = "short_front", # short_front|long_front|short_back|long_back
+    #                         eom: bool = False, convert_to_datetime: bool = False) -> list[dt.date]:
+    #     """ Generate a schedule of adjusted dates from start to end """
+    #     period = dts.period(term)
+    #     use_eom = eom and is_eom(start)
+
+    #     # 1) Generate unadjusted roll dates
+    #     if stub in ("short_back", "long_back"):
+    #         # Roll forward from start
+    #         roll_dates, d = [start], start
+    #         while True:
+    #             d += period
+    #             roll_dates.append(min(d, end))
+    #             if d >= end:
+    #                 break
+    #         if stub == "long_back" and len(roll_dates) > 2:
+    #             roll_dates.pop(-2) # merge last two periods into one long stub
+    #     else:
+    #         # Roll backwards from end (industry standard for front stubs)
+    #         roll_dates, d = [end], end
+    #         while True:
+    #             d -= period
+    #             roll_dates.insert(0, max(d, start))
+    #             if d <= start:
+    #                 break
+    #         if stub == "long_front" and len(roll_dates) > 2:
+    #             roll_dates.pop(1) # merge first two periods into one long stub
+
+    #     # 2) Apply end-of-month roll
+    #     if use_eom:
+    #         roll_dates = [to_eom(d) for d in roll_dates]
+
+    #     # 3) Adjust all dates in one pass
+    #     period_ends = roll_dates[:] # Effectively take them all
+    #     seen = set()
+    #     adjusted = []
+    #     for d in period_ends:
+    #         a = self.adjust(d, convention)
+    #         if a not in seen:
+    #             adjusted.append(a)
+    #             seen.add(a)
+
+    #     return to_datetime(adjusted) if convert_to_datetime else adjusted
+
+########################################################################
+    def _unadjusted_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str = "short_front",
+                               eom: bool = False) -> list[dt.date]:
+        """ Generate deduplicated unadjusted roll dates from start to end (no BDC applied) """
         period = dts.period(term)
         use_eom = eom and is_eom(start)
 
-        # 1) Generate unadjusted roll dates
         if stub in ("short_back", "long_back"):
-            # Roll forward from start
             roll_dates, d = [start], start
             while True:
                 d += period
@@ -84,9 +131,8 @@ class Calendar:
                 if d >= end:
                     break
             if stub == "long_back" and len(roll_dates) > 2:
-                roll_dates.pop(-2) # merge last two periods into one long stub
+                roll_dates.pop(-2)
         else:
-            # Roll backwards from end (industry standard for front stubs)
             roll_dates, d = [end], end
             while True:
                 d -= period
@@ -94,29 +140,44 @@ class Calendar:
                 if d <= start:
                     break
             if stub == "long_front" and len(roll_dates) > 2:
-                roll_dates.pop(1) # merge first two periods into one long stub
+                roll_dates.pop(1)
 
-        # 2) Apply end-of-month roll
         if use_eom:
             roll_dates = [to_eom(d) for d in roll_dates]
 
-        # 3) Adjust all dates in one pass
-        period_ends = roll_dates[:] # Effectively take them all
+        seen = set()
+        deduped = []
+        for d in roll_dates:
+            if d not in seen:
+                deduped.append(d)
+                seen.add(d)
+        return deduped
+
+    def make_schedule(self, start: dt.date, end: dt.date, term: str, convention: BDC=BDC.MF,
+                      stub: str="short_front", eom: bool=False, convert_to_datetime: bool=False) -> list[dt.date]:
+        """ Generate a schedule of adjusted dates from start to end """
+        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom)
+
         seen = set()
         adjusted = []
-        for d in period_ends:
+        for d in roll_dates:
             a = self.adjust(d, convention)
             if a not in seen:
                 adjusted.append(a)
                 seen.add(a)
 
-        # if include_effective:
-        #     eff_start = self.adjust(start, convention)
-        #     adjusted = [eff_start] + adjusted
-
         return to_datetime(adjusted) if convert_to_datetime else adjusted
 
+    def make_periods(self, start: dt.date, end: dt.date, term: str, convention: BDC = BDC.MF,
+                        stub: str="short_front", eom: bool=False) -> list["Period"]:
+        """ Generate (unadjusted, adjusted) date pairs for each accrual period """
+        roll_dates = self._unadjusted_roll_dates(start, end, term, stub, eom)
+        adjusted = [self.adjust(d, convention) for d in roll_dates]
 
+        return [Period(roll_dates[i], roll_dates[i + 1], adjusted[i], adjusted[i + 1])
+                for i in range(len(roll_dates) - 1)]
+
+##########################################################
     def __add__(self, other: "Calendar") -> "Calendar":
         """ Combine two calendars — both holidays are observed """
         return Calendar(name=f"{self.name}+{other.name}", holiday_set=self._holidays | other._holidays)

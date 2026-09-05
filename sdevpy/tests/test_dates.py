@@ -53,5 +53,32 @@ def test_date_advance():
     assert test == ref
 
 
+def test_make_periods():
+    cal1 = cdr.make_calendar("USD")
+    cal2 = cdr.make_calendar("NYSE")
+    cal = cal1 + cal2
+
+    start = dt.date(2024, 1, 15)
+    end = dt.date(2025, 1, 15)
+    periods = cal.make_periods(start, end, '3M')
+
+    # 2024-01-15 is MLK Day (holiday) -> adjusted start rolls to the 16th under MF
+    assert periods[0].unadj_start == dt.date(2024, 1, 15)
+    assert periods[0].adj_start == dt.date(2024, 1, 16)
+
+    # every other roll date in this run is already a business day -> unadjusted == adjusted
+    for p in periods[1:]:
+        assert p.unadj_start == p.adj_start
+
+    # adjacent periods share the same roll date and therefore the same adjustment
+    for i in range(len(periods) - 1):
+        assert periods[i].adj_end == periods[i + 1].adj_start
+
+    # flat adjusted schedule from make_schedule must match the period boundaries
+    flat = cal.make_schedule(start, end, '3M')
+    rebuilt = [periods[0].adj_start] + [p.adj_end for p in periods]
+    assert flat == rebuilt
+
+
 if __name__ == "__main__":
     test_tenor_advance()
