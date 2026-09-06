@@ -35,8 +35,13 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
+from sdevpy.utilities import dates as dts
 
 ###################### Helpers ####################################################################
+
+def is_spot_delta_tenor(tenor_str: str, cutoff: str = '1Y') -> bool:
+    return dts.tenor_leq(tenor_str, cutoff)
+
 
 def _arr(x) -> npt.ArrayLike:
     return np.asarray(x, dtype=float)
@@ -309,11 +314,13 @@ if __name__ == "__main__":
     print("1) Round-trip on single quote, plain (non premium-adjusted)  delta put, EURUSD-like")
     print("=" * 70)
     delta = -0.25
-    res = strike_from_delta(spot=1.10, r_d=0.04, r_f=0.02, t=0.5, sigma=0.09, delta=-delta,
+    r_f, r_d, expiry = 0.02, 0.04, 0.5
+    df_f, df_d = np.exp(-r_f * expiry), np.exp(-r_d * expiry)
+    res = strike_from_delta(spot=1.10, df_f=df_f, df_d=df_d, t=expiry, sigma=0.09, delta=-delta,
                             option_type="P", prem_adjusted=False)
     print(res)
     # sanity check: recompute delta at that strike directly
-    f = 1.10 * np.exp((0.04 - 0.02) * 0.5)
+    f = 1.10 * df_f / df_d
     d1, _ = _d1d2(np.array(f), res.k, np.array(0.09), np.array(0.5))
     print("check delta:", -norm.cdf(-d1) * np.exp(-0.02 * 0.5))
 

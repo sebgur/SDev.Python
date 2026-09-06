@@ -8,6 +8,7 @@ from sdevpy.utilities.tools import isiterable
 DATE_FORMAT = '%d-%b-%Y'
 DATETIME_FORMAT = '%d-%b-%Y %H:%M:%S'
 DATE_FILE_FORMAT = '%Y%m%d-%H%M%S'
+_ANCHOR = dt.datetime(1960, 1, 1) # Arbitrary but fixed (only relative ordering matters)
 
 
 def advance_int(base_date: dt.datetime, days: int=0, months: int=0, years: int=0) -> dt.datetime:
@@ -43,6 +44,21 @@ def period(tenor_str: str) -> relativedelta:
     days   = sign * (int(match.group(5)[:-1]) if match.group(5) else 0)
 
     return relativedelta(years=years, months=months, weeks=weeks, days=days)
+
+
+def tenor_to_date(tenor_str: str, anchor: dt.datetime=_ANCHOR) -> dt.datetime:
+    """ Map a tenor to a date under a fixed anchor, purely for ordering -- not a real
+        settlement or valuation date. ON/TN/SN are shorter than any Y/M/W/D tenor by market
+        convention (not by a fixed day count -- their real length depends on the trading
+        calendar and weekends), so they map to the anchor itself rather than being parsed. """
+    if tenor_str.upper() in ('ON', 'TN', 'SN'):
+        return anchor
+    return anchor + period(tenor_str)
+
+
+def tenor_leq(t1: str, t2: str, anchor: dt.datetime=_ANCHOR) -> bool:
+    """ True if t1 falls at or before t2, per a fixed, arbitrary anchor date. """
+    return tenor_to_date(t1, anchor) <= tenor_to_date(t2, anchor)
 
 
 if __name__ == "__main__":

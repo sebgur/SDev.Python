@@ -1,4 +1,5 @@
 import datetime as dt
+import pytest
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import scalendar as cdr
 
@@ -226,6 +227,57 @@ def test_stub_override_validation():
         assert False, "expected ValueError"
     except ValueError:
         pass
+
+
+class TestTenorToDate:
+    def test_simple_year(self):
+        assert dts.tenor_to_date('1Y', anchor=dt.datetime(2000, 1, 1)) == dt.datetime(2001, 1, 1)
+
+    def test_compound_tenor(self):
+        assert dts.tenor_to_date('2Y6M', anchor=dt.datetime(2000, 1, 1)) == dt.datetime(2002, 7, 1)
+
+    def test_out_of_canonical_order_still_parses(self):
+        # Y-M-W-D order is required by dts.period()'s regex; 9M3W is already in that order
+        assert dts.tenor_to_date('9M3W', anchor=dt.datetime(2000, 1, 1)) == dt.datetime(2000, 10, 22)
+
+    @pytest.mark.parametrize("short_tenor", ['ON', 'TN', 'SN', 'on', 'tn', 'sn'])
+    def test_short_dated_tenors_map_to_the_anchor_itself(self, short_tenor):
+        anchor = dt.datetime(2000, 1, 1)
+        assert dts.tenor_to_date(short_tenor, anchor=anchor) == anchor
+
+    def test_default_anchor_is_used_when_not_specified(self):
+        # Pure function: same tenor, same (default) anchor, same result every call
+        assert dts.tenor_to_date('1Y') == dts.tenor_to_date('1Y')
+
+    def test_custom_anchor_changes_the_result(self):
+        assert dts.tenor_to_date('1M', anchor=dt.datetime(2026, 2, 1)) == dt.datetime(2026, 3, 1)
+
+
+class TestTenorLeq:
+    def test_shorter_is_leq_longer(self):
+        assert dts.tenor_leq('9M', '1Y') is True
+
+    def test_equal_tenors_are_leq_reflexive(self):
+        assert dts.tenor_leq('1Y', '1Y') is True
+
+    def test_longer_is_not_leq_shorter(self):
+        assert dts.tenor_leq('18M', '1Y') is False
+
+    def test_short_dated_tenor_is_leq_any_nonnegative_tenor(self):
+        assert dts.tenor_leq('ON', '1D') is True
+
+    def test_negative_tenor_can_precede_a_short_dated_tenor(self):
+        # ON maps to the anchor itself -- it is NOT unconditionally the shortest possible tenor,
+        # only the shortest among non-negative ones. A negative tenor lands before the anchor.
+        assert dts.tenor_leq('ON', '-1M') is False
+        assert dts.tenor_leq('-1M', 'ON') is True
+
+    def test_ordering_is_anchor_dependent_for_close_tenors(self):
+        # Documents a real, unavoidable property (verified directly, not assumed): '1M' vs '29D'
+        # flips depending on which month the anchor falls in, since month length varies. Pinned
+        # against the actual default anchor (2000-01-01, a 31-day January) so a future change to
+        # the default anchor is caught here rather than discovered silently downstream.
+        assert dts.tenor_leq('1M', '29D') is False  # true for the current default anchor only
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import datetime as dt
 import numpy as np
 from sdevpy.market import fxspot
 from sdevpy.market.fxforward import FxForwardCurve, fx_spot_lag, fx_spot_date
+from sdevpy.volatility.fx import fx_deltastrike
 
 
 def test_parse_fx_pair():
@@ -99,6 +100,20 @@ class TestFxForwardCurveMath:
         curve = self._make_curve(spot=1.10, for_rate=0.04, dom_rate=0.04)
         maturity = dt.datetime(2026, 8, 14)
         assert curve.value(maturity) == pytest.approx(1.10)
+
+
+class TestIsSpotDeltaTenor:
+    @pytest.mark.parametrize("tenor", ['ON', 'TN', 'SN', '1W', '1M', '9M', '1Y'])
+    def test_tenors_at_or_before_one_year_are_spot_delta(self, tenor):
+        assert fx_deltastrike.is_spot_delta_tenor(tenor) is True
+
+    @pytest.mark.parametrize("tenor", ['13M', '18M', '2Y', '2Y6M'])
+    def test_tenors_beyond_one_year_are_forward_delta(self, tenor):
+        assert fx_deltastrike.is_spot_delta_tenor(tenor) is False
+
+    def test_custom_cutoff(self):
+        assert fx_deltastrike.is_spot_delta_tenor('9M', cutoff='6M') is False
+        assert fx_deltastrike.is_spot_delta_tenor('3M', cutoff='6M') is True
 
 
 if __name__ == "__main__":
