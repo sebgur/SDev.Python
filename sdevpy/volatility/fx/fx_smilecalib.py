@@ -27,8 +27,14 @@ def market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol:
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
 
-    sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
-    sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
+    ####
+    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    ####
+
+    sol_put = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
+    sol_call = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
+    # sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
+    # sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
         raise ValueError(f"Could not solve market-strangle strikes at {delta}-delta "
                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")

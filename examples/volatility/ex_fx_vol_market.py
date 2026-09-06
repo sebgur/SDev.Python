@@ -15,13 +15,12 @@ logger.configure(module_display='partial')
 
 
 ################## TODO ###########################################################################
-# * Use delta inversion and illustrate it
-# * Retrieve the pillar call/put vols on the original deltas
 # * Do it twice and compare strangle vs butterfly results
 # * Implement the direct spline (flat outside 25s). Maybe use a quick build_smile() in terms of strikes
 #   to get the market strangle to butterfly conversion, and then define the interpolation in terms of
 #   deltas.
 # * Implement the completed spline (using exact VV to create 10D and 5D, make those choosable)
+# * Use delta inversion and illustrate it
 
 
 # Choose test case

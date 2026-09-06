@@ -240,3 +240,121 @@ class TestRegression:
         bf = calibrate_smile_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=rr, ms=ms,
                                       build_smile=_vv_build_smile(rr=rr))
         assert bf == pytest.approx(expected, abs=1e-7)
+
+
+################### TEMP ###############################
+import datetime as dt
+import numpy as np
+import pytest
+from sdevpy.market import fxspot
+from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file, wingvols_from_butterfly
+from sdevpy.utilities import dates as dts
+from sdevpy.utilities import timegrids
+from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.volatility.fx import fx_vannavolga
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
+
+PAIR = "USDJPY"
+VALDATE = dt.datetime(2025, 12, 15)
+VIEW_EXPIRY_IDX = 0
+
+
+def _run_pipeline():
+    """ Mirrors ex_fx_vol_market.py end to end, returning every intermediate value the
+        regression checks pin against. Kept as a single function so a refactor of the script
+        can be checked by re-running this, not by re-deriving expected values by hand. """
+    provider = MarketDataFileProvider()
+    ccy1, ccy2 = fxspot.parse_fx_pair(PAIR)
+    forccy, domccy = fxspot.conventional_pair_name(ccy1, ccy2)
+
+    file = provider.root / "fxoptions" / PAIR / (VALDATE.strftime(dts.DATE_FILE_FORMAT) + ".json")
+    data = fxvolsurfacedata_from_file(file)
+
+    expiry = data.expiries[VIEW_EXPIRY_IDX]
+    atm_vol = data.atm_vols[VIEW_EXPIRY_IDX]
+    deltas = data.deltas[VIEW_EXPIRY_IDX]
+    rr = data.rr[VIEW_EXPIRY_IDX]
+    bf = data.bf[VIEW_EXPIRY_IDX]
+
+    spot = provider.get_fx_spot(forccy, domccy, VALDATE)
+    t = timegrids.model_time(VALDATE, expiry)
+
+    forcurve = provider.get_xccycurve(forccy, VALDATE)
+    domcurve = provider.get_xccycurve(domccy, VALDATE)
+    df_for = forcurve.discount(expiry)
+    df_dom = domcurve.discount(expiry)
+    r_for, r_dom = -np.log(df_for) / t, -np.log(df_dom) / t
+    fwd = spot * df_for / df_dom
+
+    market_strikes, market_vols = [], []
+    for d, r, b in zip(deltas, rr, bf, strict=True):
+        if data.market_strangle_quote:
+            vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(
+                spot, r_dom, r_for, t, atm_vol, r, b, delta=d)
+        else:
+            vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
+        k_put = float(strike_from_delta(spot, df_for, df_dom, t, vol_put, -d, 'P').k)
+        k_call = float(strike_from_delta(spot, df_for, df_dom, t, vol_call, d, 'C').k)
+        # k_put = float(strike_from_delta(spot, r_dom, r_for, t, vol_put, -d, 'P').k)
+        # k_call = float(strike_from_delta(spot, r_dom, r_for, t, vol_call, d, 'C').k)
+        market_strikes += [k_put, k_call]
+        market_vols += [vol_put, vol_call]
+
+    k_atm = fx_vannavolga.atm_dns_strike(fwd, atm_vol, t)
+    market_strikes.append(k_atm)
+    market_vols.append(atm_vol)
+
+    delta_idx = 0
+    s = fx_vannavolga.smile_from_quotes(spot=spot, r_d=r_dom, r_f=r_for, expiry=t, atm_vol=atm_vol,
+                                        rr=rr[delta_idx], bf=bf[delta_idx], delta=deltas[delta_idx])
+
+    return {
+        'forccy': forccy, 'domccy': domccy, 'spot': spot, 't': t,
+        'df_for': df_for, 'df_dom': df_dom, 'r_for': r_for, 'r_dom': r_dom, 'fwd': fwd,
+        'market_strikes': market_strikes, 'market_vols': market_vols, 'smile': s,
+    }
+
+
+class TestExFxVolMarketRegression:
+    """ Reference values captured by running this exact pipeline against the real
+        sdevpy/tests/data/marketdata/fxoptions/USDJPY file, expiry index 0 (20-Jan-2026,
+        the only section in that file with realistic rr/bf -- the others are known
+        placeholder data). Re-derive by re-running _run_pipeline() if the market data file,
+        or any function in the pipeline, deliberately changes -- do not rebase blindly. """
+
+    def test_pair_and_market_data(self):
+        r = _run_pipeline()
+        assert (r['forccy'], r['domccy']) == ('USD', 'JPY')
+        assert r['spot'] == pytest.approx(150.0)
+        assert r['t'] == pytest.approx(0.09863013698630137, abs=1e-12)
+
+    def test_rates_and_forward(self):
+        r = _run_pipeline()
+        assert r['df_for'] == pytest.approx(0.9995546727625232, abs=1e-12)
+        assert r['df_dom'] == pytest.approx(0.9983732377760548, abs=1e-12)
+        assert r['r_for'] == pytest.approx(0.004516129032258047, abs=1e-9)
+        assert r['r_dom'] == pytest.approx(0.016506991555613408, abs=1e-9)
+        assert r['fwd'] == pytest.approx(150.17750400477985, abs=1e-6)
+
+    def test_market_points(self):
+        r = _run_pipeline()
+        expected_strikes = [146.876691576927, 153.3875242928018,
+                            143.59489513179864, 155.9674117567631, 150.2515824081475]
+        expected_vols = [0.10767373557813655, 0.09767373557813654,
+                         0.11295060923945906, 0.09295060923945907, 0.1]
+        assert np.allclose(r['market_strikes'], expected_strikes, atol=1e-6)
+        assert np.allclose(r['market_vols'], expected_vols, atol=1e-9)
+
+    def test_interpolation_smile_pillars(self):
+        s = _run_pipeline()['smile']
+        assert (s.k_put, s.k_atm, s.k_call) == pytest.approx(
+            (146.8818234068457, 150.2515824081475, 153.38162590837575), abs=1e-6)
+        assert (s.vol_put, s.atm_vol, s.vol_call) == pytest.approx((0.1075, 0.1, 0.0975), abs=1e-9)
+
+    def test_interpolation_sample_values(self):
+        s = _run_pipeline()['smile']
+        strikes = [140.0, 145.0, s.fwd, 150.0, 155.0, 160.0]
+        expected = [0.10750000000000001, 0.10750000000000001, 0.10011136451921224,
+                   0.10038831753050967, 0.0975, 0.0975]
+        got = [float(s.vol(k)) for k in strikes]
+        assert np.allclose(got, expected, atol=1e-9)

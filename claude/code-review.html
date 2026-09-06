@@ -47,6 +47,7 @@
     .grade-letter {
       font-size: 4.2rem;
       font-weight: 800;
+      color: var(--green);
       line-height: 1;
       min-width: 3.8rem;
       text-align: center;
@@ -107,7 +108,7 @@
       border-left: 4px solid var(--orange);
       border-radius: 8px;
       padding: .9rem 1.2rem;
-      margin-bottom: 2.5rem;
+      margin-bottom: 2rem;
       font-size: .88rem;
       color: var(--muted);
     }
@@ -199,50 +200,53 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-08-29 &nbsp;·&nbsp; <strong>15th review</strong> (first true full scan: every <code>*.py</code>/<code>*.ipynb</code> file including <code>examples/</code>, <code>scripts/</code>, <code>docs/</code>, <code>notebooks/</code> and files normally excluded by <code>pyproject.toml</code>)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-09-05 &nbsp;·&nbsp; <strong>16th review</strong> (full scan: every <code>*.py</code>/<code>*.ipynb</code> file outside <code>sdevpy/thirdparty</code>, including <code>examples/</code>, <code>notebooks/</code>, and files normally excluded by <code>pyproject.toml</code>, verified via direct file reads across five parallel research passes)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--orange)">C</div>
+    <div class="grade-letter" style="color:var(--accent)">B</div>
     <div class="grade-details">
-      <h2>Scanning every file rather than just the diff surfaced two silent-wrong-price bugs in the Monte-Carlo engine, plus a wide tail of documentation/implementation mismatches across the pricing library</h2>
+      <h2>All 10 issues from the 15th review are addressed — including both critical silently-wrong-price bugs — but the full scan surfaced a new pattern: calibration "fall back to a fresh model" contracts and a wide swath of example/notebook glue code have quietly broken loose from recent refactors</h2>
       <p>
-        Every top-10 item from the 14th review's <code>sdevpy/llms/</code> pass is confirmed still fixed
-        (<code>GptModel.chat()</code> now accumulates messages, <code>load_model_from_path</code> now
-        moves the model to device, <code>ChatGenerator.dialog()</code> calls the module-level
-        <code>format_answer</code>, <code>app_dnn.py</code>'s <code>GELU()</code> is no longer passed as
-        a <code>bias</code> argument, <code>tools.workpath()</code> is correctly typed). But this is the
-        first review to read every file rather than the commits since last time, and that turned up two
-        critical, previously-undetected correctness bugs — a vol-path aliasing bug that silently zeroes
-        the drift-correction term in the SABR/free-boundary-SABR Andersen Monte-Carlo scheme (the
-        <em>default</em> scheme for free-boundary SABR), and a crash in the core Monte-Carlo pricer for
-        any multi-leg trade whose legs don't share the same cashflow count. Alongside these sit an
-        inverted docstring on the PDE's theta-scheme (labels implicit and explicit backwards), a
-        compounding date-drift bug in the calendar's schedule generator, a hardcoded FX-inversion table
-        that silently mis-signs any currency pair outside its 11 entries, and a GPT inference path that
-        never switches the model out of training mode. None of these are exotic edge cases — most are
-        reachable through default arguments or public APIs with no validation to catch them.
+        Every item from the 15th review is confirmed fixed or improved via direct re-reads this pass: the
+        Andersen-scheme array-aliasing bug and the ragged-leg Monte-Carlo pricer crash (both critical) are
+        gone, <code>ThetaScheme</code>'s docstring now matches the code, the FX-ticker table was replaced by
+        a validated convention-based classifier, <code>implied_vol_newton</code> now masks low-vega strikes
+        into a Brent fallback instead of returning silent <code>NaN</code>, tree probabilities are clipped
+        and rescaled to stay valid probabilities, and the chart-grid ceiling-division bug is fixed. No new
+        critical bugs were found this pass. However, three new high-severity correctness bugs surfaced in
+        the seams: <code>get_localvol_or_new</code>'s "graceful fallback to a fresh model" — praised in the
+        15th review — turns out to be dead code that raises instead, <code>WorstOfBarrier</code>'s barrier
+        monitoring silently depends on which other trades share its pricing book, and FX cross-settlement
+        for six low-lag currency pairs ignores the USD calendar entirely, contradicting its own docstring.
+        Separately, a `machinelearning` module reorganization left the entire Keras-based StoVol training
+        workflow (multiple example scripts and notebooks) unable to even import, and two more
+        <code>examples/volatility/</code> scripts crash immediately on stale calibration-provider call
+        signatures — the pattern from the 15th review (examples drifting out of sync with refactors) has
+        spread rather than been addressed.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Confirmed fixed since 14th review (verified via direct file reads):</strong>
-    <code>GptModel.chat()</code> now correctly does <code>prompt += new_prompt + "\n"</code>, no longer dropping earlier messages &nbsp;·&nbsp;
-    <code>gpt.py::load_model_from_path</code> now ends with <code>model = model.to(device)</code> &nbsp;·&nbsp;
-    <code>ChatGenerator.dialog()</code> now calls the module-level <code>format_answer(...)</code> instead of the nonexistent <code>self.format_answer</code> &nbsp;·&nbsp;
-    <code>examples/gpt/raschka/app_dnn.py</code>'s <code>nn.Linear(...)</code> calls no longer pass <code>GELU()</code> as the <code>bias</code> argument &nbsp;·&nbsp;
-    <code>sdevpy/utilities/tools.py::workpath()</code> now correctly annotated <code>-&gt; Path</code> &nbsp;·&nbsp;
-    <code>ch5_pretraining.py</code> / <code>ch7_instruction_finetuning.py</code> now route through <code>tools.workpath()</code> instead of a hardcoded <code>C:\temp\llms\...</code> path
+    <strong>Confirmed fixed since 15th review (verified via direct file reads):</strong>
+    <code>fbsabr.py</code>/<code>mcsabr.py</code> Andersen scheme now does <code>vols = vol.copy()</code>, no longer aliasing the post-update array &nbsp;·&nbsp;
+    <code>mcpricer.py:177</code> now sums each leg before summing totals, no longer crashing on ragged leg lengths &nbsp;·&nbsp;
+    <code>ThetaScheme</code>'s docstring now correctly reads "Theta = 0.0: Explicit ... Theta = 1.0: Implicit" &nbsp;·&nbsp;
+    <code>scalendar.py</code>'s schedule generator was rebuilt from the ground up this session (unadjusted/adjusted date split, termination convention, IMM roll, explicit stub overrides, EOM anchor fix) — no more compounding drift &nbsp;·&nbsp;
+    <code>timeseriestools.py::is_inverted_quote_bbg</code> now raises <code>ValueError</code> on a non-USD/malformed ticker instead of silently defaulting &nbsp;·&nbsp;
+    <code>implied_vol_newton</code> now masks low-vega strikes out of the Newton update and resolves them via <code>implied_vol_brent</code>, with a debug log noting the fallback &nbsp;·&nbsp;
+    <code>BinomialTree</code>/<code>TrinomialTree</code> probabilities are now clipped into <code>[0,1]</code> (and rescaled so <code>pu+pd+pm</code> still sums to exactly 1) instead of silently going out of range &nbsp;·&nbsp;
+    <code>impliedvol_factory.get_impliedvol_from_data</code> now raises a clear <code>ValueError("Null data")</code> instead of crashing two calls downstream with an opaque <code>AttributeError</code> &nbsp;·&nbsp;
+    <code>optionsurface.py</code>'s chart grid now uses ceiling division, no longer dropping the last panel or producing zero rows for a single-expiry surface
   </div>
 
   <div class="regress-banner">
-    <strong>Still open, or newly found in this full scan:</strong>
-    <code>examples/gpt/raschka/ch2_working_with_text.py</code> still imports the nonexistent <code>raschka.raschka_tokenizers</code> module, unchanged since the 14th review &nbsp;·&nbsp;
-    <code>ch4_gpt_model.py</code> still has a broken sibling import — now a new typo, <code>app_dummpy_gpt</code> instead of <code>app_dummy_gpt</code> &nbsp;·&nbsp;
-    <code>sdevpy/machinelearning/{pytorch,keras}</code> and <code>sdevpy/tensorflow</code> still have zero test coverage &nbsp;·&nbsp;
-    <code>test_gpt.py</code> still pins its only assertion to one exact generated string &nbsp;·&nbsp;
-    two brand-new critical bugs found this pass: the SABR/fbSABR Andersen scheme aliasing bug (#1) and the ragged-leg Monte-Carlo pricer crash (#2)
+    <strong>New this pass:</strong>
+    the local-vol equivalent of the just-fixed implied-vol crash was found to be broken too — <code>get_localvol_or_new</code>'s fallback path can never be reached &nbsp;·&nbsp;
+    <code>examples/gpt/chat_gpt.py</code> constructs the raw GPT model directly, bypassing the very <code>GptModel.eval()</code> fix confirmed above &nbsp;·&nbsp;
+    a <code>machinelearning</code> → <code>machinelearning/{keras,pytorch}</code> reorganization (visible in this pass, not the 14th/15th) left the entire Keras StoVol training path unimportable &nbsp;·&nbsp;
+    two more <code>examples/volatility/</code> scripts crash on stale calibration-provider signatures, on top of the four broken example scripts already found last review
   </div>
 
   <div class="scorecard">
@@ -256,42 +260,42 @@
         <tr>
           <td>Architecture</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchies (PDE schemes, local-vol sections, trees) and solid MC/PDE/vol separation; the <code>machinelearning</code>&nbsp;→&nbsp;<code>machinelearning/{keras,pytorch}</code> split left several examples/notebooks importing modules that no longer exist at the old path</td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchies remain solid, but the calibration-provider "graceful fallback" contract (<code>get_localvol_or_new</code>) is broken in a way that undermines the pattern the architecture is supposed to rely on; a production module (<code>fileprovider.py</code>) imports the test package for its default config path</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>4 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f85149"></div></div><span class="score-lbl">Weak</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Two silently-wrong-price bugs in the MC engine (#1, #2), plus unchecked tree probabilities, a compounding schedule-drift bug, a silent FX mis-sign default, and a Newton solver that can return NaN vols without raising</td>
+          <td>Correctness</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Both critical silently-wrong-price bugs from the 15th review are fixed and no new critical bug was found — real progress — but three new high-severity bugs surfaced: the dead local-vol fallback, book-dependent barrier monitoring in <code>WorstOfBarrier</code>, and an FX cross-settlement date that ignores USD holidays for six currency pairs</td>
         </tr>
         <tr>
-          <td>Error Handling</td><td>5 / 10</td>
+          <td>Error Handling</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>get_impliedvol</code>'s crash is now a clear <code>ValueError</code> instead of an opaque <code>AttributeError</code> — genuine improvement — but the local-vol side's equivalent fallback (<code>get_localvol_or_new</code>) never reaches its own None-handling branch, so the "graceful" path is dead code</td>
+        </tr>
+        <tr>
+          <td>Testing</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Real growth: <code>TsIvCalibrator.calibrate</code> and <code>calibrate_lv_bysections</code> now have end-to-end smoke tests, and all three <code>print()</code>-in-test-function cases from the 15th review are fixed; but the same "old reference value left commented out next to the new one" pattern recurs across at least six test files spanning PDE/MC/calibration, and a new live <code>print()</code> turned up in <code>test_fxdata.py</code></td>
+        </tr>
+        <tr>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Same ~75-line <code>generate_samples</code> body duplicated across three sibling ML surface generators; superseded commented-out code (old <code>make_schedule</code> internals, a whole commented <code>FxForwardData</code> class) left in place rather than deleted</td>
+        </tr>
+        <tr>
+          <td>Maintainability</td><td>5 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good graceful-fallback pattern in <code>get_localvol_or_new</code>; no equivalent for implied vol, so a missing calibration file crashes with an unhelpful <code>AttributeError</code> two calls downstream (#9)</td>
+          <td style="color:var(--muted);font-size:.83rem">The standout weak spot this pass: a <code>machinelearning</code> reorganization left the entire Keras-based StoVol training workflow (multiple scripts and notebooks) unable to import, on top of the four already-broken example scripts and two Raschka import errors carried over unfixed from the 15th review</td>
         </tr>
         <tr>
-          <td>Testing</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Reasonable breadth of unit tests overall, but several golden-master reference values in <code>test_pde.py</code>/<code>test_mc.py</code> were edited in place with the old expected value left commented out next to the new one — weakens confidence they'd catch a real regression; three live <code>print()</code> calls remain in <code>test_gpt.py</code></td>
+          <td>Type Safety</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">No major new type-safety findings this pass beyond previously-known patterns (mutable-default configs, shape-contract mismatches between sibling <code>price_straddles</code> implementations in <code>black.py</code>/<code>bachelier.py</code>)</td>
         </tr>
         <tr>
-          <td>Code Quality</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Large duplicated <code>generate_samples</code> body across <code>mcsabrgenerator.py</code>/<code>mczabrgenerator.py</code>/<code>mchestongenerator.py</code>; pervasive commented-out dead code left in place across PDE, local-vol calibration, and analytics modules rather than deleted</td>
-        </tr>
-        <tr>
-          <td>Maintainability</td><td>4 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f85149"></div></div><span class="score-lbl">Weak</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Several docstrings actively describe the opposite of what the code does (theta-scheme labels, local-vol pillar convention) — a maintainer trusting the docs will misconfigure the model; multiple examples/notebooks are unrunnable against the current API</td>
-        </tr>
-        <tr>
-          <td>Type Safety</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">A shared mutable <code>PdeConfig()</code> default argument in <code>NumericalImpliedVol</code>; <code>price_straddles</code> declares <code>npt.ArrayLike</code> but crashes on a plain list; <code>np.full_like</code> silently truncates a float fill value when the input array is integer-typed</td>
-        </tr>
-        <tr>
-          <td>Documentation</td><td>4 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f85149"></div></div><span class="score-lbl">Weak</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem"><code>ThetaScheme</code>'s class docstring has theta=0.0 and theta=1.0 exactly swapped relative to what the code computes (#3); <code>vsvi.py</code> raises "Negative variance" for a quantity that is <code>vol</code>, not variance, copy-pasted from <code>svi.py</code></td>
+          <td>Documentation</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>ThetaScheme</code>'s inverted docstring is fixed; <code>fxforward.py::fx_spot_date</code>'s docstring is actually more accurate than its own code (the docstring's claim that crosses always route through USD is correct — the code just doesn't follow it for lag=1 pairs); <code>vsvi.py</code> still raises "Negative variance" for a quantity its own module docstring calls vol, not variance</td>
         </tr>
       </tbody>
     </table>
@@ -300,326 +304,291 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
-  <div class="issue critical">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title">Andersen scheme's drift-correction term is always exactly zero due to array aliasing — silently wrong Monte-Carlo prices</span>
-      <span class="badge critical">Critical</span>
+      <span class="issue-title"><code>get_localvol_or_new</code>'s fallback-to-a-fresh-model path is unreachable — it raises instead, for exactly the case it exists to handle</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/models/fbsabr.py · lines 72, 76, 82-84 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/models/mcsabr.py · lines 74-78, 95-97</span>
-    <p>
-      <strong>Why it's bad:</strong> In <code>fbsabr.py</code>, <code>scheme='Andersen'</code> is the
-      <strong>default</strong> value in <code>price(...)</code>'s signature (line 11):
-    </p>
-    <pre>vols = vol
-abs_f = np.maximum(np.abs(spot), floor)
+    <span class="loc">sdevpy/calibration/provider.py · lines 24-28, 50-56 &nbsp;·&nbsp; sdevpy/volatility/localvol/localvol_factory.py · lines 50-53</span>
+    <p><strong>Why it's bad:</strong> The 15th review praised this exact function as the "good graceful-fallback pattern" local vol has that implied vol lacked. Re-reading it this pass shows that praise was misplaced:</p>
+    <pre><span class="c"># provider.py — no None-check before calling the factory</span>
+<span class="kw">def</span> <span class="fn">get_localvol</span>(name, date, model_name, cal_prov, t_grid=<span class="kw">None</span>):
+    data = cal_prov.get_localvol_data(name, date, model_name)
+    <span class="kw">return</span> lvf.get_localvol_from_data(data, t_grid)
 
-<span class="c"># Evolve vol</span>
-vol *= np.exp(-<span class="fn">0.5</span> * nu2 * dt + nu * dz1)
+<span class="c"># localvol_factory.py — raises instead of returning None</span>
+<span class="kw">def</span> <span class="fn">get_localvol_from_data</span>(data, new_t_grid=<span class="kw">None</span>):
+    <span class="kw">if</span> data <span class="kw">is</span> <span class="kw">None</span>:
+        <span class="kw">raise</span> ValueError(<span class="st">'LocalVol data is None'</span>)
 
-<span class="c"># Evolve spot</span>
-elif scheme == <span class="st">'Andersen'</span>:
-    vole = vol
-    spot = spot + alpha * abs_f**beta * (sqrtmrho2 * vols * dz0 + rho / nu * (vole - vols))</pre>
+<span class="c"># provider.py — get_localvol_or_new's None-check can never fire</span>
+lv = <span class="kw">None</span>
+<span class="kw">if</span> <span class="kw">not</span> force_new:
+    lv = get_localvol(name, date, model_name, cal_prov, t_grid=t_grid) <span class="c"># raises before returning</span>
+<span class="kw">if</span> lv <span class="kw">is</span> <span class="kw">None</span>: <span class="c"># dead branch</span>
+    log.info(<span class="st">f"Initializing new LV for {name}"</span>)
+    lv = lvf.get_localvol_new(t_grid, model_name)</pre>
     <p>
-      <code>vols = vol</code> binds a <em>reference</em> to the same ndarray, not a copy. The next line,
-      <code>vol *= np.exp(...)</code>, mutates that array <strong>in place</strong>, so <code>vols</code>
-      silently becomes the post-update vol too. Then <code>vole = vol</code> aliases the same
-      already-updated array again, so <code>vole - vols</code> is identically <code>0.0</code> for every
-      path and every time step — the entire drift-correction term of the Andersen discretization
-      vanishes, and the diffusion term uses the new vol instead of the old vol. This produces silently
-      wrong Monte-Carlo prices on every call that doesn't override <code>scheme</code>.
+      When no calibration file exists yet — the exact scenario <code>get_localvol_or_new</code> is meant to
+      handle — <code>get_localvol_from_data</code> raises before <code>get_localvol</code> can return
+      <code>None</code>, so the <code>if lv is None:</code> branch that creates a fresh model is unreachable
+      through this path. <code>get_localvol_or_new</code> is called from
+      <code>lvsection_calib.py:52</code> (first-time calibration of a new name) and from
+      <code>provider.py:69</code> (<code>get_local_vols</code>, used by the Monte-Carlo pricer when no
+      explicit <code>lv_map</code> is supplied) — both realistic, non-exotic call paths. Calibrating or
+      pricing any name with no stored local-vol file crashes with <code>ValueError('LocalVol data is
+      None')</code> instead of initializing the intended fresh model.
     </p>
-    <p>The identical pattern is repeated in <code>mcsabr.py</code>'s <code>'Andersen'</code> branch
-    (reachable when a caller explicitly requests it — the default there is <code>'LogAndersen'</code>,
-    which correctly avoids the bug by writing <code>vols = vol * avolc</code>, a genuine new array via
-    multiplication):</p>
-    <pre>else:
-    vols = vol
-...
-vol *= np.exp(-<span class="fn">0.5</span> * nu2 * dt + nu * dz1)
-...
-elif scheme == <span class="st">'Andersen'</span>: <span class="c"># Does not work well</span>
-    vole = vol
-    spot += alpha * np.abs(spot)**beta * (sqrtmrho2 * vols * dz0 + rho / nu * (vole - vols))</pre>
-    <p>
-      The existing <code># Does not work well</code> comment on the <code>mcsabr.py</code> branch
-      strongly suggests this was already observed and misattributed to the model rather than to this
-      aliasing bug.
-    </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="rm">vols = vol</span>
-<span class="ok">vols = vol.copy()</span></pre>
+    <p><strong>Fix:</strong> Catch the None-data case before it reaches the raising factory call, e.g. check <code>cal_prov.get_localvol_data(...) is None</code> directly in <code>get_localvol_or_new</code> rather than going through <code>get_localvol</code>, or have <code>get_localvol_from_data</code> accept a <code>raise_on_missing: bool=True</code> flag that the fallback path sets to <code>False</code>.</p>
   </div>
 
   <!-- 2 -->
-  <div class="issue critical">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title">Monte-Carlo pricer crashes on any multi-leg trade whose legs have different cashflow counts</span>
-      <span class="badge critical">Critical</span>
+      <span class="issue-title"><code>WorstOfBarrier</code>'s barrier monitoring silently depends on which other trades share its pricing book</span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/mcpricer.py · line 176</span>
-    <p><strong>Why it's bad:</strong></p>
-    <pre>results[<span class="st">'pv'</span>] = trade.notional * np.asarray(leg_cf_pvs).sum(axis=<span class="fn">1</span>).sum()</pre>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 19-45 &nbsp;·&nbsp; sdevpy/montecarlo/payoffs/basic.py · lines 21-29 (<code>list_instrument_eventdates</code>)</span>
+    <p><strong>Why it's bad:</strong> <code>set_valuation_date</code> registers only the expiry as this trade's own event date:</p>
+    <pre><span class="kw">def</span> <span class="fn">set_valuation_date</span>(self, valdate, md):
+    <span class="kw">if</span> self.expiry &lt; valdate:
+        <span class="kw">raise</span> ValueError(<span class="st">"Past trade found"</span>)
+    self.eventdates = [self.expiry] <span class="c"># no interim monitoring dates registered</span></pre>
+    <p>But <code>evaluate()</code> monitors the barrier over the <em>entire</em> simulated time axis of <code>mkt_state.event_paths</code>:</p>
+    <pre>paths = mkt_state.event_paths <span class="c"># the whole BOOK's merged event-date grid, not this trade's own</span>
+spot_all = self.paths_for_all(paths)
+min_path = spot_all.min(axis=<span class="fn">2</span>)
+knocked = (min_path &lt; self.barrier).any(axis=<span class="fn">1</span>) <span class="c"># checked at every date in that merged grid</span></pre>
     <p>
-      <code>leg_cf_pvs</code> is a list of per-leg lists of scalar cashflow PVs. <code>np.asarray()</code>
-      requires every leg to have the <strong>same number</strong> of cashflows to form a rectangular
-      array. Any instrument whose legs don't line up — a swap with quarterly fixed vs. monthly floating
-      cashflows, or any leg carrying an extra notional-exchange or fee cashflow — raises:
+      <code>event_paths</code>'s time axis is built from <code>list_instrument_eventdates</code>, which unions
+      the event dates of <strong>every instrument in the book</strong>, not just this one. Concretely:
+      pricing this trade alone in a book monitors the barrier at essentially one time point (the expiry);
+      adding an unrelated Asian option with a dense daily fixing schedule to the <em>same book</em> adds all
+      of those extra dates to the shared grid, and this trade's knock-in/out result changes purely because
+      of another trade's presence — with no error, and no indication in the API that this dependency exists.
+      The class docstring ("Will need implementation of barrier monitoring first") acknowledges the feature
+      is incomplete, but nothing stops it from being priced today.
     </p>
-    <pre><span class="c">ValueError: setting an array element with a sequence. The requested array has an
-inhomogeneous shape after 1 dimensions.</span></pre>
-    <p>
-      This crashes <code>MonteCarloPricer.build()</code> for realistic ragged-leg trades; it goes
-      unnoticed because <code>test_mc.py</code>'s trades all happen to have equal-length legs.
-    </p>
-    <p><strong>Fix:</strong> sum each leg first, then sum the leg totals, instead of forcing a ragged list into a rectangular array:</p>
-    <pre><span class="rm">results['pv'] = trade.notional * np.asarray(leg_cf_pvs).sum(axis=1).sum()</span>
-<span class="ok">results['pv'] = trade.notional * sum(sum(leg) for leg in leg_cf_pvs)</span></pre>
+    <p><strong>Fix:</strong> Register the trade's own intended monitoring dates (e.g. daily/weekly grid from trade start to expiry) in <code>set_valuation_date</code>, and index into <code>spot_all</code> using this trade's own date indices rather than assuming every date in the merged grid belongs to it — mirroring how <code>Average</code>/<code>Variance</code> in the same file resolve their own event indices.</p>
   </div>
 
   <!-- 3 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>ThetaScheme</code>'s docstring has theta=0.0 and theta=1.0 exactly backwards</span>
+      <span class="issue-title">FX cross-settlement silently skips the USD calendar for six low-lag currency pairs, contradicting the function's own docstring</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/pde/pdeschemes.py · lines 31-70 (docstring at 32-35), cross-checked against ImplicitScheme (73-98) and ExplicitScheme (101-121)</span>
-    <p><strong>Why it's bad:</strong></p>
-    <pre><span class="kw">class</span> <span class="fn">ThetaScheme</span>(PdeScheme):
-    <span class="st">""" Mixing scheme with particular sub-cases:
-            Theta = 0.0: Implicit
-            Theta = 0.5: Crank-Nicolson
-            Theta = 1.0: Explicit """</span></pre>
+    <span class="loc">sdevpy/market/fxforward.py · lines 63-98</span>
+    <p><strong>Why it's bad:</strong> The docstring is explicit that crosses always need the USD calendar:</p>
+    <pre><span class="kw">def</span> <span class="fn">fx_spot_date</span>(valdate, forccy, domccy):
+    <span class="st">""" ... Crosses (neither leg USD) only need the first hop good in the pair's own
+        centers, then require USD too, since crosses settle via two USD legs. """</span>
+    lag = fx_spot_lag(forccy, domccy)
+    pair_cal = make_calendar(f<span class="st">"{forccy},{domccy}"</span>)
+    <span class="kw">if</span> <span class="st">'USD'</span> <span class="kw">in</span> (forccy, domccy):
+        <span class="kw">return</span> pair_cal.add_business_days(valdate, lag)
+
+    settle_cal = make_calendar(f<span class="st">"{forccy},{domccy},USD"</span>) <span class="c"># built...</span>
+    date = pair_cal.add_business_days(valdate, <span class="fn">1</span>)
+    <span class="kw">return</span> settle_cal.add_business_days(date, lag - <span class="fn">1</span>) <span class="kw">if</span> lag &gt; <span class="fn">1</span> <span class="kw">else</span> date <span class="c"># ...but never used when lag == 1</span></pre>
     <p>
-      Tracing the actual coefficients: at <code>theta=1.0</code>, <code>one_m_theta_dt_2</code> is
-      <code>0</code>, so the explicit right-hand side reduces to <code>y = p</code> (unmodified), and
-      <code>theta_dt_2 * b</code>/<code>a</code>/<code>c</code> exactly reproduce
-      <code>ImplicitScheme</code>'s tridiagonal coefficients — <code>ThetaScheme(1.0)</code> <em>is</em>
-      <code>ImplicitScheme</code>. Symmetrically, at <code>theta=0.0</code> the tridiagonal matrix
-      collapses to the identity and <code>y</code> exactly reproduces <code>ExplicitScheme</code>'s
-      output. So <strong>theta=0.0 is Explicit and theta=1.0 is Implicit</strong> — precisely the
-      opposite of what the docstring states. This is reachable through <code>PdeConfig(scheme='theta',
-      theta=&lt;value&gt;)</code> via the <code>scheme()</code> factory (line 131): a caller who reads
-      the docstring and sets <code>theta=0.0</code> expecting unconditional stability instead silently
-      gets the unconditionally-unstable explicit scheme.
+      <code>FX_SPOT_LAG_OVERRIDES</code> sets <code>lag = 1</code> for six cross pairs with no USD leg
+      (CAD/KZT, CAD/PHP, CAD/TRY, KZT/PHP, KZT/TRY, PHP/TRY). For exactly these pairs, <code>settle_cal</code>
+      (which includes USD) is constructed and then discarded — the <code>lag &gt; 1</code> ternary falls
+      through to plain <code>date</code>, validated only against the two-currency <code>pair_cal</code>. If
+      that one settlement day happens to be a US holiday but a good business day for both actual
+      currencies, the function returns a date that isn't actually a valid USD settlement day, directly
+      contradicting its own stated convention. <code>test_fxdata.py</code>'s <code>TestFxSpotDate</code>
+      only covers <code>EUR/GBP</code> (default 2-day lag) and <code>USD/CAD</code> (direct USD pair) — no
+      test exercises any of the six affected lag=1 cross pairs.
     </p>
-    <p><strong>Fix:</strong> Swap the docstring's labels to match the code (0.0 → Explicit, 1.0 → Implicit), and add a test pinning <code>ThetaScheme(1.0)</code>/<code>ThetaScheme(0.0)</code> against <code>ImplicitScheme</code>/<code>ExplicitScheme</code> output to prevent silent re-drift.</p>
+    <p><strong>Fix:</strong> Always route the settlement through <code>settle_cal</code>, even for the first hop when <code>lag == 1</code>: <code>return settle_cal.add_business_days(pair_cal.add_business_days(valdate, 1), max(lag - 1, 0))</code>, dropping the special-cased early return.</p>
   </div>
 
   <!-- 4 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title"><code>Calendar.make_schedule</code> produces drifting roll dates — each period anchors off the previous adjusted date instead of the original schedule</span>
+      <span class="issue-title">A <code>machinelearning</code> module reorganization (<code>topology</code>/<code>learningmodel</code>/<code>learningschedules</code>/<code>callbacks</code> &rarr; <code>machinelearning/keras/*</code>) left the entire Keras StoVol training workflow unable to import, and deleted a plotting module still referenced everywhere</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/utilities/scalendar.py · lines 70-75</span>
-    <p><strong>Why it's bad:</strong></p>
-    <pre><span class="kw">def</span> <span class="fn">make_schedule</span>(self, start, end, term, convention=BDC.F, convert_to_datetime=<span class="kw">False</span>):
-    <span class="st">""" Simplified schedule generation for now (forward) """</span>
-    schedule_dates, d = [], self.adjust(start, convention)
-    <span class="kw">while</span> d &lt;= end:
-        schedule_dates.append(d)
-        d = self.adjust(d + dts.period(term), convention)</pre>
+    <span class="loc">examples/stovol/stovoltrain.py · lines 12-21 &nbsp;·&nbsp; also affects stovolinvtrain.py and four of six notebooks in notebooks/stovol/</span>
+    <p><strong>Why it's bad:</strong> The Keras-oriented ML helper modules now live under <code>sdevpy/machinelearning/keras/</code> (confirmed: <code>sdevpy/machinelearning/topology.py</code> no longer exists at the top level; only <code>keras/topology.py</code> and <code>pytorch/topology.py</code> do). The example still imports the old top-level paths:</p>
+    <pre><span class="kw">from</span> sdevpy.machinelearning.topology <span class="kw">import</span> compose_model            <span class="c"># module no longer exists</span>
+<span class="kw">from</span> sdevpy.machinelearning.learningmodel <span class="kw">import</span> LearningModel, load_learning_model
+<span class="kw">from</span> sdevpy.machinelearning.learningschedules <span class="kw">import</span> FlooredExponentialDecay <span class="c"># moved to keras/</span>
+<span class="kw">from</span> sdevpy.machinelearning.callbacks <span class="kw">import</span> RefCallback                <span class="c"># moved to keras/</span>
+<span class="kw">from</span> sdevpy.projects.stovol <span class="kw">import</span> stovolplot <span class="kw">as</span> xplt             <span class="c"># module deleted; only a stray .pyc remains</span></pre>
     <p>
-      Each new roll date is computed by adding the period to the <strong>previously
-      business-day-adjusted</strong> date, not to the original unadjusted anchor. Business-day
-      adjustments therefore compound period over period: a monthly schedule anchored on 2024-01-31
-      drifts to 2024-12-04 by year end once weekend/holiday adjustments accumulate, instead of tracking
-      end-of-month. Contrast with <code>make_schedule_fancy</code> in the same file (lines 86-134),
-      which correctly generates all unadjusted roll dates first and adjusts once at the end — the fix
-      pattern already exists two methods away. <code>make_schedule</code> is public API; any caller
-      building a schedule with it gets silently corrupted roll dates with no error.
+      The very first import (<code>compose_model</code>) already raises <code>ModuleNotFoundError</code>, so
+      the script cannot get past line 12. <code>stovolplot</code> is not just moved — confirmed no source
+      file exists anywhere in the repo (only a leftover <code>__pycache__/stovolplot.cpython-311.pyc</code>
+      and an old coverage-report HTML reference it). The same broken import pattern was found in
+      <code>examples/stovol/stovolinvtrain.py</code> and four of the six <code>notebooks/stovol/</code>
+      notebooks (only the PyTorch-based <code>StoVol Training.ipynb</code> and the data-generation notebook
+      were correctly updated to the new paths).
     </p>
-    <p><strong>Fix:</strong> Track the raw unadjusted anchor separately, adding the period to that on every iteration, and adjust only the date that gets appended to the schedule — mirroring <code>make_schedule_fancy</code>'s two-pass approach.</p>
+    <p><strong>Fix:</strong> Update all affected imports to <code>sdevpy.machinelearning.keras.{topology,learningmodel,learningschedules,callbacks}</code>, and either restore a <code>stovolplot</code> module or point the plotting calls at whatever superseded it.</p>
   </div>
 
   <!-- 5 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title">FX pairs missing from a hardcoded 11-entry table are silently treated as "not inverted"</span>
+      <span class="issue-title">Two more <code>examples/volatility/</code> scripts crash immediately on stale calibration-provider call signatures</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/timeseries/timeseriestools.py · lines 77-85, used at lines 106, 113</span>
-    <p><strong>Why it's bad:</strong></p>
-    <pre><span class="kw">def</span> <span class="fn">is_inverted_quote</span>(key):
-    is_inverted = <span class="kw">False</span>
-    bbg_dict = {<span class="st">'EURUSD Curncy'</span>: <span class="kw">False</span>, ... <span class="st">'CNHUSD Curncy'</span>: <span class="kw">True</span>} <span class="c"># 11 entries total</span>
-    is_inverted = bbg_dict.get(key)
-    <span class="kw">return</span> is_inverted</pre>
+    <span class="loc">examples/volatility/ex_lv_section_calib.py · lines 21, 34, 38 &nbsp;·&nbsp; examples/volatility/ex_lv_dupire_calib.py · line 31</span>
+    <p><strong>Why it's bad:</strong> <code>calibrate_lv_bysections</code> requires <code>md_prov</code> and <code>cal_prov</code> as positional arguments with no defaults (<code>lvsection_calib.py:23-24</code>). The example never supplies them, and separately never instantiates its provider class:</p>
+    <pre>cal_prov = CalibrationDataFileProvider                                    <span class="c"># class, not an instance — missing "()"</span>
+...
+calib_result = calibrate_lv_bysections(valdate, name, config, calc_pde_vols=<span class="kw">True</span>) <span class="c"># missing md_prov, cal_prov</span>
+...
+out_file = cal_prov.localvol_data_file(name, valdate, config[<span class="st">'model_name'</span>])       <span class="c"># called on the class itself</span></pre>
     <p>
-      For any ticker not in the 11-entry dictionary (e.g. <code>'MXNUSD Curncy'</code>,
-      <code>'BRLUSD Curncy'</code>, <code>'HKDUSD Curncy'</code>), <code>.get(key)</code> returns
-      <code>None</code>. <code>create_position</code> uses this as
-      <code>if is_inverted_quote(name_list[x]):</code> — <code>None</code> is falsy, so the pair is
-      silently treated as <strong>not</strong> inverted. This flows directly into
-      <code>weights_market_convention</code> and <code>usd_amount</code>, the position-sizing/direction
-      output consumed by <code>cointegration.py</code>, giving a silently wrong notional and sign for
-      any currency outside the hardcoded list — with no error or warning raised anywhere.
+      This raises <code>TypeError: calibrate_lv_bysections() missing 2 required positional arguments</code>
+      on the very first calibration call — confirmed by comparing against
+      <code>notebooks/volatility/LocalVol-Section.ipynb</code> cell 5, which correctly passes
+      <code>md_prov, cal_prov</code>. Separately, <code>ex_lv_dupire_calib.py:31</code> calls
+      <code>impliedvol_factory.get_impliedvol(name, valdate, model_name)</code> — but
+      <code>get_impliedvol</code> lives in <code>sdevpy.calibration.provider</code>, not
+      <code>impliedvol_factory</code> (which only exposes <code>get_impliedvol_from_data</code>/
+      <code>get_impliedvol_new</code>), and requires a <code>cal_prov</code> argument the example never
+      obtains — confirmed against the correct call pattern in
+      <code>notebooks/volatility/LocalVol-Dupire.ipynb</code> cell 3. This is on top of the four
+      already-broken example scripts (montecarlo, aad, pde) carried over from the 15th review's findings.
     </p>
-    <p><strong>Fix:</strong> Raise on an unrecognized ticker instead of defaulting through a falsy <code>None</code>: <code>if key not in bbg_dict: raise ValueError(f"Unknown FX ticker: {key}")</code>.</p>
+    <p><strong>Fix:</strong> Instantiate <code>CalibrationDataFileProvider()</code>, obtain <code>md_prov</code> the same way the notebooks do, and pass both through to <code>calibrate_lv_bysections</code>; fix the <code>get_impliedvol</code> import/call site in <code>ex_lv_dupire_calib.py</code> to match <code>sdevpy.calibration.provider.get_impliedvol</code>'s actual signature.</p>
   </div>
 
   <!-- 6 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title"><code>implied_vol_newton</code> can silently return NaN vols for deep ITM/OTM strikes instead of failing loudly</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Golden-master test reference values are rebased in place across six test files, with the old value left commented out beside the new one</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py · lines 79-93</span>
-    <p><strong>Why it's bad:</strong></p>
-    <pre><span class="kw">for</span> _ <span class="kw">in</span> range(max_iter):
-    s = vol * sqrt_t
-    d1 = np.log(fwd / strike) / s + <span class="fn">0.5</span> * s
-    vega = fwd * norm.pdf(d1) * sqrt_t
-    diff = price(expiry, strike, is_call, fwd, vol) - fwd_price
-    vol -= diff / vega
-    vol = np.maximum(vol, <span class="fn">1e-8</span>)
-    <span class="kw">if</span> np.all(np.abs(diff) &lt; tol):
-        converged = <span class="kw">True</span>
-        <span class="kw">break</span>
-
-<span class="kw">if</span> <span class="kw">not</span> converged:
-    log.warning(<span class="st">"max_iter reached without full convergence"</span>)
-
-<span class="kw">return</span> vol</pre>
+    <span class="loc">sdevpy/tests/test_pde.py · lines 60-61, 81-82 &nbsp;·&nbsp; sdevpy/tests/test_mc.py · lines 62-63 &nbsp;·&nbsp; also test_localvol_calib.py, test_impliedvol.py, test_localvol.py, test_marketdata.py</span>
+    <p><strong>Why it's bad:</strong> The same pattern recurs across the test suite's numerical core:</p>
+    <pre>pde_ref = np.asarray([<span class="fn">2.70428011</span>, <span class="fn">10.60023123</span>, ...])
+<span class="c"># pde_ref = np.asarray([2.70606853, 10.6012976, ...])  # old value, left as a comment</span></pre>
     <p>
-      For deep ITM/OTM strikes (common on real vol surfaces), <code>vega</code> can be extremely small,
-      making <code>diff / vega</code> blow up or become <code>NaN</code>. <code>np.abs(diff) &lt; tol</code>
-      evaluates <code>False</code> for <code>NaN</code>, so the loop simply runs to <code>max_iter</code>
-      and, for a batch call, <code>vol</code> comes back with the bad strikes silently holding
-      <code>NaN</code> mixed in with the good strikes' converged values — only a generic
-      "max_iter reached" warning is logged, with no indication of which points failed or why.
+      In <code>test_pde.py</code> specifically, I traced the two instances against the file's own
+      independent closed-form reference (<code>cf_ref</code>, invariant across both tests): the new
+      <code>pde_ref</code> values are actually <em>closer</em> to <code>cf_ref</code> than the commented-out
+      old ones (e.g. line 60's new value differs from <code>cf_ref[0]</code> by ~0.0006 vs. the old value's
+      ~0.0024) — consistent with a genuine numerical-accuracy improvement, not a regression being papered
+      over. But <code>test_mc.py:62-63</code> has no such independent cross-check available in the test
+      itself, so there's no way to tell from the test alone whether that rebase reflects a fix or a
+      regression — and neither file documents which it was. Left unexplained, this pattern (confirmed
+      present in at least six files across PDE, Monte Carlo, local-vol and implied-vol calibration tests)
+      weakens confidence that these tests would flag a real future regression, since "matches the last
+      observed output" and "matches the true answer" become indistinguishable in the diff.
     </p>
-    <p><strong>Fix:</strong> Floor <code>vega</code> (e.g. <code>np.maximum(np.abs(vega), eps)</code>) or mask points below a vega threshold and fall back to <code>implied_vol_brent</code> for those, as the function's own docstring already suggests investigating.</p>
+    <p><strong>Fix:</strong> When a reference value changes, delete the old one (git history preserves it) and add a one-line comment stating why it changed (e.g. "updated after fixing #N — bug caused Y% error vs. closed-form"), so a future reader isn't left guessing whether a rebase was a fix or a regression.</p>
   </div>
 
   <!-- 7 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title">Binomial/trinomial tree risk-neutral probabilities are never validated to lie in [0,1]</span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>examples/gpt/chat_gpt.py</code> constructs the raw GPT model directly, bypassing the very <code>.eval()</code> fix confirmed elsewhere in this review</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tree/trees.py · lines 71-78 (BinomialTree), 107-119 (TrinomialTree)</span>
-    <p><strong>Why it's bad:</strong></p>
-    <pre><span class="kw">def</span> <span class="fn">calculate_probabilities</span>(self, dt, drift, vol):
-    stdev = vol * np.sqrt(dt)
-    self.u = np.exp(stdev)
-    self.d = <span class="fn">1.0</span> / self.u
-    self.p = (np.exp(drift * dt) - self.d) / (self.u - self.d)</pre>
+    <span class="loc">examples/gpt/chat_gpt.py · lines 32-38</span>
+    <p><strong>Why it's bad:</strong> The 15th review's GPT eval-mode bug is now genuinely fixed inside <code>GptModel.load()</code> (confirmed: <code>self.model.eval()</code> is called there). But this example doesn't go through <code>GptModel</code> at all:</p>
+    <pre>model = gpt.GptTransformer(model_config)     <span class="c"># raw nn.Module, defaults to training=True</span>
+checkpoint = torch.load(weight_file, map_location=device)
+model.load_state_dict(checkpoint[<span class="st">"model_state_dict"</span>])
+...
+model.to(device)                             <span class="c"># .eval() is never called anywhere in this script</span>
+...
+chat_gen = tg.ChatGenerator(device, model, tokenizer, context_length, token_gen, ...)</pre>
     <p>
-      Same pattern in <code>TrinomialTree.calculate_probabilities</code> for <code>pu</code>/<code>pd</code>/<code>pm</code>.
-      With few steps and a drift large relative to <code>vol*sqrt(dt)</code> (e.g. a large rate/dividend
-      differential combined with a coarse step count), <code>p</code> can go negative or exceed 1 —
-      arithmetically valid Python but financially meaningless, producing non-monotone or outright wrong
-      option prices with no warning at all.
+      <code>ChatGenerator.end_text</code> → <code>NextTokenGenerator.next</code> only wraps generation in
+      <code>torch.no_grad()</code>, which does not disable <code>nn.Dropout</code>. Since this script builds
+      and loads <code>GptTransformer</code> directly rather than through the fixed <code>GptModel</code>
+      wrapper, every response generated by this example still runs with dropout active — the exact bug
+      class from the 15th review, still reachable through this code path.
     </p>
-    <p><strong>Fix:</strong> After computing the probabilities, assert/clip them into <code>[0, 1]</code> and raise a clear error (naming the offending step count/vol/drift combination) if they fall outside that range.</p>
+    <p><strong>Fix:</strong> Route through <code>GptModel.load()</code> instead of constructing <code>GptTransformer</code> directly, or add an explicit <code>model.eval()</code> immediately after <code>model.to(device)</code>.</p>
   </div>
 
   <!-- 8 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title">GPT text generation never switches the model to evaluation mode — dropout stays active at inference</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Near-identical <code>generate_samples</code> body duplicated across three sibling ML surface generators</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/llms/gpt_model.py · lines 17-34, 93-106 &nbsp;·&nbsp; sdevpy/llms/gpt/textgen.py · lines 77-109</span>
-    <p><strong>Why it's bad:</strong>
-    <code>NextTokenGenerator.next()</code> — the function every generation call goes through
-    (<code>respond_prompt</code> → <code>ChatGenerator.end_text</code> → this) — only wraps the forward
-    pass in <code>torch.no_grad():</code>:</p>
-    <pre><span class="kw">def</span> <span class="fn">next</span>(self, model, idx, context_size):
-    idx_cond = idx[:, -context_size:]
-    <span class="kw">with</span> torch.no_grad():
-        logits = model(idx_cond)</pre>
+    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · lines 22-98 &nbsp;·&nbsp; mczabrgenerator.py · lines 23-102 &nbsp;·&nbsp; mchestongenerator.py · lines 22-101</span>
     <p>
-      <code>torch.no_grad()</code> disables gradient tracking but does <strong>not</strong> disable
-      <code>nn.Dropout</code>. <code>GptModel.load()</code> never calls <code>.eval()</code> either, and
-      since a freshly constructed <code>nn.Module</code> defaults to <code>training=True</code>, every
-      call to <code>respond_prompt</code>/<code>chat</code> runs generation with dropout layers active.
-      Worse, <code>training.py</code>'s own train loop leaves the model in <code>.train()</code> mode
-      after the final logging call (line 57), so post-training inference is affected too — generation is
-      non-deterministic (beyond the seeded weights) and quality is degraded by unintended dropout noise
-      on every response.
+      <strong>Why it's bad:</strong> All three files carry their own ~75-80 line <code>generate_samples</code>
+      implementation with the same structure — draw parameters, loop over surfaces, percentile-based strike
+      construction via <code>(fwd + shift) * np.exp(-0.5*stdev**2 + stdev*norm.ppf(percentiles)) - shift</code>,
+      flatten to a DataFrame — differing only in which parameters are drawn. Any bug fix or improvement to
+      the shared strike-sampling logic (e.g. the percentile method itself) has to be replicated by hand in
+      three places; a fix applied to one and missed in the others would silently produce inconsistent
+      training data across model families.
     </p>
-    <p><strong>Fix:</strong> Call <code>self.model.eval()</code> in <code>GptModel.load()</code> (and again after <code>train()</code> completes), or at the top of <code>ChatGenerator.end_text</code>/<code>NextTokenGenerator.next</code>.</p>
+    <p><strong>Fix:</strong> Extract the shared skeleton (strike sampling, DataFrame flattening) into <code>smilegenerator.py</code> as a template method, with each generator supplying only its own parameter-drawing step.</p>
   </div>
 
   <!-- 9 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>get_impliedvol</code> crashes with an unclear <code>AttributeError</code> when no calibration file exists, unlike the local-vol path</span>
+      <span class="issue-title">Production market-data provider imports the test package to resolve its own default path</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/calibration/provider.py · lines 17-21 &nbsp;·&nbsp; sdevpy/calibration/fileprovider.py · lines 15-21 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/impliedvol_factory.py · lines 7-11</span>
+    <span class="loc">sdevpy/market/fileprovider.py · lines 18, 25</span>
     <p><strong>Why it's bad:</strong></p>
-    <pre><span class="c"># fileprovider.py — returns None when the calibration file is absent</span>
-<span class="kw">def</span> <span class="fn">get_impliedvol_data</span>(self, name, date, model_name):
-    file = self.impliedvol_data_file(name, date, model_name)
-    <span class="kw">return</span> jsm.deserialize(file) <span class="kw">if</span> file.exists() <span class="kw">else</span> <span class="kw">None</span>
-
-<span class="c"># provider.py</span>
-<span class="kw">def</span> <span class="fn">get_impliedvol</span>(name, date, model_name, cal_prov):
-    data = cal_prov.get_impliedvol_data(name, date, model_name)
-    <span class="kw">return</span> ivf.get_impliedvol_from_data(data) <span class="c"># data may be None</span>
-
-<span class="c"># impliedvol_factory.py</span>
-<span class="kw">def</span> <span class="fn">get_impliedvol_from_data</span>(data: dict) -&gt; ImpliedVol:
-    type_ = data.get(<span class="st">'type'</span>, <span class="kw">None</span>) <span class="c"># AttributeError if data is None</span></pre>
+    <pre><span class="kw">from</span> sdevpy.tests <span class="kw">import</span> conftest
+...
+<span class="kw">class</span> <span class="fn">MarketDataFileProvider</span>(MarketDataProvider):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, root: str|Path=<span class="kw">None</span>):
+        self.root = (Path(root) <span class="kw">if</span> root <span class="kw">is</span> <span class="kw">not</span> <span class="kw">None</span> <span class="kw">else</span> conftest.marketdata_path())</pre>
     <p>
-      When no calibration file exists, <code>get_impliedvol_data</code> returns <code>None</code>, and
-      <code>get_impliedvol</code> passes it straight through — the crash lands two calls downstream as
-      <code>AttributeError: 'NoneType' object has no attribute 'get'</code>, with no indication that the
-      real cause is a missing file. The local-vol path in the very same module has an explicit
-      <code>get_localvol_or_new</code> wrapper that gracefully initializes a fresh model when the stored
-      data is <code>None</code>; there is no equivalent for implied vol.
+      A library module under <code>sdevpy/market</code> imports <code>sdevpy.tests.conftest</code> to
+      resolve its default data-root path when no <code>root</code> is supplied. Confirmed this is a real
+      production code path, not just a test convenience: <code>sdevpy/pricingcontext.py</code>'s
+      <code>default_pricing_context()</code> constructs <code>MarketDataFileProvider()</code> with no
+      <code>root</code> argument. Any packaging or deployment scenario that excludes the <code>tests/</code>
+      directory (a typical wheel build, for instance) would break this import at module load time.
     </p>
-    <p><strong>Fix:</strong> Check <code>data is None</code> in <code>get_impliedvol</code> and raise a clear, actionable error, or add a <code>get_impliedvol_or_new</code> fallback mirroring the local-vol pattern.</p>
+    <p><strong>Fix:</strong> Move the default data-root resolution into a non-test config/settings module, and have <code>conftest.py</code> import from there instead of the reverse.</p>
   </div>
 
   <!-- 10 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title">Integer truncation in chart-grid sizing silently drops the last panel — or produces zero rows for a single-expiry surface</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>vsvi.py</code> raises "Negative variance" for a quantity its own module docstring says is vol, not variance</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/impliedvol/optionsurface.py · lines 193-204</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/vsvi.py · lines 1-8, 81-83</span>
     <p><strong>Why it's bad:</strong></p>
-    <pre>num_charts = expiries.shape[<span class="fn">0</span>]
-num_cols = <span class="fn">2</span>
-num_rows = int(num_charts / num_cols)
+    <pre><span class="st">""" VSVI stands for 'Vol SVI'. ... This model simply gives an SVI-like
+    parametric shape to the volatility, as opposed to the variance in the original paper ... """</span>
 ...
-fig, axs = plt.subplots(num_rows, num_cols, layout=<span class="st">"constrained"</span>)
-...
-<span class="kw">for</span> i <span class="kw">in</span> range(num_rows):
-    <span class="kw">for</span> j <span class="kw">in</span> range(num_cols):
-        k = num_cols * i + j
-        axs[i, j].plot(strikes[k], ref_disp[k], color=<span class="st">'blue'</span>, label=ref_name)</pre>
+vol = vstar + b * (rho * xm + eta - lambda_)
+<span class="kw">if</span> np.any(vol &lt; <span class="fn">0.0</span>):
+    <span class="kw">raise</span> ValueError(<span class="st">"Negative variance in vSVI formula"</span>)</pre>
     <p>
-      <code>int(num_charts / num_cols)</code> truncates rather than rounds up. With 5 expiries,
-      <code>num_rows = int(5/2) = 2</code>, so only indices <code>k=0..3</code> are ever plotted — the
-      5th expiry's chart is silently never drawn, with no warning. With a single expiry
-      (<code>num_charts=1</code>), <code>num_rows = 0</code>: <code>plt.subplots(0, 2, ...)</code> is
-      called and the loop body never executes, producing no chart at all. This function
-      (<code>plot_transform_surface</code>) is used from <code>examples/stovol/stovoltrain.py</code> and
-      several StoVol training notebooks for diagnostic plots.
+      The module's own header explicitly contrasts VSVI (acts on vol) against original SVI (acts on
+      variance) — the whole point of the model. The validation message names the wrong one, which would
+      mislead anyone debugging a calibration failure into thinking a variance quantity went negative when
+      it's actually the vol itself. This is the same class of copy-paste-across-model-files slip the 15th
+      review flagged elsewhere (the <code>ThetaScheme</code> docstring, now fixed).
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="rm">num_rows = int(num_charts / num_cols)</span>
-<span class="ok">num_rows = -(-num_charts // num_cols)  # ceiling division</span></pre>
+    <p><strong>Fix:</strong> Change the message to <code>"Negative vol in vSVI formula"</code>.</p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #15 &nbsp;·&nbsp; 2026-08-29 (full scan of every <code>*.py</code>/<code>*.ipynb</code> file outside <code>sdevpy/thirdparty</code>, verified via direct file reads across seven parallel research passes)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #16 &nbsp;·&nbsp; 2026-09-05 (full scan of every <code>*.py</code>/<code>*.ipynb</code> file outside <code>sdevpy/thirdparty</code>, verified via direct file reads across five parallel research passes plus personal re-verification of every reported finding)
   </footer>
 </div>
 </body>

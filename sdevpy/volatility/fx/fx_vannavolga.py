@@ -194,8 +194,7 @@ class VannaVolgaSmile:
             vol[mask] = np.where(np.abs(repriced - price) < 1e-8, solved, np.nan)
         return vol
 
-    def vol_at_delta(self, delta: float, is_call: bool, tol: float = 1e-10,
-                     max_iter: int = 100, **strike_kwargs) -> float:
+    def vol_at_delta(self, delta: float, is_call: bool, tol: float=1e-10, max_iter: int=100, **strike_kwargs) -> float:
         """ Vol at the given (unsigned) target delta -- the inverse of vol(strike).
 
             Since the strike for a given delta depends on the vol at that strike, and the vol depends on the smile
@@ -214,8 +213,11 @@ class VannaVolgaSmile:
         strike_kwargs.setdefault('double_root_preference', 'large')
         signed_delta = delta if is_call else -delta
         sigma = self.atm_vol
+        ####
+        df_f, df_d = np.exp(-self.expiry * self.r_f), np.exp(-self.expiry * self.r_d)
+        ####
         for _ in range(max_iter):
-            sol = strike_from_delta(self.spot, self.r_d, self.r_f, self.expiry, sigma, signed_delta,
+            sol = strike_from_delta(self.spot, df_f, df_d, self.expiry, sigma, signed_delta,
                                     'C' if is_call else 'P', prem_adjusted=self.prem_adjusted,
                                     **strike_kwargs)
             if not bool(np.asarray(sol.valid)):
@@ -239,9 +241,16 @@ def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, 
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
 
-    sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_put, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
-    sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_call, delta, 'C', prem_adjusted=prem_adjusted,
+    ####
+    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    ####
+
+    sol_put = strike_from_delta(spot, df_f, df_d, expiry, vol_put, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
+    sol_call = strike_from_delta(spot, df_f, df_d, expiry, vol_call, delta, 'C', prem_adjusted=prem_adjusted,
                                  **call_kwargs)
+    # sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_put, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
+    # sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_call, delta, 'C', prem_adjusted=prem_adjusted,
+    #                              **call_kwargs)
     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
         raise ValueError(f"Could not solve pillar strikes for {delta}-delta quotes "
                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")

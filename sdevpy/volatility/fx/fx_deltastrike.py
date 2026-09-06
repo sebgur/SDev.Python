@@ -153,13 +153,12 @@ class StrikeSolution:
 
 
 # Main entry point
-def strike_from_delta(spot: npt.ArrayLike, r_d: npt.ArrayLike, r_f: npt.ArrayLike, t: npt.ArrayLike,
+def strike_from_delta(spot: npt.ArrayLike, df_f: npt.ArrayLike, df_d: npt.ArrayLike, t: npt.ArrayLike,
                       sigma: npt.ArrayLike, delta: npt.ArrayLike, option_type: npt.ArrayLike,
-                      prem_adjusted: npt.ArrayLike = False, spot_delta: npt.ArrayLike=None,
-                      spot_delta_cutoff: float = 1.0, double_root_preference: str = "small",
-                      bracket_width_sigma_mult: float = 15.0, bracket_width_floor: float = 8.0,
-                      tol_existence: float = 1e-9, tol_residual: float = 1e-6,
-                      max_iter: int = 100) -> StrikeSolution:
+                      prem_adjusted: npt.ArrayLike=False, spot_delta: npt.ArrayLike=None,
+                      spot_delta_cutoff: float=1.0, double_root_preference: str="small",
+                      bracket_width_sigma_mult: float=15.0, bracket_width_floor: float=8.0,
+                      tol_existence: float=1e-9, tol_residual: float=1e-6, max_iter: int=100) -> StrikeSolution:
     """
     Invert Garman-Kohlhagen delta quotes into strikes. Fully vectorized: all array arguments are broadcast
     together, so you can pass e.g. sigma/delta/option_type as a (n_maturities, n_deltas) grid
@@ -199,15 +198,16 @@ def strike_from_delta(spot: npt.ArrayLike, r_d: npt.ArrayLike, r_f: npt.ArrayLik
     Returns: StrikeSolution container
     """
     # Broadcast everything
-    s, r_d, r_f, t, sigma, delta = np.broadcast_arrays(*[_arr(a) for a in (spot, r_d, r_f, t, sigma, delta)])
+    s, df_f, df_d, t, sigma, delta = np.broadcast_arrays(*[_arr(a) for a in (spot, df_f, df_d, t, sigma, delta)])
     phi = np.broadcast_to(_phi_from_option_type(option_type), s.shape).astype(float)
     prem_adjusted = np.broadcast_to(_arr(prem_adjusted).astype(bool), s.shape)
 
     if np.any(sigma <= 0) or np.any(t <= 0):
         raise ValueError("sigma and T must be strictly positive everywhere.")
 
-    f = s * np.exp((r_d - r_f) * t)
-    df_f = np.exp(-r_f * t)
+    f = s * df_f / df_d
+    # f = s * np.exp((r_d - r_f) * t)
+    # df_for = np.exp(-r_f * t)
 
     if spot_delta is None:
         use_spot_delta = t <= spot_delta_cutoff
