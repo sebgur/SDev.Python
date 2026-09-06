@@ -66,27 +66,6 @@ def vv_weights(strike: npt.ArrayLike, k_put: float, k_atm: float, k_call: float,
     return w1 * vega / v1, w2 * vega / v2, w3 * vega / v3
 
 
-# def _implied_vol_bisect(fwd_price: npt.ArrayLike, fwd: float, strike: npt.ArrayLike, expiry: float, is_call: bool,
-#                         vol_lo: float = 1e-8, vol_hi: float = 5.0, max_iter: int = 200,
-#                         tol: float = 1e-14) -> npt.NDArray[np.float64]:
-#     """ Invert an undiscounted forward price to a Black vol by bisection.
-#         Deliberately not black.implied_vol_newton: Newton divides by vega, which collapses in
-#         the deep wings where a VV smile is most often queried, and returns NaN silently. Price
-#         is strictly increasing in vol, so bisection cannot diverge. """
-#     target = _arr(fwd_price)
-#     k = np.broadcast_to(_arr(strike), target.shape)
-#     lo = np.full(target.shape, vol_lo)
-#     hi = np.full(target.shape, vol_hi)
-#     for _ in range(max_iter):
-#         mid = 0.5 * (lo + hi)
-#         go_up = (black.price(expiry, k, is_call, fwd, mid) - target) < 0.0
-#         lo = np.where(go_up, mid, lo)
-#         hi = np.where(go_up, hi, mid)
-#         if np.nanmax(hi - lo) < tol:
-#             break
-#     return 0.5 * (lo + hi)
-
-
 def atm_dns_strike(fwd: float, atm_vol: float, expiry: float, prem_adjusted: bool = False) -> float:
     """ Delta-neutral-straddle ATM strike (the FX convention, not ATM-forward).
         Non premium-adjusted: F exp(+0.5 sigma^2 T); premium-adjusted: F exp(-0.5 sigma^2 T). """
@@ -112,8 +91,6 @@ class VannaVolgaSmile:
     spot: float = None
     df_f: float = None
     df_d: float = None
-    # r_d: float = None
-    # r_f: float = None
     prem_adjusted: bool = False
 
     def __post_init__(self):
@@ -194,9 +171,6 @@ class VannaVolgaSmile:
         strike_kwargs.setdefault('double_root_preference', 'large')
         signed_delta = delta if is_call else -delta
         sigma = self.atm_vol
-        ####
-        # df_f, df_d = np.exp(-self.expiry * self.r_f), np.exp(-self.expiry * self.r_d)
-        ####
         for _ in range(max_iter):
             sol = strike_from_delta(self.spot, self.df_f, self.df_d, self.expiry, sigma, signed_delta,
                                     'C' if is_call else 'P', prem_adjusted=self.prem_adjusted,
@@ -218,14 +192,9 @@ def _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, bf, delta
     vol_put = atm_vol + bf - 0.5 * rr
 
     fwd = spot * df_f / df_d
-    # fwd = spot * np.exp((r_d - r_f) * expiry)
     k_atm = atm_dns_strike(fwd, atm_vol, expiry, prem_adjusted)
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
-
-    ####
-    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
-    ####
 
     sol_put = strike_from_delta(spot, df_f, df_d, expiry, vol_put, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
     sol_call = strike_from_delta(spot, df_f, df_d, expiry, vol_call, delta, 'C', prem_adjusted=prem_adjusted,
@@ -254,7 +223,7 @@ def smile_from_quotes(spot: float, r_d: float, r_f: float, expiry: float, atm_vo
             return _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, trial_bf,
                                                delta, prem_adjusted, 'none', **kwargs)
 
-        smile_bf = fx_smilecalib.calibrate_smile_strangle(spot, r_d, r_f, expiry, atm_vol, rr, bf, build_smile,
+        smile_bf = fx_smilecalib.calibrate_smile_strangle(spot, df_f, df_d, expiry, atm_vol, rr, bf, build_smile,
                                                           delta, prem_adjusted, **kwargs)
     else:
         smile_bf = bf

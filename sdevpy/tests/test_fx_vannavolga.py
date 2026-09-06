@@ -140,7 +140,8 @@ class TestMarketStrangleCalibration:
     def test_zero_risk_reversal_leaves_butterfly_unchanged(self):
         # With no skew the pillar strikes coincide with the market-strangle strikes, so the
         # calibration is a provable no-op -- the strongest check on the routine.
-        bf = calibrate_smile_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=0.0, ms=0.0025,
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        bf = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=0.0, ms=0.0025,
                                       build_smile=_vv_build_smile(rr=0.0))
         assert bf == pytest.approx(0.0025, abs=1e-11)
 
@@ -161,11 +162,13 @@ class TestMarketStrangleCalibration:
         assert vol_ms == pytest.approx(ATM_VOL + 0.0025)
 
     def test_smile_butterfly_exceeds_market_butterfly_when_skewed(self):
-        assert calibrate_smile_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=-0.02, ms=0.0025,
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        assert calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=-0.02, ms=0.0025,
                                         build_smile=_vv_build_smile(rr=-0.02)) > 0.0025
 
     def test_correction_grows_with_skew(self):
-        gaps = [calibrate_smile_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=r, ms=0.0025,
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        gaps = [calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=r, ms=0.0025,
                                          build_smile=_vv_build_smile(rr=r))
                 for r in (-0.005, -0.01, -0.02, -0.04)]
         assert all(b > a for a, b in pairwise(gaps))
@@ -184,9 +187,10 @@ class TestMarketStrangleCalibration:
         # The DNS ATM strike sits above the forward by 0.5*sigma^2*T, so the three-strike grid
         # is not symmetric in log-moneyness and flipping the skew does not mirror it. The gap
         # is ~4% at T=1Y and grows with sigma^2*T (2% at 3M, 6% at 2Y).
-        pos = calibrate_smile_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=0.02, ms=0.0025,
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        pos = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=0.02, ms=0.0025,
                                        build_smile=_vv_build_smile(rr=0.02))
-        neg = calibrate_smile_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=-0.02, ms=0.0025,
+        neg = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=-0.02, ms=0.0025,
                                        build_smile=_vv_build_smile(rr=-0.02))
         assert pos != pytest.approx(neg, abs=1e-6)
         assert abs(pos - neg) / neg == pytest.approx(0.044, abs=0.005)
@@ -207,7 +211,8 @@ class TestPremiumAdjusted:
         assert s.k_call > s.fwd
 
     def test_prem_adjusted_market_strangle_calibration(self):
-        bf = calibrate_smile_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=-0.01, ms=0.0025,
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        bf = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=-0.01, ms=0.0025,
                                       build_smile=_vv_build_smile(rr=-0.01, prem_adjusted=True),
                                        prem_adjusted=True)
         assert bf == pytest.approx(0.00284682, abs=1e-7)
@@ -239,7 +244,8 @@ class TestRegression:
         (-0.010, 0.0050, 0.00510236),
     ])
     def test_calibrated_butterfly(self, rr, ms, expected):
-        bf = calibrate_smile_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, rr=rr, ms=ms,
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        bf = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=rr, ms=ms,
                                       build_smile=_vv_build_smile(rr=rr))
         assert bf == pytest.approx(expected, abs=1e-7)
 

@@ -24,13 +24,8 @@ def market_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vo
         premia at that vol. Returns (k_put, k_call, fwd_price, vol_ms). """
     vol_ms = atm_vol + ms
     fwd = spot * df_f / df_d
-    # fwd = spot * np.exp((r_d - r_f) * expiry)
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
-
-    ####
-    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
-    ####
 
     sol_put = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
     sol_call = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
@@ -43,7 +38,7 @@ def market_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vo
     return k_put, k_call, price, vol_ms
 
 
-def calibrate_smile_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, rr: float, ms: float,
+def calibrate_smile_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float, rr: float, ms: float,
                              build_smile, delta: float=0.25, prem_adjusted: bool=False, tol: float=1e-12,
                              max_expand: int=60, **kwargs) -> float:
     """ Find the strangle such that build_smile(strangle) reprices the market strangle at its own two strikes.
@@ -54,13 +49,12 @@ def calibrate_smile_strangle(spot: float, r_d: float, r_f: float, expiry: float,
 
         Property: when rr == 0 the pillar strikes coincide with the market-strangle strikes, so this returns ms. """
     ####
-    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
     ####
 
     k_put_ms, k_call_ms, target, _ = market_strangle(spot, df_f, df_d, expiry, atm_vol, ms, delta, prem_adjusted,
                                                      **kwargs)
     fwd = spot * df_f / df_d
-    # fwd = spot * np.exp((r_d - r_f) * expiry)
 
     def objective(bf):
         smile = build_smile(bf)
@@ -113,6 +107,9 @@ def wingvols_from_market_strangle(spot: float, r_d: float, r_f: float, expiry: f
     """ Call/put vols at the given delta, given atm_vol/rr/ms where ms is the broker's raw
         quoted/market strangle, not yet a smile strangle. Model-agnostic: build_smile is the
         only model-specific input -- see calibrate_smile_strangle's own contract. """
-    smile_strangle = calibrate_smile_strangle(spot, r_d, r_f, expiry, atm_vol, rr, ms, build_smile,
+    ####
+    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    ####
+    smile_strangle = calibrate_smile_strangle(spot, df_f, df_d, expiry, atm_vol, rr, ms, build_smile,
                                               delta, prem_adjusted, **kwargs)
     return wingvols_from_butterfly(atm_vol, rr, smile_strangle)
