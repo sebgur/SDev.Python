@@ -11,7 +11,8 @@ ATM_VOL, RR, BF = 0.10, -0.01, 0.0025
 
 
 def _smile(**kwargs):
-    params = dict(spot=SPOT, r_d=R_D, r_f=R_F, expiry=EXPIRY, atm_vol=ATM_VOL, rr=RR, bf=BF)
+    df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+    params = dict(spot=SPOT, df_f=df_f, df_d=df_d, expiry=EXPIRY, atm_vol=ATM_VOL, rr=RR, bf=BF)
     params.update(kwargs)
     return smile_from_quotes(**params)
 
@@ -200,14 +201,15 @@ class TestPremiumAdjusted:
     def test_prem_adjusted_smile_reprices_pillars(self):
         # Guards the double-root trap: the PA call delta is non-monotonic, and the deep-ITM
         # root (0.286 vs a 1.122 forward) would give non-monotonic pillars.
-        s = smile_from_quotes(SPOT, R_D, R_F, EXPIRY, ATM_VOL, RR, BF,
-                              prem_adjusted=True, extrapolation='none')
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        s = smile_from_quotes(SPOT, df_f, df_d, EXPIRY, ATM_VOL, RR, BF, prem_adjusted=True, extrapolation='none')
         strikes = np.array([s.k_put, s.k_atm, s.k_call])
         assert np.allclose(s.vol(strikes),
                            np.array([s.vol_put, s.atm_vol, s.vol_call]), atol=1e-10)
 
     def test_prem_adjusted_call_pillar_is_the_otm_root(self):
-        s = smile_from_quotes(SPOT, R_D, R_F, EXPIRY, ATM_VOL, RR, BF, prem_adjusted=True)
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        s = smile_from_quotes(SPOT, df_f, df_d, EXPIRY, ATM_VOL, RR, BF, prem_adjusted=True)
         assert s.k_call > s.fwd
 
     def test_prem_adjusted_market_strangle_calibration(self):
@@ -313,7 +315,8 @@ def _run_pipeline():
     market_vols.append(atm_vol)
 
     delta_idx = 0
-    s = fx_vannavolga.smile_from_quotes(spot=spot, r_d=r_dom, r_f=r_for, expiry=t, atm_vol=atm_vol,
+    df_f, df_d = np.exp(-t * r_for), np.exp(-t * r_dom)
+    s = fx_vannavolga.smile_from_quotes(spot=spot, df_f=df_f, df_d=df_d, expiry=t, atm_vol=atm_vol,
                                         rr=rr[delta_idx], bf=bf[delta_idx], delta=deltas[delta_idx])
 
     return {

@@ -212,11 +212,11 @@ def _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, bf, delta
                            prem_adjusted=bool(prem_adjusted))
 
 
-def smile_from_quotes(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, rr: float, bf: float,
+def smile_from_quotes(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float, rr: float, bf: float,
                       delta: float=0.25, prem_adjusted: bool=False, extrapolation: str='flat',
                       market_strangle_quote: bool=False, **kwargs) -> VannaVolgaSmile:
     """ Vanna-Volga interpolation from quotes """
-    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
 
     if market_strangle_quote:
         def build_smile(trial_bf):
@@ -252,7 +252,10 @@ def wingvols_from_market_strangle_vv(spot: float, r_d: float, r_f: float, expiry
                                                        build_smile, delta, prem_adjusted, **kwargs)
 
 if __name__ == "__main__":
-    s = smile_from_quotes(spot=1.10, r_d=0.04, r_f=0.02, expiry=1.0, atm_vol=0.10, rr=-0.01, bf=0.0025)
+    r_d, r_f = 0.04, 0.02
+    expiry = 1.0
+    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    s = smile_from_quotes(spot=1.10, df_f=df_f, df_d=df_d, expiry=expiry, atm_vol=0.10, rr=-0.01, bf=0.0025)
     print(f"Pillars: K={s.k_put:.4f}/{s.k_atm:.4f}/{s.k_call:.4f} vol={s.vol_put:.4f}/{s.atm_vol:.4f}/{s.vol_call:.4f}")
     for k in np.linspace(0.95, 1.35, 9):
         print(f"  K={k:.4f}  vv={float(s.vol(k)):.6f} 1st-order={float(s.vol(k, 'first_order')):.6f}")
