@@ -15,11 +15,12 @@ logger.configure(module_display='partial')
 
 
 ################## TODO ###########################################################################
-# * Do it twice and compare strangle vs butterfly results
-# * Implement the direct spline (flat outside 25s). Maybe use a quick build_smile() in terms of strikes
-#   to get the market strangle to butterfly conversion, and then define the interpolation in terms of
-#   deltas.
-# * Implement the completed spline (using exact VV to create 10D and 5D, make those choosable)
+# * Pass expiry as tenor, but need to pass valdate too as we will need the conversion of expiry date to
+#   BS-conventional year frac
+# * Implement the direct spline, flat outside the last deltas, but keep the number of deltas/points generic
+# * Implement the vv-based calculation of extrapolated deltas
+# * Implement a calibration flow that, given the raw data, generates a "calibrated" surface that contains
+#   more deltas and the direct wing vols to save calibration time (and possibly interpolation definition)
 # * Use delta inversion and illustrate it
 
 
