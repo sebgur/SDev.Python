@@ -110,8 +110,10 @@ class VannaVolgaSmile:
     smile_butterfly: float = None
     market_butterfly: float = None
     spot: float = None
-    r_d: float = None
-    r_f: float = None
+    df_f: float = None
+    df_d: float = None
+    # r_d: float = None
+    # r_f: float = None
     prem_adjusted: bool = False
 
     def __post_init__(self):
@@ -157,27 +159,6 @@ class VannaVolgaSmile:
         w1, w2, w3 = lagrange_weights(strike, self.k_put, self.k_atm, self.k_call)
         return w1 * self.vol_put + w2 * self.atm_vol + w3 * self.vol_call
 
-    # def _exact_vol(self, k: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-    #     # Calls and puts imply the same vol (the VV correction is identical by put-call parity),
-    #     # so invert whichever is OTM -- better conditioned.
-    #     is_call = np.asarray(k >= self.fwd)
-    #     vol = np.empty(np.broadcast(k, is_call).shape, dtype=float)
-    #     for flag in (True, False):
-    #         mask = (is_call == flag)
-    #         if not np.any(mask):
-    #             continue
-    #         k_sub = np.broadcast_to(k, vol.shape)[mask]
-    #         price = self.price(k_sub, is_call=flag)
-    #         if flag:
-    #             intrinsic = np.maximum(self.fwd - k_sub, 0.0)
-    #             upper = np.full_like(k_sub, self.fwd)
-    #         else:
-    #             intrinsic = np.maximum(k_sub - self.fwd, 0.0)
-    #             upper = k_sub
-    #         solved = _implied_vol_bisect(price, self.fwd, k_sub, self.expiry, flag)
-    #         vol[mask] = np.where((price > intrinsic) & (price < upper), solved, np.nan)
-    #     return vol
-
     def _exact_vol(self, k: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
         # Calls and puts imply the same vol (the VV correction is identical by put-call parity),
         # so invert whichever is OTM -- better conditioned.
@@ -207,17 +188,17 @@ class VannaVolgaSmile:
             Note: with extrapolation='flat' (the default), a delta whose strike falls outside [k_put, k_call] converges
             to the flat boundary vol, not a genuine extrapolated value. The smile has no information beyond its own
             quoted wings. """
-        if self.spot is None or self.r_d is None or self.r_f is None:
+        if self.spot is None or self.df_f is None or self.df_d is None:
             raise ValueError("spot/r_d/r_f not set on this smile -- build it via smile_from_quotes")
 
         strike_kwargs.setdefault('double_root_preference', 'large')
         signed_delta = delta if is_call else -delta
         sigma = self.atm_vol
         ####
-        df_f, df_d = np.exp(-self.expiry * self.r_f), np.exp(-self.expiry * self.r_d)
+        # df_f, df_d = np.exp(-self.expiry * self.r_f), np.exp(-self.expiry * self.r_d)
         ####
         for _ in range(max_iter):
-            sol = strike_from_delta(self.spot, df_f, df_d, self.expiry, sigma, signed_delta,
+            sol = strike_from_delta(self.spot, self.df_f, self.df_d, self.expiry, sigma, signed_delta,
                                     'C' if is_call else 'P', prem_adjusted=self.prem_adjusted,
                                     **strike_kwargs)
             if not bool(np.asarray(sol.valid)):
@@ -259,7 +240,7 @@ def _smile_from_smile_butterfly(spot, r_d, r_f, expiry, atm_vol, rr, bf, delta, 
                            k_atm=float(k_atm), k_call=float(sol_call.k), vol_put=float(vol_put),
                            atm_vol=float(atm_vol), vol_call=float(vol_call),
                            extrapolation=extrapolation, smile_butterfly=float(bf),
-                           spot=float(spot), r_d=float(r_d), r_f=float(r_f),
+                           spot=float(spot), df_f=float(df_f), df_d=float(df_d),
                            prem_adjusted=bool(prem_adjusted))
 
 
