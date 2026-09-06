@@ -17,24 +17,23 @@ from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
 from sdevpy.market.fxvolsurface import wingvols_from_butterfly
 
 
-def market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float, ms: float,
+def market_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float, ms: float,
                     delta: float=0.25, prem_adjusted: bool=False, **kwargs) -> tuple:
     """ Resolve the broker's quoted strangle into the market-strangle price. Both wing strikes
         are struck off the single flat vol atm_vol+ms; the quote is the sum of the two option
         premia at that vol. Returns (k_put, k_call, fwd_price, vol_ms). """
     vol_ms = atm_vol + ms
-    fwd = spot * np.exp((r_d - r_f) * expiry)
+    fwd = spot * df_f / df_d
+    # fwd = spot * np.exp((r_d - r_f) * expiry)
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
 
     ####
-    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
     ####
 
     sol_put = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
     sol_call = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
-    # sol_put = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
-    # sol_call = strike_from_delta(spot, r_d, r_f, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
         raise ValueError(f"Could not solve market-strangle strikes at {delta}-delta "
                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
@@ -54,9 +53,14 @@ def calibrate_smile_strangle(spot: float, r_d: float, r_f: float, expiry: float,
                      any specific smile model. The calibration logic itself has none.
 
         Property: when rr == 0 the pillar strikes coincide with the market-strangle strikes, so this returns ms. """
-    k_put_ms, k_call_ms, target, _ = market_strangle(spot, r_d, r_f, expiry, atm_vol, ms, delta, prem_adjusted,
+    ####
+    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    ####
+
+    k_put_ms, k_call_ms, target, _ = market_strangle(spot, df_f, df_d, expiry, atm_vol, ms, delta, prem_adjusted,
                                                      **kwargs)
-    fwd = spot * np.exp((r_d - r_f) * expiry)
+    fwd = spot * df_f / df_d
+    # fwd = spot * np.exp((r_d - r_f) * expiry)
 
     def objective(bf):
         smile = build_smile(bf)

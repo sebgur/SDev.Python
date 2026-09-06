@@ -146,13 +146,15 @@ class TestMarketStrangleCalibration:
 
     def test_calibrated_smile_reprices_the_market_strangle(self):
         s = _smile(rr=-0.01, bf=0.0025, market_strangle_quote=True, extrapolation='none')
-        k_put, k_call, target, _ = market_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, 0.0025)
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        k_put, k_call, target, _ = market_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, 0.0025)
         priced = (black.price(EXPIRY, k_call, True, s.fwd, float(s.vol(k_call)))
                   + black.price(EXPIRY, k_put, False, s.fwd, float(s.vol(k_put))))
         assert priced == pytest.approx(target, abs=1e-10)
 
     def test_market_strangle_strikes_straddle_the_forward(self):
-        k_put, k_call, price, vol_ms = market_strangle(SPOT, R_D, R_F, EXPIRY, ATM_VOL, 0.0025)
+        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
+        k_put, k_call, price, vol_ms = market_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, 0.0025)
         fwd = SPOT * np.exp((R_D - R_F) * EXPIRY)
         assert k_put < fwd < k_call
         assert price > 0.0
