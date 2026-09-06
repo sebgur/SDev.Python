@@ -68,26 +68,26 @@ print(f"Expiry time: {t}")
 # Retrieve rate curves
 forcurve = provider.get_xccycurve(forccy, valdate)
 domcurve = provider.get_xccycurve(domccy, valdate)
-df_for = forcurve.discount(expiry)
-df_dom = domcurve.discount(expiry)
-print(f"Foreign df: {df_for}")
-print(f"Domestic df: {df_dom}")
-r_for, r_dom = -np.log(df_for) / t, -np.log(df_dom) / t
-print(f"Foreign rate: {r_for}")
-print(f"Domestic rate: {r_dom}")
-fwd = spot * df_for / df_dom
+df_f = forcurve.discount(expiry)
+df_d = domcurve.discount(expiry)
+print(f"Foreign df: {df_f}")
+print(f"Domestic df: {df_d}")
+# r_for, r_dom = -np.log(df_f) / t, -np.log(df_d) / t
+# print(f"Foreign rate: {r_for}")
+# print(f"Domestic rate: {r_dom}")
+fwd = spot * df_f / df_d
 print(f"Forward: {fwd}")
 
 # Build the full set of market points: every quoted delta level, both wings, plus ATM
 market_strikes, market_vols = [], []
 for d, r, b in zip(deltas, rr, bf, strict=True):
     if data.market_strangle_quote:
-        vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(spot, r_dom, r_for, t, atm_vol, r, b, delta=d)
+        vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(spot, df_f, df_d, t, atm_vol, r, b, delta=d)
     else:
         vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
 
-    k_put = float(strike_from_delta(spot, r_dom, r_for, t, vol_put, -d, 'P').k)
-    k_call = float(strike_from_delta(spot, r_dom, r_for, t, vol_call, d, 'C').k)
+    k_put = float(strike_from_delta(spot, df_f, df_d, t, vol_put, -d, 'P').k)
+    k_call = float(strike_from_delta(spot, df_f, df_d, t, vol_call, d, 'C').k)
     market_strikes += [k_put, k_call]
     market_vols += [vol_put, vol_call]
 
@@ -98,7 +98,7 @@ market_vols.append(atm_vol)
 # Build interpolated smile
 delta_idx = 0
 plot_delta, plot_rr, plot_bf = deltas[delta_idx], rr[delta_idx], bf[delta_idx]
-s = fx_vannavolga.smile_from_quotes(spot=spot, r_d=r_dom, r_f=r_for, expiry=t, atm_vol=atm_vol, rr=plot_rr, bf=plot_bf,
+s = fx_vannavolga.smile_from_quotes(spot=spot, df_f=df_f, df_d=df_d, expiry=t, atm_vol=atm_vol, rr=plot_rr, bf=plot_bf,
                                     delta=plot_delta)
 strikes = np.linspace(0.9 * fwd, 1.1 * fwd, 50)
 vols = []

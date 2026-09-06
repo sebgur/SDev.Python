@@ -291,20 +291,20 @@ def _run_pipeline():
 
     forcurve = provider.get_xccycurve(forccy, VALDATE)
     domcurve = provider.get_xccycurve(domccy, VALDATE)
-    df_for = forcurve.discount(expiry)
-    df_dom = domcurve.discount(expiry)
-    r_for, r_dom = -np.log(df_for) / t, -np.log(df_dom) / t
-    fwd = spot * df_for / df_dom
+    df_f = forcurve.discount(expiry)
+    df_d = domcurve.discount(expiry)
+    # r_for, r_dom = -np.log(df_f) / t, -np.log(df_d) / t
+    fwd = spot * df_f / df_d
 
     market_strikes, market_vols = [], []
     for d, r, b in zip(deltas, rr, bf, strict=True):
         if data.market_strangle_quote:
             vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(
-                spot, r_dom, r_for, t, atm_vol, r, b, delta=d)
+                spot, df_f, df_d, t, atm_vol, r, b, delta=d)
         else:
             vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
-        k_put = float(strike_from_delta(spot, df_for, df_dom, t, vol_put, -d, 'P').k)
-        k_call = float(strike_from_delta(spot, df_for, df_dom, t, vol_call, d, 'C').k)
+        k_put = float(strike_from_delta(spot, df_f, df_d, t, vol_put, -d, 'P').k)
+        k_call = float(strike_from_delta(spot, df_f, df_d, t, vol_call, d, 'C').k)
         # k_put = float(strike_from_delta(spot, r_dom, r_for, t, vol_put, -d, 'P').k)
         # k_call = float(strike_from_delta(spot, r_dom, r_for, t, vol_call, d, 'C').k)
         market_strikes += [k_put, k_call]
@@ -315,13 +315,14 @@ def _run_pipeline():
     market_vols.append(atm_vol)
 
     delta_idx = 0
-    df_f, df_d = np.exp(-t * r_for), np.exp(-t * r_dom)
+    # df_f, df_d = np.exp(-t * r_for), np.exp(-t * r_dom)
     s = fx_vannavolga.smile_from_quotes(spot=spot, df_f=df_f, df_d=df_d, expiry=t, atm_vol=atm_vol,
                                         rr=rr[delta_idx], bf=bf[delta_idx], delta=deltas[delta_idx])
 
     return {
         'forccy': forccy, 'domccy': domccy, 'spot': spot, 't': t,
-        'df_for': df_for, 'df_dom': df_dom, 'r_for': r_for, 'r_dom': r_dom, 'fwd': fwd,
+        'df_for': df_f, 'df_dom': df_d,# 'r_for': r_for, 'r_dom': r_dom,
+        'fwd': fwd,
         'market_strikes': market_strikes, 'market_vols': market_vols, 'smile': s,
     }
 
@@ -343,8 +344,8 @@ class TestExFxVolMarketRegression:
         r = _run_pipeline()
         assert r['df_for'] == pytest.approx(0.9995546727625232, abs=1e-12)
         assert r['df_dom'] == pytest.approx(0.9983732377760548, abs=1e-12)
-        assert r['r_for'] == pytest.approx(0.004516129032258047, abs=1e-9)
-        assert r['r_dom'] == pytest.approx(0.016506991555613408, abs=1e-9)
+        # assert r['r_for'] == pytest.approx(0.004516129032258047, abs=1e-9)
+        # assert r['r_dom'] == pytest.approx(0.016506991555613408, abs=1e-9)
         assert r['fwd'] == pytest.approx(150.17750400477985, abs=1e-6)
 
     def test_market_points(self):

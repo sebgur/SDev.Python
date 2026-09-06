@@ -237,12 +237,12 @@ def smile_from_quotes(spot: float, df_f: float, df_d: float, expiry: float, atm_
     return smile
 
 
-def wingvols_from_market_strangle_vv(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float,
+def wingvols_from_market_strangle_vv(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float,
                                      rr: float, ms: float, delta: float=0.25,
                                      prem_adjusted: bool=False, **kwargs) -> tuple:
     """ VV-specific: the only thing this adds over fx_smilecalib's generic version is the
         build_smile closure -- how to construct a VannaVolgaSmile from a candidate strangle. """
-    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
 
     def build_smile(trial_bf):
         return _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, trial_bf, delta,
