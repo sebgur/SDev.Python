@@ -48,10 +48,6 @@ def calibrate_smile_strangle(spot: float, df_f: float, df_d: float, expiry: floa
                      any specific smile model. The calibration logic itself has none.
 
         Property: when rr == 0 the pillar strikes coincide with the market-strangle strikes, so this returns ms. """
-    ####
-    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
-    ####
-
     k_put_ms, k_call_ms, target, _ = market_strangle(spot, df_f, df_d, expiry, atm_vol, ms, delta, prem_adjusted,
                                                      **kwargs)
     fwd = spot * df_f / df_d
@@ -101,14 +97,14 @@ def calibrate_smile_strangle(spot: float, df_f: float, df_d: float, expiry: floa
     return float(brentq(objective, lo, hi, xtol=tol))
 
 
-def wingvols_from_market_strangle(spot: float, r_d: float, r_f: float, expiry: float, atm_vol: float,
+def wingvols_from_market_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float,
                                   rr: float, ms: float, build_smile, delta: float = 0.25,
                                   prem_adjusted: bool = False, **kwargs) -> tuple:
     """ Call/put vols at the given delta, given atm_vol/rr/ms where ms is the broker's raw
         quoted/market strangle, not yet a smile strangle. Model-agnostic: build_smile is the
         only model-specific input -- see calibrate_smile_strangle's own contract. """
     ####
-    df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
     ####
     smile_strangle = calibrate_smile_strangle(spot, df_f, df_d, expiry, atm_vol, rr, ms, build_smile,
                                               delta, prem_adjusted, **kwargs)

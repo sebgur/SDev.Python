@@ -248,7 +248,7 @@ def wingvols_from_market_strangle_vv(spot: float, r_d: float, r_f: float, expiry
         return _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, trial_bf, delta,
                                            prem_adjusted, 'none', **kwargs)
 
-    return fx_smilecalib.wingvols_from_market_strangle(spot, r_d, r_f, expiry, atm_vol, rr, ms,
+    return fx_smilecalib.wingvols_from_market_strangle(spot, df_f, df_d, expiry, atm_vol, rr, ms,
                                                        build_smile, delta, prem_adjusted, **kwargs)
 
 if __name__ == "__main__":
