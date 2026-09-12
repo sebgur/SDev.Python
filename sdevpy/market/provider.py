@@ -7,6 +7,7 @@ from sdevpy.market.spot import SpotData
 from sdevpy.market.eqforward import EqForwardData, EqForwardCurve
 from sdevpy.market.fxforward import FxForwardCurve
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
+from sdevpy.market.fxvolsurface import FxVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 from sdevpy.market import fxspot
 log = logging.getLogger(__name__)
@@ -43,6 +44,9 @@ class MarketDataProvider(ABC):
 
     @abstractmethod
     def get_eq_vol_data(self, name: str, date: dt.datetime) -> EqVolSurfaceData: ...
+
+    @abstractmethod
+    def get_fx_vol_data(self, pair: str, date: dt.datetime) -> FxVolSurfaceData: ...
 
     def get_rfrcurve(self, ccy: str, date: dt.datetime) -> YieldCurve:
         """ Get RFR curve in the specified currency """

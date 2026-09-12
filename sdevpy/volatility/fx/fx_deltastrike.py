@@ -38,7 +38,6 @@ import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
-# from sdevpy.volatility.fx.fx_strangle import fx_market_yearfraction
 
 
 def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
@@ -49,6 +48,18 @@ def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
         TODO: for now we use the basic model convention. Based on our information, this should be switched
         to Act/365 Fixed. """
     return timegrids.model_time(valdate, expiry)
+
+
+def atm_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: float,
+               prem_adjusted: bool=False) -> float:
+    """ Delta-neutral-straddle ATM strike (the FX convention, not ATM-forward).
+        Non premium-adjusted: F exp(+0.5 sigma^2 T); premium-adjusted: F exp(-0.5 sigma^2 T). """
+    ####
+    t = fx_market_yearfraction(valdate, expiry)
+    ####
+
+    sign = -1.0 if prem_adjusted else 1.0
+    return fwd * np.exp(sign * 0.5 * atm_vol ** 2 * t)
 
 
 def is_spot_delta_tenor(tenor_str: str, cutoff: str = '1Y') -> bool:

@@ -8,21 +8,9 @@ from sdevpy.utilities import dates as dts
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.volatility.fx import fx_vannavolga
 from sdevpy.market.fxvolsurface import wingvols_from_butterfly
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
-# from sdevpy.volatility.fx.fx_strangle import fx_market_yearfraction
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
 from sdevpy import logger
 logger.configure(module_display='partial')
-
-
-################## TODO ###########################################################################
-# * Pass expiry as tenor, but need to pass valdate too as we will need the conversion of expiry date to
-#   BS-conventional year frac
-# * Implement the direct spline, flat outside the last deltas, but keep the number of deltas/points generic
-# * Implement the vv-based calculation of extrapolated deltas
-# * Implement a calibration flow that, given the raw data, generates a "calibrated" surface that contains
-#   more deltas and the direct wing vols to save calibration time (and possibly interpolation definition)
-# * Use delta inversion and illustrate it
-# * Implement object that interpolates the spline results across time
 
 
 # Choose test case
@@ -88,7 +76,7 @@ for d, r, b in zip(deltas, rr, bf, strict=True):
     market_vols += [vol_p, vol_c]
 
 # t = fx_market_yearfraction(valdate, expiry)
-k_atm = fx_vannavolga.atm_dns_strike(valdate, expiry, fwd, atm_vol)
+k_atm = atm_strike(valdate, expiry, fwd, atm_vol)
 market_strikes.append(k_atm)
 market_vols.append(atm_vol)
 

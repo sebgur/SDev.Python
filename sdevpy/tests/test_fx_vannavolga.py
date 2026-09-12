@@ -4,7 +4,7 @@ import numpy as np
 from itertools import pairwise
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quotes, vv_weights,
-                                                lagrange_weights, atm_dns_strike, bs_vega)
+                                                lagrange_weights, bs_vega)
 from sdevpy.volatility.fx.fx_strangle import market_strangle, calibrate_smile_strangle
 
 from sdevpy.market import fxspot
@@ -12,7 +12,7 @@ from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file, wingvols_from
 from sdevpy.utilities import dates as dts
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.volatility.fx import fx_vannavolga
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction, atm_strike
 
 
 SPOT, R_D, R_F, EXPIRY = 1.10, 0.04, 0.02, 1.0
@@ -74,17 +74,14 @@ def _run_pipeline():
             vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
         k_put = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_put, -d, 'P').k)
         k_call = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_call, d, 'C').k)
-        # k_put = float(strike_from_delta(spot, r_dom, r_for, t, vol_put, -d, 'P').k)
-        # k_call = float(strike_from_delta(spot, r_dom, r_for, t, vol_call, d, 'C').k)
         market_strikes += [k_put, k_call]
         market_vols += [vol_put, vol_call]
 
-    k_atm = fx_vannavolga.atm_dns_strike(VALDATE, expiry, fwd, atm_vol)
+    k_atm = atm_strike(VALDATE, expiry, fwd, atm_vol)
     market_strikes.append(k_atm)
     market_vols.append(atm_vol)
 
     delta_idx = 0
-    # df_f, df_d = np.exp(-t * r_for), np.exp(-t * r_dom)
     s = fx_vannavolga.smile_from_quotes(VALDATE, expiry, spot=spot, df_f=df_f, df_d=df_d, atm_vol=atm_vol,
                                         rr=rr[delta_idx], bf=bf[delta_idx], delta=deltas[delta_idx])
 
@@ -105,11 +102,11 @@ class TestPillarConstruction:
     def test_negative_rr_puts_skew_on_the_put_wing(self):
         assert _smile().vol_put > _smile().vol_call
 
-    def test_atm_dns_strike_above_forward_when_not_prem_adjusted(self):
-        assert atm_dns_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adjusted=False) > 1.12
+    def test_atm_strike_above_forward_when_not_prem_adjusted(self):
+        assert atm_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adjusted=False) > 1.12
 
-    def test_atm_dns_strike_below_forward_when_prem_adjusted(self):
-        assert atm_dns_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adjusted=True) < 1.12
+    def test_atm_strike_below_forward_when_prem_adjusted(self):
+        assert atm_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adjusted=True) < 1.12
 
     def test_non_increasing_pillars_raise(self):
         with pytest.raises(ValueError):

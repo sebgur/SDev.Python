@@ -46,6 +46,7 @@ class FakeProvider(mdp.MarketDataProvider):
     get_spot_data = _not_used
     get_eq_forward_data = _not_used
     get_eq_vol_data = _not_used
+    get_fx_vol_data = _not_used
 
 
 ###################################################################################################

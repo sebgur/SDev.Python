@@ -9,10 +9,12 @@ from sdevpy.market import yieldcurve as ycrv
 from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.market import eqforward as eqfwd
 from sdevpy.market import eqvolsurface as eqvol
+from sdevpy.market import fxvolsurface as fxvol
 from sdevpy.market import fixings
 from sdevpy.market.spot import SpotData
 from sdevpy.market.eqforward import EqForwardData
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
+from sdevpy.market.fxvolsurface import FxVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 from sdevpy.market.provider import MarketDataProvider
 from sdevpy.tests import conftest
@@ -77,6 +79,15 @@ class MarketDataFileProvider(MarketDataProvider):
         folder = self.root / 'eqoptions'
         return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
 
+    def get_fx_vol_data(self, pair: str, date: dt.datetime) -> FxVolSurfaceData:
+        """ Retrieve FX vol surface data object """
+        file = self.fx_vol_data_file(pair, date)
+        return fxvol.fxvolsurfacedata_from_file(file)
+
+    def fx_vol_data_file(self, pair: str, date: dt.datetime) -> Path:
+        """ Return the data file given the name, date and folder """
+        folder = self.root / 'fxoptions'
+        return Path(folder) / pair / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
 
 
 if __name__ == "__main__":

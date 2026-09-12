@@ -27,7 +27,7 @@ import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.analytics import black
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction, atm_strike
 from sdevpy.volatility.fx import fx_strangle
 
 
@@ -65,18 +65,6 @@ def vv_weights(strike: npt.ArrayLike, k_put: float, k_atm: float, k_call: float,
     v2 = bs_vega(fwd, k_atm, expiry, atm_vol)
     v3 = bs_vega(fwd, k_call, expiry, atm_vol)
     return w1 * vega / v1, w2 * vega / v2, w3 * vega / v3
-
-
-def atm_dns_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: float,
-                   prem_adjusted: bool=False) -> float:
-    """ Delta-neutral-straddle ATM strike (the FX convention, not ATM-forward).
-        Non premium-adjusted: F exp(+0.5 sigma^2 T); premium-adjusted: F exp(-0.5 sigma^2 T). """
-    ####
-    t = fx_market_yearfraction(valdate, expiry)
-    ####
-
-    sign = -1.0 if prem_adjusted else 1.0
-    return fwd * np.exp(sign * 0.5 * atm_vol ** 2 * t)
 
 
 @dataclass
@@ -203,8 +191,7 @@ def _smile_from_smile_butterfly(valdate: dt.datetime, expiry: dt.datetime, spot:
     vol_put = atm_vol + bf - 0.5 * rr
 
     fwd = spot * df_f / df_d
-    k_atm = atm_dns_strike(valdate, expiry, fwd, atm_vol, prem_adjusted)
-    # k_atm = atm_dns_strike(fwd, atm_vol, t, prem_adjusted)
+    k_atm = atm_strike(valdate, expiry, fwd, atm_vol, prem_adjusted)
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
 
@@ -249,7 +236,7 @@ def smile_from_quotes(valdate: dt.datetime, expiry: dt.datetime, spot: float, df
     return smile
 
 def wingvols_from_market_strangle_vv(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
-                                     atm_vol: float, rr: float, ms: float, delta: float=0.25,
+                                     atm_vol: float, rr: float, ms: float, delta: float,
                                      prem_adjusted: bool=False, **kwargs) -> tuple:
     """ Specific form fx_strangle's generic version with a Vanna-Volga build_smile to construct
         from a candidate strangle """
