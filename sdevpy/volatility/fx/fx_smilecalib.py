@@ -1,36 +1,24 @@
-""" Smile-strangle calibration: converting a broker's quoted/market strangle into the
-    smile-consistent correction that reprices it, independent of which smile-interpolation
-    model is used.
+""" Smile-strangle calibration: model-independent part of the logic to convert a broker's quoted/market strangle
+    into the smile-consistent correction that reprices it. The model-dependent part, i.e. the smile interpolation
+    is passed as parameter.
 
-Terminology (Reiswich & Wystup, "FX Volatility Smile Construction"):
-    quoted strangle  (input `ms`)   -- the raw number printed on the broker's screen
-    market strangle  (`atm_vol+ms`) -- the flat vol used to find both strikes and price the
-                                       package; this is the "market strangle" proper
-    smile strangle   (calibrated)   -- the corrected number such that a real smile function,
-                                       evaluated at its own vols at those same strikes,
-                                       reprices the same market-strangle premium
+    Terminology (Reiswich & Wystup, "FX Volatility Smile Construction"):
+        quoted strangle (`ms`): the raw number printed on the broker's screen
+        market strangle (`atm_vol+ms`): the flat vol used to find both strikes and price the package.
+                                        This is the "market strangle" proper.
+        smile strangle (calibrated): the corrected number such that a real smile function, evaluated at its own vols
+                                     at those same strikes, reprices the same market-strangle premium
 """
 import numpy as np
 import datetime as dt
 from scipy.optimize import brentq
 from sdevpy.analytics import black
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction
 from sdevpy.market.fxvolsurface import wingvols_from_butterfly
-from sdevpy.utilities import timegrids
 
 
-def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
-    """ Yearfraction to put into Black-Scholes formula for the standard deviation that gets root-squared
-        and multiplied by the implied vols for the pricing of options.
-        WARNING: this is not meant to be used anywhere else. For instance the calculation of rates and/or
-        discount factors have no reasons to follow this same convention.
-        TODO: for now we use the basic model convention. Based on our information, this should be switched
-        to Act/365 Fixed. """
-    return timegrids.model_time(valdate, expiry)
-
-
-def market_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float, ms: float,
-                    delta: float=0.25, prem_adjusted: bool=False, **kwargs) -> tuple:
+def market_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
+                    atm_vol: float, ms: float, delta: float=0.25, prem_adjusted: bool=False, **kwargs) -> tuple:
     """ Resolve the broker's quoted strangle into the market-strangle price. Both wing strikes
         are struck off the single flat vol atm_vol+ms; the quote is the sum of the two option
         premia at that vol. Returns (k_put, k_call, fwd_price, vol_ms). """
@@ -39,18 +27,27 @@ def market_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vo
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
 
-    sol_put = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
-    sol_call = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
+    sol_put = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_ms, -delta, 'P',
+                                prem_adjusted=prem_adjusted, **kwargs)
+    sol_call = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_ms, delta, 'C',
+                                 prem_adjusted=prem_adjusted, **call_kwargs)
+    # sol_put = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
+    # sol_call = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
         raise ValueError(f"Could not solve market-strangle strikes at {delta}-delta "
                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
 
+    ####
+    t = fx_market_yearfraction(valdate, expiry)
+    ####
+
     k_put, k_call = float(sol_put.k), float(sol_call.k)
-    price = float(black.price(expiry, k_call, True, fwd, vol_ms) + black.price(expiry, k_put, False, fwd, vol_ms))
+    price = float(black.price(t, k_call, True, fwd, vol_ms) + black.price(t, k_put, False, fwd, vol_ms))
     return k_put, k_call, price, vol_ms
 
 
-def calibrate_smile_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float, rr: float, ms: float,
+def calibrate_smile_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
+                             atm_vol: float, rr: float, ms: float,
                              build_smile, delta: float=0.25, prem_adjusted: bool=False, tol: float=1e-12,
                              max_expand: int=60, **kwargs) -> float:
     """ Find the strangle such that build_smile(strangle) reprices the market strangle at its own two strikes.
@@ -60,9 +57,15 @@ def calibrate_smile_strangle(spot: float, df_f: float, df_d: float, expiry: floa
                      any specific smile model. The calibration logic itself has none.
 
         Property: when rr == 0 the pillar strikes coincide with the market-strangle strikes, so this returns ms. """
-    k_put_ms, k_call_ms, target, _ = market_strangle(spot, df_f, df_d, expiry, atm_vol, ms, delta, prem_adjusted,
+    k_put_ms, k_call_ms, target, _ = market_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, ms, delta, prem_adjusted,
                                                      **kwargs)
+    # k_put_ms, k_call_ms, target, _ = market_strangle(spot, df_f, df_d, expiry, atm_vol, ms, delta, prem_adjusted,
+    #                                                  **kwargs)
     fwd = spot * df_f / df_d
+
+    ####
+    t = fx_market_yearfraction(valdate, expiry)
+    ####
 
     def objective(bf):
         smile = build_smile(bf)
@@ -70,8 +73,7 @@ def calibrate_smile_strangle(spot: float, df_f: float, df_d: float, expiry: floa
         if not (np.isfinite(vol_put) and np.isfinite(vol_call)):
             raise ValueError(f"Smile is not arbitrage-free at the market-strangle strikes for smile strangle {bf}")
 
-        price = float(black.price(expiry, k_call_ms, True, fwd, vol_call) +
-                      black.price(expiry, k_put_ms, False, fwd, vol_put))
+        price = float(black.price(t, k_call_ms, True, fwd, vol_call) + black.price(t, k_put_ms, False, fwd, vol_put))
         return price - target
 
     f_ms = objective(ms)
@@ -109,15 +111,15 @@ def calibrate_smile_strangle(spot: float, df_f: float, df_d: float, expiry: floa
     return float(brentq(objective, lo, hi, xtol=tol))
 
 
-def wingvols_from_market_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float,
-                                  rr: float, ms: float, build_smile, delta: float = 0.25,
-                                  prem_adjusted: bool = False, **kwargs) -> tuple:
-    """ Call/put vols at the given delta, given atm_vol/rr/ms where ms is the broker's raw
-        quoted/market strangle, not yet a smile strangle. Model-agnostic: build_smile is the
-        only model-specific input -- see calibrate_smile_strangle's own contract. """
+def wingvols_from_market_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
+                                  atm_vol: float, rr: float, ms: float, build_smile, delta: float=0.25,
+                                  prem_adjusted: bool=False, **kwargs) -> tuple:
+    """ Call/put vols at the given delta, given atm_vol/rr/ms where ms is the broker's raw quoted/market strangle,
+        not yet a smile strangle. Model-agnostic: build_smile is the only model-specific input. """
     ####
-    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
+    t = fx_market_yearfraction(valdate, expiry)
     ####
-    smile_strangle = calibrate_smile_strangle(spot, df_f, df_d, expiry, atm_vol, rr, ms, build_smile,
+
+    smile_strangle = calibrate_smile_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, ms, build_smile,
                                               delta, prem_adjusted, **kwargs)
     return wingvols_from_butterfly(atm_vol, rr, smile_strangle)

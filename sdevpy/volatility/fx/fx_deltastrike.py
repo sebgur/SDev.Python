@@ -32,12 +32,24 @@ simultaneously per iteration, so a whole delta/maturity grid is solved in the sa
 quote. No Python-level loop over individual quotes, and no per-element calls into scipy.optimize.
 """
 from dataclasses import dataclass
+import datetime as dt
 import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.utilities import dates as dts
+from sdevpy.utilities import timegrids
+# from sdevpy.volatility.fx.fx_smilecalib import fx_market_yearfraction
 
-###################### Helpers ####################################################################
+
+def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
+    """ Yearfraction to put into Black-Scholes formula for the standard deviation that gets root-squared
+        and multiplied by the implied vols for the pricing of options.
+        WARNING: this is not meant to be used anywhere else. For instance the calculation of rates and/or
+        discount factors have no reasons to follow this same convention.
+        TODO: for now we use the basic model convention. Based on our information, this should be switched
+        to Act/365 Fixed. """
+    return timegrids.model_time(valdate, expiry)
+
 
 def is_spot_delta_tenor(tenor_str: str, cutoff: str = '1Y') -> bool:
     return dts.tenor_leq(tenor_str, cutoff)
@@ -78,10 +90,7 @@ def _d1d2(f: npt.ArrayLike, k: npt.ArrayLike, sigma: npt.ArrayLike, t: npt.Array
 
 def bs_delta(f, k, sigma, t, phi, disc, prem_adjusted) -> npt.ArrayLike:
     """ Vectorized Garman-Kohlhagen delta.
-        `disc` is the multiplicative factor that distinguishes spot delta (disc = exp(-r_f*T))
-        from forward delta (disc = 1). Passing the right `disc` array is how the
-        spot/forward convention switch is implemented -- see `strike_from_delta`.
-    """
+        disc: multiplicative factor distinguishing spot delta (disc = exp(-r_f*T)) from forward delta (disc = 1). """
     f, k, sigma, t, phi, disc = np.broadcast_arrays(*[_arr(a) for a in (f, k, sigma, t, phi, disc)])
     prem_adjusted = np.broadcast_to(_arr(prem_adjusted).astype(bool), f.shape)
     d1, d2 = _d1d2(f, k, sigma, t)
@@ -158,7 +167,8 @@ class StrikeSolution:
 
 
 # Main entry point
-def strike_from_delta(spot: npt.ArrayLike, df_f: npt.ArrayLike, df_d: npt.ArrayLike, t: npt.ArrayLike,
+def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.ArrayLike,
+                      df_f: npt.ArrayLike, df_d: npt.ArrayLike,
                       sigma: npt.ArrayLike, delta: npt.ArrayLike, option_type: npt.ArrayLike,
                       prem_adjusted: npt.ArrayLike=False, spot_delta: npt.ArrayLike=None,
                       spot_delta_cutoff: float=1.0, double_root_preference: str="small",
@@ -167,29 +177,26 @@ def strike_from_delta(spot: npt.ArrayLike, df_f: npt.ArrayLike, df_d: npt.ArrayL
     """
     Invert Garman-Kohlhagen delta quotes into strikes. Fully vectorized: all array arguments are broadcast
     together, so you can pass e.g. sigma/delta/option_type as a (n_maturities, n_deltas) grid
-    and T/r_d/r_f as (n_maturities, 1), and get a (n_maturities, n_deltas) grid of strikes back in one call.
+    and T/df_f/df_d as (n_maturities, 1), and get a (n_maturities, n_deltas) grid of strikes back in one call.
 
     Parameters
     ----------
-    spot : spot FX rate S (domestic per foreign unit)
-    r_d, r_f : domestic / foreign continuously-compounded risk-free rates
-    T : time to expiry in years
-    sigma: Black-Scholes volatility for that particular delta point (already the "smile" vol you'd plug into GK for
-           that quote -- this function does the delta->strike leg only, not the smile interpolation itself)
-    delta: the *signed* target delta (e.g. +0.25 for a 25-delta call, -0.25 for a 25-delta put), expressed in
+    spot: spot FX rate S (domestic per foreign unit)
+    d_f, d_d: foreign/domestic discount factors
+    sigma: Black-Scholes volatility
+    delta: signed target delta (e.g. +0.25 for a 25-delta call, -0.25 for a 25-delta put), expressed in
            whichever convention (spot vs forward, premium-adjusted or not) is implied by the other flags below
-           option_type : 'C'/'P' (any case) or +1/-1, broadcastable with the other inputs
-    prem_adjusted: bool or bool array whether *each* quote uses premium-adjusted delta. Currency-pair/market
-                   dependent. This function does not hardcode a currency-pair table since conventions can change.
-                   Pass it explicitly per quote or as a single bool for all quotes.
+           option_type : 'C'/'P' or +1/-1, broadcastable with the other inputs
+    prem_adjusted: bool or bool array whether each quote uses premium-adjusted delta. Currency-pair/market
+                   dependent. Pass it explicitly per quote or as a single bool for all quotes.
     spot_delta: optional bool/bool-array override. If None (default), the convention is chosen automatically
                 per element: spot delta for T <= spot_delta_cutoff, forward delta for T > spot_delta_cutoff. This
                 is the standard market rule (spot delta becomes a poor hedge-ratio proxy for long-dated options
                 once forward points dominate).
-    spot_delta_cutoff: maturity (in years) at which the convention switches (1.0 = 1Y, the market standard; override
-                       if needed for a specific pair) double_root_preference: 'small' (default, market convention) or
-                       'large' -- which of the two roots to report as `K` when a premium-adjusted call has two
-                       solutions. Both roots are always available via `K_alt`.
+    spot_delta_cutoff: maturity (in years) at which the convention switches (1.0 = 1Y, the market standard, tooverride
+                       if needed for a specific pair).
+    double_root_preference: 'small' (default, market convention) or 'large', which of the two roots to report as `K`
+                            when a premium-adjusted call has two solutions. Both roots are always available via `K_alt`.
     bracket_width_sigma_mult, bracket_width_floor: control how wide (in units of log-strike) the numerical search
                                                    brackets are. The defaults are generous (many sigma*sqrt(T) wide)
                                                    and should not need changing.
@@ -197,11 +204,15 @@ def strike_from_delta(spot: npt.ArrayLike, df_f: npt.ArrayLike, df_d: npt.ArrayL
                    for premium-adjusted calls, relative to the achievable maximum delta.
     tol_residual: after solving, the delta implied by the returned strike is recomputed and compared to the target;
                   if the discrepancy exceeds this, the element is marked invalid regardless of how it was classified.
-    max_iter: iterations for the bisection / ternary-search solvers.
+    max_iter: iterations for the bisection/ternary solvers.
 
     --------
     Returns: StrikeSolution container
     """
+    ####
+    t = fx_market_yearfraction(valdate, expiry)
+    ####
+
     # Broadcast everything
     s, df_f, df_d, t, sigma, delta = np.broadcast_arrays(*[_arr(a) for a in (spot, df_f, df_d, t, sigma, delta)])
     phi = np.broadcast_to(_phi_from_option_type(option_type), s.shape).astype(float)
@@ -211,8 +222,6 @@ def strike_from_delta(spot: npt.ArrayLike, df_f: npt.ArrayLike, df_d: npt.ArrayL
         raise ValueError("sigma and T must be strictly positive everywhere.")
 
     f = s * df_f / df_d
-    # f = s * np.exp((r_d - r_f) * t)
-    # df_for = np.exp(-r_f * t)
 
     if spot_delta is None:
         use_spot_delta = t <= spot_delta_cutoff
@@ -316,7 +325,9 @@ if __name__ == "__main__":
     delta = -0.25
     r_f, r_d, expiry = 0.02, 0.04, 0.5
     df_f, df_d = np.exp(-r_f * expiry), np.exp(-r_d * expiry)
-    res = strike_from_delta(spot=1.10, df_f=df_f, df_d=df_d, t=expiry, sigma=0.09, delta=-delta,
+    valdate = dt.datetime(2025, 12, 15)
+    expiry = dt.datetime(2026, 12, 15)
+    res = strike_from_delta(valdate, expiry, spot=1.10, df_f=df_f, df_d=df_d, sigma=0.09, delta=-delta,
                             option_type="P", prem_adjusted=False)
     print(res)
     # sanity check: recompute delta at that strike directly
@@ -329,14 +340,15 @@ if __name__ == "__main__":
     print("2) Vectorized grid: multiple maturities (incl. one > 1Y) x multiple deltas,")
     print("   premium-adjusted, mixed put/call -- shows automatic spot/forward switch")
     print("=" * 70)
-    maturities = np.array([0.25, 1.0, 2.0])[:, None] # (3,1) -> broadcasts down columns
+    maturities = np.array([dt.datetime(2026, 3, 15), dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)])[:, None] # (3,1) -> broadcasts down columns
+    # maturities = np.array([0.25, 1.0, 2.0])[:, None] # (3,1) -> broadcasts down columns
     deltas = np.array([-0.10, -0.25, 0.25, 0.10])[None, :] # (1,4) -> broadcasts across rows
     types = np.array([["P", "P", "C", "C"]] * 3)
     sigma_grid = np.array([[0.10, 0.095, 0.095, 0.105],
                            [0.11, 0.105, 0.105, 0.115],
                            [0.12, 0.115, 0.115, 0.125]])
 
-    res_grid = strike_from_delta(spot=1.10, r_d=0.04, r_f=0.02, t=maturities, sigma=sigma_grid,
+    res_grid = strike_from_delta(valdate, maturities, spot=1.10, r_d=0.04, r_f=0.02, sigma=sigma_grid,
                                  delta=deltas, option_type=types, prem_adjusted=True)
     print("Strikes:\n", res_grid.k)
     print("Used spot-delta convention (True) vs forward-delta (False):\n",
@@ -350,7 +362,7 @@ if __name__ == "__main__":
     print("   premium-adjusted call by sweeping the target delta past its max")
     print("=" * 70)
     sweep_deltas = np.linspace(0.01, 0.75, 15)
-    res_sweep = strike_from_delta(spot=1.10, r_d=0.04, r_f=0.02, t=1.5, sigma=0.15, delta=sweep_deltas,
+    res_sweep = strike_from_delta(valdate, expiry, spot=1.10, r_d=0.04, r_f=0.02, sigma=0.15, delta=sweep_deltas,
                                   option_type="C", prem_adjusted=True)
 
     for d, k, k_alt, n, dmax in zip(sweep_deltas, res_sweep.k, res_sweep.k_alt,

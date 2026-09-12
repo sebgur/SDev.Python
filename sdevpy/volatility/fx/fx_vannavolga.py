@@ -27,7 +27,7 @@ import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.analytics import black
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction
 from sdevpy.volatility.fx import fx_smilecalib
 
 
@@ -67,11 +67,16 @@ def vv_weights(strike: npt.ArrayLike, k_put: float, k_atm: float, k_call: float,
     return w1 * vega / v1, w2 * vega / v2, w3 * vega / v3
 
 
-def atm_dns_strike(fwd: float, atm_vol: float, expiry: float, prem_adjusted: bool = False) -> float:
+def atm_dns_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: float,
+                   prem_adjusted: bool=False) -> float:
     """ Delta-neutral-straddle ATM strike (the FX convention, not ATM-forward).
         Non premium-adjusted: F exp(+0.5 sigma^2 T); premium-adjusted: F exp(-0.5 sigma^2 T). """
+    ####
+    t = fx_market_yearfraction(valdate, expiry)
+    ####
+
     sign = -1.0 if prem_adjusted else 1.0
-    return fwd * np.exp(sign * 0.5 * atm_vol ** 2 * expiry)
+    return fwd * np.exp(sign * 0.5 * atm_vol ** 2 * t)
 
 
 @dataclass
@@ -186,26 +191,33 @@ class VannaVolgaSmile:
         raise RuntimeError(f"vol_at_delta did not converge for delta={delta} after {max_iter} iterations")
 
 
-def _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, bf, delta, prem_adjusted, extrapolation,
-                                **kwargs) -> VannaVolgaSmile:
+def _smile_from_smile_butterfly(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
+                                atm_vol: float, rr: float, bf: float, delta: float, prem_adjusted: bool,
+                                extrapolation: str, **kwargs) -> VannaVolgaSmile:
     """ Build the smile treating `bf` as a smile (vol) butterfly """
+    ####
+    t = fx_market_yearfraction(valdate, expiry)
+    ####
+
     vol_call = atm_vol + bf + 0.5 * rr
     vol_put = atm_vol + bf - 0.5 * rr
 
     fwd = spot * df_f / df_d
-    k_atm = atm_dns_strike(fwd, atm_vol, expiry, prem_adjusted)
+    k_atm = atm_dns_strike(valdate, expiry, fwd, atm_vol, prem_adjusted)
+    # k_atm = atm_dns_strike(fwd, atm_vol, t, prem_adjusted)
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
 
-    sol_put = strike_from_delta(spot, df_f, df_d, expiry, vol_put, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
-    sol_call = strike_from_delta(spot, df_f, df_d, expiry, vol_call, delta, 'C', prem_adjusted=prem_adjusted,
-                                 **call_kwargs)
+    sol_put = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_put, -delta, 'P',
+                                prem_adjusted=prem_adjusted, **kwargs)
+    sol_call = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_call, delta, 'C',
+                                 prem_adjusted=prem_adjusted, **call_kwargs)
 
     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
         raise ValueError(f"Could not solve pillar strikes for {delta}-delta quotes "
                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
 
-    return VannaVolgaSmile(fwd=float(fwd), expiry=float(expiry), k_put=float(sol_put.k),
+    return VannaVolgaSmile(fwd=float(fwd), expiry=float(t), k_put=float(sol_put.k),
                            k_atm=float(k_atm), k_call=float(sol_call.k), vol_put=float(vol_put),
                            atm_vol=float(atm_vol), vol_call=float(vol_call),
                            extrapolation=extrapolation, smile_butterfly=float(bf),
@@ -213,23 +225,22 @@ def _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, bf, delta
                            prem_adjusted=bool(prem_adjusted))
 
 
-def smile_from_quotes(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float, rr: float, bf: float,
+def smile_from_quotes(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
+                      atm_vol: float, rr: float, bf: float,
                       delta: float=0.25, prem_adjusted: bool=False, extrapolation: str='flat',
                       market_strangle_quote: bool=False, **kwargs) -> VannaVolgaSmile:
     """ Vanna-Volga interpolation from quotes """
-    # df_f, df_d = np.exp(-expiry * r_f), np.exp(-expiry * r_d)
-
     if market_strangle_quote:
         def build_smile(trial_bf):
-            return _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, trial_bf,
+            return _smile_from_smile_butterfly(valdate, expiry, spot, df_f, df_d, atm_vol, rr, trial_bf,
                                                delta, prem_adjusted, 'none', **kwargs)
 
-        smile_bf = fx_smilecalib.calibrate_smile_strangle(spot, df_f, df_d, expiry, atm_vol, rr, bf, build_smile,
-                                                          delta, prem_adjusted, **kwargs)
+        smile_bf = fx_smilecalib.calibrate_smile_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, bf,
+                                                          build_smile, delta, prem_adjusted, **kwargs)
     else:
         smile_bf = bf
 
-    smile = _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, smile_bf, delta,
+    smile = _smile_from_smile_butterfly(valdate, expiry, spot, df_f, df_d, atm_vol, rr, smile_bf, delta,
                                         prem_adjusted, extrapolation, **kwargs)
 
     if market_strangle_quote:
@@ -245,12 +256,15 @@ def wingvols_from_market_strangle_vv(valdate: dt.datetime, expiry: dt.datetime, 
                                      prem_adjusted: bool=False, **kwargs) -> tuple:
     """ Specific form fx_smilecalib's generic version with a Vanna-Volga build_smile to construct
         from a candidate strangle """
-    t = fx_smilecalib.fx_market_yearfraction(valdate, expiry)
+    ####
+    t = fx_market_yearfraction(valdate, expiry)
+    ####
+
     def build_smile(trial_bf):
-        return _smile_from_smile_butterfly(spot, df_f, df_d, t, atm_vol, rr, trial_bf, delta,
+        return _smile_from_smile_butterfly(valdate, expiry, spot, df_f, df_d, atm_vol, rr, trial_bf, delta,
                                            prem_adjusted, 'none', **kwargs)
 
-    return fx_smilecalib.wingvols_from_market_strangle(spot, df_f, df_d, t, atm_vol, rr, ms,
+    return fx_smilecalib.wingvols_from_market_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, ms,
                                                        build_smile, delta, prem_adjusted, **kwargs)
 
 if __name__ == "__main__":

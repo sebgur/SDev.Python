@@ -1,18 +1,31 @@
 import pytest
+import datetime as dt
 import numpy as np
 from itertools import pairwise
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quotes, vv_weights,
                                                 lagrange_weights, atm_dns_strike, bs_vega)
-from sdevpy.volatility.fx.fx_smilecalib import market_strangle, calibrate_smile_strangle, fx_market_yearfraction
+from sdevpy.volatility.fx.fx_smilecalib import market_strangle, calibrate_smile_strangle
+
+from sdevpy.market import fxspot
+from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file, wingvols_from_butterfly
+from sdevpy.utilities import dates as dts
+from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.volatility.fx import fx_vannavolga
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction
+
 
 SPOT, R_D, R_F, EXPIRY = 1.10, 0.04, 0.02, 1.0
 ATM_VOL, RR, BF = 0.10, -0.01, 0.0025
+VALDATE = dt.datetime(2025, 12, 15)
+EXPIRY_DT = dt.datetime(2026, 12, 15)
+PAIR = "USDJPY"
+VIEW_EXPIRY_IDX = 0
 
 
 def _smile(**kwargs):
     df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-    params = dict(spot=SPOT, df_f=df_f, df_d=df_d, expiry=EXPIRY, atm_vol=ATM_VOL, rr=RR, bf=BF)
+    params = dict(valdate=VALDATE, expiry=EXPIRY_DT, spot=SPOT, df_f=df_f, df_d=df_d, atm_vol=ATM_VOL, rr=RR, bf=BF)
     params.update(kwargs)
     return smile_from_quotes(**params)
 
@@ -24,6 +37,59 @@ def _vv_build_smile(rr=RR, prem_adjusted=False):
     def build_smile(bf):
         return _smile(rr=rr, bf=bf, prem_adjusted=prem_adjusted, extrapolation='none')
     return build_smile
+
+
+def _run_pipeline():
+    """ Mirrors ex_fx_vol_market.py end to end, returning every intermediate value the
+        regression checks pin against. Kept as a single function so a refactor of the script
+        can be checked by re-running this, not by re-deriving expected values by hand. """
+    provider = MarketDataFileProvider()
+    ccy1, ccy2 = fxspot.parse_fx_pair(PAIR)
+    forccy, domccy = fxspot.conventional_pair_name(ccy1, ccy2)
+
+    file = provider.root / "fxoptions" / PAIR / (VALDATE.strftime(dts.DATE_FILE_FORMAT) + ".json")
+    data = fxvolsurfacedata_from_file(file)
+
+    expiry = data.expiries[VIEW_EXPIRY_IDX]
+    atm_vol = data.atm_vols[VIEW_EXPIRY_IDX]
+    deltas = data.deltas[VIEW_EXPIRY_IDX]
+    rr = data.rr[VIEW_EXPIRY_IDX]
+    bf = data.bf[VIEW_EXPIRY_IDX]
+
+    spot = provider.get_fx_spot(forccy, domccy, VALDATE)
+
+    forcurve = provider.get_xccycurve(forccy, VALDATE)
+    domcurve = provider.get_xccycurve(domccy, VALDATE)
+    df_f = forcurve.discount(expiry)
+    df_d = domcurve.discount(expiry)
+    fwd = spot * df_f / df_d
+
+    # t = fx_market_yearfraction(VALDATE, expiry)
+    market_strikes, market_vols = [], []
+    for d, r, b in zip(deltas, rr, bf, strict=True):
+        if data.market_strangle_quote:
+            vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(VALDATE, expiry, spot, df_f, df_d,
+                                                                               atm_vol, r, b, delta=d)
+        else:
+            vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
+        k_put = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_put, -d, 'P').k)
+        k_call = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_call, d, 'C').k)
+        # k_put = float(strike_from_delta(spot, r_dom, r_for, t, vol_put, -d, 'P').k)
+        # k_call = float(strike_from_delta(spot, r_dom, r_for, t, vol_call, d, 'C').k)
+        market_strikes += [k_put, k_call]
+        market_vols += [vol_put, vol_call]
+
+    k_atm = fx_vannavolga.atm_dns_strike(VALDATE, expiry, fwd, atm_vol)
+    market_strikes.append(k_atm)
+    market_vols.append(atm_vol)
+
+    delta_idx = 0
+    # df_f, df_d = np.exp(-t * r_for), np.exp(-t * r_dom)
+    s = fx_vannavolga.smile_from_quotes(VALDATE, expiry, spot=spot, df_f=df_f, df_d=df_d, atm_vol=atm_vol,
+                                        rr=rr[delta_idx], bf=bf[delta_idx], delta=deltas[delta_idx])
+
+    return {'forccy': forccy, 'domccy': domccy, 'spot': spot, 't': expiry, 'df_for': df_f, 'df_dom': df_d,
+            'fwd': fwd, 'market_strikes': market_strikes, 'market_vols': market_vols, 'smile': s}
 
 
 class TestPillarConstruction:
@@ -40,10 +106,10 @@ class TestPillarConstruction:
         assert _smile().vol_put > _smile().vol_call
 
     def test_atm_dns_strike_above_forward_when_not_prem_adjusted(self):
-        assert atm_dns_strike(1.12, 0.10, 1.0, prem_adjusted=False) > 1.12
+        assert atm_dns_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adjusted=False) > 1.12
 
     def test_atm_dns_strike_below_forward_when_prem_adjusted(self):
-        assert atm_dns_strike(1.12, 0.10, 1.0, prem_adjusted=True) < 1.12
+        assert atm_dns_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adjusted=True) < 1.12
 
     def test_non_increasing_pillars_raise(self):
         with pytest.raises(ValueError):
@@ -142,21 +208,22 @@ class TestMarketStrangleCalibration:
         # With no skew the pillar strikes coincide with the market-strangle strikes, so the
         # calibration is a provable no-op -- the strongest check on the routine.
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        bf = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=0.0, ms=0.0025,
+        bf = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=0.0, ms=0.0025,
                                       build_smile=_vv_build_smile(rr=0.0))
         assert bf == pytest.approx(0.0025, abs=1e-11)
 
     def test_calibrated_smile_reprices_the_market_strangle(self):
         s = _smile(rr=-0.01, bf=0.0025, market_strangle_quote=True, extrapolation='none')
-        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        k_put, k_call, target, _ = market_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, 0.0025)
-        priced = (black.price(EXPIRY, k_call, True, s.fwd, float(s.vol(k_call)))
-                  + black.price(EXPIRY, k_put, False, s.fwd, float(s.vol(k_put))))
+        t = fx_market_yearfraction(VALDATE, EXPIRY_DT)
+        df_f, df_d = np.exp(-t * R_F), np.exp(-t * R_D)
+        k_put, k_call, target, _ = market_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, 0.0025)
+        priced = (black.price(t, k_call, True, s.fwd, float(s.vol(k_call)))
+                  + black.price(t, k_put, False, s.fwd, float(s.vol(k_put))))
         assert priced == pytest.approx(target, abs=1e-10)
 
     def test_market_strangle_strikes_straddle_the_forward(self):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        k_put, k_call, price, vol_ms = market_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, 0.0025)
+        k_put, k_call, price, vol_ms = market_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, 0.0025)
         fwd = SPOT * np.exp((R_D - R_F) * EXPIRY)
         assert k_put < fwd < k_call
         assert price > 0.0
@@ -164,12 +231,12 @@ class TestMarketStrangleCalibration:
 
     def test_smile_butterfly_exceeds_market_butterfly_when_skewed(self):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        assert calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=-0.02, ms=0.0025,
+        assert calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=-0.02, ms=0.0025,
                                         build_smile=_vv_build_smile(rr=-0.02)) > 0.0025
 
     def test_correction_grows_with_skew(self):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        gaps = [calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=r, ms=0.0025,
+        gaps = [calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=r, ms=0.0025,
                                          build_smile=_vv_build_smile(rr=r))
                 for r in (-0.005, -0.01, -0.02, -0.04)]
         assert all(b > a for a, b in pairwise(gaps))
@@ -188,10 +255,11 @@ class TestMarketStrangleCalibration:
         # The DNS ATM strike sits above the forward by 0.5*sigma^2*T, so the three-strike grid
         # is not symmetric in log-moneyness and flipping the skew does not mirror it. The gap
         # is ~4% at T=1Y and grows with sigma^2*T (2% at 3M, 6% at 2Y).
-        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        pos = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=0.02, ms=0.0025,
+        t = fx_market_yearfraction(VALDATE, EXPIRY_DT)
+        df_f, df_d = np.exp(-t * R_F), np.exp(-t * R_D)
+        pos = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=0.02, ms=0.0025,
                                        build_smile=_vv_build_smile(rr=0.02))
-        neg = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=-0.02, ms=0.0025,
+        neg = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=-0.02, ms=0.0025,
                                        build_smile=_vv_build_smile(rr=-0.02))
         assert pos != pytest.approx(neg, abs=1e-6)
         assert abs(pos - neg) / neg == pytest.approx(0.044, abs=0.005)
@@ -202,21 +270,23 @@ class TestPremiumAdjusted:
         # Guards the double-root trap: the PA call delta is non-monotonic, and the deep-ITM
         # root (0.286 vs a 1.122 forward) would give non-monotonic pillars.
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        s = smile_from_quotes(SPOT, df_f, df_d, EXPIRY, ATM_VOL, RR, BF, prem_adjusted=True, extrapolation='none')
+        s = smile_from_quotes(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, RR, BF, prem_adjusted=True,
+                              extrapolation='none')
         strikes = np.array([s.k_put, s.k_atm, s.k_call])
         assert np.allclose(s.vol(strikes),
                            np.array([s.vol_put, s.atm_vol, s.vol_call]), atol=1e-10)
 
     def test_prem_adjusted_call_pillar_is_the_otm_root(self):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        s = smile_from_quotes(SPOT, df_f, df_d, EXPIRY, ATM_VOL, RR, BF, prem_adjusted=True)
+        s = smile_from_quotes(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, RR, BF, prem_adjusted=True)
         assert s.k_call > s.fwd
 
     def test_prem_adjusted_market_strangle_calibration(self):
-        df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        bf = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=-0.01, ms=0.0025,
+        t = fx_market_yearfraction(VALDATE, EXPIRY_DT)
+        df_f, df_d = np.exp(-t * R_F), np.exp(-t * R_D)
+        bf = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=-0.01, ms=0.0025,
                                       build_smile=_vv_build_smile(rr=-0.01, prem_adjusted=True),
-                                       prem_adjusted=True)
+                                      prem_adjusted=True)
         assert bf == pytest.approx(0.00284682, abs=1e-7)
 
 
@@ -247,84 +317,9 @@ class TestRegression:
     ])
     def test_calibrated_butterfly(self, rr, ms, expected):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        bf = calibrate_smile_strangle(SPOT, df_f, df_d, EXPIRY, ATM_VOL, rr=rr, ms=ms,
+        bf = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=rr, ms=ms,
                                       build_smile=_vv_build_smile(rr=rr))
         assert bf == pytest.approx(expected, abs=1e-7)
-
-
-################### TEMP ###############################
-import datetime as dt
-import numpy as np
-import pytest
-from sdevpy.market import fxspot
-from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file, wingvols_from_butterfly
-from sdevpy.utilities import dates as dts
-from sdevpy.utilities import timegrids
-from sdevpy.market.fileprovider import MarketDataFileProvider
-from sdevpy.volatility.fx import fx_vannavolga
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
-
-PAIR = "USDJPY"
-VALDATE = dt.datetime(2025, 12, 15)
-VIEW_EXPIRY_IDX = 0
-
-
-def _run_pipeline():
-    """ Mirrors ex_fx_vol_market.py end to end, returning every intermediate value the
-        regression checks pin against. Kept as a single function so a refactor of the script
-        can be checked by re-running this, not by re-deriving expected values by hand. """
-    provider = MarketDataFileProvider()
-    ccy1, ccy2 = fxspot.parse_fx_pair(PAIR)
-    forccy, domccy = fxspot.conventional_pair_name(ccy1, ccy2)
-
-    file = provider.root / "fxoptions" / PAIR / (VALDATE.strftime(dts.DATE_FILE_FORMAT) + ".json")
-    data = fxvolsurfacedata_from_file(file)
-
-    expiry = data.expiries[VIEW_EXPIRY_IDX]
-    atm_vol = data.atm_vols[VIEW_EXPIRY_IDX]
-    deltas = data.deltas[VIEW_EXPIRY_IDX]
-    rr = data.rr[VIEW_EXPIRY_IDX]
-    bf = data.bf[VIEW_EXPIRY_IDX]
-
-    spot = provider.get_fx_spot(forccy, domccy, VALDATE)
-
-    forcurve = provider.get_xccycurve(forccy, VALDATE)
-    domcurve = provider.get_xccycurve(domccy, VALDATE)
-    df_f = forcurve.discount(expiry)
-    df_d = domcurve.discount(expiry)
-    fwd = spot * df_f / df_d
-
-    # t = timegrids.model_time(VALDATE, expiry)
-    t = fx_market_yearfraction(VALDATE, expiry)
-    market_strikes, market_vols = [], []
-    for d, r, b in zip(deltas, rr, bf, strict=True):
-        if data.market_strangle_quote:
-            vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(VALDATE, expiry, spot, df_f, df_d,
-                                                                               atm_vol, r, b, delta=d)
-        else:
-            vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
-        k_put = float(strike_from_delta(spot, df_f, df_d, t, vol_put, -d, 'P').k)
-        k_call = float(strike_from_delta(spot, df_f, df_d, t, vol_call, d, 'C').k)
-        # k_put = float(strike_from_delta(spot, r_dom, r_for, t, vol_put, -d, 'P').k)
-        # k_call = float(strike_from_delta(spot, r_dom, r_for, t, vol_call, d, 'C').k)
-        market_strikes += [k_put, k_call]
-        market_vols += [vol_put, vol_call]
-
-    k_atm = fx_vannavolga.atm_dns_strike(fwd, atm_vol, t)
-    market_strikes.append(k_atm)
-    market_vols.append(atm_vol)
-
-    delta_idx = 0
-    # df_f, df_d = np.exp(-t * r_for), np.exp(-t * r_dom)
-    s = fx_vannavolga.smile_from_quotes(spot=spot, df_f=df_f, df_d=df_d, expiry=t, atm_vol=atm_vol,
-                                        rr=rr[delta_idx], bf=bf[delta_idx], delta=deltas[delta_idx])
-
-    return {
-        'forccy': forccy, 'domccy': domccy, 'spot': spot, 't': t,
-        'df_for': df_f, 'df_dom': df_d,# 'r_for': r_for, 'r_dom': r_dom,
-        'fwd': fwd,
-        'market_strikes': market_strikes, 'market_vols': market_vols, 'smile': s,
-    }
 
 
 class TestExFxVolMarketRegression:
@@ -338,7 +333,7 @@ class TestExFxVolMarketRegression:
         r = _run_pipeline()
         assert (r['forccy'], r['domccy']) == ('USD', 'JPY')
         assert r['spot'] == pytest.approx(150.0)
-        assert r['t'] == pytest.approx(0.09863013698630137, abs=1e-12)
+        assert r['t'] == dt.datetime(2026, 1, 20)
 
     def test_rates_and_forward(self):
         r = _run_pipeline()
