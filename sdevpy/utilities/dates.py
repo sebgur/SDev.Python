@@ -10,6 +10,11 @@ DATETIME_FORMAT = '%d-%b-%Y %H:%M:%S'
 DATE_FILE_FORMAT = '%Y%m%d-%H%M%S'
 _ANCHOR = dt.datetime(1960, 1, 1) # Arbitrary but fixed (only relative ordering matters)
 
+# ON, TN and SN are all smaller, by market convention, to any tenor in D/W/M/Y
+_SPECIAL_TENOR_OFFSETS = {'ON': dt.timedelta(microseconds=-3),
+                          'TN': dt.timedelta(microseconds=-2),
+                          'SN': dt.timedelta(microseconds=-1)}
+
 
 def advance_int(base_date: dt.datetime, days: int=0, months: int=0, years: int=0) -> dt.datetime:
     """ Advance base_date by days, months and years, no calendars or conventions """
@@ -46,14 +51,18 @@ def period(tenor_str: str) -> relativedelta:
     return relativedelta(years=years, months=months, weeks=weeks, days=days)
 
 
-def tenor_to_date(tenor_str: str, anchor: dt.datetime=_ANCHOR) -> dt.datetime:
-    """ Map a tenor to a date under a fixed anchor, purely for ordering -- not a real
-        settlement or valuation date. ON/TN/SN are shorter than any Y/M/W/D tenor by market
-        convention (not by a fixed day count -- their real length depends on the trading
-        calendar and weekends), so they map to the anchor itself rather than being parsed. """
-    if tenor_str.upper() in ('ON', 'TN', 'SN'):
-        return anchor
-    return anchor + period(tenor_str)
+def tenor_to_date(tenor_str: str, anchor: dt.datetime = _ANCHOR) -> dt.datetime:
+    """ Map a tenor to a date under a fixed anchor, but beware that this is purely for ordering.
+        WARNING: this is not a real settlement or valuation date calculation. ON/TN/SN are shorter
+        than any Y/M/W/D tenor by market convention. """
+    upper = tenor_str.upper()
+    if upper in _SPECIAL_TENOR_OFFSETS:
+        return anchor + _SPECIAL_TENOR_OFFSETS[upper]
+    else:
+        return anchor + period(tenor_str)
+    # if tenor_str.upper() in ('ON', 'TN', 'SN'):
+    #     return anchor
+    # return anchor + period(tenor_str)
 
 
 def tenor_leq(t1: str, t2: str, anchor: dt.datetime=_ANCHOR) -> bool:
@@ -68,3 +77,12 @@ if __name__ == "__main__":
 
     d = [dt.datetime(2026, 3, 8), dt.datetime(2026, 3, 8)]
     print(to_oadate(d))
+
+    list_to_sort = [{'tenor': '2W', 'value': "ToTo"}, {'tenor': 'SN', 'value': "TaTa"},
+                    {'tenor': '1W', 'value': "TuTu"}, {'tenor': 'ON', 'value': "TiTi"},
+                    {'tenor': '3Y', 'value': "TeTe"}, {'tenor': 'TN', 'value': "TyTy"}]
+
+    sorted_list = sorted(list_to_sort, key=lambda r: tenor_to_date(r['tenor']))
+    print(sorted_list)
+
+    print(tenor_leq("13M", "1Y"))

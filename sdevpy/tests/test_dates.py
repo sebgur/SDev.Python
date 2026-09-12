@@ -241,9 +241,16 @@ class TestTenorToDate:
         assert dts.tenor_to_date('9M3W', anchor=dt.datetime(2000, 1, 1)) == dt.datetime(2000, 10, 22)
 
     @pytest.mark.parametrize("short_tenor", ['ON', 'TN', 'SN', 'on', 'tn', 'sn'])
-    def test_short_dated_tenors_map_to_the_anchor_itself(self, short_tenor):
+    def test_short_dated_tenors_map_at_or_before_the_anchor(self, short_tenor):
         anchor = dt.datetime(2000, 1, 1)
-        assert dts.tenor_to_date(short_tenor, anchor=anchor) == anchor
+        assert dts.tenor_to_date(short_tenor, anchor=anchor) <= anchor
+
+    def test_short_dated_tenors_are_strictly_ordered(self):
+        anchor = dt.datetime(2000, 1, 1)
+        on = dts.tenor_to_date('ON', anchor=anchor)
+        tn = dts.tenor_to_date('TN', anchor=anchor)
+        sn = dts.tenor_to_date('SN', anchor=anchor)
+        assert on < tn < sn
 
     def test_default_anchor_is_used_when_not_specified(self):
         # Pure function: same tenor, same (default) anchor, same result every call
@@ -278,6 +285,13 @@ class TestTenorLeq:
         # against the actual default anchor (2000-01-01, a 31-day January) so a future change to
         # the default anchor is caught here rather than discovered silently downstream.
         assert dts.tenor_leq('1M', '29D') is False  # true for the current default anchor only
+
+    def test_short_dated_tenors_are_ordered_on_tn_sn(self):
+        assert dts.tenor_leq('ON', 'TN') is True
+        assert dts.tenor_leq('TN', 'ON') is False
+        assert dts.tenor_leq('TN', 'SN') is True
+        assert dts.tenor_leq('SN', 'TN') is False
+        assert dts.tenor_leq('ON', 'SN') is True
 
 
 if __name__ == "__main__":

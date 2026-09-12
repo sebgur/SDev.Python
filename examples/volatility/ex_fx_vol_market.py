@@ -22,6 +22,7 @@ logger.configure(module_display='partial')
 # * Implement a calibration flow that, given the raw data, generates a "calibrated" surface that contains
 #   more deltas and the direct wing vols to save calibration time (and possibly interpolation definition)
 # * Use delta inversion and illustrate it
+# * Implement object that interpolates the spline results across time
 
 
 # Choose test case
@@ -73,9 +74,6 @@ df_f = forcurve.discount(expiry)
 df_d = domcurve.discount(expiry)
 print(f"Foreign df: {df_f}")
 print(f"Domestic df: {df_d}")
-# r_for, r_dom = -np.log(df_f) / t, -np.log(df_d) / t
-# print(f"Foreign rate: {r_for}")
-# print(f"Domestic rate: {r_dom}")
 fwd = spot * df_f / df_d
 print(f"Forward: {fwd}")
 

@@ -24,6 +24,7 @@ class FxVolSurfaceData:
                 raise ValueError(f"Mismatch in sizes between deltas, rr and bf on section index {idx}")
 
         self.expiries = np.asarray([s['expiry'] for s in sections])
+        self.tenors = np.asarray([s['tenor'] for s in sections])
         self.atm_vols = np.asarray([s['atm_vol'] for s in sections], dtype=float)
         self.deltas = [np.asarray(s['deltas'], dtype=float) for s in sections]
         self.rr = [np.asarray(s['rr'], dtype=float) for s in sections]
