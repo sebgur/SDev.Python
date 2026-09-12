@@ -28,7 +28,7 @@ import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction
-from sdevpy.volatility.fx import fx_smilecalib
+from sdevpy.volatility.fx import fx_strangle
 
 
 def _arr(x) -> npt.NDArray[np.float64]:
@@ -235,8 +235,8 @@ def smile_from_quotes(valdate: dt.datetime, expiry: dt.datetime, spot: float, df
             return _smile_from_smile_butterfly(valdate, expiry, spot, df_f, df_d, atm_vol, rr, trial_bf,
                                                delta, prem_adjusted, 'none', **kwargs)
 
-        smile_bf = fx_smilecalib.calibrate_smile_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, bf,
-                                                          build_smile, delta, prem_adjusted, **kwargs)
+        smile_bf = fx_strangle.calibrate_smile_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, bf,
+                                                        build_smile, delta, prem_adjusted, **kwargs)
     else:
         smile_bf = bf
 
@@ -248,24 +248,17 @@ def smile_from_quotes(valdate: dt.datetime, expiry: dt.datetime, spot: float, df
 
     return smile
 
-# def wingvols_from_market_strangle_vv(spot: float, df_f: float, df_d: float, expiry: float,
-#                                      atm_vol: float, rr: float, ms: float, delta: float=0.25,
-#                                      prem_adjusted: bool=False, **kwargs) -> tuple:
 def wingvols_from_market_strangle_vv(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
                                      atm_vol: float, rr: float, ms: float, delta: float=0.25,
                                      prem_adjusted: bool=False, **kwargs) -> tuple:
-    """ Specific form fx_smilecalib's generic version with a Vanna-Volga build_smile to construct
+    """ Specific form fx_strangle's generic version with a Vanna-Volga build_smile to construct
         from a candidate strangle """
-    ####
-    t = fx_market_yearfraction(valdate, expiry)
-    ####
-
     def build_smile(trial_bf):
         return _smile_from_smile_butterfly(valdate, expiry, spot, df_f, df_d, atm_vol, rr, trial_bf, delta,
                                            prem_adjusted, 'none', **kwargs)
 
-    return fx_smilecalib.wingvols_from_market_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, ms,
-                                                       build_smile, delta, prem_adjusted, **kwargs)
+    return fx_strangle.wingvols_from_market_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, ms,
+                                                     build_smile, delta, prem_adjusted, **kwargs)
 
 if __name__ == "__main__":
     r_d, r_f = 0.04, 0.02

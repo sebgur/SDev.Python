@@ -149,15 +149,15 @@ def test_make_periods_imm_rejects_non_quarterly_term():
 
     try:
         cal._unadjusted_roll_dates(start, end, '1M', roll_convention="IMM")
-        assert False, "expected ValueError"
+        assert False, "expected ValueError" # noqa
     except ValueError:
         pass
 
 
 def test_eom_uses_direction_correct_anchor():
     cal = cdr.make_calendar("USD")
-    start = dt.date(2024, 1, 10)   # not EOM
-    end = dt.date(2024, 4, 30)     # EOM (April has 30 days)
+    start = dt.date(2024, 1, 10) # not EOM
+    end = dt.date(2024, 4, 30) # EOM (April has 30 days)
 
     # default stub "short_front" rolls backward from `end` -> EOM check must use `end`, not `start`
     roll_dates = cal._unadjusted_roll_dates(start, end, '6M', eom=True)
@@ -170,7 +170,7 @@ def test_eom_short_back_anchor_unaffected():
     end = dt.date(2024, 4, 10) # not EOM
 
     roll_dates = cal._unadjusted_roll_dates(start, end, '6M', stub="short_back", eom=True)
-    assert roll_dates == [dt.date(2024, 1, 31), dt.date(2024, 4, 30)]  # end also snaps to month-end
+    assert roll_dates == [dt.date(2024, 1, 31), dt.date(2024, 4, 30)] # end also snaps to month-end
 
 
 def test_first_date_override_forces_irregular_front_stub():
@@ -217,14 +217,14 @@ def test_stub_override_validation():
 
     try:
         cal._unadjusted_roll_dates(start, end, '1M', first_date=dt.date(2024, 6, 1))
-        assert False, "expected ValueError"
+        assert False, "expected ValueError" # noqa
     except ValueError:
         pass
 
     try:
         cal._unadjusted_roll_dates(start, end, '1M',
                                     first_date=dt.date(2024, 4, 1), next_to_last_date=dt.date(2024, 3, 1))
-        assert False, "expected ValueError"
+        assert False, "expected ValueError" # noqa
     except ValueError:
         pass
 

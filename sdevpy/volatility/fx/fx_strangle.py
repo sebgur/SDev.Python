@@ -31,8 +31,6 @@ def market_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f
                                 prem_adjusted=prem_adjusted, **kwargs)
     sol_call = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_ms, delta, 'C',
                                  prem_adjusted=prem_adjusted, **call_kwargs)
-    # sol_put = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, -delta, 'P', prem_adjusted=prem_adjusted, **kwargs)
-    # sol_call = strike_from_delta(spot, df_f, df_d, expiry, vol_ms, delta, 'C', prem_adjusted=prem_adjusted, **call_kwargs)
     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
         raise ValueError(f"Could not solve market-strangle strikes at {delta}-delta "
                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
@@ -57,10 +55,8 @@ def calibrate_smile_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: fl
                      any specific smile model. The calibration logic itself has none.
 
         Property: when rr == 0 the pillar strikes coincide with the market-strangle strikes, so this returns ms. """
-    k_put_ms, k_call_ms, target, _ = market_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, ms, delta, prem_adjusted,
-                                                     **kwargs)
-    # k_put_ms, k_call_ms, target, _ = market_strangle(spot, df_f, df_d, expiry, atm_vol, ms, delta, prem_adjusted,
-    #                                                  **kwargs)
+    k_put_ms, k_call_ms, target, _ = market_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, ms, delta,
+                                                     prem_adjusted, **kwargs)
     fwd = spot * df_f / df_d
 
     ####
@@ -116,10 +112,6 @@ def wingvols_from_market_strangle(valdate: dt.datetime, expiry: dt.datetime, spo
                                   prem_adjusted: bool=False, **kwargs) -> tuple:
     """ Call/put vols at the given delta, given atm_vol/rr/ms where ms is the broker's raw quoted/market strangle,
         not yet a smile strangle. Model-agnostic: build_smile is the only model-specific input. """
-    ####
-    t = fx_market_yearfraction(valdate, expiry)
-    ####
-
     smile_strangle = calibrate_smile_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, ms, build_smile,
                                               delta, prem_adjusted, **kwargs)
     return wingvols_from_butterfly(atm_vol, rr, smile_strangle)

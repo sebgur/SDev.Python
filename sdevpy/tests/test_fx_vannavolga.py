@@ -5,7 +5,7 @@ from itertools import pairwise
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quotes, vv_weights,
                                                 lagrange_weights, atm_dns_strike, bs_vega)
-from sdevpy.volatility.fx.fx_smilecalib import market_strangle, calibrate_smile_strangle
+from sdevpy.volatility.fx.fx_strangle import market_strangle, calibrate_smile_strangle
 
 from sdevpy.market import fxspot
 from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file, wingvols_from_butterfly

@@ -38,7 +38,7 @@ import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import timegrids
-# from sdevpy.volatility.fx.fx_smilecalib import fx_market_yearfraction
+# from sdevpy.volatility.fx.fx_strangle import fx_market_yearfraction
 
 
 def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
@@ -340,8 +340,9 @@ if __name__ == "__main__":
     print("2) Vectorized grid: multiple maturities (incl. one > 1Y) x multiple deltas,")
     print("   premium-adjusted, mixed put/call -- shows automatic spot/forward switch")
     print("=" * 70)
-    maturities = np.array([dt.datetime(2026, 3, 15), dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)])[:, None] # (3,1) -> broadcasts down columns
-    # maturities = np.array([0.25, 1.0, 2.0])[:, None] # (3,1) -> broadcasts down columns
+    # (3,1) -> broadcasts down columns
+    maturities = np.array([dt.datetime(2026, 3, 15), dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)])[:, None]
+    # maturities = np.array([0.25, 1.0, 2.0])[:, None]
     deltas = np.array([-0.10, -0.25, 0.25, 0.10])[None, :] # (1,4) -> broadcasts across rows
     types = np.array([["P", "P", "C", "C"]] * 3)
     sigma_grid = np.array([[0.10, 0.095, 0.095, 0.105],

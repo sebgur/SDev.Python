@@ -9,7 +9,7 @@ from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.volatility.fx import fx_vannavolga
 from sdevpy.market.fxvolsurface import wingvols_from_butterfly
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
-from sdevpy.volatility.fx.fx_smilecalib import fx_market_yearfraction
+# from sdevpy.volatility.fx.fx_strangle import fx_market_yearfraction
 from sdevpy import logger
 logger.configure(module_display='partial')
 
@@ -84,8 +84,6 @@ for d, r, b in zip(deltas, rr, bf, strict=True):
 
     k_put = float(strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_p, -d, 'P').k)
     k_call = float(strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_c, d, 'C').k)
-    # k_put = float(strike_from_delta(spot, df_f, df_d, t, vol_p, -d, 'P').k)
-    # k_call = float(strike_from_delta(spot, df_f, df_d, t, vol_c, d, 'C').k)
     market_strikes += [k_put, k_call]
     market_vols += [vol_p, vol_c]
 
@@ -99,8 +97,6 @@ delta_idx = 0
 plot_delta, plot_rr, plot_bf = deltas[delta_idx], rr[delta_idx], bf[delta_idx]
 s = fx_vannavolga.smile_from_quotes(valdate, expiry, spot=spot, df_f=df_f, df_d=df_d,
                                     atm_vol=atm_vol, rr=plot_rr, bf=plot_bf, delta=plot_delta)
-# s = fx_vannavolga.smile_from_quotes(spot=spot, df_f=df_f, df_d=df_d, expiry=t, atm_vol=atm_vol, rr=plot_rr, bf=plot_bf,
-#                                     delta=plot_delta)
 strikes = np.linspace(0.9 * fwd, 1.1 * fwd, 50)
 vols = []
 for strike in strikes:
