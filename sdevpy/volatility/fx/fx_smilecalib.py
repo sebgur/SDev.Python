@@ -11,10 +11,22 @@ Terminology (Reiswich & Wystup, "FX Volatility Smile Construction"):
                                        reprices the same market-strangle premium
 """
 import numpy as np
+import datetime as dt
 from scipy.optimize import brentq
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
 from sdevpy.market.fxvolsurface import wingvols_from_butterfly
+from sdevpy.utilities import timegrids
+
+
+def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
+    """ Yearfraction to put into Black-Scholes formula for the standard deviation that gets root-squared
+        and multiplied by the implied vols for the pricing of options.
+        WARNING: this is not meant to be used anywhere else. For instance the calculation of rates and/or
+        discount factors have no reasons to follow this same convention.
+        TODO: for now we use the basic model convention. Based on our information, this should be switched
+        to Act/365 Fixed. """
+    return timegrids.model_time(valdate, expiry)
 
 
 def market_strangle(spot: float, df_f: float, df_d: float, expiry: float, atm_vol: float, ms: float,

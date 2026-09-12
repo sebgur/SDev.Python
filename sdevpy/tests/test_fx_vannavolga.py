@@ -4,7 +4,7 @@ from itertools import pairwise
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quotes, vv_weights,
                                                 lagrange_weights, atm_dns_strike, bs_vega)
-from sdevpy.volatility.fx.fx_smilecalib import market_strangle, calibrate_smile_strangle
+from sdevpy.volatility.fx.fx_smilecalib import market_strangle, calibrate_smile_strangle, fx_market_yearfraction
 
 SPOT, R_D, R_F, EXPIRY = 1.10, 0.04, 0.02, 1.0
 ATM_VOL, RR, BF = 0.10, -0.01, 0.0025
@@ -287,20 +287,20 @@ def _run_pipeline():
     bf = data.bf[VIEW_EXPIRY_IDX]
 
     spot = provider.get_fx_spot(forccy, domccy, VALDATE)
-    t = timegrids.model_time(VALDATE, expiry)
 
     forcurve = provider.get_xccycurve(forccy, VALDATE)
     domcurve = provider.get_xccycurve(domccy, VALDATE)
     df_f = forcurve.discount(expiry)
     df_d = domcurve.discount(expiry)
-    # r_for, r_dom = -np.log(df_f) / t, -np.log(df_d) / t
     fwd = spot * df_f / df_d
 
+    # t = timegrids.model_time(VALDATE, expiry)
+    t = fx_market_yearfraction(VALDATE, expiry)
     market_strikes, market_vols = [], []
     for d, r, b in zip(deltas, rr, bf, strict=True):
         if data.market_strangle_quote:
-            vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(
-                spot, df_f, df_d, t, atm_vol, r, b, delta=d)
+            vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(VALDATE, expiry, spot, df_f, df_d,
+                                                                               atm_vol, r, b, delta=d)
         else:
             vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
         k_put = float(strike_from_delta(spot, df_f, df_d, t, vol_put, -d, 'P').k)

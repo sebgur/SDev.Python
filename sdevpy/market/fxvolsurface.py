@@ -1,7 +1,3 @@
-"""
-`market_strangle_quote` says whether `bf` is the broker's market strangle or a smile butterfly. It applies to
-every section, since it's a property of the data source's convention, not of any one tenor.
-"""
 import datetime as dt
 from pathlib import Path
 import numpy as np

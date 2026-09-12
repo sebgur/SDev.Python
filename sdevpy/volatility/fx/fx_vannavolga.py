@@ -237,18 +237,20 @@ def smile_from_quotes(spot: float, df_f: float, df_d: float, expiry: float, atm_
 
     return smile
 
-# def wingvols_from_market_strangle_vv(valdate: dt.datetime, spot: float, df_f: float, df_d: float, expiry: str,
-def wingvols_from_market_strangle_vv(spot: float, df_f: float, df_d: float, expiry: float,
+# def wingvols_from_market_strangle_vv(spot: float, df_f: float, df_d: float, expiry: float,
+#                                      atm_vol: float, rr: float, ms: float, delta: float=0.25,
+#                                      prem_adjusted: bool=False, **kwargs) -> tuple:
+def wingvols_from_market_strangle_vv(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
                                      atm_vol: float, rr: float, ms: float, delta: float=0.25,
                                      prem_adjusted: bool=False, **kwargs) -> tuple:
     """ Specific form fx_smilecalib's generic version with a Vanna-Volga build_smile to construct
         from a candidate strangle """
-
+    t = fx_smilecalib.fx_market_yearfraction(valdate, expiry)
     def build_smile(trial_bf):
-        return _smile_from_smile_butterfly(spot, df_f, df_d, expiry, atm_vol, rr, trial_bf, delta,
+        return _smile_from_smile_butterfly(spot, df_f, df_d, t, atm_vol, rr, trial_bf, delta,
                                            prem_adjusted, 'none', **kwargs)
 
-    return fx_smilecalib.wingvols_from_market_strangle(spot, df_f, df_d, expiry, atm_vol, rr, ms,
+    return fx_smilecalib.wingvols_from_market_strangle(spot, df_f, df_d, t, atm_vol, rr, ms,
                                                        build_smile, delta, prem_adjusted, **kwargs)
 
 if __name__ == "__main__":

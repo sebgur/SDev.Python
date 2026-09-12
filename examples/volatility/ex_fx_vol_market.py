@@ -5,11 +5,12 @@ import matplotlib.pyplot as plt
 from sdevpy.market import fxspot
 from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file
 from sdevpy.utilities import dates as dts
-from sdevpy.utilities import timegrids
+# from sdevpy.utilities import timegrids
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.volatility.fx import fx_vannavolga
 from sdevpy.market.fxvolsurface import wingvols_from_butterfly
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
+from sdevpy.volatility.fx.fx_smilecalib import fx_market_yearfraction
 from sdevpy import logger
 logger.configure(module_display='partial')
 
@@ -47,13 +48,13 @@ data = fxvolsurfacedata_from_file(file)
 # data.pretty_print()
 
 # Retrieve raw data at chosen expiry
-expiries = data.expiries
-expiry = expiries[view_expiry_idx]
+tenors = data.tenors
+tenor = tenors[view_expiry_idx]
 atm_vol = data.atm_vols[view_expiry_idx]
 deltas = data.deltas[view_expiry_idx]
 rr = data.rr[view_expiry_idx]
 bf = data.bf[view_expiry_idx]
-print(f"Viewing expiry: {expiry}")
+print(f"Viewing tenor: {tenor}")
 print(f"ATM vol: {atm_vol}")
 print(f"Deltas: {deltas}")
 print(f"RRs: {rr}")
@@ -63,32 +64,33 @@ print(f"BFs: {bf}")
 spot = provider.get_fx_spot(forccy, domccy, valdate)
 print(f"Spot: {spot}")
 
-# Expiry time
-t = timegrids.model_time(valdate, expiry)
-print(f"Expiry time: {t}")
-
 # Retrieve rate curves
+expiries = data.expiries
+expiry = expiries[view_expiry_idx]
 forcurve = provider.get_xccycurve(forccy, valdate)
 domcurve = provider.get_xccycurve(domccy, valdate)
 df_f = forcurve.discount(expiry)
 df_d = domcurve.discount(expiry)
+fwd = spot * df_f / df_d
 print(f"Foreign df: {df_f}")
 print(f"Domestic df: {df_d}")
-fwd = spot * df_f / df_d
 print(f"Forward: {fwd}")
 
 # Build the full set of market points: every quoted delta level, both wings, plus ATM
+# t = timegrids.model_time(valdate, expiry)
+t = fx_market_yearfraction(valdate, expiry)
 market_strikes, market_vols = [], []
 for d, r, b in zip(deltas, rr, bf, strict=True):
     if data.market_strangle_quote:
-        vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(spot, df_f, df_d, t, atm_vol, r, b, delta=d)
+        vol_p, vol_c = fx_vannavolga.wingvols_from_market_strangle_vv(valdate, expiry, spot, df_f, df_d, atm_vol, r, b,
+                                                                      delta=d)
     else:
-        vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
+        vol_p, vol_c = wingvols_from_butterfly(atm_vol, r, b)
 
-    k_put = float(strike_from_delta(spot, df_f, df_d, t, vol_put, -d, 'P').k)
-    k_call = float(strike_from_delta(spot, df_f, df_d, t, vol_call, d, 'C').k)
+    k_put = float(strike_from_delta(spot, df_f, df_d, t, vol_p, -d, 'P').k)
+    k_call = float(strike_from_delta(spot, df_f, df_d, t, vol_c, d, 'C').k)
     market_strikes += [k_put, k_call]
-    market_vols += [vol_put, vol_call]
+    market_vols += [vol_p, vol_c]
 
 k_atm = fx_vannavolga.atm_dns_strike(fwd, atm_vol, t)
 market_strikes.append(k_atm)
