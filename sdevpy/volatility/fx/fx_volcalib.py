@@ -14,7 +14,6 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Fix the fx_market_yearfraction to explicit Act/365 Fixed
 # * Fix the vol_from_delta() thing
 # * Runtime: Ask Opus to profile and propose improvements if possible.
 #            Date conversion to yearfrac in many places including in strike_from_delta solver?
@@ -124,10 +123,11 @@ class FxVolCalibrator:
                 # Build smile for outermost quoted delta
                 d_out = np.min(quoted_deltas)
                 k_put, vol_p, k_call, vol_c = pillars[d_out]
-                t = fx_market_yearfraction(self.date, expiry)
-                smile = VannaVolgaSmile(fwd=fwd, expiry=t, k_put=k_put, k_atm=k_atm, k_call=k_call,
-                                        vol_put=vol_p, atm_vol=atm_vol, vol_call=vol_c, extrapolation='none',
-                                        spot=self.spot, df_f=df_f, df_d=df_d, prem_adjusted=self.prem_adj)
+                # t = fx_market_yearfraction(self.date, expiry)
+                smile = VannaVolgaSmile(valdate=valdate, expiry_dt=expiry, fwd=fwd, k_put=k_put, k_atm=k_atm,
+                                        k_call=k_call, vol_put=vol_p, atm_vol=atm_vol, vol_call=vol_c,
+                                        extrapolation='none', spot=self.spot, df_f=df_f, df_d=df_d,
+                                        prem_adjusted=self.prem_adj, spot_delta=spot_delta)
 
                 for d in tail_d:
                     seed_p, seed_c = (vol_p, vol_c) if d < d_out else (atm_vol, atm_vol)

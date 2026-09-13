@@ -21,7 +21,7 @@ Premium-adjusted note: the PA call delta is not monotonic in K, so a 25-delta PA
 produces non-monotonic pillars. This module therefore requests double_root_preference='large' by default and passes
 it explicitly to override.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
@@ -71,23 +71,27 @@ def vv_weights(strike: npt.ArrayLike, k_put: float, k_atm: float, k_call: float,
 class VannaVolgaSmile:
     """ Single-expiry FX smile pinned to three (strike, vol) pillars. Returns NaN where the VV
         price falls outside the no-arbitrage range, rather than a bisection boundary. """
+    valdate: dt.datetime
     fwd: float
-    expiry: float
+    expiry_dt: dt.datetime
     k_put: float
     k_atm: float
     k_call: float
     vol_put: float
     atm_vol: float
     vol_call: float
-    extrapolation: str = 'flat'
-    smile_butterfly: float = None
-    market_butterfly: float = None
-    spot: float = None
-    df_f: float = None
-    df_d: float = None
-    prem_adjusted: bool = False
+    extrapolation: str='flat'
+    smile_butterfly: float=None
+    market_butterfly: float=None
+    spot: float=None
+    df_f: float=None
+    df_d: float=None
+    prem_adjusted: bool=False
+    spot_delta: bool=None
+    expiry: float=field(init=False)
 
     def __post_init__(self):
+        self.expiry = fx_market_yearfraction(self.valdate, self.expiry_dt)
         if self.extrapolation not in ('flat', 'none'):
             raise ValueError(f"extrapolation must be 'flat' or 'none', got: {self.extrapolation}")
         if not self.k_put < self.k_atm < self.k_call:
@@ -159,8 +163,8 @@ class VannaVolgaSmile:
         signed_delta = delta if is_call else -delta
         sigma = self.atm_vol
         for _ in range(max_iter):
-            sol = strike_from_delta(self.spot, self.df_f, self.df_d, self.expiry, sigma, signed_delta,
-                                    'C' if is_call else 'P', self.prem_adjusted, **strike_kwargs)
+            sol = strike_from_delta(self.valdate, self.expiry_dt, self.spot, self.df_f, self.df_d, sigma, signed_delta,
+                                    'C' if is_call else 'P', self.prem_adjusted, self.spot_delta, **strike_kwargs)
             if not bool(np.asarray(sol.valid)):
                 raise ValueError(f"No valid strike for delta={delta} at trial vol={sigma}")
             sigma_new = float(self.vol(float(sol.k)))
@@ -175,9 +179,9 @@ def _smile_from_smile_butterfly(valdate: dt.datetime, expiry: dt.datetime, spot:
                                 atm_vol: float, rr: float, bf: float, delta: float, prem_adjusted: bool,
                                 extrapolation: str, **kwargs) -> VannaVolgaSmile:
     """ Build the smile treating `bf` as a smile (vol) butterfly """
-    ####
-    t = fx_market_yearfraction(valdate, expiry)
-    ####
+    # ####
+    # t = fx_market_yearfraction(valdate, expiry)
+    # ####
 
     vol_call = atm_vol + bf + 0.5 * rr
     vol_put = atm_vol + bf - 0.5 * rr
@@ -194,12 +198,12 @@ def _smile_from_smile_butterfly(valdate: dt.datetime, expiry: dt.datetime, spot:
         raise ValueError(f"Could not solve pillar strikes for {delta}-delta quotes "
                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
 
-    return VannaVolgaSmile(fwd=float(fwd), expiry=float(t), k_put=float(sol_put.k),
+    return VannaVolgaSmile(valdate=valdate, expiry_dt=expiry, fwd=float(fwd), k_put=float(sol_put.k),
                            k_atm=float(k_atm), k_call=float(sol_call.k), vol_put=float(vol_put),
                            atm_vol=float(atm_vol), vol_call=float(vol_call),
                            extrapolation=extrapolation, smile_butterfly=float(bf),
                            spot=float(spot), df_f=float(df_f), df_d=float(df_d),
-                           prem_adjusted=bool(prem_adjusted))
+                           prem_adjusted=bool(prem_adjusted), spot_delta=kwargs.get('spot_delta'))
 
 
 def smile_from_quotes(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,

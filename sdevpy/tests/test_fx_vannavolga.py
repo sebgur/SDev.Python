@@ -114,8 +114,9 @@ class TestPillarConstruction:
 
     def test_non_increasing_pillars_raise(self):
         with pytest.raises(ValueError):
-            VannaVolgaSmile(fwd=1.12, expiry=1.0, k_put=1.2, k_atm=1.1, k_call=1.0,
-                            vol_put=0.11, atm_vol=0.10, vol_call=0.098)
+            VannaVolgaSmile(valdate=VALDATE, expiry_dt=EXPIRY_DT, fwd=1.12, k_put=1.2, k_atm=1.1, k_call=1.0,
+                            vol_put=0.11, atm_vol=0.10, vol_call=0.098, prem_adjusted=False,
+                            spot_delta=True)
 
     def test_bad_extrapolation_mode_raises(self):
         with pytest.raises(ValueError):
