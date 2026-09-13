@@ -12,6 +12,7 @@ class FxVolSurfaceData:
         self.snapdate = kwargs.get('snapdate', self.valdate)
         self.name = kwargs.get('name', '')
         self.market_strangle_quote = kwargs.get('market_strangle_quote', False)
+        self.spot_delta_cutoff = kwargs.get('spot_delta_cutoff', '1Y')
 
         sections.sort(key=lambda x: x['expiry'])
 
@@ -50,7 +51,8 @@ class FxVolSurfaceData:
 
         return {'name': self.name, 'valdate': self.valdate.strftime(dts.DATE_FORMAT),
                 'snapdate': self.snapdate.strftime(dts.DATETIME_FORMAT),
-                'market_strangle_quote': self.market_strangle_quote, 'sections': sections}
+                'market_strangle_quote': self.market_strangle_quote,
+                'spot_delta_cutoff': self.spot_delta_cutoff, 'sections': sections}
 
     def pretty_print(self, n_digits: int = 4) -> None:
         """ Print information """
@@ -84,6 +86,7 @@ def fxvolsurfacedata_from_file(file: str|Path) -> FxVolSurfaceData:
     valdate = data.get('valdate')
     snapdate = data.get('snapdate')
     market_strangle_quote = data.get('market_strangle_quote', False)
+    spot_delta_cutoff = data.get('spot_delta_cutoff', '1Y')
     sections = data.get('sections')
 
     for section in sections:
@@ -92,7 +95,7 @@ def fxvolsurfacedata_from_file(file: str|Path) -> FxVolSurfaceData:
 
     return FxVolSurfaceData(dt.datetime.strptime(valdate, dts.DATE_FORMAT), sections,
                             name=name, snapdate=dt.datetime.strptime(snapdate, dts.DATETIME_FORMAT),
-                            market_strangle_quote=market_strangle_quote)
+                            market_strangle_quote=market_strangle_quote, spot_delta_cutoff=spot_delta_cutoff)
 
 
 def wingvols_from_butterfly(atm_vol: float, rr: float, bf: float) -> float:

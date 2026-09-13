@@ -5,15 +5,15 @@ import numpy as np
 from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.market.spot import SpotData
 from sdevpy.market.eqforward import EqForwardData, EqForwardCurve
-from sdevpy.market.fxforward import FxForwardCurve
+from sdevpy.market.fx import fxconventions
+from sdevpy.market.fx.fxforward import FxForwardCurve
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
-from sdevpy.market.fxvolsurface import FxVolSurfaceData
+from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
-from sdevpy.market import fxspot
 log = logging.getLogger(__name__)
 
 
-RFR_CURVES = {fxspot.USD: 'USD.SOFR.1D'}
+RFR_CURVES = {fxconventions.USD: 'USD.SOFR.1D'}
 
 
 # @runtime_checkable
@@ -58,9 +58,9 @@ class MarketDataProvider(ABC):
     def get_xccycurve(self, ccy: str, date: dt.datetime) -> YieldCurve:
         """ Get cross-currency curve to USD for given ccy. Return USD RFR curve if ccy = USD.
             By enforced convention, the cross-currency curve to USD for e.g. EUR must be EUR.XCCY. """
-        if ccy == fxspot.USD:
+        if ccy == fxconventions.USD:
             log.debug('Requested USD xccy curve: effectively USD RFR')
-            return self.get_rfrcurve(fxspot.USD, date)
+            return self.get_rfrcurve(fxconventions.USD, date)
         else:
             curve_id = f"{ccy}.XCCY"
             log.debug(f'Requested {ccy} xccy curve: effectively {curve_id}')
@@ -80,7 +80,7 @@ class MarketDataProvider(ABC):
 
     def get_fx_forward_curve(self, name: str, date: dt.datetime) -> FxForwardCurve:
         """ Retrieve FX forward curves """
-        forccy, domccy = fxspot.parse_fx_pair(name)
+        forccy, domccy = fxconventions.parse_fx_pair(name)
         spot = self.get_fx_spot(forccy, domccy, date)
         forcurve = self.get_xccycurve(forccy, date)
         domcurve = self.get_xccycurve(domccy, date)
@@ -101,10 +101,10 @@ class MarketDataProvider(ABC):
 
     def _usd_leg_spot(self, ccy: str, date: dt.datetime) -> float:
         """ USD value of one unit of ccy """
-        if ccy == fxspot.USD:
+        if ccy == fxconventions.USD:
             return 1.0
 
-        conv_for, conv_dom = fxspot.usd_conventional_pair(ccy)
+        conv_for, conv_dom = fxconventions.usd_conventional_pair(ccy)
         quote = self.get_spot(conv_for + conv_dom, date)
         return quote if conv_for == ccy else 1.0 / quote
 

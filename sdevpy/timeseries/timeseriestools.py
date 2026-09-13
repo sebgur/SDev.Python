@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from enum import Enum
-from sdevpy.market import fxspot
+from sdevpy.market.fx import fxconventions
 
 
 class ToShiftOrNot(Enum):
@@ -80,7 +80,7 @@ def is_inverted_quote_bbg(key: str) -> bool:
         raise ValueError(f"Unrecognized FX ticker (expected an XXXUSD-style Bloomberg ticker): {key}")
 
     ccy = key.split('USD')[0]
-    return fxspot.is_inverted_quote(ccy)
+    return fxconventions.is_inverted_quote(ccy)
 
 
 def weighted_series(df_data: pd.DataFrame, weights: list[float]) -> pd.Series:

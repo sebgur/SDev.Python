@@ -7,8 +7,8 @@ from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quot
                                                 lagrange_weights, bs_vega)
 from sdevpy.volatility.fx.fx_strangle import market_strangle, calibrate_smile_strangle
 
-from sdevpy.market import fxspot
-from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file, wingvols_from_butterfly
+from sdevpy.market.fx import fxconventions
+from sdevpy.market.fx.fxvolsurface import fxvolsurfacedata_from_file, wingvols_from_butterfly
 from sdevpy.utilities import dates as dts
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.volatility.fx import fx_vannavolga
@@ -44,8 +44,8 @@ def _run_pipeline():
         regression checks pin against. Kept as a single function so a refactor of the script
         can be checked by re-running this, not by re-deriving expected values by hand. """
     provider = MarketDataFileProvider()
-    ccy1, ccy2 = fxspot.parse_fx_pair(PAIR)
-    forccy, domccy = fxspot.conventional_pair_name(ccy1, ccy2)
+    ccy1, ccy2 = fxconventions.parse_fx_pair(PAIR)
+    forccy, domccy = fxconventions.conventional_pair_name(ccy1, ccy2)
 
     file = provider.root / "fxoptions" / PAIR / (VALDATE.strftime(dts.DATE_FILE_FORMAT) + ".json")
     data = fxvolsurfacedata_from_file(file)

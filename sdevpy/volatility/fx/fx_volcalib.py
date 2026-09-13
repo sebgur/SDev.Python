@@ -2,19 +2,22 @@
 import datetime as dt
 import numpy as np
 import logging
-from sdevpy.market import fxspot
 from sdevpy.utilities import dates as dts
-from sdevpy.market.fileprovider import MarketDataFileProvider
-from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
-from sdevpy.market.fxvolsurface import wingvols_from_butterfly
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike, fx_market_yearfraction
 from sdevpy.market.provider import MarketDataProvider
+from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.market.fx import fxconventions
+from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly
+from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike, fx_market_yearfraction
 log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Generate: spot_fwd_cutoff, expiry date
-# * Implement the vv-based calculation of extrapolated deltas
+# * Make proper distinction between option expiry and settlement
+# * Generate: expiry/settlement dates
+# * Don't forget to pass the spot_delta_cutoff from the calibrator to the necessary functions
+# * Then handle it properly (i.e. by string not float) in deltastrike
+# * Fix the fx_market_yearfraction to explicit Act/365 Fixed
 # * Implement the direct spline, flat outside the last deltas
 # * Implement object that interpolates the spline results across time
 # * Measure runtime: date conversion to yearfrac in many places including in strike_from_delta solver
@@ -34,7 +37,8 @@ class FxVolCalibrator:
         # Set null values
         self.forccy, self.domccy = None, None
         self.forcurve, self.domcurve = None, None
-        self.vol_date, self.prem_adjusted = None, None
+        self.vol_date, self.prem_adj = None, None
+        self.market_strangle_quote, self.spot_delta_cutoff = False, '1Y'
         self.date, self.spot = None, None
 
         # Set pair conventions
@@ -82,7 +86,7 @@ class FxVolCalibrator:
         deltas, strikes, vols = [], [], []
         pillars = {}
         for delta, rr, bf in zip(quoted_deltas, rrs, bfs, strict=True):
-            if self.vol_data.market_strangle_quote:
+            if self.market_strangle_quote:
                 vol_p, vol_c = wingvols_from_market_strangle_vv(valdate, expiry, self.spot, df_f, df_d,
                                                                 atm_vol, rr, bf, delta,
                                                                 prem_adjusted=self.prem_adjusted)
@@ -160,13 +164,13 @@ class FxVolCalibrator:
     def _set_conventions(self) -> None:
         """ Set market convention for pair """
         # Check currency pair
-        ccy1, ccy2 = fxspot.parse_fx_pair(self.pair)
-        self.forccy, self.domccy = fxspot.conventional_pair_name(ccy1, ccy2)
+        ccy1, ccy2 = fxconventions.parse_fx_pair(self.pair)
+        self.forccy, self.domccy = fxconventions.conventional_pair_name(ccy1, ccy2)
         if self.pair != self.forccy + self.domccy:
             raise ValueError(f"Requested pair {self.pair} not in conventional order")
 
         # Find premium adjusted
-        self.prem_adj = fxspot.is_premium_adjusted(self.forccy, self.domccy)
+        self.prem_adj = fxconventions.is_premium_adjusted(self.forccy, self.domccy)
 
     def _fetch_market_data(self, date: dt.date) -> None:
         """ Fetch market data on given date """
@@ -183,6 +187,10 @@ class FxVolCalibrator:
         # Fetch vol
         self.vol_data = md_prov.get_fx_vol_data(self.pair, self.date)
         # self.vol_data.pretty_print()
+
+        # Others
+        self.market_strangle_quote = self.vol_data.market_strangle_quote
+        self.spot_delta_cutoff = self.vol_data.spot_delta_cutoff
 
 
 if __name__ == "__main__":

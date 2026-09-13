@@ -5,7 +5,6 @@ from sdevpy.market import provider as mdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.market import eqforward as eqf
 from sdevpy.market.fixings import FixingHandler, data_file
-from sdevpy.market import fxspot
 
 
 class ConstDiscountCurve:

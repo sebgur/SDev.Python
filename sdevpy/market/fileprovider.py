@@ -9,12 +9,12 @@ from sdevpy.market import yieldcurve as ycrv
 from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.market import eqforward as eqfwd
 from sdevpy.market import eqvolsurface as eqvol
-from sdevpy.market import fxvolsurface as fxvol
+from sdevpy.market.fx import fxvolsurface as fxvol
 from sdevpy.market import fixings
 from sdevpy.market.spot import SpotData
 from sdevpy.market.eqforward import EqForwardData
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
-from sdevpy.market.fxvolsurface import FxVolSurfaceData
+from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 from sdevpy.market.provider import MarketDataProvider
 from sdevpy.tests import conftest

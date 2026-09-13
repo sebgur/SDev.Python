@@ -2,12 +2,11 @@
 import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
-from sdevpy.market import fxspot
-from sdevpy.market.fxvolsurface import fxvolsurfacedata_from_file
 from sdevpy.utilities import dates as dts
 from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.market.fx import fxconventions
+from sdevpy.market.fx.fxvolsurface import fxvolsurfacedata_from_file, wingvols_from_butterfly
 from sdevpy.volatility.fx import fx_vannavolga
-from sdevpy.market.fxvolsurface import wingvols_from_butterfly
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
 from sdevpy import logger
 logger.configure(module_display='partial')
@@ -22,8 +21,8 @@ view_expiry_idx = 0
 provider = MarketDataFileProvider()
 
 # Check currency pair
-ccy1, ccy2 = fxspot.parse_fx_pair(pair)
-forccy, domccy = fxspot.conventional_pair_name(ccy1, ccy2)
+ccy1, ccy2 = fxconventions.parse_fx_pair(pair)
+forccy, domccy = fxconventions.conventional_pair_name(ccy1, ccy2)
 if pair != forccy + domccy:
     raise ValueError(f"Requested pair {pair} not in conventional order")
 

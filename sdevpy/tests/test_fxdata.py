@@ -1,33 +1,30 @@
 import pytest
 import datetime as dt
 import numpy as np
-from sdevpy.market import fxspot
-from sdevpy.market.fxforward import FxForwardCurve, fx_spot_lag, fx_spot_date
+from sdevpy.market.fx import fxconventions
+from sdevpy.market.fx.fxforward import FxForwardCurve, fx_spot_lag, fx_spot_date
 from sdevpy.volatility.fx import fx_deltastrike
 
 
 def test_parse_fx_pair():
-    assert fxspot.parse_fx_pair('EURUSD') == ('EUR', 'USD')
-
-    # with pytest.raises(ValueError):
-    #     fxspot.parse_fx_pair('EURO')
+    assert fxconventions.parse_fx_pair('EURUSD') == ('EUR', 'USD')
 
 
 def test_use_conventional_pair():
     # EUR is in USD_IS_QUOTE -> EUR/USD
-    assert fxspot.usd_conventional_pair('EUR') == ('EUR', 'USD')
+    assert fxconventions.usd_conventional_pair('EUR') == ('EUR', 'USD')
     # JPY is not in USD_IS_QUOTE -> USD/JPY
-    assert fxspot.usd_conventional_pair('JPY') == ('USD', 'JPY')
+    assert fxconventions.usd_conventional_pair('JPY') == ('USD', 'JPY')
 
 
 def test_is_inverted_quote():
-    assert fxspot.is_inverted_quote('EUR') is False
-    assert fxspot.is_inverted_quote('JPY') is True
+    assert fxconventions.is_inverted_quote('EUR') is False
+    assert fxconventions.is_inverted_quote('JPY') is True
 
     # is_inverted_quote should always agree with usd_conventional_pair's own answer
     for ccy in ['EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'MXN', 'ZAR']:
-        forccy, _ = fxspot.usd_conventional_pair(ccy)
-        assert fxspot.is_inverted_quote(ccy) == (forccy == 'USD')
+        forccy, _ = fxconventions.usd_conventional_pair(ccy)
+        assert fxconventions.is_inverted_quote(ccy) == (forccy == 'USD')
 
 
 def test_fx_spot_lag():
