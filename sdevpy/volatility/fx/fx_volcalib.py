@@ -14,7 +14,6 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Handle spot_delta_cutoff properly
 # * Fix the fx_market_yearfraction to explicit Act/365 Fixed
 # * Fix the vol_from_delta() thing
 # * Runtime: Ask Opus to profile and propose improvements if possible.
