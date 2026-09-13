@@ -18,7 +18,7 @@ from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly
 
 
 def market_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
-                    atm_vol: float, ms: float, delta: float=0.25, prem_adjusted: bool=False, **kwargs) -> tuple:
+                    atm_vol: float, ms: float, delta: float, prem_adjusted: bool, **kwargs) -> tuple:
     """ Resolve the broker's quoted strangle into the market-strangle price. Both wing strikes
         are struck off the single flat vol atm_vol+ms; the quote is the sum of the two option
         premia at that vol. Returns (k_put, k_call, fwd_price, vol_ms). """
@@ -43,9 +43,8 @@ def market_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f
 
 
 def calibrate_smile_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
-                             atm_vol: float, rr: float, ms: float, build_smile,
-                             delta: float=0.25, prem_adjusted: bool=False, tol: float=1e-12,
-                             max_expand: int=60, **kwargs) -> float:
+                             atm_vol: float, rr: float, ms: float, build_smile, delta: float, prem_adjusted: bool,
+                             tol: float=1e-12, max_expand: int=60, **kwargs) -> float:
     """ Find the strangle such that build_smile(strangle) reprices the market strangle at its own two strikes.
 
         build_smile: callable(bf) -> object with a .vol(strike) method (e.g. a VannaVolgaSmile, or any other

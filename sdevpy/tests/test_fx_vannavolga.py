@@ -25,17 +25,18 @@ VIEW_EXPIRY_IDX = 0
 
 def _smile(**kwargs):
     df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-    params = dict(valdate=VALDATE, expiry=EXPIRY_DT, spot=SPOT, df_f=df_f, df_d=df_d, atm_vol=ATM_VOL, rr=RR, bf=BF)
+    params = dict(valdate=VALDATE, expiry=EXPIRY_DT, spot=SPOT, df_f=df_f, df_d=df_d, atm_vol=ATM_VOL, rr=RR, bf=BF,
+                  delta=0.25, prem_adjusted=False, spot_delta=True)
     params.update(kwargs)
     return smile_from_quotes(**params)
 
 
-def _vv_build_smile(rr=RR, prem_adjusted=False):
+def _vv_build_smile(rr=RR, prem_adjusted=False, spot_delta=True):
     """ build_smile for calibrate_smile_strangle: rebuilds a VannaVolgaSmile from a candidate
         smile strangle. `rr` must match whatever rr is passed to calibrate_smile_strangle at
         the same call site -- the objective function needs both to describe the same skew. """
     def build_smile(bf):
-        return _smile(rr=rr, bf=bf, prem_adjusted=prem_adjusted, extrapolation='none')
+        return _smile(rr=rr, bf=bf, prem_adjusted=prem_adjusted, spot_delta=spot_delta, extrapolation='none')
     return build_smile
 
 
@@ -65,15 +66,17 @@ def _run_pipeline():
     fwd = spot * df_f / df_d
 
     # t = fx_market_yearfraction(VALDATE, expiry)
+    spot_delta = True
     market_strikes, market_vols = [], []
     for d, r, b in zip(deltas, rr, bf, strict=True):
         if data.market_strangle_quote:
             vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(VALDATE, expiry, spot, df_f, df_d,
-                                                                               atm_vol, r, b, d, False)
+                                                                               atm_vol, r, b, d, False,
+                                                                               spot_delta=spot_delta)
         else:
             vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
-        k_put = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_put, -d, 'P', False).k)
-        k_call = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_call, d, 'C', False).k)
+        k_put = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_put, -d, 'P', False, spot_delta).k)
+        k_call = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_call, d, 'C', False, spot_delta).k)
         market_strikes += [k_put, k_call]
         market_vols += [vol_put, vol_call]
 
@@ -83,7 +86,8 @@ def _run_pipeline():
 
     delta_idx = 0
     s = fx_vannavolga.smile_from_quotes(VALDATE, expiry, spot=spot, df_f=df_f, df_d=df_d, atm_vol=atm_vol,
-                                        rr=rr[delta_idx], bf=bf[delta_idx], delta=deltas[delta_idx])
+                                        rr=rr[delta_idx], bf=bf[delta_idx], delta=deltas[delta_idx],
+                                        prem_adjusted=False, spot_delta=spot_delta)
 
     return {'forccy': forccy, 'domccy': domccy, 'spot': spot, 't': expiry, 'df_for': df_f, 'df_dom': df_d,
             'fwd': fwd, 'market_strikes': market_strikes, 'market_vols': market_vols, 'smile': s}
@@ -206,21 +210,24 @@ class TestMarketStrangleCalibration:
         # calibration is a provable no-op -- the strongest check on the routine.
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
         bf = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=0.0, ms=0.0025,
-                                      build_smile=_vv_build_smile(rr=0.0))
+                                      build_smile=_vv_build_smile(rr=0.0), delta=0.25, prem_adjusted=False,
+                                      spot_delta=True)
         assert bf == pytest.approx(0.0025, abs=1e-11)
 
     def test_calibrated_smile_reprices_the_market_strangle(self):
         s = _smile(rr=-0.01, bf=0.0025, market_strangle_quote=True, extrapolation='none')
         t = fx_market_yearfraction(VALDATE, EXPIRY_DT)
         df_f, df_d = np.exp(-t * R_F), np.exp(-t * R_D)
-        k_put, k_call, target, _ = market_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, 0.0025)
+        k_put, k_call, target, _ = market_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, 0.0025,
+                                                   delta=0.25, prem_adjusted=False, spot_delta=True)
         priced = (black.price(t, k_call, True, s.fwd, float(s.vol(k_call)))
                   + black.price(t, k_put, False, s.fwd, float(s.vol(k_put))))
         assert priced == pytest.approx(target, abs=1e-10)
 
     def test_market_strangle_strikes_straddle_the_forward(self):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        k_put, k_call, price, vol_ms = market_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, 0.0025)
+        k_put, k_call, price, vol_ms = market_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, 0.0025,
+                                                       delta=0.25, prem_adjusted=False, spot_delta=False)
         fwd = SPOT * np.exp((R_D - R_F) * EXPIRY)
         assert k_put < fwd < k_call
         assert price > 0.0
@@ -229,12 +236,14 @@ class TestMarketStrangleCalibration:
     def test_smile_butterfly_exceeds_market_butterfly_when_skewed(self):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
         assert calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=-0.02, ms=0.0025,
-                                        build_smile=_vv_build_smile(rr=-0.02)) > 0.0025
+                                        build_smile=_vv_build_smile(rr=-0.02), delta=0.25, prem_adjusted=False,
+                                        spot_delta=False) > 0.0025
 
     def test_correction_grows_with_skew(self):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
         gaps = [calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=r, ms=0.0025,
-                                         build_smile=_vv_build_smile(rr=r))
+                                         build_smile=_vv_build_smile(rr=r), delta=0.25, prem_adjusted=False,
+                                         spot_delta=False)
                 for r in (-0.005, -0.01, -0.02, -0.04)]
         assert all(b > a for a, b in pairwise(gaps))
 
@@ -255,9 +264,11 @@ class TestMarketStrangleCalibration:
         t = fx_market_yearfraction(VALDATE, EXPIRY_DT)
         df_f, df_d = np.exp(-t * R_F), np.exp(-t * R_D)
         pos = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=0.02, ms=0.0025,
-                                       build_smile=_vv_build_smile(rr=0.02))
+                                       build_smile=_vv_build_smile(rr=0.02), delta=0.25, prem_adjusted=False,
+                                       spot_delta=False)
         neg = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=-0.02, ms=0.0025,
-                                       build_smile=_vv_build_smile(rr=-0.02))
+                                       build_smile=_vv_build_smile(rr=-0.02), delta=0.25, prem_adjusted=False,
+                                       spot_delta=False)
         assert pos != pytest.approx(neg, abs=1e-6)
         assert abs(pos - neg) / neg == pytest.approx(0.044, abs=0.005)
 
@@ -267,15 +278,16 @@ class TestPremiumAdjusted:
         # Guards the double-root trap: the PA call delta is non-monotonic, and the deep-ITM
         # root (0.286 vs a 1.122 forward) would give non-monotonic pillars.
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        s = smile_from_quotes(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, RR, BF, prem_adjusted=True,
-                              extrapolation='none')
+        s = smile_from_quotes(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, RR, BF, delta=0.25,
+                              prem_adjusted=True, spot_delta=False, extrapolation='none')
         strikes = np.array([s.k_put, s.k_atm, s.k_call])
         assert np.allclose(s.vol(strikes),
                            np.array([s.vol_put, s.atm_vol, s.vol_call]), atol=1e-10)
 
     def test_prem_adjusted_call_pillar_is_the_otm_root(self):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
-        s = smile_from_quotes(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, RR, BF, prem_adjusted=True)
+        s = smile_from_quotes(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, RR, BF, delta=0.25,
+                              prem_adjusted=True, spot_delta=False)
         assert s.k_call > s.fwd
 
     def test_prem_adjusted_market_strangle_calibration(self):
@@ -283,7 +295,7 @@ class TestPremiumAdjusted:
         df_f, df_d = np.exp(-t * R_F), np.exp(-t * R_D)
         bf = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=-0.01, ms=0.0025,
                                       build_smile=_vv_build_smile(rr=-0.01, prem_adjusted=True),
-                                      prem_adjusted=True)
+                                      delta=0.25, prem_adjusted=True, spot_delta=True)
         assert bf == pytest.approx(0.00284682, abs=1e-7)
 
 
@@ -315,7 +327,8 @@ class TestRegression:
     def test_calibrated_butterfly(self, rr, ms, expected):
         df_f, df_d = np.exp(-EXPIRY * R_F), np.exp(-EXPIRY * R_D)
         bf = calibrate_smile_strangle(VALDATE, EXPIRY_DT, SPOT, df_f, df_d, ATM_VOL, rr=rr, ms=ms,
-                                      build_smile=_vv_build_smile(rr=rr))
+                                      build_smile=_vv_build_smile(rr=rr), delta=0.25, prem_adjusted=False,
+                                      spot_delta=True)
         assert bf == pytest.approx(expected, abs=1e-7)
 
 
@@ -336,8 +349,6 @@ class TestExFxVolMarketRegression:
         r = _run_pipeline()
         assert r['df_for'] == pytest.approx(0.9995546727625232, abs=1e-12)
         assert r['df_dom'] == pytest.approx(0.9983732377760548, abs=1e-12)
-        # assert r['r_for'] == pytest.approx(0.004516129032258047, abs=1e-9)
-        # assert r['r_dom'] == pytest.approx(0.016506991555613408, abs=1e-9)
         assert r['fwd'] == pytest.approx(150.17750400477985, abs=1e-6)
 
     def test_market_points(self):

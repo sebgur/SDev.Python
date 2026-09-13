@@ -14,13 +14,14 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Handle it spot_delta_cutoff properly
+# * Handle spot_delta_cutoff properly
 # * Fix the fx_market_yearfraction to explicit Act/365 Fixed
 # * Fix the vol_from_delta() thing
+# * Runtime: Ask Opus to profile and propose improvements if possible.
+#            Date conversion to yearfrac in many places including in strike_from_delta solver?
 # * Order the strikes/deltas in the output of the calibrator
 # * Implement the direct spline, flat outside the last deltas
 # * Implement object that interpolates the spline results across time
-# * Measure runtime: date conversion to yearfrac in many places including in strike_from_delta solver
 # * Move yieldcurves to calib data provider
 # * Use delta inversion and illustrate it
 
@@ -84,19 +85,22 @@ class FxVolCalibrator:
         print(f"Forward: {fwd}")
 
         # Build the full set of market points: every quoted delta level, both wings
-        use_spot_delta = expiry <= self.spot_delta_cutoff_date
+        spot_delta = expiry <= self.spot_delta_cutoff_date
         deltas, strikes, vols = [], [], []
         pillars = {}
         for delta, rr, bf in zip(quoted_deltas, rrs, bfs, strict=True):
             if self.market_strangle_quote:
                 vol_p, vol_c = wingvols_from_market_strangle_vv(valdate, expiry, self.spot, df_f, df_d,
                                                                 atm_vol, rr, bf, delta,
-                                                                prem_adjusted=self.prem_adj)
+                                                                prem_adjusted=self.prem_adj,
+                                                                spot_delta=spot_delta)
             else:
                 vol_p, vol_c = wingvols_from_butterfly(atm_vol, rr, bf)
 
-            k_put = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P', self.prem_adj).k
-            k_call = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C', self.prem_adj).k
+            k_put = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P',
+                                      self.prem_adj, spot_delta).k
+            k_call = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C',
+                                       self.prem_adj, spot_delta).k
             pillars[delta] = (k_put, vol_p, k_call, vol_c)
             deltas += [-delta, delta]
             strikes += [k_put, k_call]
@@ -128,8 +132,8 @@ class FxVolCalibrator:
 
                 for d in tail_d:
                     seed_p, seed_c = (vol_p, vol_c) if d < d_out else (atm_vol, atm_vol)
-                    v_p, k_p = self._vol_at_delta(smile, expiry, df_f, df_d, d, False, seed=seed_p)
-                    v_c, k_c = self._vol_at_delta(smile, expiry, df_f, df_d, d, True, seed=seed_c)
+                    v_p, k_p = self._vol_at_delta(smile, expiry, df_f, df_d, d, False, seed_p, spot_delta)
+                    v_c, k_c = self._vol_at_delta(smile, expiry, df_f, df_d, d, True, seed_c, spot_delta)
                     deltas += [-d, d]
                     strikes += [k_p, k_c]
                     vols += [v_p, v_c]
@@ -141,14 +145,14 @@ class FxVolCalibrator:
         return report
 
     # Fixed point iteration. ToDo: check if we don't already have it and move to a more suitable place if any.
-    def _vol_at_delta(self, smile, expiry, df_f, df_d, delta, is_call, seed,
+    def _vol_at_delta(self, smile, expiry, df_f, df_d, delta, is_call, seed, spot_delta,
                       tol: float=1e-10, max_iter: int=100) -> tuple:
         """ (vol, strike) at the given unsigned delta. The strike needs the vol and the vol needs the
             strike, so iterate: seed a vol, solve its strike, read the smile there, repeat. Seeding at
             the nearest wing vol rather than ATM converges in a few passes this far out. """
         sigma = float(seed)
         signed = delta if is_call else -delta
-        kwargs = {'double_root_preference': 'large'} if is_call else {}
+        kwargs = {'double_root_preference': 'large', 'spot_delta': spot_delta} if is_call else {}
         for _ in range(max_iter):
             sol = strike_from_delta(self.date, expiry, self.spot, df_f, df_d, sigma, signed,
                                     'C' if is_call else 'P', self.prem_adj, **kwargs)

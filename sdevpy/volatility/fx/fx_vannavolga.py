@@ -203,9 +203,8 @@ def _smile_from_smile_butterfly(valdate: dt.datetime, expiry: dt.datetime, spot:
 
 
 def smile_from_quotes(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
-                      atm_vol: float, rr: float, bf: float,
-                      delta: float=0.25, prem_adjusted: bool=False, extrapolation: str='flat',
-                      market_strangle_quote: bool=False, **kwargs) -> VannaVolgaSmile:
+                      atm_vol: float, rr: float, bf: float, delta: float, prem_adjusted: bool,
+                      extrapolation: str='flat', market_strangle_quote: bool=False, **kwargs) -> VannaVolgaSmile:
     """ Vanna-Volga interpolation from quotes """
     if market_strangle_quote:
         def build_smile(trial_bf):
