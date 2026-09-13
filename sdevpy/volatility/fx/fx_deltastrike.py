@@ -175,7 +175,7 @@ class StrikeSolution:
 def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.ArrayLike, df_f: npt.ArrayLike,
                       df_d: npt.ArrayLike, sigma: npt.ArrayLike, delta: npt.ArrayLike, option_type: npt.ArrayLike,
                       prem_adjusted: npt.ArrayLike, spot_delta: npt.ArrayLike,
-                      double_root_preference: str="small", bracket_width_sigma_mult: float=15.0,
+                      double_root_preference: str="large", bracket_width_sigma_mult: float=15.0,
                       bracket_width_floor: float=8.0, tol_existence: float=1e-9, tol_residual: float=1e-6,
                       max_iter: int=100) -> StrikeSolution:
     """
