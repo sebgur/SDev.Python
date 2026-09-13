@@ -176,7 +176,7 @@ class StrikeSolution:
 # Main entry point
 def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.ArrayLike, df_f: npt.ArrayLike,
                       df_d: npt.ArrayLike, sigma: npt.ArrayLike, delta: npt.ArrayLike, option_type: npt.ArrayLike,
-                      prem_adjusted: npt.ArrayLike=False, spot_delta_cutoff: float=1.0,
+                      prem_adjusted: npt.ArrayLike, spot_delta_cutoff: float=1.0,
                       double_root_preference: str="small", bracket_width_sigma_mult: float=15.0,
                       bracket_width_floor: float=8.0, tol_existence: float=1e-9, tol_residual: float=1e-6,
                       max_iter: int=100) -> StrikeSolution:
@@ -324,8 +324,7 @@ if __name__ == "__main__":
     df_f, df_d = np.exp(-r_f * expiry), np.exp(-r_d * expiry)
     valdate = dt.datetime(2025, 12, 15)
     expiry = dt.datetime(2026, 12, 15)
-    res = strike_from_delta(valdate, expiry, spot=1.10, df_f=df_f, df_d=df_d, sigma=0.09, delta=-delta,
-                            option_type="P", prem_adjusted=False)
+    res = strike_from_delta(valdate, expiry, 1.10, df_f, df_d, 0.09, -delta, "P", False)
     print(res)
     # sanity check: recompute delta at that strike directly
     f = 1.10 * df_f / df_d
@@ -346,8 +345,7 @@ if __name__ == "__main__":
                            [0.11, 0.105, 0.105, 0.115],
                            [0.12, 0.115, 0.115, 0.125]])
 
-    res_grid = strike_from_delta(valdate, maturities, spot=1.10, r_d=0.04, r_f=0.02, sigma=sigma_grid,
-                                 delta=deltas, option_type=types, prem_adjusted=True)
+    res_grid = strike_from_delta(valdate, maturities, 1.10, df_f, df_d, sigma_grid, deltas, types, True)
     print("Strikes:\n", res_grid.k)
     print("Used spot-delta convention (True) vs forward-delta (False):\n",
           res_grid.used_spot_delta)
@@ -360,8 +358,7 @@ if __name__ == "__main__":
     print("   premium-adjusted call by sweeping the target delta past its max")
     print("=" * 70)
     sweep_deltas = np.linspace(0.01, 0.75, 15)
-    res_sweep = strike_from_delta(valdate, expiry, spot=1.10, r_d=0.04, r_f=0.02, sigma=0.15, delta=sweep_deltas,
-                                  option_type="C", prem_adjusted=True)
+    res_sweep = strike_from_delta(valdate, expiry, 1.10, df_f, df_d, 0.15, sweep_deltas, "C", True)
 
     for d, k, k_alt, n, dmax in zip(sweep_deltas, res_sweep.k, res_sweep.k_alt,
                                      res_sweep.n_solutions, res_sweep.delta_max_abs, strict=True):

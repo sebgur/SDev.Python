@@ -27,10 +27,8 @@ def market_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
 
-    sol_put = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_ms, -delta, 'P',
-                                prem_adjusted=prem_adjusted, **kwargs)
-    sol_call = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_ms, delta, 'C',
-                                 prem_adjusted=prem_adjusted, **call_kwargs)
+    sol_put = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_ms, -delta, 'P', prem_adjusted, **kwargs)
+    sol_call = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_ms, delta, 'C', prem_adjusted, **call_kwargs)
     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
         raise ValueError(f"Could not solve market-strangle strikes at {delta}-delta "
                          f"(put valid={sol_put.valid}, call valid={sol_call.valid})")
@@ -45,16 +43,14 @@ def market_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f
 
 
 def calibrate_smile_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
-                             atm_vol: float, rr: float, ms: float,
-                             build_smile, delta: float=0.25, prem_adjusted: bool=False, tol: float=1e-12,
+                             atm_vol: float, rr: float, ms: float, build_smile,
+                             delta: float=0.25, prem_adjusted: bool=False, tol: float=1e-12,
                              max_expand: int=60, **kwargs) -> float:
     """ Find the strangle such that build_smile(strangle) reprices the market strangle at its own two strikes.
 
         build_smile: callable(bf) -> object with a .vol(strike) method (e.g. a VannaVolgaSmile, or any other
                      interpolation model built from (atm_vol, rr, bf)). This is the only point of contact with
-                     any specific smile model. The calibration logic itself has none.
-
-        Property: when rr == 0 the pillar strikes coincide with the market-strangle strikes, so this returns ms. """
+                     any specific smile model. The calibration logic itself has none. """
     k_put_ms, k_call_ms, target, _ = market_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, ms, delta,
                                                      prem_adjusted, **kwargs)
     fwd = spot * df_f / df_d

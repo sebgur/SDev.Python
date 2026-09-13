@@ -160,8 +160,7 @@ class VannaVolgaSmile:
         sigma = self.atm_vol
         for _ in range(max_iter):
             sol = strike_from_delta(self.spot, self.df_f, self.df_d, self.expiry, sigma, signed_delta,
-                                    'C' if is_call else 'P', prem_adjusted=self.prem_adjusted,
-                                    **strike_kwargs)
+                                    'C' if is_call else 'P', self.prem_adjusted, **strike_kwargs)
             if not bool(np.asarray(sol.valid)):
                 raise ValueError(f"No valid strike for delta={delta} at trial vol={sigma}")
             sigma_new = float(self.vol(float(sol.k)))
@@ -188,10 +187,8 @@ def _smile_from_smile_butterfly(valdate: dt.datetime, expiry: dt.datetime, spot:
     call_kwargs = dict(kwargs)
     call_kwargs.setdefault('double_root_preference', 'large')
 
-    sol_put = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_put, -delta, 'P',
-                                prem_adjusted=prem_adjusted, **kwargs)
-    sol_call = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_call, delta, 'C',
-                                 prem_adjusted=prem_adjusted, **call_kwargs)
+    sol_put = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_put, -delta, 'P', prem_adjusted, **kwargs)
+    sol_call = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_call, delta, 'C', prem_adjusted, **call_kwargs)
 
     if not (np.all(sol_put.valid) and np.all(sol_call.valid)):
         raise ValueError(f"Could not solve pillar strikes for {delta}-delta quotes "

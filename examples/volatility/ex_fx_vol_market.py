@@ -70,8 +70,8 @@ for d, r, b in zip(deltas, rr, bf, strict=True):
     else:
         vol_p, vol_c = wingvols_from_butterfly(atm_vol, r, b)
 
-    k_put = float(strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_p, -d, 'P').k)
-    k_call = float(strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_c, d, 'C').k)
+    k_put = float(strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_p, -d, 'P', False).k)
+    k_call = float(strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_c, d, 'C', False).k)
     market_strikes += [k_put, k_call]
     market_vols += [vol_p, vol_c]
 

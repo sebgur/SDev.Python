@@ -13,10 +13,11 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Generate: prem_adjusted, spot_fwd_cutoff, expiry date
+# * Generate: spot_fwd_cutoff, expiry date
 # * Implement the vv-based calculation of extrapolated deltas
 # * Implement the direct spline, flat outside the last deltas
 # * Implement object that interpolates the spline results across time
+# * Measure runtime: date conversion to yearfrac in many places including in strike_from_delta solver
 # * Move yieldcurves to calib data provider
 # * Use delta inversion and illustrate it
 
@@ -56,6 +57,7 @@ class FxVolCalibrator:
 
     def calibrate_tenor(self, tenor_idx: int) -> dict:
         """ Calibrate at the given tenor """
+        valdate = self.date
         # Extract raw market data
         tenor = self.vol_data.tenors[tenor_idx]
         atm_vol = self.vol_data.atm_vols[tenor_idx]
@@ -81,14 +83,14 @@ class FxVolCalibrator:
         pillars = {}
         for delta, rr, bf in zip(quoted_deltas, rrs, bfs, strict=True):
             if self.vol_data.market_strangle_quote:
-                vol_p, vol_c = wingvols_from_market_strangle_vv(self.date, expiry, self.spot, df_f, df_d,
+                vol_p, vol_c = wingvols_from_market_strangle_vv(valdate, expiry, self.spot, df_f, df_d,
                                                                 atm_vol, rr, bf, delta,
                                                                 prem_adjusted=self.prem_adjusted)
             else:
                 vol_p, vol_c = wingvols_from_butterfly(atm_vol, rr, bf)
 
-            k_put = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P').k
-            k_call = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C').k
+            k_put = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P', self.prem_adj).k
+            k_call = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C', self.prem_adj).k
             pillars[delta] = (k_put, vol_p, k_call, vol_c)
             deltas += [-delta, delta]
             strikes += [k_put, k_call]
@@ -116,7 +118,7 @@ class FxVolCalibrator:
                 t = fx_market_yearfraction(self.date, expiry)
                 smile = VannaVolgaSmile(fwd=fwd, expiry=t, k_put=k_put, k_atm=k_atm, k_call=k_call,
                                         vol_put=vol_p, atm_vol=atm_vol, vol_call=vol_c, extrapolation='none',
-                                        spot=self.spot, df_f=df_f, df_d=df_d, prem_adjusted=self.prem_adjusted)
+                                        spot=self.spot, df_f=df_f, df_d=df_d, prem_adjusted=self.prem_adj)
 
                 for d in tail_d:
                     seed_p, seed_c = (vol_p, vol_c) if d < d_out else (atm_vol, atm_vol)
@@ -126,11 +128,12 @@ class FxVolCalibrator:
                     strikes += [k_p, k_c]
                     vols += [v_p, v_c]
 
+        # Order by increasing deltas/strikes
+
         report = {'deltas': deltas, 'strikes': strikes, 'vols': vols}
         return report
 
-    # Fixed point iteration. ToDo: check later if we don't already have it and move to a more suitable place
-    # if any.
+    # Fixed point iteration. ToDo: check if we don't already have it and move to a more suitable place if any.
     def _vol_at_delta(self, smile, expiry, df_f, df_d, delta, is_call, seed,
                       tol: float=1e-10, max_iter: int=100) -> tuple:
         """ (vol, strike) at the given unsigned delta. The strike needs the vol and the vol needs the
@@ -141,7 +144,7 @@ class FxVolCalibrator:
         kwargs = {'double_root_preference': 'large'} if is_call else {}
         for _ in range(max_iter):
             sol = strike_from_delta(self.date, expiry, self.spot, df_f, df_d, sigma, signed,
-                                    'C' if is_call else 'P', prem_adjusted=self.prem_adjusted, **kwargs)
+                                    'C' if is_call else 'P', self.prem_adj, **kwargs)
             if not bool(np.all(sol.valid)):
                 raise ValueError(f"No valid strike at delta={delta} for trial vol={sigma}")
             k = float(sol.k)
@@ -163,8 +166,7 @@ class FxVolCalibrator:
             raise ValueError(f"Requested pair {self.pair} not in conventional order")
 
         # Find premium adjusted
-
-        # Find spot-forward cutoff
+        self.prem_adj = fxspot.is_premium_adjusted(self.forccy, self.domccy)
 
     def _fetch_market_data(self, date: dt.date) -> None:
         """ Fetch market data on given date """

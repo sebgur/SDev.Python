@@ -72,8 +72,8 @@ def _run_pipeline():
                                                                                atm_vol, r, b, delta=d)
         else:
             vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
-        k_put = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_put, -d, 'P').k)
-        k_call = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_call, d, 'C').k)
+        k_put = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_put, -d, 'P', False).k)
+        k_call = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_call, d, 'C', False).k)
         market_strikes += [k_put, k_call]
         market_vols += [vol_put, vol_call]
 
