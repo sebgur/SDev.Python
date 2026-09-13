@@ -9,12 +9,11 @@ from sdevpy.market.fx import fxconventions
 from sdevpy.market.fx.fxforward import fx_pillar_date
 from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly, fx_option_dates
 from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike, fx_market_yearfraction
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
 log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Fix the vol_from_delta() thing
 # * Runtime: Ask Opus to profile and propose improvements if possible.
 #            Date conversion to yearfrac in many places including in strike_from_delta solver?
 # * Order the strikes/deltas in the output of the calibrator
@@ -22,6 +21,7 @@ log = logging.getLogger(__name__)
 # * Implement object that interpolates the spline results across time
 # * Move yieldcurves to calib data provider
 # * Use delta inversion and illustrate it
+# * Clarify the choice of small vs large double-root
 
 
 class FxVolCalibrator:
@@ -98,7 +98,7 @@ class FxVolCalibrator:
             k_put = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P',
                                       self.prem_adj, spot_delta).k
             k_call = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C',
-                                       self.prem_adj, spot_delta).k
+                                       self.prem_adj, spot_delta, double_root_preference='large').k
             pillars[delta] = (k_put, vol_p, k_call, vol_c)
             deltas += [-delta, delta]
             strikes += [k_put, k_call]
@@ -123,7 +123,6 @@ class FxVolCalibrator:
                 # Build smile for outermost quoted delta
                 d_out = np.min(quoted_deltas)
                 k_put, vol_p, k_call, vol_c = pillars[d_out]
-                # t = fx_market_yearfraction(self.date, expiry)
                 smile = VannaVolgaSmile(valdate=valdate, expiry_dt=expiry, fwd=fwd, k_put=k_put, k_atm=k_atm,
                                         k_call=k_call, vol_put=vol_p, atm_vol=atm_vol, vol_call=vol_c,
                                         extrapolation='none', spot=self.spot, df_f=df_f, df_d=df_d,
@@ -151,7 +150,8 @@ class FxVolCalibrator:
             the nearest wing vol rather than ATM converges in a few passes this far out. """
         sigma = float(seed)
         signed = delta if is_call else -delta
-        kwargs = {'double_root_preference': 'large', 'spot_delta': spot_delta} if is_call else {}
+        kwargs = {'double_root_preference': 'large'} if is_call else {}
+        kwargs['spot_delta'] = spot_delta
         for _ in range(max_iter):
             sol = strike_from_delta(self.date, expiry, self.spot, df_f, df_d, sigma, signed,
                                     'C' if is_call else 'P', self.prem_adj, **kwargs)
@@ -183,15 +183,15 @@ class FxVolCalibrator:
         self.date = date
 
         # Fetch spot
-        self.spot = md_prov.get_fx_spot(self.forccy, self.domccy, self.date)
+        self.spot = self.md_prov.get_fx_spot(self.forccy, self.domccy, self.date)
         log.debug(f"Spot: {self.spot}")
 
         # Fetch rate curves
-        self.forcurve = md_prov.get_xccycurve(self.forccy, self.date)
-        self.domcurve = md_prov.get_xccycurve(self.domccy, self.date)
+        self.forcurve = self.md_prov.get_xccycurve(self.forccy, self.date)
+        self.domcurve = self.md_prov.get_xccycurve(self.domccy, self.date)
 
         # Fetch vol
-        self.vol_data = md_prov.get_fx_vol_data(self.pair, self.date)
+        self.vol_data = self.md_prov.get_fx_vol_data(self.pair, self.date)
         # self.vol_data.pretty_print()
 
         # Others

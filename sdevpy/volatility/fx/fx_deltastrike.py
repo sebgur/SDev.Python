@@ -37,7 +37,6 @@ import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
 from sdevpy.utilities import dates as dts
-# from sdevpy.utilities import timegrids
 from sdevpy.utilities.sdaycount import year_fraction, DayCount
 
 
@@ -48,7 +47,6 @@ def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
         WARNING: this is not meant to be used anywhere else. For instance the calculation of rates and/or
         discount factors have no reasons to follow this same convention. """
     return year_fraction(valdate, expiry, DayCount.ACT365F)
-    # return timegrids.model_time(valdate, expiry)
 
 
 def atm_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: float, prem_adj: bool) -> float:
