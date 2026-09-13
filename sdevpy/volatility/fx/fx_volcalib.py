@@ -14,10 +14,13 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Runtime: Ask Opus to profile and propose improvements if possible.
-#            Date conversion to yearfrac in many places including in strike_from_delta solver?
+# * Runtime: * Put timers to measure gains
+#            * Do the ntdr(), branch changes and calendar caching according to Claude's performance-notes.md
+#            * The vectorization changes sound like less value for complexity/readibility in tradeoff.
 # * Order the strikes/deltas in the output of the calibrator
 # * Implement the direct spline, flat outside the last deltas
+# * Output data object from calibrator to json into calibration data location
+# * Create interpolation object from calibration data location
 # * Implement object that interpolates the spline results across time
 # * Move yieldcurves to calib data provider
 # * Use delta inversion and illustrate it
