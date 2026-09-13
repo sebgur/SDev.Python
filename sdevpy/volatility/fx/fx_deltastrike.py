@@ -174,13 +174,12 @@ class StrikeSolution:
 
 
 # Main entry point
-def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.ArrayLike,
-                      df_f: npt.ArrayLike, df_d: npt.ArrayLike,
-                      sigma: npt.ArrayLike, delta: npt.ArrayLike, option_type: npt.ArrayLike,
-                      prem_adjusted: npt.ArrayLike=False,
-                      spot_delta_cutoff: float=1.0, double_root_preference: str="small",
-                      bracket_width_sigma_mult: float=15.0, bracket_width_floor: float=8.0,
-                      tol_existence: float=1e-9, tol_residual: float=1e-6, max_iter: int=100) -> StrikeSolution:
+def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.ArrayLike, df_f: npt.ArrayLike,
+                      df_d: npt.ArrayLike, sigma: npt.ArrayLike, delta: npt.ArrayLike, option_type: npt.ArrayLike,
+                      prem_adjusted: npt.ArrayLike=False, spot_delta_cutoff: float=1.0,
+                      double_root_preference: str="small", bracket_width_sigma_mult: float=15.0,
+                      bracket_width_floor: float=8.0, tol_existence: float=1e-9, tol_residual: float=1e-6,
+                      max_iter: int=100) -> StrikeSolution:
     """
     Invert Garman-Kohlhagen delta quotes into strikes. Fully vectorized: all array arguments are broadcast
     together, so you can pass e.g. sigma/delta/option_type as a (n_maturities, n_deltas) grid
@@ -196,10 +195,6 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
            option_type : 'C'/'P' or +1/-1, broadcastable with the other inputs
     prem_adjusted: bool or bool array whether each quote uses premium-adjusted delta. Currency-pair/market
                    dependent. Pass it explicitly per quote or as a single bool for all quotes.
-    spot_delta: optional bool/bool-array override. If None (default), the convention is chosen automatically
-                per element: spot delta for T <= spot_delta_cutoff, forward delta for T > spot_delta_cutoff. This
-                is the standard market rule (spot delta becomes a poor hedge-ratio proxy for long-dated options
-                once forward points dominate).
     spot_delta_cutoff: maturity (in years) at which the convention switches (1.0 = 1Y, the market standard, tooverride
                        if needed for a specific pair).
     double_root_preference: 'small' (default, market convention) or 'large', which of the two roots to report as `K`
@@ -230,13 +225,9 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
 
     f = s * df_f / df_d
 
-    # if spot_delta is None:
     use_spot_delta = t <= spot_delta_cutoff
-    # else:
-    #     use_spot_delta = np.broadcast_to(_arr(spot_delta).astype(bool), s.shape)
     disc = np.where(use_spot_delta, df_f, 1.0)
 
-    # shape = s.shape
     sqrt_t = np.sqrt(t)
     b = bracket_width_sigma_mult * sigma * sqrt_t + bracket_width_floor # log-K half-width
 
