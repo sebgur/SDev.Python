@@ -195,8 +195,8 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
                    dependent. Pass it explicitly per quote or as a single bool for all quotes.
     spot_delta_cutoff: maturity (in years) at which the convention switches (1.0 = 1Y, the market standard, tooverride
                        if needed for a specific pair).
-    double_root_preference: 'small' (default, market convention) or 'large', which of the two roots to report as `K`
-                            when a premium-adjusted call has two solutions. Both roots are always available via `K_alt`.
+    double_root_preference: 'large' (default, not market convention) or 'small', which of the two roots to report as `K`
+                            when a premium-adjusted call has two solutions. Both are always available via `K_alt`.
     bracket_width_sigma_mult, bracket_width_floor: control how wide (in units of log-strike) the numerical search
                                                    brackets are. The defaults are generous (many sigma*sqrt(T) wide)
                                                    and should not need changing.
