@@ -6,6 +6,7 @@ from sdevpy.utilities import dates as dts
 from sdevpy.market.provider import MarketDataProvider
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.market.fx import fxconventions
+from sdevpy.market.fx.fxforward import fx_pillar_date
 from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly, fx_option_dates
 from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike, fx_market_yearfraction
@@ -13,10 +14,10 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Handle EOM case
-# * Don't forget to pass the spot_delta_cutoff from the calibrator to the necessary functions
-# * Then handle it properly (i.e. by string not float) in deltastrike
+# * Handle it spot_delta_cutoff properly
 # * Fix the fx_market_yearfraction to explicit Act/365 Fixed
+# * Fix the vol_from_delta() thing
+# * Order the strikes/deltas in the output of the calibrator
 # * Implement the direct spline, flat outside the last deltas
 # * Implement object that interpolates the spline results across time
 # * Measure runtime: date conversion to yearfrac in many places including in strike_from_delta solver
@@ -61,6 +62,7 @@ class FxVolCalibrator:
     def calibrate_tenor(self, tenor_idx: int) -> dict:
         """ Calibrate at the given tenor """
         valdate = self.date
+
         # Extract raw market data
         tenor = self.vol_data.tenors[tenor_idx]
         atm_vol = self.vol_data.atm_vols[tenor_idx]
@@ -74,7 +76,6 @@ class FxVolCalibrator:
         print(f"BFs: {bfs}")
 
         # Calculate discount factors and forward
-        # expiry = self.vol_data.expiries[tenor_idx]
         expiry, settlement = fx_option_dates(valdate, tenor, self.forccy, self.domccy)
         df_f, df_d = self.forcurve.discount(settlement), self.domcurve.discount(settlement)
         fwd = self.spot * df_f / df_d
@@ -83,6 +84,7 @@ class FxVolCalibrator:
         print(f"Forward: {fwd}")
 
         # Build the full set of market points: every quoted delta level, both wings
+        use_spot_delta = expiry <= self.spot_delta_cutoff_date
         deltas, strikes, vols = [], [], []
         pillars = {}
         for delta, rr, bf in zip(quoted_deltas, rrs, bfs, strict=True):
@@ -192,6 +194,7 @@ class FxVolCalibrator:
         # Others
         self.market_strangle_quote = self.vol_data.market_strangle_quote
         self.spot_delta_cutoff = self.vol_data.spot_delta_cutoff
+        self.spot_delta_cutoff_date = fx_pillar_date(self.date, self.spot_delta_cutoff, self.forccy, self.domccy)
 
 
 if __name__ == "__main__":

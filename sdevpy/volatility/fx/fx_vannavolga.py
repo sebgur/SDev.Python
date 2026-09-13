@@ -226,8 +226,8 @@ def smile_from_quotes(valdate: dt.datetime, expiry: dt.datetime, spot: float, df
     return smile
 
 def wingvols_from_market_strangle_vv(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
-                                     atm_vol: float, rr: float, ms: float, delta: float,
-                                     prem_adjusted: bool=False, **kwargs) -> tuple:
+                                     atm_vol: float, rr: float, ms: float, delta: float, prem_adjusted: bool,
+                                     **kwargs) -> tuple:
     """ Specific form fx_strangle's generic version with a Vanna-Volga build_smile to construct
         from a candidate strangle """
     def build_smile(trial_bf):

@@ -65,7 +65,7 @@ market_strikes, market_vols = [], []
 for d, r, b in zip(deltas, rr, bf, strict=True):
     if data.market_strangle_quote:
         vol_p, vol_c = fx_vannavolga.wingvols_from_market_strangle_vv(valdate, expiry, spot, df_f, df_d, atm_vol, r, b,
-                                                                      delta=d)
+                                                                      d, False)
     else:
         vol_p, vol_c = wingvols_from_butterfly(atm_vol, r, b)
 

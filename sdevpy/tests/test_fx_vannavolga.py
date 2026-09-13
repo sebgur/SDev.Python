@@ -69,7 +69,7 @@ def _run_pipeline():
     for d, r, b in zip(deltas, rr, bf, strict=True):
         if data.market_strangle_quote:
             vol_put, vol_call = fx_vannavolga.wingvols_from_market_strangle_vv(VALDATE, expiry, spot, df_f, df_d,
-                                                                               atm_vol, r, b, delta=d)
+                                                                               atm_vol, r, b, d, False)
         else:
             vol_put, vol_call = wingvols_from_butterfly(atm_vol, r, b)
         k_put = float(strike_from_delta(VALDATE, expiry, spot, df_f, df_d, vol_put, -d, 'P', False).k)
