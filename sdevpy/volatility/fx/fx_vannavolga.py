@@ -147,20 +147,13 @@ class VannaVolgaSmile:
         return vol
 
     def vol_at_delta(self, delta: float, is_call: bool, tol: float=1e-10, max_iter: int=100, **strike_kwargs) -> float:
-        """ Vol at the given (unsigned) target delta -- the inverse of vol(strike).
-
+        """ Vol at the given (unsigned) delta.
             Since the strike for a given delta depends on the vol at that strike, and the vol depends on the smile
             evaluated at that (unknown) strike, there is no closed form. This is the classic FX smile-strike problem.
             We solve it here by fixed-point iteration: seed at atm_vol, find the strike for that vol via
-            strike_from_delta, read the smile vol at that strike, repeat.
-
-            Converges to machine precision in a handful of iterations for a smooth smile.
-
-            Note: with extrapolation='flat' (the default), a delta whose strike falls outside [k_put, k_call] converges
-            to the flat boundary vol, not a genuine extrapolated value. The smile has no information beyond its own
-            quoted wings. """
+            strike_from_delta, read the smile vol at that strike, repeat. """
         if self.spot is None or self.df_f is None or self.df_d is None:
-            raise ValueError("spot/r_d/r_f not set on this smile -- build it via smile_from_quotes")
+            raise ValueError("spot/df_f/df_d not set on this smile: build with smile_from_quotes")
 
         strike_kwargs.setdefault('double_root_preference', 'large')
         signed_delta = delta if is_call else -delta

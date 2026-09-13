@@ -2,8 +2,8 @@
 Convert FX-option delta quotes (e.g. "25-delta put", "10-delta call") into Garman-Kohlhagen strikes, fully vectorized
 over an arbitrary broadcastable shape (many deltas x many maturities x many smiles at once).
 
-Why this isn't a one-liner
----------------------------
+Why this is not always a direct calculation
+--------------------------------------------
 delta = phi * disc * N(phi*d1)          <- "plain" delta:      closed form
 delta = phi * disc * (K/F) * N(phi*d2)  <- "premium-adjusted": NOT closed form in K
 
@@ -62,7 +62,7 @@ def atm_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: f
     return fwd * np.exp(sign * 0.5 * atm_vol ** 2 * t)
 
 
-def is_spot_delta_tenor(tenor_str: str, cutoff: str = '1Y') -> bool:
+def is_spot_delta_tenor(tenor_str: str, cutoff: str='1Y') -> bool:
     return dts.tenor_leq(tenor_str, cutoff)
 
 
@@ -110,16 +110,14 @@ def bs_delta(f, k, sigma, t, phi, disc, prem_adjusted) -> npt.ArrayLike:
     return np.where(prem_adjusted, pa, raw) * disc
 
 
-def _vectorized_bisect(func, target, x_lo, x_hi, increasing: bool,
-                        tol: float = 1e-12, max_iter: int = 100) -> npt.ArrayLike:
-    """
-    Bisection in log(K) space (guarantees K > 0, scale-invariant across currency pairs
-    with very different spot magnitudes, e.g. JPY crosses vs EURUSD).
+def _vectorized_bisect(func, target, x_lo, x_hi, increasing: bool, tol: float=1e-12,
+                       max_iter: int=100) -> npt.ArrayLike:
+    """ Bisection in log(K) space (guarantees K > 0, scale-invariant across currency pairs
+        with very different spot magnitudes, e.g. JPY crosses vs EURUSD).
 
-    `func` must be monotonic (increasing or decreasing, as declared) in K on
-    [exp(x_lo), exp(x_hi)], and the bracket must actually contain the root
-    (callers are responsible for supplying/expanding valid brackets).
-    """
+        `func` must be monotonic (increasing or decreasing, as declared) in K on
+        [exp(x_lo), exp(x_hi)], and the bracket must actually contain the root
+        (callers are responsible for supplying/expanding valid brackets). """
     lo = x_lo.copy()
     hi = x_hi.copy()
     for _ in range(max_iter):
@@ -138,11 +136,9 @@ def _vectorized_bisect(func, target, x_lo, x_hi, increasing: bool,
     return np.exp(0.5 * (lo + hi))
 
 
-def _vectorized_ternary_max(func, x_lo, x_hi, iters: int = 100):
-    """
-    Ternary search for the maximum of a (provably) unimodal function of K over
-    [exp(x_lo), exp(x_hi)], in log(K) space. Returns (K_argmax, func(K_argmax))
-    """
+def _vectorized_ternary_max(func, x_lo, x_hi, iters: int=100):
+    """ Ternary search for the maximum of a (provably) unimodal function of K over
+    [exp(x_lo), exp(x_hi)], in log(K) space. Returns (K_argmax, func(K_argmax)) """
     lo = x_lo.copy()
     hi = x_hi.copy()
     for _ in range(iters):
@@ -181,7 +177,7 @@ class StrikeSolution:
 def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.ArrayLike,
                       df_f: npt.ArrayLike, df_d: npt.ArrayLike,
                       sigma: npt.ArrayLike, delta: npt.ArrayLike, option_type: npt.ArrayLike,
-                      prem_adjusted: npt.ArrayLike=False, spot_delta: npt.ArrayLike=None,
+                      prem_adjusted: npt.ArrayLike=False,
                       spot_delta_cutoff: float=1.0, double_root_preference: str="small",
                       bracket_width_sigma_mult: float=15.0, bracket_width_floor: float=8.0,
                       tol_existence: float=1e-9, tol_residual: float=1e-6, max_iter: int=100) -> StrikeSolution:
@@ -192,10 +188,10 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
 
     Parameters
     ----------
-    spot: spot FX rate S (domestic per foreign unit)
-    d_f, d_d: foreign/domestic discount factors
+    spot: spot FX (domestic per foreign unit)
+    df_f, df_d: foreign/domestic discount factors
     sigma: Black-Scholes volatility
-    delta: signed target delta (e.g. +0.25 for a 25-delta call, -0.25 for a 25-delta put), expressed in
+    delta: signed target delta (e.g. +0.25 for 25-delta call, -0.25 for 25-delta put), expressed in
            whichever convention (spot vs forward, premium-adjusted or not) is implied by the other flags below
            option_type : 'C'/'P' or +1/-1, broadcastable with the other inputs
     prem_adjusted: bool or bool array whether each quote uses premium-adjusted delta. Currency-pair/market
@@ -230,25 +226,25 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
     prem_adjusted = np.broadcast_to(_arr(prem_adjusted).astype(bool), s.shape)
 
     if np.any(sigma <= 0) or np.any(t <= 0):
-        raise ValueError("sigma and T must be strictly positive everywhere.")
+        raise ValueError("sigma and T must be strictly positive everywhere")
 
     f = s * df_f / df_d
 
-    if spot_delta is None:
-        use_spot_delta = t <= spot_delta_cutoff
-    else:
-        use_spot_delta = np.broadcast_to(_arr(spot_delta).astype(bool), s.shape)
+    # if spot_delta is None:
+    use_spot_delta = t <= spot_delta_cutoff
+    # else:
+    #     use_spot_delta = np.broadcast_to(_arr(spot_delta).astype(bool), s.shape)
     disc = np.where(use_spot_delta, df_f, 1.0)
 
     # shape = s.shape
     sqrt_t = np.sqrt(t)
-    b = bracket_width_sigma_mult * sigma * sqrt_t + bracket_width_floor  # log-K half-width
+    b = bracket_width_sigma_mult * sigma * sqrt_t + bracket_width_floor # log-K half-width
 
     # Branch 1: plain (non premium-adjusted) delta -> closed form
-    #   delta = phi * disc * N(phi*d1)   =>   d1 = phi * N^{-1}(phi*delta/disc)
+    # delta = phi * disc * N(phi*d1) => d1 = phi * N^{-1}(phi*delta/disc)
     x_cf = phi * delta / disc
     with np.errstate(invalid="ignore"):
-        d1_cf = phi * norm.ppf(x_cf)  # NaN automatically outside (0,1) -- that's correct: no solution
+        d1_cf = phi * norm.ppf(x_cf) # NaN automatically outside (0,1): that's correct: no solution
     k_cf = f * np.exp(-d1_cf * sigma * sqrt_t + 0.5 * sigma ** 2 *t)
     valid_cf = (x_cf > 0) & (x_cf < 1)
 
@@ -259,14 +255,13 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
 
     x_lo_put = np.log(f) - b
     x_hi_put = np.log(f) + b
-    # make sure the bracket actually straddles the (monotonically decreasing) root;
-    # expand geometrically on whichever side is needed (defensive -- normally the
-    # generous default B already suffices)
+    # Make sure the bracket actually straddles the (monotonically decreasing) root. Expand geometrically
+    # on whichever side is needed (defensive, normally the generous default B already suffices)
     for _ in range(40):
         val_lo = _put_pa_delta(np.exp(x_lo_put)) - delta
         val_hi = _put_pa_delta(np.exp(x_hi_put)) - delta
-        need_lo = val_lo < 0          # want delta(lo) > target ; if not, push lo further left
-        need_hi = val_hi > 0          # want delta(hi) < target ; if not, push hi further right
+        need_lo = val_lo < 0 # want delta(lo) > target ; if not, push lo further left
+        need_hi = val_hi > 0 # want delta(hi) < target ; if not, push hi further right
         if not (np.any(need_lo) or np.any(need_hi)):
             break
         width = x_hi_put - x_lo_put
@@ -286,7 +281,7 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
                                                 iters=max_iter)
     x_k_max = np.log(k_max)
 
-    diff = delta - delta_max  # delta > 0 expected for calls
+    diff = delta - delta_max # delta > 0 expected for calls
     no_sol_call = diff > tol_existence
     one_sol_call = np.abs(diff) <= tol_existence
     # two_sol_call = diff < -tol_existence

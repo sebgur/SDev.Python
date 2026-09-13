@@ -2,31 +2,33 @@
 import datetime as dt
 import numpy as np
 import logging
-import matplotlib.pyplot as plt
 from sdevpy.market import fxspot
 from sdevpy.utilities import dates as dts
 from sdevpy.market.fileprovider import MarketDataFileProvider
-from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv
+from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
 from sdevpy.market.fxvolsurface import wingvols_from_butterfly
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike, fx_market_yearfraction
 from sdevpy.market.provider import MarketDataProvider
 log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Move yieldcurves to calib data provider
-# * Implement the direct spline, flat outside the last deltas, but keep the number of deltas/points generic
+# * Generate: prem_adjusted, spot_fwd_cutoff, expiry date
 # * Implement the vv-based calculation of extrapolated deltas
-# * Implement a calibration flow that, given the raw data, generates a "calibrated" surface that contains
-#   more deltas and the direct wing vols to save calibration time (and possibly interpolation definition)
+# * Implement the direct spline, flat outside the last deltas
 # * Implement object that interpolates the spline results across time
+# * Move yieldcurves to calib data provider
 # * Use delta inversion and illustrate it
 
 
 class FxVolCalibrator:
-    def __init__(self, pair: str, md_prov: MarketDataProvider):
+    def __init__(self, pair: str, md_prov: MarketDataProvider,
+                 extra_deltas=(0.05, 0.01), tail_method: str='exact', delta_tol: float=1e-4):
         self.pair = pair
         self.md_prov = md_prov
+        self.extra_deltas = tuple(extra_deltas) if extra_deltas else ()
+        self.tail_method = tail_method
+        self.delta_tol = delta_tol
 
         # Set null values
         self.forccy, self.domccy = None, None
@@ -36,7 +38,6 @@ class FxVolCalibrator:
 
         # Set pair conventions
         self._set_conventions()
-
 
     def calibrate(self, date: dt.date) -> dict:
         """ Calibrate on a certain date """
@@ -58,17 +59,17 @@ class FxVolCalibrator:
         # Extract raw market data
         tenor = self.vol_data.tenors[tenor_idx]
         atm_vol = self.vol_data.atm_vols[tenor_idx]
-        deltas = self.vol_data.deltas[tenor_idx]
-        rr = self.vol_data.rr[tenor_idx]
-        bf = self.vol_data.bf[tenor_idx]
+        quoted_deltas = self.vol_data.deltas[tenor_idx]
+        rrs = self.vol_data.rr[tenor_idx]
+        bfs = self.vol_data.bf[tenor_idx]
         print(f"Calibrating tenor: {tenor}")
         print(f"ATM vol: {atm_vol}")
-        print(f"Deltas: {deltas}")
-        print(f"RRs: {rr}")
-        print(f"BFs: {bf}")
+        print(f"Deltas: {quoted_deltas}")
+        print(f"RRs: {rrs}")
+        print(f"BFs: {bfs}")
 
         # Calculate discount factors and forward
-        expiry = self.vol_data.expiries[view_expiry_idx] # ToDo: generate
+        expiry = self.vol_data.expiries[tenor_idx] # ToDo: generate
         df_f, df_d = self.forcurve.discount(expiry), self.domcurve.discount(expiry)
         fwd = self.spot * df_f / df_d
         print(f"Foreign df: {df_f}")
@@ -76,26 +77,82 @@ class FxVolCalibrator:
         print(f"Forward: {fwd}")
 
         # Build the full set of market points: every quoted delta level, both wings
-        market_strikes, market_vols = [], []
-        for d, r, b in zip(deltas, rr, bf, strict=True):
+        deltas, strikes, vols = [], [], []
+        pillars = {}
+        for delta, rr, bf in zip(quoted_deltas, rrs, bfs, strict=True):
             if self.vol_data.market_strangle_quote:
                 vol_p, vol_c = wingvols_from_market_strangle_vv(self.date, expiry, self.spot, df_f, df_d,
-                                                                atm_vol, r, b, d, prem_adjusted=self.prem_adjusted)
+                                                                atm_vol, rr, bf, delta,
+                                                                prem_adjusted=self.prem_adjusted)
             else:
-                vol_p, vol_c = wingvols_from_butterfly(atm_vol, r, b)
+                vol_p, vol_c = wingvols_from_butterfly(atm_vol, rr, bf)
 
-            k_put = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -d, 'P').k
-            k_call = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, d, 'C').k
-            market_strikes += [k_put, k_call]
-            market_vols += [vol_p, vol_c]
+            k_put = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P').k
+            k_call = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C').k
+            pillars[delta] = (k_put, vol_p, k_call, vol_c)
+            deltas += [-delta, delta]
+            strikes += [k_put, k_call]
+            vols += [vol_p, vol_c]
 
         # Concatenate with ATM
         k_atm = atm_strike(valdate, expiry, fwd, atm_vol)
-        market_strikes.append(k_atm)
-        market_vols.append(atm_vol)
+        strikes.append(k_atm)
+        vols.append(atm_vol)
+        deltas.append(0.50) # Add ATM
 
         # Calculate additional market vols far in the tails for future extrapolation
-        return {'strikes': market_strikes, 'vols': market_vols}
+        if self.extra_deltas:
+            tail_d = [d for d in self.extra_deltas
+                      if not np.any(np.isclose(d, quoted_deltas, rtol=0.0, atol=self.delta_tol))]
+
+            if len(tail_d) < len(self.extra_deltas):
+                skipped = [d for d in self.extra_deltas if d not in tail_d]
+                log.debug(f"{tenor}: extra deltas already quoted, taken from the market: {skipped}")
+
+            if tail_d:
+                # Build smile for outermost quoted delta
+                d_out = np.min(quoted_deltas)
+                k_put, vol_p, k_call, vol_c = pillars[d_out]
+                t = fx_market_yearfraction(self.date, expiry)
+                smile = VannaVolgaSmile(fwd=fwd, expiry=t, k_put=k_put, k_atm=k_atm, k_call=k_call,
+                                        vol_put=vol_p, atm_vol=atm_vol, vol_call=vol_c, extrapolation='none',
+                                        spot=self.spot, df_f=df_f, df_d=df_d, prem_adjusted=self.prem_adjusted)
+
+                for d in tail_d:
+                    seed_p, seed_c = (vol_p, vol_c) if d < d_out else (atm_vol, atm_vol)
+                    v_p, k_p = self._vol_at_delta(smile, expiry, df_f, df_d, d, False, seed=seed_p)
+                    v_c, k_c = self._vol_at_delta(smile, expiry, df_f, df_d, d, True, seed=seed_c)
+                    deltas += [-d, d]
+                    strikes += [k_p, k_c]
+                    vols += [v_p, v_c]
+
+        report = {'deltas': deltas, 'strikes': strikes, 'vols': vols}
+        return report
+
+    # Fixed point iteration. ToDo: check later if we don't already have it and move to a more suitable place
+    # if any.
+    def _vol_at_delta(self, smile, expiry, df_f, df_d, delta, is_call, seed,
+                      tol: float=1e-10, max_iter: int=100) -> tuple:
+        """ (vol, strike) at the given unsigned delta. The strike needs the vol and the vol needs the
+            strike, so iterate: seed a vol, solve its strike, read the smile there, repeat. Seeding at
+            the nearest wing vol rather than ATM converges in a few passes this far out. """
+        sigma = float(seed)
+        signed = delta if is_call else -delta
+        kwargs = {'double_root_preference': 'large'} if is_call else {}
+        for _ in range(max_iter):
+            sol = strike_from_delta(self.date, expiry, self.spot, df_f, df_d, sigma, signed,
+                                    'C' if is_call else 'P', prem_adjusted=self.prem_adjusted, **kwargs)
+            if not bool(np.all(sol.valid)):
+                raise ValueError(f"No valid strike at delta={delta} for trial vol={sigma}")
+            k = float(sol.k)
+            sigma_new = float(smile.vol(k, self.tail_method))
+            if not np.isfinite(sigma_new):
+                raise ValueError(f"VV extrapolation not arbitrage-free at delta={delta}, K={k}")
+            if abs(sigma_new - sigma) < tol:
+                return sigma_new, k
+            sigma = sigma_new
+        raise RuntimeError(f"Tail vol did not converge at delta={delta}")
+
 
     def _set_conventions(self) -> None:
         """ Set market convention for pair """
@@ -127,10 +184,11 @@ class FxVolCalibrator:
 
 
 if __name__ == "__main__":
+    # import matplotlib.pyplot as plt
+
     # Choose test case
     pair = "USDJPY"
     valdate = dt.datetime(2025, 12, 15)
-    view_expiry_idx = 0
 
     # Get market data provider
     md_prov = MarketDataFileProvider()
@@ -139,37 +197,13 @@ if __name__ == "__main__":
     calibrator = FxVolCalibrator(pair, md_prov)
     print(f"prem_adjusted: {calibrator.prem_adjusted}")
 
-    # Build the full set of market points: every quoted delta level, both wings, plus ATM
-    market_strikes, market_vols = [], []
-    for d, r, b in zip(deltas, rr, bf, strict=True):
-        if data.market_strangle_quote:
-            vol_p, vol_c = fx_vannavolga.wingvols_from_market_strangle_vv(valdate, expiry, spot, df_f, df_d, atm_vol, r, b,
-                                                                        delta=d)
-        else:
-            vol_p, vol_c = wingvols_from_butterfly(atm_vol, r, b)
+    # Calibrate
+    report = calibrator.calibrate(valdate)
+    print(report)
 
-        k_put = float(strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_p, -d, 'P').k)
-        k_call = float(strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_c, d, 'C').k)
-        market_strikes += [k_put, k_call]
-        market_vols += [vol_p, vol_c]
-
-    # t = fx_market_yearfraction(valdate, expiry)
-    k_atm = atm_strike(valdate, expiry, fwd, atm_vol)
-    market_strikes.append(k_atm)
-    market_vols.append(atm_vol)
-
-    # Build interpolated smile
-    delta_idx = 0
-    plot_delta, plot_rr, plot_bf = deltas[delta_idx], rr[delta_idx], bf[delta_idx]
-    s = fx_vannavolga.smile_from_quotes(valdate, expiry, spot=spot, df_f=df_f, df_d=df_d,
-                                        atm_vol=atm_vol, rr=plot_rr, bf=plot_bf, delta=plot_delta)
-    strikes = np.linspace(0.9 * fwd, 1.1 * fwd, 50)
-    vols = []
-    for strike in strikes:
-        vols.append(s.vol(strike)) #float(s.vol(k, 'first_order')
-
+    # Check results
 
     # Plot
-    plt.plot(strikes, vols, label='Interpolation', color='blue')
-    plt.scatter(market_strikes, market_vols, label='Market', color='red', zorder=5)
-    plt.show()
+    # plt.plot(strikes, vols, label='Interpolation', color='blue')
+    # plt.scatter(market_strikes, market_vols, label='Market', color='red', zorder=5)
+    # plt.show()
