@@ -74,8 +74,7 @@ for d, r, b in zip(deltas, rr, bf, strict=True):
     market_strikes += [k_put, k_call]
     market_vols += [vol_p, vol_c]
 
-# t = fx_market_yearfraction(valdate, expiry)
-k_atm = atm_strike(valdate, expiry, fwd, atm_vol)
+k_atm = atm_strike(valdate, expiry, fwd, atm_vol, False)
 market_strikes.append(k_atm)
 market_vols.append(atm_vol)
 

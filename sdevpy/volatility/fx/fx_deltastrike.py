@@ -50,15 +50,14 @@ def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
     return timegrids.model_time(valdate, expiry)
 
 
-def atm_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: float,
-               prem_adjusted: bool=False) -> float:
+def atm_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: float, prem_adj: bool) -> float:
     """ Delta-neutral-straddle ATM strike (the FX convention, not ATM-forward).
         Non premium-adjusted: F exp(+0.5 sigma^2 T); premium-adjusted: F exp(-0.5 sigma^2 T). """
     ####
     t = fx_market_yearfraction(valdate, expiry)
     ####
 
-    sign = -1.0 if prem_adjusted else 1.0
+    sign = -1.0 if prem_adj else 1.0
     return fwd * np.exp(sign * 0.5 * atm_vol ** 2 * t)
 
 

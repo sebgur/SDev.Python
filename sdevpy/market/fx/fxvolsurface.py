@@ -4,6 +4,7 @@ import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import jsonmanager as jsm
+from sdevpy.market.fx.fxforward import fx_pillar_date, fx_spot_date
 
 
 class FxVolSurfaceData:
@@ -103,6 +104,13 @@ def wingvols_from_butterfly(atm_vol: float, rr: float, bf: float) -> float:
     vol_call = atm_vol + bf + 0.5 * rr
     vol_put = atm_vol + bf - 0.5 * rr
     return vol_put, vol_call
+
+
+def fx_option_dates(valdate: dt.datetime, tenor: str, forccy: str, domccy: str) -> tuple[dt.datetime, dt.datetime]:
+    """ Calculate FX option expiry and delivery dates """
+    expiry = fx_pillar_date(valdate, tenor, forccy, domccy)
+    delivery = fx_spot_date(expiry, forccy, domccy)
+    return expiry, delivery
 
 
 if __name__ == "__main__":

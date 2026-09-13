@@ -6,7 +6,7 @@ from sdevpy.utilities import dates as dts
 from sdevpy.market.provider import MarketDataProvider
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.market.fx import fxconventions
-from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly
+from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly, fx_option_dates
 from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike, fx_market_yearfraction
 log = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 ################## TODO ###########################################################################
 # * Make proper distinction between option expiry and settlement
-# * Generate: expiry/settlement dates
+# * Handle EOM case
 # * Don't forget to pass the spot_delta_cutoff from the calibrator to the necessary functions
 # * Then handle it properly (i.e. by string not float) in deltastrike
 # * Fix the fx_market_yearfraction to explicit Act/365 Fixed
@@ -75,8 +75,9 @@ class FxVolCalibrator:
         print(f"BFs: {bfs}")
 
         # Calculate discount factors and forward
-        expiry = self.vol_data.expiries[tenor_idx] # ToDo: generate
-        df_f, df_d = self.forcurve.discount(expiry), self.domcurve.discount(expiry)
+        # expiry = self.vol_data.expiries[tenor_idx]
+        expiry, settlement = fx_option_dates(valdate, tenor, self.forccy, self.domccy)
+        df_f, df_d = self.forcurve.discount(settlement), self.domcurve.discount(settlement)
         fwd = self.spot * df_f / df_d
         print(f"Foreign df: {df_f}")
         print(f"Domestic df: {df_d}")
@@ -89,7 +90,7 @@ class FxVolCalibrator:
             if self.market_strangle_quote:
                 vol_p, vol_c = wingvols_from_market_strangle_vv(valdate, expiry, self.spot, df_f, df_d,
                                                                 atm_vol, rr, bf, delta,
-                                                                prem_adjusted=self.prem_adjusted)
+                                                                prem_adjusted=self.prem_adj)
             else:
                 vol_p, vol_c = wingvols_from_butterfly(atm_vol, rr, bf)
 
@@ -101,7 +102,7 @@ class FxVolCalibrator:
             vols += [vol_p, vol_c]
 
         # Concatenate with ATM
-        k_atm = atm_strike(valdate, expiry, fwd, atm_vol)
+        k_atm = atm_strike(valdate, expiry, fwd, atm_vol, self.prem_adj)
         strikes.append(k_atm)
         vols.append(atm_vol)
         deltas.append(0.50) # Add ATM
@@ -134,7 +135,8 @@ class FxVolCalibrator:
 
         # Order by increasing deltas/strikes
 
-        report = {'deltas': deltas, 'strikes': strikes, 'vols': vols}
+        report = {'expiry': expiry, 'settlement': settlement,
+                  'deltas': deltas, 'strikes': strikes, 'vols': vols}
         return report
 
     # Fixed point iteration. ToDo: check if we don't already have it and move to a more suitable place if any.
@@ -205,7 +207,7 @@ if __name__ == "__main__":
 
     # Create calibrator
     calibrator = FxVolCalibrator(pair, md_prov)
-    print(f"prem_adjusted: {calibrator.prem_adjusted}")
+    print(f"prem_adjusted: {calibrator.prem_adj}")
 
     # Calibrate
     report = calibrator.calibrate(valdate)

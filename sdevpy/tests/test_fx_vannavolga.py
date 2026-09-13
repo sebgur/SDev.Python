@@ -77,7 +77,7 @@ def _run_pipeline():
         market_strikes += [k_put, k_call]
         market_vols += [vol_put, vol_call]
 
-    k_atm = atm_strike(VALDATE, expiry, fwd, atm_vol)
+    k_atm = atm_strike(VALDATE, expiry, fwd, atm_vol, False)
     market_strikes.append(k_atm)
     market_vols.append(atm_vol)
 
@@ -103,10 +103,10 @@ class TestPillarConstruction:
         assert _smile().vol_put > _smile().vol_call
 
     def test_atm_strike_above_forward_when_not_prem_adjusted(self):
-        assert atm_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adjusted=False) > 1.12
+        assert atm_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adj=False) > 1.12
 
     def test_atm_strike_below_forward_when_prem_adjusted(self):
-        assert atm_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adjusted=True) < 1.12
+        assert atm_strike(VALDATE, EXPIRY_DT, 1.12, 0.10, prem_adj=True) < 1.12
 
     def test_non_increasing_pillars_raise(self):
         with pytest.raises(ValueError):
