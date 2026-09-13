@@ -13,7 +13,6 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Make proper distinction between option expiry and settlement
 # * Handle EOM case
 # * Don't forget to pass the spot_delta_cutoff from the calibrator to the necessary functions
 # * Then handle it properly (i.e. by string not float) in deltastrike

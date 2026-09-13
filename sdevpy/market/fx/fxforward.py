@@ -4,7 +4,7 @@ import numpy.typing as npt
 from sdevpy.utilities import dates as dts
 # from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.market.yieldcurve import YieldCurve
-from sdevpy.utilities.scalendar import make_calendar, BDC
+from sdevpy.utilities.scalendar import make_calendar, BDC, to_eom, is_last_business_day_of_month
 
 
 FX_SPOT_LAG_OVERRIDES = {
@@ -109,7 +109,8 @@ def fx_pillar_date(valdate: dt.datetime, tenor_str: str, forccy: str, domccy: st
         including the USD overlay for crosses. By the tenor's calendar period, then business-day-adjusted in the pair's
         own calendar (no USD overlay here: the expiry/exercise date only needs to be good in the two option currencies'
         own centers, unlike settlement, which needs the correspondent-bank USD legs).
-        ToDo: does not apply an end-of-month roll yet. """
+        End-of-month rule: if the spot date is the last good business day of its month, a whole-month/year tenor
+        rolls to the last good business day of the target month too, rather than preserving day-of-month. """
     upper = tenor_str.upper()
     pair_cal = make_calendar(f"{forccy},{domccy}")
 
@@ -118,7 +119,11 @@ def fx_pillar_date(valdate: dt.datetime, tenor_str: str, forccy: str, domccy: st
         raw = pair_cal.add_business_days(valdate, n_days)
     else:
         spot = fx_spot_date(valdate, forccy, domccy)
-        raw = spot + dts.period(tenor_str)
+        rd = dts.period(tenor_str)
+        raw = spot + rd
+        if rd.days == 0 and is_last_business_day_of_month(pair_cal, spot):
+            raw = to_eom(raw)
+        # raw = spot + dts.period(tenor_str)
 
     return pair_cal.adjust(raw, convention)
 

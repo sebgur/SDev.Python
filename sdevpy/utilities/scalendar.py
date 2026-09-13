@@ -315,6 +315,14 @@ def to_eom(d: dt.date) -> dt.date:
     return next_month - timedelta(days=next_month.day)
 
 
+def is_last_business_day_of_month(cal, d: dt.datetime) -> bool:
+    """ True if `d` is the last good business day of its month. Distinct from scalendar.is_eom, which checks the
+        literal calendar month-end, not the business-day-adjusted one. The two diverge exactly when the calendar
+        month-end falls on a weekend/holiday, which is the case this check exists for. """
+    nxt = cal.add_business_days(d, 1)
+    return (nxt.year, nxt.month) != (d.year, d.month)
+
+
 def third_wednesday(year: int, month: int) -> dt.date:
     """ Third Wednesday of the given month (standard IMM roll day) """
     d = dt.date(year, month, 1)
@@ -391,7 +399,7 @@ def list_mcal_calendars() -> list[str]:
     return mcal.get_calendar_names()
 
 
-def make_schedule(calstr, start, end, term, convention=BDC.F, convert_to_datetime=False):
+def make_schedule(calstr: str, start, end, term, convention=BDC.F, convert_to_datetime=False):
     """ Helper wrapping around the make_schedule() method of the calendard class """
     cdr = make_calendar(calstr)
     schedule = cdr.make_schedule(start, end, term, convention=convention,
