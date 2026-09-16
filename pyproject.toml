@@ -17,7 +17,8 @@ classifiers = [
 ]
 dependencies = ["pandas", "numpy", "scipy", "matplotlib", "holidays",
                 "pandas_market_calendars", "openpyxl", "colorlog",
-                "scikit-learn"
+                "scikit-learn", "pyperclip", "statsmodels", "ta", "huggingface_hub",
+                "transformers", "tiktoken", "dicttoxml", "xmltodict"
 ]
 #dependencies = ["pyperclip", "tensorflow", "scikit-learn",
 # "tensorflow_probability", "silence_tensorflow"]

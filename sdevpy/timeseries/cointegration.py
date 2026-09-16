@@ -200,8 +200,16 @@ def norm_1st_eigvec(res_jo) -> npt.NDArray[np.float64]:
     for i in range(n):
         first_eigvec.append(res_jo.evec[i][0])
 
+    # evec can come back complex128 (tiny spurious imaginary part from LAPACK's
+    # general eigensolver, platform-dependent e.g. Accelerate vs OpenBLAS) even
+    # though the true eigenvector is real — discard the noise before normalizing.
+    first_eigvec = np.real(first_eigvec)
+
     # Normalized with respect to the first element
-    return np.array(first_eigvec) / res_jo.evec[0][0]
+    return first_eigvec / np.real(res_jo.evec[0][0])
+
+    # # Normalized with respect to the first element
+    # return np.array(first_eigvec) / res_jo.evec[0][0]
 
 
 if __name__ == "__main__":
