@@ -23,7 +23,7 @@ class Stopwatch:
         return self.total_elapsed
 
     def print(self):
-        """ Print the elapsted time """
+        """ Print the elapsed time """
         elapsed = self.elapsed()
         print(f'Runtime({self.name}): {elapsed:.1f}s')
 

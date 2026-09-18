@@ -10,17 +10,19 @@ from sdevpy.market.fx.fxforward import fx_pillar_date
 from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly, fx_option_dates
 from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
+from sdevpy.utilities import timer
 log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Runtime: * Put timers to measure gains
-#            * Do the ntdr(), branch changes and calendar caching according to Claude's performance-notes.md
-#            * The vectorization changes sound like less value for complexity/readibility in tradeoff.
+# * Do the ntdr() change
+# * Do the branch change (Claude's performance-notes.md)
+# * Do the calendar caching change
 # * Order the strikes/deltas in the output of the calibrator
 # * Implement the direct spline, flat outside the last deltas
 # * Output data object from calibrator to json into calibration data location
 # * Create interpolation object from calibration data location
+# * See if we can improve speed by multi-threading on tenor (optionally)
 # * Implement object that interpolates the spline results across time
 # * Move yieldcurves to calib data provider
 # * Use delta inversion and illustrate it
@@ -63,6 +65,8 @@ class FxVolCalibrator:
 
     def calibrate_tenor(self, tenor_idx: int) -> dict:
         """ Calibrate at the given tenor """
+        ten_timer = timer.Stopwatch(tenor_idx)
+        ten_timer.trigger()
         valdate = self.date
 
         # Extract raw market data
@@ -141,6 +145,10 @@ class FxVolCalibrator:
 
         # Order by increasing deltas/strikes
 
+
+        ten_timer.stop()
+        ten_timer.print()
+
         report = {'expiry': expiry, 'settlement': settlement,
                   'deltas': deltas, 'strikes': strikes, 'vols': vols}
         return report
@@ -218,10 +226,27 @@ if __name__ == "__main__":
     print(f"prem_adjusted: {calibrator.prem_adj}")
 
     # Calibrate
+    cal_timer = timer.Stopwatch('calibrate')
+    cal_timer.trigger()
     report = calibrator.calibrate(valdate)
-    print(report)
+    cal_timer.stop()
+    # print(report)
 
     # Check results
+    check_strikes, check_vols = 0.0, 0.0
+    for r in report['tenor_reports']:
+        check_strikes += np.asarray(r['strikes']).mean()
+        check_vols += np.asarray(r['vols']).mean()
+
+    print(f"Check strikes: {check_strikes}")
+    print(f"Check vols: {check_vols}")
+    strike_ref = 907.2903549319075
+    vol_ref = 0.622253494336979
+    print(f"Strike status: {'OK' if abs(check_strikes - strike_ref) < 1e-8 else 'FAIL'}")
+    print(f"Vol status: {'OK' if abs(check_vols - vol_ref) < 1e-10 else 'FAIL'}")
+
+    # Timer
+    cal_timer.print()
 
     # Plot
     # plt.plot(strikes, vols, label='Interpolation', color='blue')

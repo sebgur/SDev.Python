@@ -35,7 +35,8 @@ from dataclasses import dataclass
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
-from scipy.stats import norm
+# from scipy.stats import norm
+from scipy.special import ndtr, ndtri
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities.sdaycount import year_fraction, DayCount
 
@@ -103,8 +104,10 @@ def bs_delta(f, k, sigma, t, phi, disc, prem_adjusted) -> npt.ArrayLike:
     f, k, sigma, t, phi, disc = np.broadcast_arrays(*[_arr(a) for a in (f, k, sigma, t, phi, disc)])
     prem_adjusted = np.broadcast_to(_arr(prem_adjusted).astype(bool), f.shape)
     d1, d2 = _d1d2(f, k, sigma, t)
-    raw = phi * norm.cdf(phi * d1)
-    pa = phi * (k / f) * norm.cdf(phi * d2)
+    raw = phi * ndtr(phi * d1)
+    pa = phi * (k / f) * ndtr(phi * d2)
+    # raw = phi * norm.cdf(phi * d1)
+    # pa = phi * (k / f) * norm.cdf(phi * d2)
     return np.where(prem_adjusted, pa, raw) * disc
 
 
@@ -234,14 +237,16 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
     # delta = phi * disc * N(phi*d1) => d1 = phi * N^{-1}(phi*delta/disc)
     x_cf = phi * delta / disc
     with np.errstate(invalid="ignore"):
-        d1_cf = phi * norm.ppf(x_cf) # NaN automatically outside (0,1): that's correct: no solution
+        d1_cf = phi * ndtri(x_cf) # NaN automatically outside (0,1): that's correct: no solution
+        # d1_cf = phi * norm.ppf(x_cf) # NaN automatically outside (0,1): that's correct: no solution
     k_cf = f * np.exp(-d1_cf * sigma * sqrt_t + 0.5 * sigma ** 2 *t)
     valid_cf = (x_cf > 0) & (x_cf < 1)
 
     # Branch 2: premium-adjusted PUT delta -> monotonic, unique root
     def _put_pa_delta(k):
         _, d2 = _d1d2(f, k, sigma, t)
-        return -disc * (k / f) * norm.cdf(-d2)
+        return -disc * (k / f) * ndtr(-d2)
+        # return -disc * (k / f) * norm.cdf(-d2)
 
     x_lo_put = np.log(f) - b
     x_hi_put = np.log(f) + b
@@ -263,7 +268,8 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
     # Branch 3: premium-adjusted CALL delta -> unimodal (hump), 0/1/2 roots
     def _call_pa_delta(k):
         _, d2 = _d1d2(f, k, sigma, t)
-        return disc * (k / f) * norm.cdf(d2)
+        return disc * (k / f) * ndtr(d2)
+        # return disc * (k / f) * norm.cdf(d2)
 
     x_lo_call = np.log(f) - b
     x_hi_call = np.log(f) + b
@@ -328,7 +334,8 @@ if __name__ == "__main__":
     # sanity check: recompute delta at that strike directly
     f = 1.10 * df_f / df_d
     d1, _ = _d1d2(np.array(f), res.k, np.array(0.09), np.array(0.5))
-    print("check delta:", -norm.cdf(-d1) * np.exp(-0.02 * 0.5))
+    print("check delta:", -ndtr(-d1) * np.exp(-0.02 * 0.5))
+    # print("check delta:", -norm.cdf(-d1) * np.exp(-0.02 * 0.5))
 
     print()
     print("=" * 70)

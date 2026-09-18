@@ -2,11 +2,15 @@
 import logging
 import numpy as np
 import numpy.typing as npt
-from scipy.stats import norm
+# from scipy.stats import norm
+from scipy.special import ndtr
 from scipy.optimize import minimize_scalar
 from sdevpy.utilities.tools import isiterable
 from sdevpy.analytics.schadner import implied_vol_schadner
 log = logging.getLogger(__name__)
+
+
+_INV_SQRT_2PI = 1.0 / np.sqrt(2.0 * np.pi)
 
 
 def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
@@ -16,7 +20,8 @@ def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, 
     s = vol * np.sqrt(expiry)
     d1 = np.log(fwd / strike) / s + 0.5 * s
     d2 = d1 - s
-    return w * (fwd * norm.cdf(w * d1) - strike * norm.cdf(w * d2))
+    return w * (fwd * ndtr(w * d1) - strike * ndtr(w * d2))
+    # return w * (fwd * norm.cdf(w * d1) - strike * norm.cdf(w * d2))
 
 
 def price_straddles(expiry: npt.ArrayLike, strike: npt.ArrayLike, fwd: npt.ArrayLike,
@@ -82,7 +87,9 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
     for _ in range(max_iter):
         s = vol * sqrt_t
         d1 = np.log(fwd / strike) / s + 0.5 * s
-        vega = fwd * norm.pdf(d1) * sqrt_t
+        pdf = _INV_SQRT_2PI * np.exp(-0.5 * d1 * d1) # No scipy.special equivalent to norm.pdf
+        vega = fwd * pdf * sqrt_t
+        # vega = fwd * norm.pdf(d1) * sqrt_t
         low_vega_mask |= np.abs(vega) < vega_floor
 
         diff = price(expiry, strike, is_call, fwd, vol) - fwd_price
