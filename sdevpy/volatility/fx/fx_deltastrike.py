@@ -132,8 +132,10 @@ def _vectorized_bisect(func, target, x_lo, x_hi, increasing: bool, tol: float=1e
         lo = np.where(go_right, mid, lo)
         hi = np.where(go_right, hi, mid)
         # cheap, safe early exit
-        if np.nanmax(hi - lo) < tol:
+        if (hi - lo).max() < tol:
             break
+        # if np.nanmax(hi - lo) < tol:
+        #     break
     return np.exp(0.5 * (lo + hi))
 
 
@@ -151,8 +153,10 @@ def _vectorized_ternary_max(func, x_lo, x_hi, iters: int=100):
         go_right = f1 < f2  # max is to the right of m1
         lo = np.where(go_right, m1, lo)
         hi = np.where(go_right, hi, m2)
-        if np.nanmax(hi - lo) < 1e-12:
+        if (hi - lo).max() < 1e-12:
             break
+        # if np.nanmax(hi - lo) < 1e-12:
+        #     break
     x_star = 0.5 * (lo + hi)
     k_star = np.exp(x_star)
     return k_star, func(k_star)

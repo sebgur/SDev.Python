@@ -4,6 +4,7 @@ from enum import Enum
 from collections import namedtuple
 import pandas_market_calendars as mcal
 import holidays
+from functools import cache
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities.tools import isiterable
 
@@ -356,6 +357,7 @@ def _step_imm(d: dt.date, n: int, forward: bool) -> dt.date:
     return d
 
 
+@cache
 def make_calendar(name: str, start_year: int=2000, end_year: int=2100):
     if ',' in name:
         cdr_names = name.split(',')
