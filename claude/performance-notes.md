@@ -30,22 +30,6 @@ the worst case for this overhead. `argsreduce` alone cost 6.1 s of the 32 s prof
 `sdevpy/analytics/schadner.py:28` imports from `scipy.special` directly.
 
 ### Exact changes
-**`sdevpy/analytics/black.py`**
-
-```python
-# line 5 (keep the minimize_scalar import on line 6)
-from scipy.special import ndtr
-
-# near the top
-_INV_SQRT_2PI = 1.0 / np.sqrt(2.0 * np.pi)
-
-# line 19, in price
-    return w * (fwd * ndtr(w * d1) - strike * ndtr(w * d2))
-
-# line 85, in the implied-vol Newton loop (norm.pdf has no scipy.special equivalent)
-        vega = fwd * (_INV_SQRT_2PI * np.exp(-0.5 * d1 * d1)) * sqrt_t
-```
-
 **`sdevpy/volatility/fx/fx_vannavolga.py`**
 
 ```python
@@ -53,9 +37,6 @@ _INV_SQRT_2PI = 1.0 / np.sqrt(2.0 * np.pi)
 # line 45, in bs_vega
     return fwd * (_INV_SQRT_2PI * np.exp(-0.5 * d1 * d1)) * sqrt_t
 ```
-
-Consider putting a shared `norm_pdf(x)` helper in `black.py` rather than repeating
-the constant — `fx_vannavolga.py` already imports from `sdevpy.analytics.black`.
 
 ## 2. `strike_from_delta` computes all three branches unconditionally
 

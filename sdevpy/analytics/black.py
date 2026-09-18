@@ -7,10 +7,11 @@ from scipy.special import ndtr
 from scipy.optimize import minimize_scalar
 from sdevpy.utilities.tools import isiterable
 from sdevpy.analytics.schadner import implied_vol_schadner
+from sdevpy.maths.constants import C_1_SQRT_2PI
 log = logging.getLogger(__name__)
 
 
-_INV_SQRT_2PI = 1.0 / np.sqrt(2.0 * np.pi)
+# _INV_SQRT_2PI = 1.0 / np.sqrt(2.0 * np.pi)
 
 
 def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
@@ -87,7 +88,7 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
     for _ in range(max_iter):
         s = vol * sqrt_t
         d1 = np.log(fwd / strike) / s + 0.5 * s
-        pdf = _INV_SQRT_2PI * np.exp(-0.5 * d1 * d1) # No scipy.special equivalent to norm.pdf
+        pdf = C_1_SQRT_2PI * np.exp(-0.5 * d1 * d1) # No scipy.special equivalent to norm.pdf
         vega = fwd * pdf * sqrt_t
         # vega = fwd * norm.pdf(d1) * sqrt_t
         low_vega_mask |= np.abs(vega) < vega_floor

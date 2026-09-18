@@ -25,10 +25,11 @@ from dataclasses import dataclass, field
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
-from scipy.stats import norm
+# from scipy.stats import norm
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction, atm_strike
 from sdevpy.volatility.fx import fx_strangle
+from sdevpy.maths.constants import C_1_SQRT_2PI
 
 
 def _arr(x) -> npt.NDArray[np.float64]:
@@ -42,7 +43,10 @@ def bs_vega(fwd: npt.ArrayLike, strike: npt.ArrayLike, expiry: npt.ArrayLike,
     sqrt_t = np.sqrt(expiry)
     with np.errstate(divide='ignore', invalid='ignore'):
         d1 = (np.log(fwd / strike) + 0.5 * vol ** 2 * expiry) / (vol * sqrt_t)
-    return fwd * norm.pdf(d1) * sqrt_t
+
+    pdf = C_1_SQRT_2PI * np.exp(-0.5 * d1 * d1)
+    return fwd * pdf * sqrt_t
+    # return fwd * norm.pdf(d1) * sqrt_t
 
 
 def lagrange_weights(strike: npt.ArrayLike, k_put: float, k_atm: float, k_call: float) -> tuple:

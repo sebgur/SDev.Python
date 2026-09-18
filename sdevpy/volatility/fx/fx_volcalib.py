@@ -15,7 +15,6 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Do the ntdr() change
 # * Do the branch change (Claude's performance-notes.md)
 # * Do the calendar caching change
 # * Order the strikes/deltas in the output of the calibrator
