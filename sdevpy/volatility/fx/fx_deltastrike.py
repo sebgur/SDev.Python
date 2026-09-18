@@ -212,6 +212,9 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
     --------
     Returns: StrikeSolution container
     """
+    if double_root_preference not in ("small", "large"):
+        raise ValueError("double_root_preference must be 'small' or 'large'.")
+
     ####
     t = fx_market_yearfraction(valdate, expiry)
     ####
@@ -230,76 +233,95 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
     # use_spot_delta = t <= spot_delta_cutoff
     disc = np.where(use_spot_delta, df_f, 1.0)
 
+    # Guard flags
+    is_pa = prem_adjusted
+    is_put = phi < 0
+    is_call = ~is_put
+    need_cf = bool(np.any(~is_pa))
+    need_pa_put = bool(np.any(is_pa & is_put))
+    need_pa_call = bool(np.any(is_pa & is_call))
+
     sqrt_t = np.sqrt(t)
     b = bracket_width_sigma_mult * sigma * sqrt_t + bracket_width_floor # log-K half-width
 
     # Branch 1: plain (non premium-adjusted) delta -> closed form
     # delta = phi * disc * N(phi*d1) => d1 = phi * N^{-1}(phi*delta/disc)
-    x_cf = phi * delta / disc
-    with np.errstate(invalid="ignore"):
-        d1_cf = phi * ndtri(x_cf) # NaN automatically outside (0,1): that's correct: no solution
-        # d1_cf = phi * norm.ppf(x_cf) # NaN automatically outside (0,1): that's correct: no solution
-    k_cf = f * np.exp(-d1_cf * sigma * sqrt_t + 0.5 * sigma ** 2 *t)
-    valid_cf = (x_cf > 0) & (x_cf < 1)
+    if need_cf:
+        x_cf = phi * delta / disc
+        with np.errstate(invalid="ignore"):
+            d1_cf = phi * ndtri(x_cf) # NaN automatically outside (0,1): that's correct: no solution
+            # d1_cf = phi * norm.ppf(x_cf) # NaN automatically outside (0,1): that's correct: no solution
+        k_cf = f * np.exp(-d1_cf * sigma * sqrt_t + 0.5 * sigma ** 2 *t)
+        valid_cf = (x_cf > 0) & (x_cf < 1)
+    else:
+        k_cf = np.full(s.shape, np.nan)
+        valid_cf = np.zeros(s.shape, dtype=bool)
 
     # Branch 2: premium-adjusted PUT delta -> monotonic, unique root
-    def _put_pa_delta(k):
-        _, d2 = _d1d2(f, k, sigma, t)
-        return -disc * (k / f) * ndtr(-d2)
-        # return -disc * (k / f) * norm.cdf(-d2)
+    if need_pa_put:
+        def _put_pa_delta(k):
+            _, d2 = _d1d2(f, k, sigma, t)
+            return -disc * (k / f) * ndtr(-d2)
+            # return -disc * (k / f) * norm.cdf(-d2)
 
-    x_lo_put = np.log(f) - b
-    x_hi_put = np.log(f) + b
-    # Make sure the bracket actually straddles the (monotonically decreasing) root. Expand geometrically
-    # on whichever side is needed (defensive, normally the generous default B already suffices)
-    for _ in range(40):
-        val_lo = _put_pa_delta(np.exp(x_lo_put)) - delta
-        val_hi = _put_pa_delta(np.exp(x_hi_put)) - delta
-        need_lo = val_lo < 0 # want delta(lo) > target ; if not, push lo further left
-        need_hi = val_hi > 0 # want delta(hi) < target ; if not, push hi further right
-        if not (np.any(need_lo) or np.any(need_hi)):
-            break
-        width = x_hi_put - x_lo_put
-        x_lo_put = np.where(need_lo, x_lo_put - width, x_lo_put)
-        x_hi_put = np.where(need_hi, x_hi_put + width, x_hi_put)
+        x_lo_put = np.log(f) - b
+        x_hi_put = np.log(f) + b
+        # Make sure the bracket actually straddles the (monotonically decreasing) root. Expand geometrically
+        # on whichever side is needed (defensive, normally the generous default B already suffices)
+        for _ in range(40):
+            val_lo = _put_pa_delta(np.exp(x_lo_put)) - delta
+            val_hi = _put_pa_delta(np.exp(x_hi_put)) - delta
+            need_lo = val_lo < 0 # want delta(lo) > target ; if not, push lo further left
+            need_hi = val_hi > 0 # want delta(hi) < target ; if not, push hi further right
+            if not (np.any(need_lo) or np.any(need_hi)):
+                break
+            width = x_hi_put - x_lo_put
+            x_lo_put = np.where(need_lo, x_lo_put - width, x_lo_put)
+            x_hi_put = np.where(need_hi, x_hi_put + width, x_hi_put)
 
-    k_put_pa = _vectorized_bisect(_put_pa_delta, delta, x_lo_put, x_hi_put, increasing=False, max_iter=max_iter)
+        k_put_pa = _vectorized_bisect(_put_pa_delta, delta, x_lo_put, x_hi_put, increasing=False, max_iter=max_iter)
+    else:
+        k_put_pa = np.full(s.shape, np.nan)
 
     # Branch 3: premium-adjusted CALL delta -> unimodal (hump), 0/1/2 roots
-    def _call_pa_delta(k):
-        _, d2 = _d1d2(f, k, sigma, t)
-        return disc * (k / f) * ndtr(d2)
-        # return disc * (k / f) * norm.cdf(d2)
+    if need_pa_call:
+        def _call_pa_delta(k):
+            _, d2 = _d1d2(f, k, sigma, t)
+            return disc * (k / f) * ndtr(d2)
+            # return disc * (k / f) * norm.cdf(d2)
 
-    x_lo_call = np.log(f) - b
-    x_hi_call = np.log(f) + b
-    k_max, delta_max = _vectorized_ternary_max(_call_pa_delta, x_lo_call, x_hi_call,
-                                                iters=max_iter)
-    x_k_max = np.log(k_max)
+        x_lo_call = np.log(f) - b
+        x_hi_call = np.log(f) + b
+        k_max, delta_max = _vectorized_ternary_max(_call_pa_delta, x_lo_call, x_hi_call,
+                                                    iters=max_iter)
+        x_k_max = np.log(k_max)
 
-    diff = delta - delta_max # delta > 0 expected for calls
-    no_sol_call = diff > tol_existence
-    one_sol_call = np.abs(diff) <= tol_existence
-    # two_sol_call = diff < -tol_existence
+        diff = delta - delta_max # delta > 0 expected for calls
+        no_sol_call = diff > tol_existence
+        one_sol_call = np.abs(diff) <= tol_existence
+        # two_sol_call = diff < -tol_existence
 
-    k_call_left = _vectorized_bisect(_call_pa_delta, delta, x_lo_call, x_k_max, increasing=True, max_iter=max_iter)
-    k_call_right = _vectorized_bisect(_call_pa_delta, delta, x_k_max, x_hi_call, increasing=False, max_iter=max_iter)
+        k_call_left = _vectorized_bisect(_call_pa_delta, delta, x_lo_call, x_k_max, increasing=True, max_iter=max_iter)
+        k_call_right = _vectorized_bisect(_call_pa_delta, delta, x_k_max, x_hi_call, increasing=False, max_iter=max_iter)
 
-    if double_root_preference not in ("small", "large"):
-        raise ValueError("double_root_preference must be 'small' or 'large'.")
-    k_call_primary = k_call_left if double_root_preference == "small" else k_call_right
-    k_call_secondary = k_call_right if double_root_preference == "small" else k_call_left
-    k_call_primary = np.where(one_sol_call, k_max, k_call_primary)
-    k_call_secondary = np.where(one_sol_call, np.nan, k_call_secondary)
-    k_call_primary = np.where(no_sol_call, np.nan, k_call_primary)
-    k_call_secondary = np.where(no_sol_call, np.nan, k_call_secondary)
+        k_call_primary = k_call_left if double_root_preference == "small" else k_call_right
+        k_call_secondary = k_call_right if double_root_preference == "small" else k_call_left
+        k_call_primary = np.where(one_sol_call, k_max, k_call_primary)
+        k_call_secondary = np.where(one_sol_call, np.nan, k_call_secondary)
+        k_call_primary = np.where(no_sol_call, np.nan, k_call_primary)
+        k_call_secondary = np.where(no_sol_call, np.nan, k_call_secondary)
 
-    n_sol_call = np.where(no_sol_call, 0, np.where(one_sol_call, 1, 2))
+        n_sol_call = np.where(no_sol_call, 0, np.where(one_sol_call, 1, 2))
+    else:
+        k_call_primary = np.full(s.shape, np.nan)
+        k_call_secondary = np.full(s.shape, np.nan)
+        n_sol_call = np.zeros(s.shape, dtype=int)
+        delta_max = np.full(s.shape, np.nan)
 
     # Combine the three branches
-    is_pa = prem_adjusted
-    is_put = phi < 0
-    is_call = ~is_put
+    # is_pa = prem_adjusted
+    # is_put = phi < 0
+    # is_call = ~is_put
 
     k = np.where(~is_pa, k_cf, np.where(is_put, k_put_pa, k_call_primary))
     k_alt = np.where(~is_pa, np.nan, np.where(is_put, np.nan, k_call_secondary))

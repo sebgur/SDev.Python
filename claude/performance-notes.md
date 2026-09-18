@@ -1,42 +1,5 @@
-| Change | Cumulative | Effort |
-|---|---|---|
-| baseline | 26.4 s | — |
 | `lru_cache` on `make_calendar` | 21.6 s | 2 lines |
-| + `scipy.special.ndtr` instead of `scipy.stats.norm.cdf` | 8.5 s | ~10 lines, 3 files |
 | + branch skipping and `.max()` in `strike_from_delta` | 4.4 s | ~20 lines, 1 file |
-| + `ndtr` in `black.py` / `fx_vannavolga.py` | 3.4 s | ~5 lines |
-
-## 1. `scipy.stats.norm.cdf` → `scipy.special.ndtr` (worth ~3x alone)
-
-`norm.cdf` delegates to `ndtr` internally (`norm_gen._cdf` → `_norm_cdf` → `sp.ndtr`),
-so results are **bitwise identical**. The difference is a fixed ~60 µs per-call wrapper
-overhead (argument validation, `argsreduce`, loc/scale broadcasting) that is independent
-of array size:
-
-```
-  array size     norm.cdf         ndtr    ratio
-           1       58.8us        0.4us   136.8x
-         100       61.0us        1.2us    52.1x
-        1000       92.1us        8.8us    10.4x
-       10000      391.6us      124.4us     3.1x
-     1000000    43526.2us    15310.3us     2.8x
-```
-
-The calibrator calls it ~141,000 times on 1-element arrays inside bisection loops —
-the worst case for this overhead. `argsreduce` alone cost 6.1 s of the 32 s profile.
-
-`ndtr` is a genuine `numpy.ufunc` (broadcasting, `out=`, `where=` all work), so
-**no vectorisation is lost**. Precedent already exists in this repo:
-`sdevpy/analytics/schadner.py:28` imports from `scipy.special` directly.
-
-### Exact changes
-**`sdevpy/volatility/fx/fx_vannavolga.py`**
-
-```python
-# line 28: delete "from scipy.stats import norm" (pdf was its only use)
-# line 45, in bs_vega
-    return fwd * (_INV_SQRT_2PI * np.exp(-0.5 * d1 * d1)) * sqrt_t
-```
 
 ## 2. `strike_from_delta` computes all three branches unconditionally
 
