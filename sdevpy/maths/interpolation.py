@@ -82,8 +82,8 @@ class CubicSplineInterpolator(Interpolator):
             * either of: natural, clamped, not-a-knot, periodic
     """
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         self.bc_type = kwargs.get('bc_type', 'natural')
+        super().__init__(**kwargs)
         self.interp = None
 
     def initialize(self):

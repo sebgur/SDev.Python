@@ -28,6 +28,14 @@ class CalibrationDataFileProvider:
 
         return (jsm.deserialize(file) if file.exists() else None)
 
+    def get_fxvol_data(self, pair: str, date: dt.datetime) -> dict|None:
+        """ Retrieve FX vol data if existing, None otherwise """
+        file = self.fxvol_data_file(pair, date)
+        if not file.exists():
+            log.debug(f'FX Vol file not found: {file}')
+
+        return (jsm.deserialize(file) if file.exists() else None)
+
     def impliedvol_data_file(self, name: str, date: dt.datetime, model_name: str) -> Path:
         """ Data file for implied vol models """
         folder = self.root / 'impliedvol' / name

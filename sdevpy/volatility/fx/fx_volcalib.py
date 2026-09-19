@@ -11,17 +11,20 @@ from sdevpy.market.fx.fxforward import fx_pillar_date
 from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly, fx_option_dates
 from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
+from sdevpy.maths.interpolation import create_interpolation
 from sdevpy.utilities import timer
 from sdevpy.utilities import jsonmanager as jsm
 log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Implement the direct spline, flat outside the last deltas
-# * Create interpolation object from calibration data location
+# * Put real data in sample
 # * Implement object that interpolates the spline results across time
 # * Use delta inversion and illustrate it
 # * Clarify the choice of small vs large double-root
+# * Fix past Claude review, do another one, iterate
+# * Ask Claude to review the entire FX vol code and make remarks
+# * Register Codex and ask the same. Iterate and converge.
 # * Move yieldcurves to calib data provider
 
 
@@ -143,7 +146,6 @@ class FxVolCalibrator:
 
         # Order by increasing deltas/strikes
         put_deltas = [-d if d < 0 else 1.0 - d for d in deltas] # put-delta axis for interpolation/strike order
-        # print(put_deltas)
         order = sorted(range(len(put_deltas)), key=lambda i: put_deltas[i])
         # order = sorted(range(len(deltas)), key=lambda i: deltas[i])
         # deltas = [deltas[i] for i in order]
@@ -155,10 +157,8 @@ class FxVolCalibrator:
         if not np.all(np.diff(strikes) > 0):
             log.warning(f"{tenor}: strikes not monotonic after delta-ordering, possible smile inversion")
 
-        # ten_timer.stop()
-        # ten_timer.print()
-
-        report = {'expiry': expiry, 'settlement': settlement, 'deltas': put_deltas, 'strikes': strikes, 'vols': vols}
+        report = {'tenor': tenor, 'expiry': expiry, 'settlement': settlement, 'deltas': put_deltas, 'strikes': strikes,
+                  'vols': vols}
         return report
 
     def dump(self, file: str) -> None:
@@ -230,7 +230,7 @@ class FxVolCalibrator:
 
 
 if __name__ == "__main__":
-    # import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
 
     # Choose test case
     pair = "USDJPY"
@@ -271,7 +271,40 @@ if __name__ == "__main__":
     # Timer
     cal_timer.print()
 
+    # Retrieve data from file and define interpolation
+    vol_data = cal_prov.get_fxvol_data(pair, valdate)
+    tenors, ten_deltas, ten_vols, ten_interps = [], [], [], []
+    for tenor_report in vol_data['tenor_reports']:
+        deltas = tenor_report['deltas'] # x-axis, already sorted ascending
+        vols = tenor_report['vols'] # y-axis
+        tenor = tenor_report.get('tenor', tenor_report['expiry'])  # falls back to expiry if 'tenor' isn't added
+        interp = create_interpolation(interp='cubicspline', l_extrap='flat', r_extrap='flat',
+                                      x_grid=deltas, y_grid=vols)
+
+        # Store
+        tenors.append(tenor)
+        ten_deltas.append(deltas)
+        ten_vols.append(vols)
+        ten_interps.append(interp)
+
     # Plot first 6 expiries
-    # plt.plot(strikes, vols, label='Interpolation', color='blue')
-    # plt.scatter(market_strikes, market_vols, label='Market', color='red', zorder=5)
-    # plt.show()
+    disp_deltas = np.linspace(0.0001, 0.9999, 100)
+    n_rows, n_cols = 3, 2
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 8))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            ax = axes[i, j]
+            exp_idx = n_cols * i + j
+            tenor = tenors[exp_idx]
+            deltas = ten_deltas[exp_idx]
+            vols = ten_vols[exp_idx]
+            interp = ten_interps[exp_idx]
+            ax.plot(disp_deltas, interp.value(disp_deltas), label="Interpolation", color='green')
+            ax.scatter(deltas, vols, label="Market", color='black')
+            ax.set_title(f"Tenor:{tenor}")
+            ax.set_xlabel('Put delta')
+            ax.legend()
+
+    fig.suptitle('Optimization History', fontsize=16, fontweight='bold')
+    plt.tight_layout()
+    plt.show()
