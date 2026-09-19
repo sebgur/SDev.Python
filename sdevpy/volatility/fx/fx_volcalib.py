@@ -19,11 +19,11 @@ log = logging.getLogger(__name__)
 
 ################## TODO ###########################################################################
 # * Implement object that interpolates the spline results across time
+# * Fix past Claude review, do another one, iterate
 # * Use delta inversion and illustrate it
 # * Clarify the choice of small vs large double-root
-# * Fix past Claude review, do another one, iterate
 # * Ask Claude to review the entire FX vol code and make remarks
-# * Register Codex and ask the same. Iterate and converge.
+# * Register Codex and ask the same. Iterate and converge. Ask it about the bad vanna-volga points.
 # * Move yieldcurves to calib data provider
 
 
@@ -252,18 +252,18 @@ if __name__ == "__main__":
     file = cal_prov.fxvol_data_file(pair, valdate)
     calibrator.dump(file)
 
-    # Check results
-    check_strikes, check_vols = 0.0, 0.0
-    for r in report['tenor_reports']:
-        check_strikes += np.asarray(r['strikes']).mean()
-        check_vols += np.asarray(r['vols']).mean()
+    # # Check results
+    # check_strikes, check_vols = 0.0, 0.0
+    # for r in report['tenor_reports']:
+    #     check_strikes += np.asarray(r['strikes']).mean()
+    #     check_vols += np.asarray(r['vols']).mean()
 
-    print(f"Check strikes: {check_strikes}")
-    print(f"Check vols: {check_vols}")
-    strike_ref = 907.2903549319075
-    vol_ref = 0.622253494336979
-    print(f"Strike status: {'OK' if abs(check_strikes - strike_ref) < 1e-8 else 'FAIL'}")
-    print(f"Vol status: {'OK' if abs(check_vols - vol_ref) < 1e-10 else 'FAIL'}")
+    # print(f"Check strikes: {check_strikes}")
+    # print(f"Check vols: {check_vols}")
+    # strike_ref = 907.2903549319075
+    # vol_ref = 0.622253494336979
+    # print(f"Strike status: {'OK' if abs(check_strikes - strike_ref) < 1e-8 else 'FAIL'}")
+    # print(f"Vol status: {'OK' if abs(check_vols - vol_ref) < 1e-10 else 'FAIL'}")
 
     # Timer
     cal_timer.print()

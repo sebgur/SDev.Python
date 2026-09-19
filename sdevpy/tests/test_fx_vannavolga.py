@@ -6,13 +6,7 @@ from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quotes, vv_weights,
                                                 lagrange_weights, bs_vega)
 from sdevpy.volatility.fx.fx_strangle import market_strangle, calibrate_smile_strangle
-
-from sdevpy.market.fx import fxconventions
-from sdevpy.market.fx.fxvolsurface import fxvolsurfacedata_from_file, wingvols_from_butterfly
-from sdevpy.utilities import dates as dts
-from sdevpy.market.fileprovider import MarketDataFileProvider
-from sdevpy.volatility.fx import fx_vannavolga
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction, atm_strike
+from sdevpy.volatility.fx.fx_deltastrike import fx_market_yearfraction, atm_strike
 
 
 SPOT, R_D, R_F, EXPIRY = 1.10, 0.04, 0.02, 1.0

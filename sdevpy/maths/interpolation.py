@@ -54,21 +54,6 @@ def create_extrapolator(interpolator, type: str='builtin', **kwargs):
             raise TypeError(f"Unknown extrapolator type: {type}")
 
 
-# def create_interpolator(type: str='linear', **kwargs):
-#     type_dn = type.lower()
-#     match type_dn:
-#         case 'step':
-#             return StepInterpolator(**kwargs)
-#         case 'linear':
-#             return LinearInterpolator(**kwargs)
-#         case 'cubicspline':
-#             return CubicSplineInterpolator(**kwargs)
-#         case 'bspline':
-#             return BSplineInterpolator(**kwargs)
-#         case _:
-#             raise TypeError(f"Unknown interpolator type: {type}")
-
-
 class Interpolator(ABC):
     def __init__(self, **kwargs):
         self.eps = kwargs.get('eps', constants.EPS)

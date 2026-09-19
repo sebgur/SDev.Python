@@ -90,10 +90,6 @@ def fxvolsurfacedata_from_file(file: str|Path) -> FxVolSurfaceData:
     spot_delta_cutoff = data.get('spot_delta_cutoff', '1Y')
     sections = data.get('sections')
 
-    # for section in sections:
-    #     date_str = section.get('expiry')
-    #     section['expiry'] = dt.datetime.strptime(date_str, dts.DATE_FORMAT)
-
     return FxVolSurfaceData(dt.datetime.strptime(valdate, dts.DATE_FORMAT), sections,
                             name=name, snapdate=dt.datetime.strptime(snapdate, dts.DATETIME_FORMAT),
                             market_strangle_quote=market_strangle_quote, spot_delta_cutoff=spot_delta_cutoff)

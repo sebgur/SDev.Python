@@ -1,11 +1,11 @@
 """ Toy examples for understanding functools.lru_cache """
 import time
-from functools import lru_cache
+from functools import lru_cache, cache
 
 
 # --- 1. Basic memoization: expensive call becomes free on repeat ---------
 
-@lru_cache(maxsize=None)
+@cache
 def slow_square(x):
     time.sleep(0.5)  # pretend this is expensive (like building a calendar)
     return x * x
@@ -44,7 +44,7 @@ def demo_eviction():
 
 # --- 3. Gotcha: unhashable arguments raise TypeError ----------------------
 
-@lru_cache(maxsize=None)
+@cache
 def process(data):
     return sum(data)
 
@@ -60,7 +60,7 @@ def demo_unhashable():
 
 # --- 4. Gotcha: cached return value is the SAME object -- mutation bug ----
 
-@lru_cache(maxsize=None)
+@cache
 def get_market_data(pricing_date, ccy_pair):
     print(f"  building dataset for {pricing_date}, {ccy_pair}")
     return {"spot": 1.10, "vols": [0.1, 0.12, 0.15]}

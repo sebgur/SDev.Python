@@ -305,8 +305,10 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
         one_sol_call = np.abs(diff) <= tol_existence
         # two_sol_call = diff < -tol_existence
 
-        k_call_left = _vectorized_bisect(_call_pa_delta, delta, x_lo_call, x_k_max, increasing=True, max_iter=max_iter)
-        k_call_right = _vectorized_bisect(_call_pa_delta, delta, x_k_max, x_hi_call, increasing=False, max_iter=max_iter)
+        k_call_left = _vectorized_bisect(_call_pa_delta, delta, x_lo_call, x_k_max,
+                                         increasing=True, max_iter=max_iter)
+        k_call_right = _vectorized_bisect(_call_pa_delta, delta, x_k_max, x_hi_call,
+                                          increasing=False, max_iter=max_iter)
 
         k_call_primary = k_call_left if double_root_preference == "small" else k_call_right
         k_call_secondary = k_call_right if double_root_preference == "small" else k_call_left
