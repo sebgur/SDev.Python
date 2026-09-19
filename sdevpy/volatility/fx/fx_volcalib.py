@@ -5,26 +5,24 @@ import logging
 from sdevpy.utilities import dates as dts
 from sdevpy.market.provider import MarketDataProvider
 from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.market.fx import fxconventions
 from sdevpy.market.fx.fxforward import fx_pillar_date
 from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly, fx_option_dates
 from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
 from sdevpy.utilities import timer
+from sdevpy.utilities import jsonmanager as jsm
 log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Do the calendar caching change
-# * Order the strikes/deltas in the output of the calibrator
 # * Implement the direct spline, flat outside the last deltas
-# * Output data object from calibrator to json into calibration data location
 # * Create interpolation object from calibration data location
-# * See if we can improve speed by multi-threading on tenor (optionally)
 # * Implement object that interpolates the spline results across time
-# * Move yieldcurves to calib data provider
 # * Use delta inversion and illustrate it
 # * Clarify the choice of small vs large double-root
+# * Move yieldcurves to calib data provider
 
 
 class FxVolCalibrator:
@@ -42,6 +40,7 @@ class FxVolCalibrator:
         self.vol_date, self.prem_adj = None, None
         self.market_strangle_quote, self.spot_delta_cutoff = False, '1Y'
         self.date, self.spot = None, None
+        self.report = None
 
         # Set pair conventions
         self._set_conventions()
@@ -59,12 +58,13 @@ class FxVolCalibrator:
             result = self.calibrate_tenor(tenor_idx)
             tenor_results.append(result)
 
-        return {'tenor_reports': tenor_results}
+        self.report = {'pair': self.pair, 'date': self.date, 'tenor_reports': tenor_results}
+        return self.report
 
     def calibrate_tenor(self, tenor_idx: int) -> dict:
         """ Calibrate at the given tenor """
-        ten_timer = timer.Stopwatch(tenor_idx)
-        ten_timer.trigger()
+        # ten_timer = timer.Stopwatch(tenor_idx)
+        # ten_timer.trigger()
         valdate = self.date
 
         # Extract raw market data
@@ -100,10 +100,10 @@ class FxVolCalibrator:
             else:
                 vol_p, vol_c = wingvols_from_butterfly(atm_vol, rr, bf)
 
-            k_put = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P',
-                                      self.prem_adj, spot_delta).k
-            k_call = strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C',
-                                       self.prem_adj, spot_delta, double_root_preference='large').k
+            k_put = float(strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P',
+                                            self.prem_adj, spot_delta).k)
+            k_call = float(strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C',
+                                             self.prem_adj, spot_delta, double_root_preference='large').k)
             pillars[delta] = (k_put, vol_p, k_call, vol_c)
             deltas += [-delta, delta]
             strikes += [k_put, k_call]
@@ -142,14 +142,35 @@ class FxVolCalibrator:
                     vols += [v_p, v_c]
 
         # Order by increasing deltas/strikes
+        put_deltas = [-d if d < 0 else 1.0 - d for d in deltas] # put-delta axis for interpolation/strike order
+        # print(put_deltas)
+        order = sorted(range(len(put_deltas)), key=lambda i: put_deltas[i])
+        # order = sorted(range(len(deltas)), key=lambda i: deltas[i])
+        # deltas = [deltas[i] for i in order]
+        put_deltas = [put_deltas[i] for i in order]
+        strikes = [strikes[i] for i in order]
+        vols = [vols[i] for i in order]
 
+        # Sanity check on order
+        if not np.all(np.diff(strikes) > 0):
+            log.warning(f"{tenor}: strikes not monotonic after delta-ordering, possible smile inversion")
 
-        ten_timer.stop()
-        ten_timer.print()
+        # ten_timer.stop()
+        # ten_timer.print()
 
-        report = {'expiry': expiry, 'settlement': settlement,
-                  'deltas': deltas, 'strikes': strikes, 'vols': vols}
+        report = {'expiry': expiry, 'settlement': settlement, 'deltas': put_deltas, 'strikes': strikes, 'vols': vols}
         return report
+
+    def dump(self, file: str) -> None:
+        """ Dump calibrated data to file """
+        data = self.report.copy()
+        data['date'] = data['date'].strftime(dts.DATE_FILE_FORMAT)
+        for r in data['tenor_reports']:
+            r['expiry'] = r['expiry'].strftime(dts.DATE_FILE_FORMAT)
+            r['settlement'] = r['settlement'].strftime(dts.DATE_FILE_FORMAT)
+
+        jsm.serialize(data, file)
+
 
     # Fixed point iteration. ToDo: check if we don't already have it and move to a more suitable place if any.
     def _vol_at_delta(self, smile, expiry, df_f, df_d, delta, is_call, seed, spot_delta,
@@ -174,7 +195,6 @@ class FxVolCalibrator:
                 return sigma_new, k
             sigma = sigma_new
         raise RuntimeError(f"Tail vol did not converge at delta={delta}")
-
 
     def _set_conventions(self) -> None:
         """ Set market convention for pair """
@@ -216,8 +236,9 @@ if __name__ == "__main__":
     pair = "USDJPY"
     valdate = dt.datetime(2025, 12, 15)
 
-    # Get market data provider
+    # Get market and calibration data providers
     md_prov = MarketDataFileProvider()
+    cal_prov = CalibrationDataFileProvider()
 
     # Create calibrator
     calibrator = FxVolCalibrator(pair, md_prov)
@@ -229,6 +250,10 @@ if __name__ == "__main__":
     report = calibrator.calibrate(valdate)
     cal_timer.stop()
     # print(report)
+
+    # Output to file
+    file = cal_prov.fxvol_data_file(pair, valdate)
+    calibrator.dump(file)
 
     # Check results
     check_strikes, check_vols = 0.0, 0.0
@@ -246,7 +271,7 @@ if __name__ == "__main__":
     # Timer
     cal_timer.print()
 
-    # Plot
+    # Plot first 6 expiries
     # plt.plot(strikes, vols, label='Interpolation', color='blue')
     # plt.scatter(market_strikes, market_vols, label='Market', color='red', zorder=5)
     # plt.show()

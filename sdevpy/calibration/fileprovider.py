@@ -30,13 +30,22 @@ class CalibrationDataFileProvider:
 
     def impliedvol_data_file(self, name: str, date: dt.datetime, model_name: str) -> Path:
         """ Data file for implied vol models """
-        folder = self.root / 'impliedvol'
-        return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json")
+        folder = self.root / 'impliedvol' / name
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder / (date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json")
 
     def localvol_data_file(self, name: str, date: dt.datetime, model_name: str) -> Path:
         """ Retrieve data file for local vol models """
-        folder = self.root / 'localvol'
-        return Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json")
+        folder = self.root / 'localvol' / name
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder / (date.strftime(dts.DATE_FILE_FORMAT) + "." + model_name + ".json")
+
+    def fxvol_data_file(self, pair: str, date: dt.datetime) -> Path:
+        """ Data file for calibrated FX vol surfaces """
+        folder = self.root / 'fxvol' / pair
+        folder.mkdir(parents=True, exist_ok=True)
+        return folder / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
+
 
 
 if __name__ == "__main__":
