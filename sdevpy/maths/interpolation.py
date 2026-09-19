@@ -6,6 +6,27 @@ from abc import ABC, abstractmethod
 from sdevpy.maths import constants
 
 
+_INTERPOLATOR_REGISTRY = {}
+
+
+def register_interpolator(name: str):
+    """ Register class corresponding to name string """
+    def decorator(cls):
+        _INTERPOLATOR_REGISTRY[name] = cls
+        return cls
+    return decorator
+
+
+def create_interpolator(type_str: str='linear', **kwargs):
+    """ Create a learning rate scheduler given its name, the optimizer, and parameters """
+    try:
+        cls = _INTERPOLATOR_REGISTRY[type_str.lower()]
+    except KeyError as e:
+        raise ValueError(f"Unknown interpolator type '{type_str}'. Available: {sorted(_INTERPOLATOR_REGISTRY)}") from e
+
+    return cls(**kwargs)
+
+
 def create_interpolation(**kwargs):
     """ Create interpolation object based on interpolation and extrapolation choices """
     interp = kwargs.get('interp', 'linear')
@@ -33,19 +54,19 @@ def create_extrapolator(interpolator, type: str='builtin', **kwargs):
             raise TypeError(f"Unknown extrapolator type: {type}")
 
 
-def create_interpolator(type: str='linear', **kwargs):
-    type_dn = type.lower()
-    match type_dn:
-        case 'step':
-            return StepInterpolator(**kwargs)
-        case 'linear':
-            return LinearInterpolator(**kwargs)
-        case 'cubicspline':
-            return CubicSplineInterpolator(**kwargs)
-        case 'bspline':
-            return BSplineInterpolator(**kwargs)
-        case _:
-            raise TypeError(f"Unknown interpolator type: {type}")
+# def create_interpolator(type: str='linear', **kwargs):
+#     type_dn = type.lower()
+#     match type_dn:
+#         case 'step':
+#             return StepInterpolator(**kwargs)
+#         case 'linear':
+#             return LinearInterpolator(**kwargs)
+#         case 'cubicspline':
+#             return CubicSplineInterpolator(**kwargs)
+#         case 'bspline':
+#             return BSplineInterpolator(**kwargs)
+#         case _:
+#             raise TypeError(f"Unknown interpolator type: {type}")
 
 
 class Interpolator(ABC):
@@ -74,6 +95,7 @@ class Interpolator(ABC):
         pass
 
 
+@register_interpolator("cubicspline")
 class CubicSplineInterpolator(Interpolator):
     """ Cubic spline wrapping scipy.interpolate. Defaulting to natural.
         For the boundary conditions, bc_type can be
@@ -94,6 +116,32 @@ class CubicSplineInterpolator(Interpolator):
         return y
 
 
+@register_interpolator("pchip")
+class PchipInterpolator(Interpolator):
+    """ Monotone cubic Hermite (Fritsch-Carlson). Shape-preserving: no overshoot,
+        correctly handles non-monotonic data (e.g. a smile's ATM minimum). """
+    def initialize(self):
+        self.interp = spi.PchipInterpolator(self.x_grid, self.y_grid)
+
+    def value(self, x):
+        return self.interp(x)
+
+
+@register_interpolator("akima")
+class AkimaInterpolator(Interpolator):
+    """ Akima spline """
+    def __init__(self, **kwargs):
+        self.method = kwargs.get('akima_method', 'makima') # makima (more recent), akima (older)
+        super().__init__(**kwargs)
+
+    def initialize(self):
+        self.interp = spi.Akima1DInterpolator(self.x_grid, self.y_grid, method=self.method)
+
+    def value(self, x):
+        return self.interp(x)
+
+
+@register_interpolator("bspline")
 class BSplineInterpolator(Interpolator):
     """ B-spline wrapping scipy.interpolate. Defaulting to natural, degree 3.
         For the boundary conditions, bc_type can be
@@ -115,6 +163,7 @@ class BSplineInterpolator(Interpolator):
         return y
 
 
+@register_interpolator("step")
 class StepInterpolator(Interpolator):
     """ Wrapping numpy. direction can be left or right, defaulting to lef """
     def __init__(self, **kwargs):
@@ -152,6 +201,7 @@ class StepInterpolator(Interpolator):
         return y
 
 
+@register_interpolator("linear")
 class LinearInterpolator(Interpolator):
     """ Wrapper around numpy's linear interpolation """
     def __init__(self, **kwargs):

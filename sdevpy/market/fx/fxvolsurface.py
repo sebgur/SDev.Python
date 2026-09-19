@@ -15,21 +15,21 @@ class FxVolSurfaceData:
         self.market_strangle_quote = kwargs.get('market_strangle_quote', False)
         self.spot_delta_cutoff = kwargs.get('spot_delta_cutoff', '1Y')
 
-        sections.sort(key=lambda x: x['expiry'])
+        sections.sort(key=lambda x: dts.tenor_to_date(x['tenor']))
 
         for idx, s in enumerate(sections):
             if not (len(s['deltas']) == len(s['rr']) == len(s['bf'])):
                 raise ValueError(f"Mismatch in sizes between deltas, rr and bf on section index {idx}")
 
-        self.expiries = np.asarray([s['expiry'] for s in sections])
+        # self.expiries = np.asarray([s['expiry'] for s in sections])
         self.tenors = np.asarray([s['tenor'] for s in sections])
         self.atm_vols = np.asarray([s['atm_vol'] for s in sections], dtype=float)
         self.deltas = [np.asarray(s['deltas'], dtype=float) for s in sections]
         self.rr = [np.asarray(s['rr'], dtype=float) for s in sections]
         self.bf = [np.asarray(s['bf'], dtype=float) for s in sections]
 
-        if len(self.expiries) != len(sections):
-            raise ValueError("Mismatch in sizes between expiries and sections")
+        if len(self.tenors) != len(sections):
+            raise ValueError("Mismatch in sizes between tenors and sections")
 
     def wings_at(self, expiry_idx: int) -> tuple[float, npt.NDArray, npt.NDArray, npt.NDArray]:
         """ (atm_vol, deltas, rr, bf) for the given expiry index """
@@ -43,8 +43,8 @@ class FxVolSurfaceData:
     def dump_data(self) -> dict:
         """ Dump data as dictionary """
         sections = []
-        for i, expiry in enumerate(self.expiries):
-            sections.append({'expiry': expiry.strftime(dts.DATE_FORMAT),
+        for i, tenor in enumerate(self.tenors):
+            sections.append({'tenor': tenor,
                              'atm_vol': float(self.atm_vols[i]),
                              'deltas': self.deltas[i].tolist(),
                              'rr': self.rr[i].tolist(),
@@ -90,9 +90,9 @@ def fxvolsurfacedata_from_file(file: str|Path) -> FxVolSurfaceData:
     spot_delta_cutoff = data.get('spot_delta_cutoff', '1Y')
     sections = data.get('sections')
 
-    for section in sections:
-        date_str = section.get('expiry')
-        section['expiry'] = dt.datetime.strptime(date_str, dts.DATE_FORMAT)
+    # for section in sections:
+    #     date_str = section.get('expiry')
+    #     section['expiry'] = dt.datetime.strptime(date_str, dts.DATE_FORMAT)
 
     return FxVolSurfaceData(dt.datetime.strptime(valdate, dts.DATE_FORMAT), sections,
                             name=name, snapdate=dt.datetime.strptime(snapdate, dts.DATETIME_FORMAT),

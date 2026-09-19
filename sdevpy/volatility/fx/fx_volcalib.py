@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Put real data in sample
 # * Implement object that interpolates the spline results across time
 # * Use delta inversion and illustrate it
 # * Clarify the choice of small vs large double-root
@@ -66,8 +65,6 @@ class FxVolCalibrator:
 
     def calibrate_tenor(self, tenor_idx: int) -> dict:
         """ Calibrate at the given tenor """
-        # ten_timer = timer.Stopwatch(tenor_idx)
-        # ten_timer.trigger()
         valdate = self.date
 
         # Extract raw market data
@@ -76,6 +73,7 @@ class FxVolCalibrator:
         quoted_deltas = self.vol_data.deltas[tenor_idx]
         rrs = self.vol_data.rr[tenor_idx]
         bfs = self.vol_data.bf[tenor_idx]
+        print("<>"*10)
         print(f"Calibrating tenor: {tenor}")
         print(f"ATM vol: {atm_vol}")
         print(f"Deltas: {quoted_deltas}")
@@ -241,8 +239,7 @@ if __name__ == "__main__":
     cal_prov = CalibrationDataFileProvider()
 
     # Create calibrator
-    calibrator = FxVolCalibrator(pair, md_prov)
-    print(f"prem_adjusted: {calibrator.prem_adj}")
+    calibrator = FxVolCalibrator(pair, md_prov, extra_deltas=None)
 
     # Calibrate
     cal_timer = timer.Stopwatch('calibrate')
@@ -278,7 +275,7 @@ if __name__ == "__main__":
         deltas = tenor_report['deltas'] # x-axis, already sorted ascending
         vols = tenor_report['vols'] # y-axis
         tenor = tenor_report.get('tenor', tenor_report['expiry'])  # falls back to expiry if 'tenor' isn't added
-        interp = create_interpolation(interp='cubicspline', l_extrap='flat', r_extrap='flat',
+        interp = create_interpolation(interp='pchip', l_extrap='builtin', r_extrap='builtin',
                                       x_grid=deltas, y_grid=vols)
 
         # Store
