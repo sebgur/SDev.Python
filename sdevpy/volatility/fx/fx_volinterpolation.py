@@ -104,74 +104,45 @@ class FxVolInterpolation:
 
         return self.vol_at_moneyness(expiry, np.log(k / f))
 
-    # # Old method when we were interpolating on delta
-    # def vol_at_delta(self, expiry: npt.ArrayLike, put_delta: npt.ArrayLike) -> npt.ArrayLike:
-    #     """ Vol at (expiry, put delta) """
-    #     t = self._to_times(expiry)
-    #     d = np.asarray(put_delta, dtype=float)
-    #     t, d = np.broadcast_arrays(t, d)
-    #     shape = t.shape
-    #     tf, df = t.reshape(-1), d.reshape(-1)
+    #######################################################################################################
+    def vol_at_delta(self, expiry, delta, option_type, iters: int=80,
+                     double_root_preference: str='large') -> npt.ArrayLike:
+        """ Vol at a MARKET delta quote, e.g. delta=0.25 option_type='C' for a 25-delta call """
+        k, t, f = self._solve_delta_strike(expiry, delta, option_type, iters, double_root_preference)
+        return self.vol_at_strike(t, k, fwd=f)
 
-    #     if tf.size and np.any(tf <= 0.0):
-    #         raise ValueError("Requested expiries must be strictly after the valuation date")
+    def strike_at_delta(self, expiry, delta, option_type, iters: int=80,
+                        double_root_preference: str='large') -> npt.ArrayLike:
+        """ Strike of a market delta quote, from the same solve """
+        k, _, _ = self._solve_delta_strike(expiry, delta, option_type, iters, double_root_preference)
+        return k
 
-    #     # Locate the surrounding pillars, one bracket per requested point
-    #     i0, i1 = self._brackets(tf)
-    #     t0, t1 = self.times[i0], self.times[i1]
+    def _solve_delta_strike(self, expiry, delta, option_type, iters: int=80,
+                            double_root_preference: str='large', tol: float=1e-14) -> tuple:
+        """ Strike whose market delta matches the quote, with the vol read off this surface, i.e.
+            the root of g(K) = bs_delta(K, vol_at_strike(K)) - target.
 
-    #     # Read both surrounding smiles at the requested deltas
-    #     s0 = self._smile_values(i0, df)
-    #     s1 = self._smile_values(i1, df)
-
-    #     # Interpolate linearly in variance
-    #     if np.all(i0 == i1): # single pillar surface: flat in time
-    #         v = s0
-    #     else:
-    #         theta = np.where(t1 > t0, (tf - t0) / np.where(t1 > t0, t1 - t0, 1.0), 0.0)
-    #         if self.time_interp == 'var':
-    #             w = s0 * s0 * t0 + theta * (s1 * s1 * t1 - s0 * s0 * t0)
-    #             v = np.sqrt(np.maximum(w, 0.0) / tf)
-    #         elif self.time_interp == 'vol2':
-    #             w = s0 * s0 + theta * (s1 * s1 - s0 * s0)
-    #             v = np.sqrt(np.maximum(w, 0.0))
-    #         else: # vol
-    #             v = s0 + theta * (s1 - s0)
-
-    #         # Time extrapolation. Before the first pillar, always extrapolate as flat.
-    #         # After the last pillar, extrapolate as flat or follow on the chosen interpolation.
-    #         v = np.where(tf < self.times[0], s0, v)
-    #         if self.time_extrap == 'flat': # hold the end pillar vols flat
-    #             v = np.where(tf > self.times[-1], s1, v)
-
-    #     return v.reshape(shape)
-
-    def vol_at_delta(self, expiry, delta, option_type, iters: int=80) -> npt.ArrayLike:
-        """ Vol at a MARKET delta quote, e.g. delta=0.25 option_type='C' for a 25-delta call.
-            A delta quote pins strike and vol jointly, so solve the single root
-                g(K) = bs_delta(K, vol_at_strike(K)) - target = 0
-            by bisection in log-strike: one loop, no solver nested inside it. """
-        lo, hi, t, f = self._delta_bracket(expiry, delta, option_type, iters)
-        return self.vol_at_strike(t, np.exp(0.5 * (lo + hi)), fwd=f)
-
-    def strike_at_delta(self, expiry, delta, option_type, iters: int=80) -> npt.ArrayLike:
-        """ Strike of a market delta quote, from the same bisection """
-        lo, hi, _, _ = self._delta_bracket(expiry, delta, option_type, iters)
-        return np.exp(0.5 * (lo + hi))
-
-    def _delta_bracket(self, expiry, delta, option_type, iters) -> tuple:
-        """ Bisect g(K) in log-strike. Returns the final bracket, the times and the forward, so
-            both callers share one solve and one consistent forward. """
+            Bisection needs g to change sign across the bracket. That holds wherever delta is
+            monotone in strike: puts, and plain (non premium-adjusted) calls. Premium-adjusted
+            call delta is not monotone -- it rises from zero, peaks, and falls back to zero -- so
+            the full bracket never straddles the root and a naive bisection silently collapses
+            onto an end point. Its peak is strictly below the forward (it solves
+            N(d2).sigma.sqrt(T) = n(d2), whose root is positive for any sigma.sqrt(T) < 0.8), so
+            [log F, hi] is monotone decreasing and still brackets every target below the
+            at-the-forward delta, which covers all normal quotes. Only above that are there zero
+            or two roots, and those go to strike_from_delta, which locates the peak by ternary
+            search, applies the double-root convention and reports validity. """
+        expiries = np.asarray(expiry)
         f, df_f = self._fwd_and_df_f(expiry)
         t = self._to_times(expiry)
-        prem_adj = self.prem_adj
-        spot_delta = np.asarray(expiry) <= self.spot_delta_cutoff_date
+        spot_delta = expiries <= self.spot_delta_cutoff_date
 
         phi = 1.0 if str(option_type).upper().startswith('C') else -1.0
         target = phi * np.abs(np.asarray(delta, dtype=float))
         disc = np.where(spot_delta, df_f, 1.0)
-        t, f, target, disc = np.broadcast_arrays(np.atleast_1d(t), np.atleast_1d(f),
-                                                 np.atleast_1d(target), np.atleast_1d(disc))
+        expiries, t, f, df_f, target, disc, spot_delta = np.broadcast_arrays(
+            np.atleast_1d(expiries), np.atleast_1d(t), np.atleast_1d(f), np.atleast_1d(df_f),
+            np.atleast_1d(target), np.atleast_1d(disc), np.atleast_1d(spot_delta))
 
         # Bracket in log-strike, same generous width strike_from_delta uses by default
         width = 15.0 * np.asarray(self.vol_at_strike(t, f, fwd=f)) * np.sqrt(t) + 8.0
@@ -179,16 +150,112 @@ class FxVolInterpolation:
 
         def g(log_k):
             k = np.exp(log_k)
-            return bs_delta(f, k, self.vol_at_strike(t, k, fwd=f), t, phi, disc, prem_adj) - target
+            return bs_delta(f, k, self.vol_at_strike(t, k, fwd=f), t, phi, disc, self.prem_adj) - target
 
-        g_hi = g(hi)
-        for _ in range(iters): # orientation-agnostic: handles both wings
+        log_f = np.log(f)
+        g_lo, g_hi, g_f = g(lo), g(hi), g(log_f)
+
+        # Pick a valid bracket per element, or flag it for the delegated solve
+        straddles = np.sign(g_lo) != np.sign(g_hi)
+        outer_only = ~straddles & (np.sign(g_f) != np.sign(g_hi))
+        bracketed = straddles | outer_only
+        lo = np.where(outer_only, log_f, lo)
+
+        for _ in range(iters):
             mid = 0.5 * (lo + hi)
             take_low = (g(mid) > 0) == (g_hi > 0)
             hi = np.where(take_low, mid, hi)
             lo = np.where(take_low, lo, mid)
+            if np.max(hi - lo) < tol: # log-strike precision is exhausted well before iters
+                break
 
-        return lo, hi, t, f
+        k = np.exp(0.5 * (lo + hi))
+
+        # Unbracketed points: premium-adjusted calls above the at-the-forward delta
+        if not np.all(bracketed):
+            k = np.asarray(k).copy()
+            sub = ~bracketed
+            k[sub] = self._delta_strike_fixed_point(
+                expiries[sub], t[sub], f[sub], df_f[sub], target[sub], spot_delta[sub],
+                option_type, double_root_preference)
+
+        return k, t, f
+
+    def _delta_strike_fixed_point(self, expiries, t, f, df_f, target, spot_delta, option_type,
+                                  double_root_preference: str, tol: float=1e-12,
+                                  max_iter: int=100) -> npt.ArrayLike:
+        """ Delegated solve for the non-monotone branch. strike_from_delta needs a vol to invert,
+            so wrap it in the usual fixed point: trial vol -> strike -> smile vol there -> repeat,
+            seeded at the at-the-forward vol. """
+        df_d = self.spot * df_f / f
+        sigma = np.asarray(self.vol_at_strike(t, f, fwd=f), dtype=float)
+        opt = 'C' if str(option_type).upper().startswith('C') else 'P'
+        for _ in range(max_iter):
+            sol = strike_from_delta(self.valdate, expiries, self.spot, df_f, df_d, sigma, target,
+                                    opt, self.prem_adj, spot_delta,
+                                    double_root_preference=double_root_preference)
+            valid = np.asarray(sol.valid).reshape(-1)
+            if not np.all(valid):
+                i = int(np.nonzero(~valid)[0][0])
+                cap = np.asarray(sol.delta_max_abs).reshape(-1)[i]
+                raise ValueError(f"No strike matches delta "
+                                 f"{abs(np.asarray(target).reshape(-1)[i]):.4f}{opt} at expiry "
+                                 f"{np.asarray(expiries).reshape(-1)[i]}: premium-adjusted call "
+                                 f"delta is capped at {cap:.4f} there")
+
+            updated = np.asarray(self.vol_at_strike(t, sol.k, fwd=f), dtype=float)
+            move = np.max(np.abs(updated - sigma))
+            sigma = updated
+            if move < tol:
+                return np.asarray(sol.k, dtype=float)
+
+        raise RuntimeError(f"Delta strike solve did not converge in {max_iter} iterations")
+
+    ###################################################################################################
+
+    # def vol_at_delta(self, expiry, delta, option_type, iters: int=80) -> npt.ArrayLike:
+    #     """ Vol at a MARKET delta quote, e.g. delta=0.25 option_type='C' for a 25-delta call.
+    #         A delta quote pins strike and vol jointly, so solve the single root
+    #             g(K) = bs_delta(K, vol_at_strike(K)) - target = 0
+    #         by bisection in log-strike: one loop, no solver nested inside it. """
+    #     lo, hi, t, f = self._delta_bracket(expiry, delta, option_type, iters)
+    #     return self.vol_at_strike(t, np.exp(0.5 * (lo + hi)), fwd=f)
+
+    # def strike_at_delta(self, expiry, delta, option_type, iters: int=80) -> npt.ArrayLike:
+    #     """ Strike of a market delta quote, from the same bisection """
+    #     lo, hi, _, _ = self._delta_bracket(expiry, delta, option_type, iters)
+    #     return np.exp(0.5 * (lo + hi))
+
+    # def _delta_bracket(self, expiry, delta, option_type, iters) -> tuple:
+    #     """ Bisect g(K) in log-strike. Returns the final bracket, the times and the forward, so
+    #         both callers share one solve and one consistent forward. """
+    #     f, df_f = self._fwd_and_df_f(expiry)
+    #     t = self._to_times(expiry)
+    #     prem_adj = self.prem_adj
+    #     spot_delta = np.asarray(expiry) <= self.spot_delta_cutoff_date
+
+    #     phi = 1.0 if str(option_type).upper().startswith('C') else -1.0
+    #     target = phi * np.abs(np.asarray(delta, dtype=float))
+    #     disc = np.where(spot_delta, df_f, 1.0)
+    #     t, f, target, disc = np.broadcast_arrays(np.atleast_1d(t), np.atleast_1d(f),
+    #                                              np.atleast_1d(target), np.atleast_1d(disc))
+
+    #     # Bracket in log-strike, same generous width strike_from_delta uses by default
+    #     width = 15.0 * np.asarray(self.vol_at_strike(t, f, fwd=f)) * np.sqrt(t) + 8.0
+    #     lo, hi = np.log(f) - width, np.log(f) + width
+
+    #     def g(log_k):
+    #         k = np.exp(log_k)
+    #         return bs_delta(f, k, self.vol_at_strike(t, k, fwd=f), t, phi, disc, prem_adj) - target
+
+    #     g_hi = g(hi)
+    #     for _ in range(iters): # orientation-agnostic: handles both wings
+    #         mid = 0.5 * (lo + hi)
+    #         take_low = (g(mid) > 0) == (g_hi > 0)
+    #         hi = np.where(take_low, mid, hi)
+    #         lo = np.where(take_low, lo, mid)
+
+    #     return lo, hi, t, f
 
     # def var_at_delta(self, expiry: npt.ArrayLike, put_delta: npt.ArrayLike) -> npt.ArrayLike:
     #     """ Variance sigma^2 * t at (expiry, put delta) """

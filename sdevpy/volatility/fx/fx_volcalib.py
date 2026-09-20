@@ -18,8 +18,8 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Fix past Claude review, iterate a few times until relatively clean.
 # * Ask Claude for entire analysis of calibration flow
+# * Fix past Claude review, iterate a few times until relatively clean.
 # * Ask Codex for entire analysis of calibration flow. Iterate and converge.
 # * Ask Codex about the bad vanna-volga points on real data at 1M.
 # * Move yieldcurves to calib data provider
@@ -73,20 +73,20 @@ class FxVolCalibrator:
         quoted_deltas = self.vol_data.deltas[tenor_idx]
         rrs = self.vol_data.rr[tenor_idx]
         bfs = self.vol_data.bf[tenor_idx]
-        print("<>"*10)
-        print(f"Calibrating tenor: {tenor}")
-        print(f"ATM vol: {atm_vol}")
-        print(f"Deltas: {quoted_deltas}")
-        print(f"RRs: {rrs}")
-        print(f"BFs: {bfs}")
+        log.debug("<>"*10)
+        log.debug(f"Calibrating tenor: {tenor}")
+        log.debug(f"ATM vol: {atm_vol}")
+        log.debug(f"Deltas: {quoted_deltas}")
+        log.debug(f"RRs: {rrs}")
+        log.debug(f"BFs: {bfs}")
 
         # Calculate discount factors and forward
         expiry, settlement = fx_option_dates(valdate, tenor, self.forccy, self.domccy)
         df_f, df_d = self.forcurve.discount(settlement), self.domcurve.discount(settlement)
         fwd = self.spot * df_f / df_d
-        print(f"Foreign df: {df_f}")
-        print(f"Domestic df: {df_d}")
-        print(f"Forward: {fwd}")
+        log.debug(f"Foreign df: {df_f}")
+        log.debug(f"Domestic df: {df_d}")
+        log.debug(f"Forward: {fwd}")
 
         # Build the full set of market points: every quoted delta level, both wings. This is the point where
         # we convert the risk-reversals and butterflies (or strangles) into wing vols (call/puts).
@@ -145,9 +145,9 @@ class FxVolCalibrator:
                     vols += [v_p, v_c]
 
         # Order by increasing deltas/strikes
-        put_deltas = [-d if d < 0 else 1.0 - d for d in deltas] # put-delta axis for interpolation/strike order
-        order = sorted(range(len(put_deltas)), key=lambda i: put_deltas[i])
-        put_deltas = [put_deltas[i] for i in order]
+        label_deltas = [-d if d < 0 else 1.0 - d for d in deltas] # put-delta-like labels and used for ordering
+        order = sorted(range(len(label_deltas)), key=lambda i: label_deltas[i])
+        label_deltas = [label_deltas[i] for i in order]
         strikes = [strikes[i] for i in order]
         vols = [vols[i] for i in order]
 
@@ -156,7 +156,7 @@ class FxVolCalibrator:
             log.warning(f"{tenor}: strikes not monotonic after delta-ordering, possible smile inversion")
 
         report = {'tenor': tenor, 'expiry': expiry, 'settlement': settlement, 'fwd': fwd,
-                  'put_deltas': put_deltas, 'strikes': strikes, 'vols': vols}
+                  'label_deltas': label_deltas, 'strikes': strikes, 'vols': vols}
         return report
 
     def dump(self, file: str) -> None:
