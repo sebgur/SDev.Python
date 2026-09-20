@@ -18,14 +18,14 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Implement object that interpolates the spline results across time
+# * Implement FxVolInterpolation.vol_at_strike()
 # * Refresh the sample to do the whole flow with simple functions and an illustration of the
 #   delta inversion, plus the interpolation called both on delta and strike.
-# * Fix past Claude review, do another one, iterate
-# * Clarify the choice of small vs large double-root
-# * Ask Claude to review the entire FX vol code and make remarks
+# * Fix past Claude review, ask for entire analysis of FX vol calibration flow
 # * Register Codex and ask the same. Iterate and converge. Ask it about the bad vanna-volga points.
 # * Move yieldcurves to calib data provider
+# * Clarify the choice of small vs large double-root
+# * Document solution search and market strangle in latex, add explanations in code comments
 
 
 class FxVolCalibrator:

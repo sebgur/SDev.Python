@@ -1,4 +1,7 @@
 """ Conventions and utilities for the FX market """
+import datetime as dt
+from sdevpy.utilities import dates as dts
+from sdevpy.utilities.sdaycount import year_fraction, DayCount
 
 
 USD_IS_QUOTE = {'EUR', 'GBP', 'AUD', 'NZD', 'XAU', 'XAG', 'XPT', 'XPD'} # ZZZ/USD convention
@@ -29,6 +32,19 @@ JUNIOR_TIERS = [{'JPY'}]  # least to most junior -- loses to any unranked curren
 #     {'EUR'}, {'GBP'}, {'AUD'}, {'NZD'}, {'USD'}, {'JPY'}
 #     # Extend below USD only against a verified pair
 # ]
+
+
+def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
+    """ Yearfraction to put into Black-Scholes formula for the standard deviation that gets root-squared
+        and multiplied by the implied vols for the pricing of options. For the FX market, this is
+        Act/365 Fixed (i.e. actual days divided by 365, leap years ignored).
+        WARNING: this is not meant to be used anywhere else. For instance the calculation of rates and/or
+        discount factors have no reasons to follow this same convention. """
+    return year_fraction(valdate, expiry, DayCount.ACT365F)
+
+
+def is_spot_delta_tenor(tenor_str: str, cutoff: str='1Y') -> bool:
+    return dts.tenor_leq(tenor_str, cutoff)
 
 
 def parse_fx_pair(name: str) -> tuple[str, str]:

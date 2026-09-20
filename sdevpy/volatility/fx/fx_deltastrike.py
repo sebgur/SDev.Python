@@ -26,8 +26,8 @@ It also switches between "spot delta" (includes the foreign-currency discount fa
 conventions automatically at a configurable maturity cutoff (1Y by default), which is the standard market practice for
 long-dated FX options.
 
-Everything below is implemented with numpy array operations only -- the iterative solvers (bisection for monotonic
-branches, ternary search for the unimodal call/premium-adjusted case) advance *all* elements of the input arrays
+Everything below is implemented with numpy array operations only. The iterative solvers (bisection for monotonic
+branches, ternary search for the unimodal call/premium-adjusted case) advance all elements of the input arrays
 simultaneously per iteration, so a whole delta/maturity grid is solved in the same number of iterations as a single
 quote. No Python-level loop over individual quotes, and no per-element calls into scipy.optimize.
 """
@@ -37,17 +37,7 @@ import numpy as np
 import numpy.typing as npt
 # from scipy.stats import norm
 from scipy.special import ndtr, ndtri
-from sdevpy.utilities import dates as dts
-from sdevpy.utilities.sdaycount import year_fraction, DayCount
-
-
-def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
-    """ Yearfraction to put into Black-Scholes formula for the standard deviation that gets root-squared
-        and multiplied by the implied vols for the pricing of options. For the FX market, this is
-        Act/365 Fixed (i.e. actual days divided by 365, leap years ignored).
-        WARNING: this is not meant to be used anywhere else. For instance the calculation of rates and/or
-        discount factors have no reasons to follow this same convention. """
-    return year_fraction(valdate, expiry, DayCount.ACT365F)
+from sdevpy.market.fx.fxconventions import fx_market_yearfraction
 
 
 def atm_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: float, prem_adj: bool) -> float:
@@ -59,10 +49,6 @@ def atm_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: f
 
     sign = -1.0 if prem_adj else 1.0
     return fwd * np.exp(sign * 0.5 * atm_vol ** 2 * t)
-
-
-def is_spot_delta_tenor(tenor_str: str, cutoff: str='1Y') -> bool:
-    return dts.tenor_leq(tenor_str, cutoff)
 
 
 def _arr(x) -> npt.ArrayLike:

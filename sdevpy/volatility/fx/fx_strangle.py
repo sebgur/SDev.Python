@@ -13,8 +13,9 @@ import numpy as np
 import datetime as dt
 from scipy.optimize import brentq
 from sdevpy.analytics import black
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
 from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly
+from sdevpy.market.fx.fxconventions import fx_market_yearfraction
 
 
 def market_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,

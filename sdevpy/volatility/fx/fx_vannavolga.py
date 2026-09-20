@@ -27,7 +27,8 @@ import numpy as np
 import numpy.typing as npt
 # from scipy.stats import norm
 from sdevpy.analytics import black
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, fx_market_yearfraction, atm_strike
+from sdevpy.market.fx.fxconventions import fx_market_yearfraction
+from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
 from sdevpy.volatility.fx import fx_strangle
 from sdevpy.maths.constants import C_1_SQRT_2PI
 
