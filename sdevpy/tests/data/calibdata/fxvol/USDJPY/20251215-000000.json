@@ -1,6 +1,7 @@
 {
   "pair": "USDJPY",
   "date": "20251215-000000",
+  "spot_delta_cutoff": "1Y",
   "tenor_reports": [
     {
       "tenor": "1W",

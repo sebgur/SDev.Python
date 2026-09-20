@@ -18,15 +18,11 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Implement FxVolInterpolation.vol_at_strike()
-# * Refresh the sample to do the whole flow with simple functions and an illustration of the
-#   delta inversion, plus the interpolation called both on delta and strike.
 # * Fix past Claude review, iterate a few times until relatively clean.
 # * Ask Claude for entire analysis of calibration flow
 # * Ask Codex for entire analysis of calibration flow. Iterate and converge.
 # * Ask Codex about the bad vanna-volga points on real data at 1M.
 # * Move yieldcurves to calib data provider
-# * Clarify the choice of small vs large double-root
 # * Document solution search and market strangle in latex, add explanations in code comments
 
 
@@ -63,7 +59,8 @@ class FxVolCalibrator:
             result = self.calibrate_tenor(tenor_idx)
             tenor_results.append(result)
 
-        self.report = {'pair': self.pair, 'date': self.date, 'tenor_reports': tenor_results}
+        self.report = {'pair': self.pair, 'date': self.date, 'spot_delta_cutoff': self.spot_delta_cutoff,
+                       'tenor_reports': tenor_results}
         return self.report
 
     def calibrate_tenor(self, tenor_idx: int) -> dict:

@@ -356,6 +356,7 @@ def interpolation_from_fxvol_data(vol_data: dict, md_prov, **kwargs) -> FxVolInt
     spot = md_prov.get_fx_spot(forccy, domccy, valdate)
     forcurve = md_prov.get_xccycurve(forccy, valdate)
     domcurve = md_prov.get_xccycurve(domccy, valdate)
+    spot_delta_cutoff = vol_data['spot_delta_cutoff']
 
     expiries, interps, fwds = [], [], []
     for report in vol_data['tenor_reports']:
@@ -370,13 +371,14 @@ def interpolation_from_fxvol_data(vol_data: dict, md_prov, **kwargs) -> FxVolInt
         fwds.append(fwd)
 
     return FxVolInterpolation(valdate, expiries, interps, fwds, pair, spot, forcurve, domcurve,
-                              time_interp=time_interp, time_extrap=time_extrap)
+                              time_interp=time_interp, time_extrap=time_extrap, spot_delta_cutoff=spot_delta_cutoff)
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from sdevpy.market.fileprovider import MarketDataFileProvider
     from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
+    from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
 
     pair = "USDJPY"
     valdate = dt.datetime(2025, 12, 15)
@@ -441,3 +443,17 @@ if __name__ == "__main__":
 
     # After last pillar
     print(f"Far vol: {surface.vol_at_moneyness(dt.datetime(2050, 1, 1), m)}")
+
+    #### Round-trip vol_at_strike and vol_at_delta ####
+    delta, option_type = 0.30, "C"
+    vol_from_delta = surface.vol_at_delta(expiry, delta, option_type)[0]
+    print(f"vol_from_delta: {vol_from_delta}")
+    spot = surface.spot
+    settlement = fx_spot_date(expiry, surface.forccy, surface.domccy)
+    df_f = surface.forcurve.discount(settlement)
+    df_d = surface.domcurve.discount(settlement)
+    prem_adjusted, spot_delta = surface.prem_adj, True
+    strike = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol_from_delta, delta, option_type,
+                               prem_adjusted, spot_delta).k
+    print(f"strike from delta: {strike}")
+    print(f"vol from strike: {surface.vol_at_strike(expiry, strike)}")
