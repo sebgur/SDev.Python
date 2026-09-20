@@ -21,8 +21,10 @@ log = logging.getLogger(__name__)
 # * Implement FxVolInterpolation.vol_at_strike()
 # * Refresh the sample to do the whole flow with simple functions and an illustration of the
 #   delta inversion, plus the interpolation called both on delta and strike.
-# * Fix past Claude review, ask for entire analysis of FX vol calibration flow
-# * Register Codex and ask the same. Iterate and converge. Ask it about the bad vanna-volga points.
+# * Fix past Claude review, iterate a few times until relatively clean.
+# * Ask Claude for entire analysis of calibration flow
+# * Ask Codex for entire analysis of calibration flow. Iterate and converge.
+# * Ask Codex about the bad vanna-volga points on real data at 1M.
 # * Move yieldcurves to calib data provider
 # * Clarify the choice of small vs large double-root
 # * Document solution search and market strangle in latex, add explanations in code comments
