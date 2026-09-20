@@ -91,7 +91,8 @@ class FxVolCalibrator:
         print(f"Domestic df: {df_d}")
         print(f"Forward: {fwd}")
 
-        # Build the full set of market points: every quoted delta level, both wings
+        # Build the full set of market points: every quoted delta level, both wings. This is the point where
+        # we convert the risk-reversals and butterflies (or strangles) into wing vols (call/puts).
         spot_delta = expiry <= self.spot_delta_cutoff_date
         deltas, strikes, vols = [], [], []
         pillars = {}
@@ -119,7 +120,8 @@ class FxVolCalibrator:
         vols.append(atm_vol)
         deltas.append(0.50) # Add ATM
 
-        # Calculate additional market vols far in the tails for future extrapolation
+        # Calculate additional market vols far in the tails for future extrapolation (optional).
+        # We do so by using the vanna-volga model between ATM and the last quoted delta quotes.
         if self.extra_deltas:
             tail_d = [d for d in self.extra_deltas
                       if not np.any(np.isclose(d, quoted_deltas, rtol=0.0, atol=self.delta_tol))]
@@ -148,8 +150,6 @@ class FxVolCalibrator:
         # Order by increasing deltas/strikes
         put_deltas = [-d if d < 0 else 1.0 - d for d in deltas] # put-delta axis for interpolation/strike order
         order = sorted(range(len(put_deltas)), key=lambda i: put_deltas[i])
-        # order = sorted(range(len(deltas)), key=lambda i: deltas[i])
-        # deltas = [deltas[i] for i in order]
         put_deltas = [put_deltas[i] for i in order]
         strikes = [strikes[i] for i in order]
         vols = [vols[i] for i in order]
@@ -158,8 +158,8 @@ class FxVolCalibrator:
         if not np.all(np.diff(strikes) > 0):
             log.warning(f"{tenor}: strikes not monotonic after delta-ordering, possible smile inversion")
 
-        report = {'tenor': tenor, 'expiry': expiry, 'settlement': settlement, 'deltas': put_deltas, 'strikes': strikes,
-                  'vols': vols}
+        report = {'tenor': tenor, 'expiry': expiry, 'settlement': settlement, 'fwd': fwd,
+                  'put_deltas': put_deltas, 'strikes': strikes, 'vols': vols}
         return report
 
     def dump(self, file: str) -> None:
@@ -249,33 +249,17 @@ if __name__ == "__main__":
     cal_timer.trigger()
     report = calibrator.calibrate(valdate)
     cal_timer.stop()
-    # print(report)
 
     # Output to file
     file = cal_prov.fxvol_data_file(pair, valdate)
     calibrator.dump(file)
-
-    # # Check results
-    # check_strikes, check_vols = 0.0, 0.0
-    # for r in report['tenor_reports']:
-    #     check_strikes += np.asarray(r['strikes']).mean()
-    #     check_vols += np.asarray(r['vols']).mean()
-
-    # print(f"Check strikes: {check_strikes}")
-    # print(f"Check vols: {check_vols}")
-    # strike_ref = 907.2903549319075
-    # vol_ref = 0.622253494336979
-    # print(f"Strike status: {'OK' if abs(check_strikes - strike_ref) < 1e-8 else 'FAIL'}")
-    # print(f"Vol status: {'OK' if abs(check_vols - vol_ref) < 1e-10 else 'FAIL'}")
-
-    # Timer
     cal_timer.print()
 
     # Retrieve data from file and define interpolation
     vol_data = cal_prov.get_fxvol_data(pair, valdate)
     tenors, ten_deltas, ten_vols, ten_interps = [], [], [], []
     for tenor_report in vol_data['tenor_reports']:
-        deltas = tenor_report['deltas'] # x-axis, already sorted ascending
+        deltas = tenor_report['put_deltas'] # x-axis, already sorted ascending
         vols = tenor_report['vols'] # y-axis
         tenor = tenor_report.get('tenor', tenor_report['expiry'])  # falls back to expiry if 'tenor' isn't added
         interp = create_interpolation(interp='pchip', l_extrap='builtin', r_extrap='builtin',

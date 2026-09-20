@@ -80,7 +80,7 @@ def vsvi(x: npt.ArrayLike, *params: npt.ArrayLike) -> npt.ArrayLike:
     eta = np.sqrt(xm**2 - 2.0 * rho * lambda_ * xm + lambda_**2)
     vol = vstar + b * (rho * xm + eta - lambda_)
     if np.any(vol < 0.0):
-        raise ValueError("Negative variance in vSVI formula")
+        raise ValueError("Negative vol in vSVI formula")
 
     return vol
 

@@ -6,7 +6,10 @@ Analyse my code and give it an overall grade.
 
 Give a score, a rating and brief notes for the following categories: Architecture, Correctness, Error Handling, Testing, Code Quality, Maintainability, Type Safety and Documentation.
 
-List the 10 most serious issues and bad practices, explain why they are bad and make suggestions to fix them. For each issue you point out, give a severity assessment. If there are more than 10 critical or high severity issues, just least the 10 highest severity issues.
+List the 10 most serious issues and bad practices. For each issue you point out, give a severity assessment, explain why they are bad
+and make suggestions to fix them. Those suggestions should show explicitly what code should be changed, where and how.
+
+If there are more than 10 critical or high severity issues, just least the 10 highest severity issues.
 
 Ignore the content of sdevpy/thirdparty as it is third-party and I have no intent of touching the code for now.
 

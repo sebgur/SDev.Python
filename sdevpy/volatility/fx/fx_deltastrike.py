@@ -399,7 +399,7 @@ if __name__ == "__main__":
     spot_deltas = [True, True, False]
     deltas = [-0.01, -0.05, -0.10, -0.25, 0.25, 0.10, 0.05, 0.01]
     types = ["P", "P", "P", "P", "C", "C", "C", "C"]
-    vols = [0.08, 0.010, 0.015, 0.25]
+    vols = [0.08, 0.10, 0.15, 0.25]
     count, failures = 0, 0
     for exp_idx, expiry in enumerate(maturities):
         count += 1
@@ -425,6 +425,6 @@ if __name__ == "__main__":
 
 
     if failures == 0:
-        print("Round-trip result: OK")
+        print("Result: OK")
     else:
-        print(f"Round-trip result: FAIL {failures}/{count}")
+        print(f"Result: FAIL {failures}/{count}")
