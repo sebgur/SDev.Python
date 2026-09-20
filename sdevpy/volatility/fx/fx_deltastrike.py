@@ -18,7 +18,7 @@ some K_max, then falls back to 0. Consequently, for a premium-adjusted call:
 For premium-adjusted puts the function is monotonic (unbounded), so there is always exactly one solution, but it still
 requires numerical inversion since there is no closed form.
 
-This module handles both cases, picks a market-convention solution when there are two roots (the smaller strike,
+This module handles both cases, picks a market-convention solution when there are two roots (the larger strike,
 per Reiswich & Wystup, "FX Volatility Smile Construction"), and flags every element with a validity/diagnostic status
 rather than silently returning nonsense.
 
@@ -30,6 +30,10 @@ Everything below is implemented with numpy array operations only. The iterative 
 branches, ternary search for the unimodal call/premium-adjusted case) advance all elements of the input arrays
 simultaneously per iteration, so a whole delta/maturity grid is solved in the same number of iterations as a single
 quote. No Python-level loop over individual quotes, and no per-element calls into scipy.optimize.
+
+Note: We manage to confirm by looking into Reiswich&Wystrup that they do indeed recommend taking the right side
+      solution, i.e. the one with larger strike. This also makes sense from a continuity perspective as it leads
+      to monotonicity.
 """
 from dataclasses import dataclass
 import datetime as dt
@@ -189,8 +193,9 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
                    dependent. Pass it explicitly per quote or as a single bool for all quotes.
     spot_delta_cutoff: maturity (in years) at which the convention switches (1.0 = 1Y, the market standard, tooverride
                        if needed for a specific pair).
-    double_root_preference: 'large' (default, not market convention) or 'small', which of the two roots to report as `K`
-                            when a premium-adjusted call has two solutions. Both are always available via `K_alt`.
+    double_root_preference: 'large' (default, market convention according to Reiswich and Wystrup) or 'small',
+                            which of the two roots to report as `K` when a premium-adjusted call has two solutions.
+                            Both are always available via `K_alt`.
     bracket_width_sigma_mult, bracket_width_floor: control how wide (in units of log-strike) the numerical search
                                                    brackets are. The defaults are generous (many sigma*sqrt(T) wide)
                                                    and should not need changing.
@@ -341,9 +346,9 @@ if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
     spot = 100
     r_f, r_d = 0.02, 0.04
-    prem_adjusted = False
     min_pc, max_pc = 0.0001, 0.999
 
+    # Draw strike-delta curves for call/put prem-adjusted or not
     print("<>"*20)
     print("Draw strike-delta curves")
     expiry, spot_delta = dt.datetime(2026, 12, 15), True
@@ -357,7 +362,7 @@ if __name__ == "__main__":
     min_k, max_k = fwd * np.exp(ito + stdev * ndtri(min_pc)), fwd * np.exp(ito + stdev * ndtri(max_pc))
     option_type = "P"
     phi = (1.0 if option_type.lower() == "c" else -1.0)
-    print(f"{min_k}, {fwd}, {max_k}")
+    # print(f"{min_k}, {fwd}, {max_k}")
     strikes = np.linspace(min_k, max_k, 200)
     ua_call_deltas = bs_delta(fwd, strikes, vol, t, 1.0, df_f, False)
     ua_put_deltas = bs_delta(fwd, strikes, vol, t, -1.0, df_f, False)
@@ -386,44 +391,40 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.show()
 
-
-    res = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol, -delta, option_type, prem_adjusted, spot_delta)
-    print(res)
-    # sanity check: recompute delta at that strike directly
-    f = 1.10 * df_f / df_d
-    d1, _ = _d1d2(np.array(f), res.k, np.array(0.09), np.array(0.5))
-    print("check delta:", -ndtr(-d1) * np.exp(-0.02 * 0.5))
-    # print("check delta:", -norm.cdf(-d1) * np.exp(-0.02 * 0.5))
-
+    # Round-trip
     print()
-    print("=" * 70)
-    print("2) Vectorized grid: multiple maturities (incl. one > 1Y) x multiple deltas,")
-    print("   premium-adjusted, mixed put/call -- shows automatic spot/forward switch")
-    print("=" * 70)
-    # (3,1) -> broadcasts down columns
-    maturities = np.array([dt.datetime(2026, 3, 15), dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)])[:, None]
-    # maturities = np.array([0.25, 1.0, 2.0])[:, None]
-    deltas = np.array([-0.10, -0.25, 0.25, 0.10])[None, :] # (1,4) -> broadcasts across rows
-    types = np.array([["P", "P", "C", "C"]] * 3)
-    sigma_grid = np.array([[0.10, 0.095, 0.095, 0.105],
-                           [0.11, 0.105, 0.105, 0.115],
-                           [0.12, 0.115, 0.115, 0.125]])
+    print("<>"*20)
+    print("Round-trip test")
+    maturities = [dt.datetime(2026, 3, 15), dt.datetime(2026, 12, 15), dt.datetime(2027, 12, 15)]
+    spot_deltas = [True, True, False]
+    deltas = [-0.01, -0.05, -0.10, -0.25, 0.25, 0.10, 0.05, 0.01]
+    types = ["P", "P", "P", "P", "C", "C", "C", "C"]
+    vols = [0.08, 0.010, 0.015, 0.25]
+    count, failures = 0, 0
+    for exp_idx, expiry in enumerate(maturities):
+        count += 1
+        t = fx_market_yearfraction(valdate, expiry)
+        spot_delta = spot_deltas[exp_idx]
+        df_f, df_d = np.exp(-r_f * t), np.exp(-r_d * t)
+        fwd = spot * df_f / df_d
+        for vol in vols:
+            for delta, type_ in zip(deltas, types, strict=True):
+                phi = (1.0 if type_ == "C" else -1.0)
+                disc = (df_f if spot_delta else 1.0)
+                ua_k = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol, delta, type_, False, spot_delta).k
+                pa_k = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol, delta, type_, True, spot_delta).k
+                ua_d = bs_delta(fwd, ua_k, vol, t, phi, disc, False)
+                pa_d = bs_delta(fwd, pa_k, vol, t, phi, disc, True)
+                if abs(ua_d - delta) > 1e-6:
+                    failures += 1
+                    print(f"Error unadjusted {t}, {vol}, {delta}, {type_} | | {delta}/{ua_d}")
 
-    res_grid = strike_from_delta(valdate, maturities, 1.10, df_f, df_d, sigma_grid, deltas, types, True)
-    print("Strikes:\n", res_grid.k)
-    print("Used spot-delta convention (True) vs forward-delta (False):\n",
-          res_grid.used_spot_delta)
-    print("n_solutions:\n", res_grid.n_solutions)
-    print("valid:\n", res_grid.valid)
+                if abs(pa_d - delta) > 1e-6:
+                    failures += 1
+                    print(f"Error prem-adjusted {t}, {vol}, {delta}, {type_} | | {delta}/{pa_d}")
 
-    print()
-    print("=" * 70)
-    print("3) Deliberately triggering NO-SOLUTION and DOUBLE-SOLUTION for a")
-    print("   premium-adjusted call by sweeping the target delta past its max")
-    print("=" * 70)
-    sweep_deltas = np.linspace(0.01, 0.75, 15)
-    res_sweep = strike_from_delta(valdate, expiry, 1.10, df_f, df_d, 0.15, sweep_deltas, "C", True)
 
-    for d, k, k_alt, n, dmax in zip(sweep_deltas, res_sweep.k, res_sweep.k_alt,
-                                     res_sweep.n_solutions, res_sweep.delta_max_abs, strict=True):
-        print(f"  target delta={d:5.3f} n_solutions={n} K={k:9.5f} K_alt={k_alt:9.5f} max achievable delta={dmax:.4f}")
+    if failures == 0:
+        print("Round-trip result: OK")
+    else:
+        print(f"Round-trip result: FAIL {failures}/{count}")
