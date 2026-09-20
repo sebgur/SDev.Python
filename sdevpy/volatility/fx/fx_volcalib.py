@@ -160,15 +160,17 @@ class FxVolCalibrator:
         return report
 
     def dump(self, file: str) -> None:
-        """ Dump calibrated data to file """
-        data = self.report.copy()
-        data['date'] = data['date'].strftime(dts.DATE_FILE_FORMAT)
-        for r in data['tenor_reports']:
-            r['expiry'] = r['expiry'].strftime(dts.DATE_FILE_FORMAT)
-            r['settlement'] = r['settlement'].strftime(dts.DATE_FILE_FORMAT)
+        """ Dump calibrated data to file. Builds a fresh dict rather than converting in place:
+            self.report holds real dates and must keep holding them after a dump. """
+        tenor_reports = [{**r,
+                          'expiry': r['expiry'].strftime(dts.DATE_FILE_FORMAT),
+                          'settlement': r['settlement'].strftime(dts.DATE_FILE_FORMAT)}
+                         for r in self.report['tenor_reports']]
+        data = {**self.report,
+                'date': self.report['date'].strftime(dts.DATE_FILE_FORMAT),
+                'tenor_reports': tenor_reports}
 
         jsm.serialize(data, file)
-
 
     # Fixed point iteration. ToDo: check if we don't already have it and move to a more suitable place if any.
     def _vol_at_delta(self, smile, expiry, df_f, df_d, delta, is_call, seed, spot_delta,
