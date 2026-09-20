@@ -115,8 +115,11 @@ def _seniority_score(ccy: str) -> int:
 
 def conventional_pair_name(ccy1: str, ccy2: str) -> tuple[str, str]:
     """ (forccy, domccy) in conventional naming order. Raises if neither currency has a
-        verified rank -- e.g. two unranked currencies, which likely don't trade as a direct
+        verified rank, e.g. two unranked currencies, which likely don't trade as a direct
         named pair at all (route through fxspot's USD triangulation instead). """
+    if ccy1 == ccy2:
+        raise ValueError(f"Two identical currencies requested in conventional pair name: {ccy1}/{ccy2}")
+
     s1, s2 = _seniority_score(ccy1), _seniority_score(ccy2)
     if s1 == s2 == 0:
         raise ValueError(f"Naming order for {ccy1}/{ccy2} not yet verified -- check your data "

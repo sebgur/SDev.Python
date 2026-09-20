@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Ask Claude for entire analysis of calibration flow
 # * Fix past Claude review, iterate a few times until relatively clean.
 # * Ask Codex for entire analysis of calibration flow. Iterate and converge.
 # * Ask Codex about the bad vanna-volga points on real data at 1M.
@@ -102,10 +101,13 @@ class FxVolCalibrator:
             else:
                 vol_p, vol_c = wingvols_from_butterfly(atm_vol, rr, bf)
 
-            k_put = float(strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P',
-                                            self.prem_adj, spot_delta).k)
-            k_call = float(strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C',
-                                             self.prem_adj, spot_delta, double_root_preference='large').k)
+            # k_put = float(strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_p, -delta, 'P',
+            #                                 self.prem_adj, spot_delta).k)
+            # k_call = float(strike_from_delta(valdate, expiry, self.spot, df_f, df_d, vol_c, delta, 'C',
+            #                                  self.prem_adj, spot_delta).k)
+            k_put = self._solve_strike(expiry, df_f, df_d, vol_p, -delta, 'P', spot_delta, tenor)
+            k_call = self._solve_strike(expiry, df_f, df_d, vol_c, delta, 'C', spot_delta, tenor)
+
             pillars[delta] = (k_put, vol_p, k_call, vol_c)
             deltas += [-delta, delta]
             strikes += [k_put, k_call]
@@ -195,6 +197,21 @@ class FxVolCalibrator:
                 return sigma_new, k
             sigma = sigma_new
         raise RuntimeError(f"Tail vol did not converge at delta={delta}")
+
+    def _solve_strike(self, expiry, df_f, df_d, sigma: float, signed_delta: float, option_type: str,
+                      spot_delta: bool, tenor: str, **kwargs) -> float:
+        """ Strike for a quoted delta. strike_from_delta reports NaN with valid=False when no
+            strike matches, so check before unwrapping: a NaN here would flow into the pillar
+            grid and on into the dumped report without anything noticing. """
+        sol = strike_from_delta(self.date, expiry, self.spot, df_f, df_d, sigma, signed_delta,
+                                option_type, self.prem_adj, spot_delta, **kwargs)
+        if not bool(np.all(sol.valid)):
+            cap = float(np.ravel(sol.delta_max_abs)[0])
+            extra = f", max achievable |delta| is {cap:.4f}" if np.isfinite(cap) else ""
+            raise ValueError(f"{tenor}: no strike matches delta {signed_delta:+.4f} "
+                             f"({option_type}) at vol {sigma:.6f}{extra}")
+
+        return float(sol.k)
 
     def _set_conventions(self) -> None:
         """ Set market convention for pair """

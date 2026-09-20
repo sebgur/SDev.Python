@@ -139,7 +139,7 @@ class VannaVolgaSmile:
         w1, w2, w3 = lagrange_weights(strike, self.k_put, self.k_atm, self.k_call)
         return w1 * self.vol_put + w2 * self.atm_vol + w3 * self.vol_call
 
-    def _exact_vol(self, k: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    def _exact_vol(self, k: npt.NDArray[np.float64], rtol: float=1e-10) -> npt.NDArray[np.float64]:
         # Calls and puts imply the same vol (the VV correction is identical by put-call parity),
         # so invert whichever is OTM -- better conditioned.
         is_call = np.asarray(k >= self.fwd)
@@ -152,7 +152,10 @@ class VannaVolgaSmile:
             price = self.price(k_sub, is_call=flag)
             solved = black.implied_vol(self.expiry, k_sub, flag, self.fwd, price)
             repriced = black.price(self.expiry, k_sub, flag, self.fwd, solved)
-            vol[mask] = np.where(np.abs(repriced - price) < 1e-8, solved, np.nan)
+            # The threshold is relative to the forward: prices scale with the numeraire, so a fixed
+            # absolute tolerance is ~1000x stricter on a JPY or KRW cross than on EURUSD.
+            vol[mask] = np.where(np.abs(repriced - price) < rtol * self.fwd, solved, np.nan)
+            # vol[mask] = np.where(np.abs(repriced - price) < 1e-8, solved, np.nan)
         return vol
 
     def vol_at_delta(self, delta: float, is_call: bool, tol: float=1e-10, max_iter: int=100, **strike_kwargs) -> float:

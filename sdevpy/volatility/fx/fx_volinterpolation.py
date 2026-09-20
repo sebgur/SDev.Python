@@ -145,7 +145,8 @@ class FxVolInterpolation:
             np.atleast_1d(target), np.atleast_1d(disc), np.atleast_1d(spot_delta))
 
         # Bracket in log-strike, same generous width strike_from_delta uses by default
-        width = 15.0 * np.asarray(self.vol_at_strike(t, f, fwd=f)) * np.sqrt(t) + 8.0
+        width = 15.0 * np.asarray(self.vol_at_strike(t, f, fwd=f)) * np.sqrt(t) + 1.0 # More aggressive, faster
+        # width = 15.0 * np.asarray(self.vol_at_strike(t, f, fwd=f)) * np.sqrt(t) + 8.0
         lo, hi = np.log(f) - width, np.log(f) + width
 
         def g(log_k):

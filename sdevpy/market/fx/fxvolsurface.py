@@ -64,11 +64,11 @@ class FxVolSurfaceData:
         print(f"Valuation date: {self.valdate.strftime(dts.DATE_FORMAT)}")
         print(f"Snap date: {self.snapdate.strftime(dts.DATETIME_FORMAT)}")
         print(f"Market strangle quote: {self.market_strangle_quote}")
-        n_exp = len(self.expiries)
+        n_exp = len(self.tenors)
         print(f"Number of expiries: {n_exp}")
         for i in range(n_exp):
             print(sep)
-            print(f"Expiry {i + 1}/{n_exp}: {self.expiries[i].strftime(dts.DATE_FORMAT)}")
+            print(f"Expiry {i + 1}/{n_exp}: {self.tenors[i]}")
             with np.printoptions(precision=n_digits):
                 print(f"ATM vol: {self.atm_vols[i]:.{n_digits}f}")
                 print("Deltas  ", self.deltas[i])
