@@ -84,9 +84,10 @@ def _d1d2(f: npt.ArrayLike, k: npt.ArrayLike, sigma: npt.ArrayLike, t: npt.Array
     return d1, d2
 
 
-def bs_delta(f, k, sigma, t, phi, disc, prem_adjusted) -> npt.ArrayLike:
+def bs_delta(f: float, k: npt.ArrayLike, sigma, t, phi, disc: float, prem_adjusted: bool) -> npt.ArrayLike:
     """ Vectorized Garman-Kohlhagen delta.
-        disc: multiplicative factor distinguishing spot delta (disc = exp(-r_f*T)) from forward delta (disc = 1). """
+        phi: 1.0 for calls, -1.0 for puts
+        disc: foreign discount factor (spot delta) or 1.0 (forward delta). """
     f, k, sigma, t, phi, disc = np.broadcast_arrays(*[_arr(a) for a in (f, k, sigma, t, phi, disc)])
     prem_adjusted = np.broadcast_to(_arr(prem_adjusted).astype(bool), f.shape)
     d1, d2 = _d1d2(f, k, sigma, t)
@@ -333,17 +334,60 @@ def strike_from_delta(valdate: dt.datetime, expiry: npt.ArrayLike, spot: npt.Arr
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
     np.set_printoptions(precision=6, suppress=True)
 
-    print("=" * 70)
-    print("1) Round-trip on single quote, plain (non premium-adjusted)  delta put, EURUSD-like")
-    print("=" * 70)
-    delta = -0.25
-    r_f, r_d, expiry = 0.02, 0.04, 0.5
-    df_f, df_d = np.exp(-r_f * expiry), np.exp(-r_d * expiry)
     valdate = dt.datetime(2025, 12, 15)
-    expiry = dt.datetime(2026, 12, 15)
-    res = strike_from_delta(valdate, expiry, 1.10, df_f, df_d, 0.09, -delta, "P", False)
+    spot = 100
+    r_f, r_d = 0.02, 0.04
+    prem_adjusted = False
+    min_pc, max_pc = 0.0001, 0.999
+
+    print("<>"*20)
+    print("Draw strike-delta curves")
+    expiry, spot_delta = dt.datetime(2026, 12, 15), True
+    t = fx_market_yearfraction(valdate, expiry)
+    vol = 0.09
+    stdev = vol * np.sqrt(t)
+    ito = -0.5 * stdev**2
+    delta = -0.25
+    df_f, df_d = np.exp(-r_f * t), np.exp(-r_d * t)
+    fwd = spot * df_f / df_d
+    min_k, max_k = fwd * np.exp(ito + stdev * ndtri(min_pc)), fwd * np.exp(ito + stdev * ndtri(max_pc))
+    option_type = "P"
+    phi = (1.0 if option_type.lower() == "c" else -1.0)
+    print(f"{min_k}, {fwd}, {max_k}")
+    strikes = np.linspace(min_k, max_k, 200)
+    ua_call_deltas = bs_delta(fwd, strikes, vol, t, 1.0, df_f, False)
+    ua_put_deltas = bs_delta(fwd, strikes, vol, t, -1.0, df_f, False)
+    pa_call_deltas = bs_delta(fwd, strikes, vol, t, 1.0, df_f, True)
+    pa_put_deltas = bs_delta(fwd, strikes, vol, t, -1.0, df_f, True)
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+    ax = axes[0, 0]
+    ax.plot(strikes, ua_call_deltas)
+    ax.scatter(fwd, bs_delta(fwd, fwd, vol, t, 1.0, df_f, False), color='red')
+    ax.set_title("Unadjusted Call Delta")
+    ax = axes[0, 1]
+    ax.plot(strikes, ua_put_deltas)
+    ax.scatter(fwd, bs_delta(fwd, fwd, vol, t, -1.0, df_f, False), color='red')
+    ax.set_title("Unadjusted Put Delta")
+    ax = axes[1, 0]
+    ax.plot(strikes, pa_call_deltas)
+    ax.scatter(fwd, bs_delta(fwd, fwd, vol, t, 1.0, df_f, True), color='red')
+    ax.set_title("Prem-adjusted Call Delta")
+    ax = axes[1, 1]
+    ax.plot(strikes, pa_put_deltas)
+    ax.scatter(fwd, bs_delta(fwd, fwd, vol, t, -1.0, df_f, True), color='red')
+    ax.set_title("Prem-adjusted Put Delta")
+
+    fig.suptitle('Delta vs Strike', fontsize=16, fontweight='bold')
+    plt.tight_layout()
+    plt.show()
+
+
+    res = strike_from_delta(valdate, expiry, spot, df_f, df_d, vol, -delta, option_type, prem_adjusted, spot_delta)
     print(res)
     # sanity check: recompute delta at that strike directly
     f = 1.10 * df_f / df_d
