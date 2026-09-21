@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Claude's Code Review — sdevpy</title>
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --text:      #c9d1d9;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --orange:    #f0883e;
+      --red:       #f85149;
+      --purple:    #bc8cff;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+
+    header { margin-bottom: 2.5rem; padding-bottom: 1.4rem; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.75rem; color: var(--accent); letter-spacing: -.02em; }
+    header p  { color: var(--muted); margin-top: .35rem; font-size: .9rem; }
+
+    .grade-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.8rem;
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+    .grade-letter {
+      font-size: 4.2rem;
+      font-weight: 800;
+      color: var(--green);
+      line-height: 1;
+      min-width: 3.8rem;
+      text-align: center;
+    }
+    .grade-details h2 { font-size: 1.05rem; margin-bottom: .35rem; }
+    .grade-details p  { color: var(--muted); font-size: .88rem; }
+
+    .scorecard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+    .scorecard table { width: 100%; border-collapse: collapse; }
+    .scorecard thead th {
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      padding: .65rem 1.2rem;
+      text-align: left;
+    }
+    .scorecard tbody tr { border-top: 1px solid var(--border); }
+    .scorecard tbody tr:hover { background: var(--surface2); }
+    .scorecard td { padding: .7rem 1.2rem; font-size: .88rem; vertical-align: middle; }
+    .scorecard td:nth-child(2) { font-weight: 700; white-space: nowrap; }
+    .bar-wrap  { display: flex; align-items: center; gap: .55rem; }
+    .bar       { height: 6px; border-radius: 3px; background: var(--border); flex: 1; overflow: hidden; }
+    .bar-fill  { height: 100%; border-radius: 3px; }
+    .score-lbl { font-size: .78rem; color: var(--muted); white-space: nowrap; min-width: 4.5rem; }
+
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 1.1rem;
+      padding-bottom: .45rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .progress-banner {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--green);
+      border-radius: 8px;
+      padding: .9rem 1.2rem;
+      margin-bottom: 1.5rem;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .progress-banner strong { color: var(--text); }
+
+    .issue {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 8px;
+      padding: 1.15rem 1.4rem;
+      margin-bottom: 1.1rem;
+    }
+    .issue.critical { border-left-color: var(--red);    }
+    .issue.high     { border-left-color: var(--orange); }
+    .issue.medium   { border-left-color: var(--yellow); }
+    .issue.low      { border-left-color: var(--accent); }
+
+    .issue-header {
+      display: flex;
+      align-items: flex-start;
+      gap: .7rem;
+      margin-bottom: .7rem;
+      flex-wrap: wrap;
+    }
+    .issue-num {
+      font-size: .72rem; font-weight: 700;
+      background: #21262d; border-radius: 4px;
+      padding: .18rem .5rem; color: var(--muted);
+      white-space: nowrap; margin-top: .15rem;
+    }
+    .issue-title { font-weight: 600; font-size: .98rem; flex: 1; min-width: 0; }
+    .badge {
+      font-size: .7rem; font-weight: 700; padding: .18rem .55rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: .05em;
+      white-space: nowrap; margin-top: .1rem;
+    }
+    .badge.critical { background: #3d1515; color: var(--red);    }
+    .badge.high     { background: #2d1e0f; color: var(--orange); }
+    .badge.medium   { background: #2c2005; color: var(--yellow); }
+    .badge.low      { background: #0c2a4a; color: var(--accent); }
+
+    .loc {
+      display: inline-block;
+      font-size: .76rem; color: var(--accent);
+      background: #0c2a4a; border: 1px solid #1f4068;
+      border-radius: 4px; padding: .12rem .48rem;
+      margin-bottom: .55rem;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    }
+
+    .issue p { color: var(--muted); font-size: .88rem; margin-bottom: .45rem; }
+    .issue p:last-child { margin-bottom: 0; }
+    .issue strong { color: var(--text); }
+
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .83em;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1em .38em;
+      color: var(--purple);
+    }
+    pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .9rem 1.1rem;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .82em;
+      line-height: 1.65;
+      margin: .55rem 0 .2rem;
+      color: #e6edf3;
+    }
+    .c  { color: #8b949e; }
+    .kw { color: #ff7b72; }
+    .st { color: #a5d6ff; }
+    .fn { color: #d2a8ff; }
+    .ok { color: #3fb950; }
+    .rm { color: #f85149; }
+
+    footer { margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; color: var(--muted); font-size: .8rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Claude's Code Review — <code>sdevpy</code></h1>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-05-10 &nbsp;·&nbsp; <strong>9th review</strong> (full scan)</p>
+  </header>
+
+  <div class="grade-card">
+    <div class="grade-letter">B</div>
+    <div class="grade-details">
+      <h2>Five more fixes landed — one high-severity bug and scattered test-output pollution remain</h2>
+      <p>
+        All five issues called out in the 8th review as highest priority are now resolved: both debug
+        <code>print()</code> calls in production code are commented out, <code>TEST_VOL</code> is gone,
+        exception types are consistent, and <code>snapdate</code> is correctly parsed in
+        <code>yieldcurve_from_file</code>. <code>WorstOfBarrier</code> now has a complete lifecycle
+        implementation. Test coverage has grown meaningfully (TsSvi1, TsSvi2, LogMix formula tests added).
+        However, <code>Trade.notional</code> is still ignored during MC pricing, three live
+        <code>print()</code> calls survive in pytest test functions, and the PDE matrix-assembly loops
+        are still pure Python — all addressable in one pass.
+      </p>
+    </div>
+  </div>
+
+  <div class="progress-banner">
+    <strong>Fixed since 8th review (5 of 10):</strong>
+    debug <code>print(f"Mass: …")</code> in <code>forwardpde.py</code> commented out &nbsp;·&nbsp;
+    debug <code>print(f"Section requested …")</code> in <code>localvol.py</code> commented out &nbsp;·&nbsp;
+    <code>TEST_VOL</code> removed from <code>assetmodels.py</code> (whole <code>use_lv</code> path replaced) &nbsp;·&nbsp;
+    <code>Terminal</code> and <code>WorstOf</code> now both raise <code>ValueError</code> consistently &nbsp;·&nbsp;
+    <code>snapdate</code> now parsed with <code>strptime</code> in <code>yieldcurve_from_file</code>
+  </div>
+
+  <div class="scorecard">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th><th>Score</th><th style="width:38%">Rating</th><th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Architecture</td><td>8 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Clean ABC hierarchy, solid PDE/MC separation, LV section design well-structured; no significant structural changes</td>
+        </tr>
+        <tr>
+          <td>Correctness</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>trade.notional</code> still silently ignored in MC pricer; new variance swaps crash at pricing when <code>start &ge; valdate</code></td>
+        </tr>
+        <tr>
+          <td>Error Handling</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Exception narrowing applied consistently; <code>check_consistency</code> dead code still present; <code>dump_data</code> can raise <code>AttributeError</code> before <code>update_params</code></td>
+        </tr>
+        <tr>
+          <td>Testing</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good growth: TsSvi1/TsSvi2/LogMix formula tests now present; 3 live <code>print()</code> calls still pollute pytest output; calibration path still untested</td>
+        </tr>
+        <tr>
+          <td>Code Quality</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Production debug prints removed; 3 test-function prints remain; PDE for-loops still pure Python when NumPy slices would suffice</td>
+        </tr>
+        <tr>
+          <td>Maintainability</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good module layout and docstrings; <code>shift_forward</code> default vs docstring inconsistency mildly confusing for new contributors</td>
+        </tr>
+        <tr>
+          <td>Type Safety</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem"><code>ParametricImpliedVol.update_params</code> now coerces to <code>ndarray</code>; <code>params = None</code> in <code>__init__</code> means <code>dump_data</code> before first <code>update_params</code> still raises</td>
+        </tr>
+        <tr>
+          <td>Documentation</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Good docstrings on key classes; <code>shift_forward</code> docstring says "not using this for now" but it is the default-on path</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Top 10 Issues</div>
+
+  <!-- 1 -->
+  <div class="issue high">
+    <div class="issue-header">
+      <span class="issue-num">#1</span>
+      <span class="issue-title"><code>Trade.notional</code> stored but never multiplied in — all trades priced at unit notional</span>
+      <span class="badge high">High</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/mcpricer.py · line 177</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>Trade.__init__</code> accepts and stores
+      <code>self.notional = kwargs.get('notional', 1.0)</code>, but
+      <code>MonteCarloPricer.build()</code> at line 177 aggregates with:
+    </p>
+    <pre>results[<span class="st">'pv'</span>] = np.asarray(leg_cf_pvs).sum(axis=<span class="fn">1</span>).sum()</pre>
+    <p>
+      The sum never involves <code>trade.notional</code>. Any book with non-unit notionals —
+      which is every real trade — produces prices that are exactly wrong by the notional factor.
+      Because the default notional is 1.0, the bug is invisible in unit tests but breaks every
+      production pricing call silently.
+    </p>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="rm">results['pv'] = np.asarray(leg_cf_pvs).sum(axis=1).sum()</span>
+<span class="ok">results['pv'] = trade.notional * np.asarray(leg_cf_pvs).sum(axis=1).sum()</span></pre>
+  </div>
+
+  <!-- 2 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#2</span>
+      <span class="issue-title">Three live <code>print()</code> calls inside pytest test functions pollute CI output</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/tests/test_pde.py · line 93 &nbsp;·&nbsp; test_timegrids.py · line 19 &nbsp;·&nbsp; test_yieldcurves.py · line 48</span>
+    <p>
+      <strong>Why it's bad:</strong> These are inside actual <code>def test_*()</code> functions
+      (not in <code>if __name__ == "__main__"</code> blocks), so they fire on every
+      <code>pytest</code> run and pollute test output. In a CI pipeline the noise can hide real
+      failures. All other debug prints in the same files are correctly commented out — these three
+      were missed:
+    </p>
+    <pre><span class="c"># test_pde.py:93 — inside test_forward_pde_implicit()</span>
+<span class="rm">print(np.asarray(pde_sums))</span>
+
+<span class="c"># test_timegrids.py:19 — inside test_timegridbuilder_buckets()</span>
+<span class="rm">print(test)</span>
+
+<span class="c"># test_yieldcurves.py:48 — inside test_yieldcurve_reading()</span>
+<span class="rm">print(test)</span></pre>
+    <p><strong>Fix:</strong> Comment out all three, matching the pattern already used in the same files.</p>
+  </div>
+
+  <!-- 3 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#3</span>
+      <span class="issue-title"><code>check_consistency</code> is dead code that will never be called</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/volatility/impliedvol/impliedvol_calib.py · lines 129–143</span>
+    <p>
+      <strong>Why it's bad:</strong> The method carries the in-code comment
+      <em>"this function is not used yet"</em> and has never been wired into <code>calibrate()</code>.
+      It relies on <code>convert_to_target_values</code> and <code>check_expiries_and_forwards</code>
+      from <code>optionsurface.py</code> — but <code>calibrate()</code> uses a completely different
+      data path through <code>prepare_target_data()</code> that flattens the surface into plain
+      NumPy arrays, not <code>list[list[OptionTarget]]</code>. The two paths are
+      architecturally incompatible as written.
+    </p>
+    <p>
+      <strong>Fix:</strong> Either wire it into the calibration pipeline now (alongside the existing
+      preprocessing in <code>prepare_target_data</code>), or remove it entirely and track the intent
+      in a GitHub issue rather than dead code.
+    </p>
+  </div>
+
+  <!-- 4 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#4</span>
+      <span class="issue-title"><code>dump_data()</code> calls <code>self.params.tolist()</code> but <code>params</code> starts as <code>None</code></span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/volatility/impliedvol/models/tssvi1.py · line 152 &nbsp;·&nbsp; tssvi2.py · line 148 &nbsp;·&nbsp; logmix.py · line 366</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>ParametricImpliedVol.__init__</code> sets
+      <code>self.params = None</code>. If <code>dump_data()</code> is called before
+      <code>update_params()</code> — e.g. during serialization of a freshly constructed model
+      that has not yet been calibrated — the call chain crashes with
+      <code>AttributeError: 'NoneType' object has no attribute 'tolist'</code>.
+      While <code>update_params</code> now correctly coerces to <code>ndarray</code>, the
+      gap between construction and first call to <code>update_params</code> is unguarded.
+    </p>
+    <p><strong>Fix:</strong> Either initialise <code>params</code> to an empty array in the base
+    class, or guard in each <code>dump_data</code>:</p>
+    <pre><span class="kw">def</span> <span class="fn">dump_data</span>(self) -> dict:
+    <span class="ok">if self.params is None:
+        raise RuntimeError("Model has no parameters yet; call update_params() first")</span>
+    <span class="kw">return</span> {<span class="st">'type'</span>: <span class="st">'TsSvi1'</span>, <span class="st">'params'</span>: self.params.tolist()}</pre>
+  </div>
+
+  <!-- 5 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#5</span>
+      <span class="issue-title"><code>Maximum</code> and <code>BarrierDown</code> are incomplete WIP stubs exported in the public API</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 71–96</span>
+    <p>
+      <strong>Why it's bad:</strong> Both classes are tagged <em>"Warning: work in progress"</em>
+      and both raise <code>NotImplementedError</code> in <code>evaluate()</code>. They are
+      importable from the public <code>sdevpy.montecarlo.payoffs.exotics</code> namespace.
+      <code>Maximum.__init__</code> sets <code>self.eventdates</code> at construction time
+      (the wrong lifecycle phase — this should be deferred to <code>set_valuation_date</code>).
+      <code>BarrierDown</code> stores a raw integer index instead of a name, bypassing the
+      name-resolution system entirely. Any caller who accidentally instantiates either class
+      gets a runtime error deep inside the pricing engine with no indication of why.
+    </p>
+    <p>
+      <strong>Fix:</strong> Until fully implemented, prefix with an underscore
+      (<code>_Maximum</code>, <code>_BarrierDown</code>) so they are not part of the public
+      API, or add a prominent <code>raise NotImplementedError</code> in <code>__init__</code>
+      itself so the failure is immediate and clearly labelled.
+    </p>
+  </div>
+
+  <!-- 6 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#6</span>
+      <span class="issue-title">No tests for <code>TsIvCalibrator.calibrate</code>, <code>calibrate_lv_interp</code>, or the <code>shift_forward=True</code> path</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/tests/ · codebase-wide</span>
+    <p>
+      <strong>Why it's bad:</strong> The end-to-end calibration pipeline
+      (<code>TsIvCalibrator.calibrate → prepare_target_data → TsIvObjectiveBuilder.objective</code>)
+      is only exercised by the notebook, never by <code>pytest</code>. Similarly,
+      <code>calibrate_lv_interp</code> (the Dupire path) and the density-shifting branch
+      (<code>config.shift_forward = True</code>, which is the <em>default</em> value in
+      <code>PdeConfig</code>) have no automated tests. This means regressions in these paths
+      would not be caught by CI. Issues #1 and #4 in the 8th review would both have been
+      caught immediately by a minimal calibration smoke test.
+    </p>
+    <p>
+      <strong>Fix:</strong> Add: (1) a <code>test_tssvi1_calibrate</code> that calls
+      <code>TsIvCalibrator.calibrate</code> against the existing sample data and checks
+      RMSE &lt; threshold; (2) a PDE test with <code>shift_forward=True</code> explicitly set.
+    </p>
+  </div>
+
+  <!-- 7 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#7</span>
+      <span class="issue-title">PDE matrix assembly uses pure Python <code>for</code> loops — easily vectorized with NumPy slices</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/pde/pdeschemes.py · lines 56–65, 73–80 (ThetaScheme) &nbsp;·&nbsp; lines 103–113 (ImplicitScheme)</span>
+    <p>
+      <strong>Why it's bad:</strong> Both <code>ImplicitScheme.roll_forward</code> and
+      <code>ThetaScheme.roll_forward</code> assemble the tridiagonal band vectors using Python
+      <code>for j in range(n_x)</code> loops with conditional branches. For a 250-point grid
+      and 50 time steps, this is ~12,500 Python loop iterations per maturity call. Compared to
+      vectorized NumPy operations (which drop to C), this is 10–100× slower than necessary.
+    </p>
+    <p><strong>Fix (ImplicitScheme example):</strong></p>
+    <pre><span class="c"># Current (slow):</span>
+<span class="kw">for</span> j <span class="kw">in</span> range(n_x):
+    main[j] = (<span class="fn">1.0</span> + b * lv[j]**<span class="fn">2</span>)
+    <span class="kw">if</span> j &lt; n_x - <span class="fn">1</span>:
+        upper[j] = -a * lv[j + <span class="fn">1</span>]**<span class="fn">2</span>
+    <span class="kw">if</span> j &gt; <span class="fn">0</span>:
+        lower[j - <span class="fn">1</span>] = -c * lv[j - <span class="fn">1</span>]**<span class="fn">2</span>
+
+<span class="c"># Vectorized replacement:</span>
+<span class="ok">main  = 1.0 + b * lv**2
+upper = -a * lv[1:]**2
+lower = -c * lv[:-1]**2</span></pre>
+  </div>
+
+  <!-- 8 -->
+  <div class="issue medium">
+    <div class="issue-header">
+      <span class="issue-num">#8</span>
+      <span class="issue-title"><code>black.implied_vol</code> uses Brent with coarse <code>xtol=1e-4</code> — limits calibration precision to ~1 bp</span>
+      <span class="badge medium">Medium</span>
+    </div>
+    <span class="loc">sdevpy/analytics/black.py · line 30</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>implied_vol</code> calls
+      <code>minimize_scalar(..., options={'xtol': 1e-4})</code>.
+      The tolerance is on the vol argument directly, so the returned vol may be off by up to 1bp
+      (100bps of a percentage point). This function is the endpoint of
+      <code>optionsurface.convert_option()</code> — used during vol-to-price and price-to-vol
+      conversions in calibration. A calibrator with 1e-10 solver tolerance feeding on targets
+      that are only accurate to 1e-4 will plateau early. Additionally, <code>xmax = 1.0</code>
+      (100% cap) silently fails for high-vol or short-dated options that need vols above 100%.
+      A vectorized Newton-Raphson implementation (<code>implied_vol_newton</code>) already exists
+      in the same file and is both faster and more accurate.
+    </p>
+    <p>
+      <strong>Fix:</strong> Replace the Brent call with <code>implied_vol_newton</code>, or at
+      minimum tighten <code>xtol</code> from <code>1e-4</code> to <code>1e-8</code> and raise
+      <code>xmax</code> to <code>10.0</code>.
+    </p>
+  </div>
+
+  <!-- 9 -->
+  <div class="issue low">
+    <div class="issue-header">
+      <span class="issue-num">#9</span>
+      <span class="issue-title"><code>PdeConfig.shift_forward</code> defaults to <code>True</code> but the function docstring says "We are not using this for now"</span>
+      <span class="badge low">Low</span>
+    </div>
+    <span class="loc">sdevpy/pde/pdeschemes.py · line 20 &nbsp;·&nbsp; sdevpy/pde/forwardpde.py · lines 102–103, 171</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>PdeConfig</code> declares
+      <code>shift_forward: bool = True</code>, meaning any caller who constructs a
+      <code>PdeConfig</code> without specifying this field runs the forward-shift correction.
+      But <code>shift_forward()</code> at line 102 carries the docstring
+      <em>"Shift the density to match the forward. We are not using this for now."</em>
+      And <code>price_vanillas</code> at line 171 explicitly overrides to <code>shift_forward=False</code>.
+      The inconsistency between default-on, the "not using" docstring, and the explicit override
+      in the only production caller is confusing: a new contributor creating a <code>PdeConfig()</code>
+      will silently run a code path the author labelled as unused.
+    </p>
+    <p>
+      <strong>Fix:</strong> Change the default to <code>False</code> to match actual usage,
+      and update the docstring to describe what the function does rather than whether it is in use.
+    </p>
+  </div>
+
+  <!-- 10 -->
+  <div class="issue low">
+    <div class="issue-header">
+      <span class="issue-num">#10</span>
+      <span class="issue-title">New variance swaps (start &ge; valdate) always crash at pricing — <code>current_fixing</code> never set</span>
+      <span class="badge low">Low</span>
+    </div>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 452, 460–463</span>
+    <p>
+      <strong>Why it's bad:</strong> <code>Variance.__init__</code> sets
+      <code>self.current_fixing = None</code>. In <code>set_valuation_date</code>, if
+      <code>start &ge; valdate</code> (a brand-new variance swap), all dates fall into
+      <code>self.eventdates</code> and <code>hist_fixing_dates = []</code>. If
+      <code>get_fixings</code> returns <code>None</code> or an empty list for an empty input,
+      the condition <code>len(hist_fixings) &ge; 1</code> is never met, so
+      <code>current_fixing</code> stays <code>None</code>. Then <code>evaluate()</code>:
+    </p>
+    <pre><span class="kw">if</span> self.current_fixing <span class="kw">is</span> <span class="kw">None</span>:
+    <span class="kw">raise</span> ValueError(<span class="st">f"Fixing not set for variance on {self.name}"</span>)</pre>
+    <p>
+      raises on every pricing call. The existing <code>test_mc.py</code> uses
+      <code>start_date = 2025-11-15</code> and <code>valdate = 2025-12-15</code>, which always
+      has historical fixings — the failing case (start = valdate) is never covered by tests.
+    </p>
+    <p>
+      <strong>Fix:</strong> When <code>hist_fixing_dates</code> is empty (new contract), set
+      <code>current_fixing</code> to the current spot from market data, or expose a
+      <code>set_current_fixing(spot)</code> method and document that it must be called before pricing.
+    </p>
+  </div>
+
+  <footer>
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #9 &nbsp;·&nbsp; 2026-05-10 (full scan)
+  </footer>
+</div>
+</body>
+</html>

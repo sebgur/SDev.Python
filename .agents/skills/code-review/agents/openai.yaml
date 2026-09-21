@@ -1,0 +1,6 @@
+interface:
+  display_name: "Code Review"
+  short_description: "Full codebase grade and prioritized HTML review"
+  default_prompt: "Use $code-review to review this repository and write the HTML report."
+policy:
+  allow_implicit_invocation: false

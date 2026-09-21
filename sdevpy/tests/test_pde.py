@@ -58,7 +58,6 @@ def test_forward_pde():
     # print(np.asarray(pde_sums))
     # print(np.asarray(cf_sums))
     pde_ref = np.asarray([2.70428011, 10.60023123, 21.44746433, 60.16740876, 132.39777875, 279.0919945])
-    # pde_ref = np.asarray([2.70606853, 10.6012976, 21.44167511, 60.14815888, 132.34671851, 279.04775693])
     cf_ref = np.asarray([2.70369628483, 10.60016306545, 21.43931715705, 60.14359001452, 132.344239396, 279.0267305878])
 
     pde_ok = np.allclose(np.asarray(pde_sums), pde_ref, rtol=0.0, atol=1e-8)
@@ -79,7 +78,6 @@ def test_forward_pde_no_rescale_x():
     # print(np.asarray(pde_sums))
     # print(np.asarray(cf_sums))
     pde_ref = np.asarray([2.57291082, 10.53504277, 21.41104766, 60.07848363, 132.21978852, 278.86002338])
-    # pde_ref = np.asarray([2.67658397, 10.57688613, 21.43376434, 60.11816797, 132.3149149, 278.98433455])
     cf_ref = np.asarray([2.70369628483, 10.60016306545, 21.43931715705, 60.14359001452, 132.344239396, 279.0267305878])
 
     pde_ok = np.allclose(np.asarray(pde_sums), pde_ref, rtol=0.0, atol=1e-8)
@@ -93,7 +91,6 @@ def test_forward_pde_implicit():
     pde_sums = [r['pde_prices'].sum() for r in reports]
     # print(np.asarray(pde_sums))
     pde_ref = np.asarray([2.70421593, 10.60144917, 21.45060693, 60.15186171, 132.28941678, 278.79925438])
-    # pde_ref = np.asarray([2.70813352, 10.60375539, 21.44415924, 60.13071881, 132.23445455, 278.74946682])
     assert np.allclose(np.asarray(pde_sums), pde_ref, rtol=0.0, atol=1e-8)
 
 
@@ -129,7 +126,6 @@ def test_forward_pde_explicit():
     # print(pde_sum)
 
     pde_ref = 33.54820726391229
-    # pde_ref = 33.51835236599183
     assert isequal(pde_sum, pde_ref, 1e-10)
 
 
@@ -169,7 +165,6 @@ def test_forward_pde_simple():
     # print(cf_sum)
 
     pde_ref = 33.46919919336922
-    # pde_ref = 33.4692251170
     cf_ref = 33.37108539482
 
     pde_ok = isequal(pde_sum, pde_ref, 1e-10)

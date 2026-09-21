@@ -98,7 +98,8 @@ def fx_spot_date(date: dt.datetime, forccy: str, domccy: str) -> dt.datetime:
 
     settle_cal = make_calendar(f"{forccy},{domccy},USD")
     shifted_date = pair_cal.add_business_days(date, 1)
-    return settle_cal.add_business_days(shifted_date, lag - 1) if lag > 1 else shifted_date
+    return settle_cal.add_business_days(shifted_date, max(lag - 1, 0))
+    # return settle_cal.add_business_days(shifted_date, lag - 1) if lag > 1 else shifted_date
 
 
 def fx_pillar_date(valdate: dt.datetime, tenor_str: str, forccy: str, domccy: str,

@@ -11,13 +11,12 @@ from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
-# from sdevpy.market import provider as mdp
 from sdevpy.calibration import provider as cdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.impliedvol.models.cubicvol import (
     create_section, cubicvol_check_params, calculate_epsilon,
-    is_valid_left, is_valid_right#, sample_params
+    is_valid_left, is_valid_right
 )
 from scipy.stats import norm as scipy_norm
 from sdevpy.volatility.impliedvol.models.logmix import (
@@ -351,7 +350,6 @@ def test_tssvi2():
     is_call = True
     test = surface.calculate(t, k, is_call, f)
     ref = np.asarray([0.28002666, 0.27620326, 0.27544121])
-    # ref = np.asarray([0.41214181, 0.23553742, 0.20534387])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
@@ -427,7 +425,6 @@ def test_vsvi_formula():
     test = vsvi.vsvi(log_m, vstar, b, rho, xstar, lambda_)
     # print(test)
     ref = np.asarray([0.28327209, 0.25, 0.27122271])
-    # ref = np.asarray([0.31409145, 0.275, 0.29098655])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 

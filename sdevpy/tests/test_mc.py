@@ -60,7 +60,6 @@ def test_mc():
     test = mc_price['pv']
     # print(test)
     ref = np.asarray([8.91971331055, 0.0, 5.04962052174, 0.00330715322, -53.11327812897])
-    # ref = np.asarray([8.811443508, 0.0, 4.90812947, 0.003307153, -53.12764205195])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 

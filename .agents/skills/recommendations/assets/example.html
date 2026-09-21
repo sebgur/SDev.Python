@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Claude's Recommendations — sdevpy</title>
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2128;
+      --border:    #30363d;
+      --text:      #c9d1d9;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --orange:    #f0883e;
+      --red:       #f85149;
+      --purple:    #bc8cff;
+      --teal:      #39d353;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      padding: 2.5rem 1.5rem;
+    }
+    .container { max-width: 980px; margin: 0 auto; }
+
+    header { margin-bottom: 2.5rem; padding-bottom: 1.4rem; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.75rem; color: var(--accent); letter-spacing: -.02em; }
+    header p  { color: var(--muted); margin-top: .35rem; font-size: .9rem; }
+
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.4rem 1.8rem;
+      margin-bottom: 2.5rem;
+    }
+    .summary-card h2 { font-size: 1.05rem; margin-bottom: .55rem; color: var(--accent); }
+    .summary-card p  { color: var(--muted); font-size: .88rem; margin-bottom: .45rem; }
+    .summary-card p:last-child { margin-bottom: 0; }
+
+    .tier-header {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 2.2rem 0 1rem;
+      padding-bottom: .4rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+    }
+    .tier-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .rec {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 1.1rem;
+    }
+    .rec.critical { border-left-color: var(--red);    }
+    .rec.high     { border-left-color: var(--orange); }
+    .rec.medium   { border-left-color: var(--yellow); }
+    .rec.low      { border-left-color: var(--accent); }
+
+    .rec-header {
+      display: flex;
+      align-items: flex-start;
+      gap: .7rem;
+      margin-bottom: .7rem;
+      flex-wrap: wrap;
+    }
+    .rec-num {
+      font-size: .72rem; font-weight: 700;
+      background: #21262d; border-radius: 4px;
+      padding: .18rem .5rem; color: var(--muted);
+      white-space: nowrap; margin-top: .15rem;
+    }
+    .rec-title { font-weight: 600; font-size: .98rem; flex: 1; min-width: 0; }
+    .badge {
+      font-size: .7rem; font-weight: 700; padding: .18rem .6rem;
+      border-radius: 20px; text-transform: uppercase; letter-spacing: .05em;
+      white-space: nowrap; margin-top: .1rem; flex-shrink: 0;
+    }
+    .badge.critical { background: #3d1515; color: var(--red);    }
+    .badge.high     { background: #2d1e0f; color: var(--orange); }
+    .badge.medium   { background: #2c2005; color: var(--yellow); }
+    .badge.low      { background: #0c2a4a; color: var(--accent); }
+    .badge.market   { background: #1e1440; color: var(--purple); }
+    .badge.perf     { background: #0d2a1e; color: var(--green);  }
+
+    .effort-chip {
+      font-size: .68rem; font-weight: 600;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: .15rem .55rem;
+      color: var(--muted); white-space: nowrap; margin-top: .12rem;
+    }
+
+    .rec p { color: var(--muted); font-size: .88rem; margin-bottom: .5rem; }
+    .rec p:last-child { margin-bottom: 0; }
+    .rec strong { color: var(--text); }
+
+    .rec ul { padding-left: 1.3rem; margin-bottom: .5rem; }
+    .rec ul li { color: var(--muted); font-size: .88rem; margin-bottom: .3rem; }
+    .rec ul li strong { color: var(--text); }
+
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .82em;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .1em .38em;
+      color: var(--purple);
+    }
+    pre {
+      background: #010409;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .9rem 1.1rem;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      font-size: .81em;
+      line-height: 1.65;
+      margin: .55rem 0 .45rem;
+      color: #e6edf3;
+    }
+    .c  { color: #8b949e; }
+    .kw { color: #ff7b72; }
+    .st { color: #a5d6ff; }
+    .fn { color: #d2a8ff; }
+    .ok { color: #3fb950; }
+    .rm { color: #f85149; }
+    .hl { color: #f0883e; }
+
+    .packages {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin: .6rem 0 .3rem;
+    }
+    .pkg {
+      font-size: .75rem;
+      background: #1e2936;
+      border: 1px solid #1f4068;
+      border-radius: 4px;
+      padding: .15rem .55rem;
+      color: var(--accent);
+      font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    }
+
+    .impact-row {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: .6rem;
+      flex-wrap: wrap;
+    }
+    .impact-item {
+      font-size: .78rem;
+      color: var(--muted);
+    }
+    .impact-item strong { color: var(--text); }
+
+    footer { margin-top: 3rem; border-top: 1px solid var(--border); padding-top: 1rem; color: var(--muted); font-size: .8rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>Claude's Recommendations &mdash; <code>sdevpy</code></h1>
+    <p>Quantitative finance library &nbsp;&middot;&nbsp; Python &nbsp;&middot;&nbsp; 2026-06-01 &nbsp;&middot;&nbsp; Ranked by materiality</p>
+  </header>
+
+  <div class="summary-card">
+    <h2>Summary</h2>
+    <p>
+      <strong>sdevpy</strong> is a capable personal quant library with clean mathematical foundations, solid PDE and MC
+      engines, and a well-structured implied-vol model hierarchy. It is currently built and maintained as a personal
+      research tool. Turning it into a marketable FinTech product requires changes at three levels: <strong>reliability
+      and correctness</strong> (a buyer will not trust a library that crashes in edge cases),
+      <strong>enterprise integration</strong> (market data, logging, configuration, and packaging must be
+      production-grade), and <strong>commercial differentiation</strong> (documentation, benchmarks, API stability, and
+      extensibility determine whether a FinTech firm chooses this over QuantLib, RiskEngine, or an in-house build).
+    </p>
+    <p>
+      The recommendations below are ranked by how much they move the needle toward commercial viability.
+      Each entry describes the current state, the target state, the packages or patterns to adopt, and the
+      realistic effort involved.
+    </p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ TIER 1 -->
+  <div class="tier-header">
+    <span class="tier-dot" style="background:var(--red)"></span>
+    Tier 1 &mdash; Table Stakes for Commercial Sale
+  </div>
+
+  <!-- R1 -->
+  <div class="rec critical">
+    <div class="rec-header">
+      <span class="rec-num">R1</span>
+      <span class="rec-title">Define a stable, versioned public API with semantic versioning</span>
+      <span class="badge market">Market-critical</span>
+      <span class="effort-chip">Effort: Medium</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> There is no <code>__all__</code> in most modules, no documented stable surface,
+      and no semver versioning policy. WIP classes (<code>Maximum</code>, <code>BarrierDown</code>) are importable
+      alongside production classes with no distinction. The <code>pyproject.toml</code> version is not managed
+      programmatically.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> An enterprise buyer integrates your library into their pricing stack. Without a
+      stable API contract and a deprecation policy, every upgrade is a risk. This is the single biggest trust signal
+      in B2B FinTech software sales.
+    </p>
+    <ul>
+      <li>Add <code>__all__</code> to every public module, explicitly listing what is supported.</li>
+      <li>Move WIP classes to <code>sdevpy/_experimental/</code> or prefix them with <code>_</code>.</li>
+      <li>Adopt <strong>semantic versioning</strong> (1.0.0 → 1.1.0 → 2.0.0) and use <strong>bump2version</strong> or <strong>hatch-vcs</strong> to drive the version from git tags.</li>
+      <li>Write and publish a <strong>CHANGELOG.md</strong> with one entry per release.</li>
+      <li>Add a <strong>deprecation decorator</strong> so old APIs can be kept alive with a warning before removal.</li>
+    </ul>
+    <div class="packages"><span class="pkg">bump2version</span><span class="pkg">hatch-vcs</span><span class="pkg">deprecation</span></div>
+  </div>
+
+  <!-- R2 -->
+  <div class="rec critical">
+    <div class="rec-header">
+      <span class="rec-num">R2</span>
+      <span class="rec-title">Build a CI/CD pipeline with quality gates (type checking, coverage, linting)</span>
+      <span class="badge market">Market-critical</span>
+      <span class="effort-chip">Effort: Medium</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> No CI configuration exists. Tests are run manually. Two provably wrong
+      return-type annotations have survived multiple reviews because there is no automated type checker. Coverage is
+      unknown. No linter is enforced.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Any FinTech buyer will ask "how do you ensure quality between releases?" The
+      answer must be automated. Institutional clients routinely audit vendor CI pipelines as part of due diligence.
+    </p>
+    <ul>
+      <li>Add a <strong>GitHub Actions</strong> (or GitLab CI) workflow that runs on every pull request:
+        <strong>pytest</strong> with coverage threshold (&ge;80%), <strong>mypy</strong> or <strong>pyright</strong> in strict mode, <strong>ruff</strong> for linting and formatting.</li>
+      <li>Add a <strong>pre-commit</strong> config so the same checks run locally before every commit.</li>
+      <li>Publish coverage badges in the README — buyers look for them.</li>
+      <li>Gate merges on the pipeline passing; no manual override.</li>
+    </ul>
+    <div class="packages"><span class="pkg">mypy</span><span class="pkg">pyright</span><span class="pkg">ruff</span><span class="pkg">pre-commit</span><span class="pkg">pytest-cov</span><span class="pkg">github-actions</span></div>
+  </div>
+
+  <!-- R3 -->
+  <div class="rec critical">
+    <div class="rec-header">
+      <span class="rec-num">R3</span>
+      <span class="rec-title">Abstract the market data layer behind a provider interface</span>
+      <span class="badge market">Market-critical</span>
+      <span class="effort-chip">Effort: High</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> Market data (spots, forward curves, vol surfaces, fixings) is loaded directly
+      from CSV and JSON files in <code>sdevpy/market/</code>. Functions like <code>get_spots</code>,
+      <code>get_local_vols</code>, and <code>get_yieldcurve</code> in <code>mcpricer.py</code> have file-path logic
+      baked in. <code>settings.py</code> hard-codes <code>WORKFOLDER = r"C:\temp\sdevpy"</code>.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> No institutional client will pipe Bloomberg or Refinitiv data through
+      CSV files. The market data layer is the primary integration point for enterprise sales. It must be
+      an interface that clients implement against their own data infrastructure (databases, APIs, caches).
+    </p>
+    <pre><span class="c"># Target: abstract provider protocol</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Protocol
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">class</span> <span class="fn">MarketDataProvider</span>(Protocol):
+    <span class="kw">def</span> <span class="fn">get_spot</span>(self, name: str, valdate: datetime) -> float: ...
+    <span class="kw">def</span> <span class="fn">get_yield_curve</span>(self, curve_id: str, valdate: datetime) -> YieldCurve: ...
+    <span class="kw">def</span> <span class="fn">get_vol_surface</span>(self, name: str, valdate: datetime) -> ImpliedVol: ...
+    <span class="kw">def</span> <span class="fn">get_fixings</span>(self, name: str, dates: list[datetime]) -> dict[datetime, float]: ...</pre>
+    <ul>
+      <li>Ship a <strong>FileSystemProvider</strong> (current behaviour) as the default implementation.</li>
+      <li>Provide an <strong>InMemoryProvider</strong> for testing that takes plain Python dicts.</li>
+      <li>Document the protocol so clients can implement a <strong>BloombergProvider</strong> or <strong>DatabaseProvider</strong> against their own stack.</li>
+      <li>Replace <code>settings.WORKFOLDER</code> with <strong>pydantic-settings</strong> reading from environment variables and a <code>.env</code> file.</li>
+    </ul>
+    <div class="packages"><span class="pkg">pydantic-settings</span><span class="pkg">python-dotenv</span></div>
+  </div>
+
+  <!-- R4 -->
+  <div class="rec high">
+    <div class="rec-header">
+      <span class="rec-num">R4</span>
+      <span class="rec-title">Add comprehensive API documentation with worked examples</span>
+      <span class="badge high">High</span>
+      <span class="effort-chip">Effort: High</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> Key classes have docstrings, but there is no rendered documentation,
+      no getting-started guide, and no worked examples that a prospective buyer can evaluate without
+      reading source code. The notebooks are the only user-facing narrative, but they are not published.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Documentation is a sales asset. A buyer evaluating your library
+      against QuantLib or OpenGamma will not proceed past the README if they cannot understand how to
+      price a vanilla option in five minutes.
+    </p>
+    <ul>
+      <li>Add <strong>Sphinx</strong> with the <strong>autodoc</strong> and <strong>napoleon</strong> extensions to generate API reference from docstrings.</li>
+      <li>Or use <strong>MkDocs + mkdocstrings</strong> for a lighter, more modern look.</li>
+      <li>Publish to <strong>Read the Docs</strong> (free for open-source) or GitHub Pages.</li>
+      <li>Add at minimum three worked examples in the docs: (1) price a vanilla option, (2) calibrate an implied-vol surface, (3) run an MC book PV.</li>
+      <li>Add <strong>doctest</strong> examples to key functions — they double as lightweight tests and documentation.</li>
+    </ul>
+    <div class="packages"><span class="pkg">sphinx</span><span class="pkg">sphinx-autodoc</span><span class="pkg">mkdocs</span><span class="pkg">mkdocstrings</span><span class="pkg">readthedocs</span></div>
+  </div>
+
+  <!-- R5 -->
+  <div class="rec high">
+    <div class="rec-header">
+      <span class="rec-num">R5</span>
+      <span class="rec-title">Enforce a uniform model interface contract via ABC or Protocol</span>
+      <span class="badge high">High</span>
+      <span class="effort-chip">Effort: Medium</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> <code>FactorModel</code> is an ABC but its contract is not enforced:
+      <code>MultiAssetHeston</code> doesn't inherit from it, <code>initial_state</code> has different
+      signatures across subclasses, and <code>ParametricImpliedVol</code> allows <code>params = None</code>
+      until <code>update_params()</code> is called, causing opaque crashes. The payoff lifecycle
+      (<code>set_valuation_date</code> &rarr; <code>set_nameindexes</code> &rarr; <code>evaluate</code>)
+      is informal and not enforced.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> A client extending your library to add custom models or payoffs
+      must understand the exact contract. If the interface is implicit, they will make mistakes, blame
+      the library, and not renew. Formal interfaces are the difference between a framework and a collection
+      of scripts.
+    </p>
+    <ul>
+      <li>Define <strong>typing.Protocol</strong> classes for <code>FactorModel</code>, <code>PayoffComponent</code>, <code>ImpliedVolModel</code>, and <code>LocalVolModel</code> with exact signatures.</li>
+      <li>Add a <code>_require_params()</code> guard to <code>ParametricImpliedVol</code> and call it at the top of every <code>calculate()</code>.</li>
+      <li>Formalize the payoff lifecycle as an ABC with abstract methods in the correct call order and <code>@abstractmethod</code> enforcement.</li>
+      <li>Write a <strong>model validation checklist</strong> (as a class method or mixin) that any new model author can call to verify compliance: <code>MyModel.validate_interface()</code>.</li>
+    </ul>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ TIER 2 -->
+  <div class="tier-header">
+    <span class="tier-dot" style="background:var(--orange)"></span>
+    Tier 2 &mdash; Production Robustness
+  </div>
+
+  <!-- R6 -->
+  <div class="rec high">
+    <div class="rec-header">
+      <span class="rec-num">R6</span>
+      <span class="rec-title">Replace scattered <code>print()</code> calls with structured logging throughout</span>
+      <span class="badge high">High</span>
+      <span class="effort-chip">Effort: Low</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> The library mixes bare <code>print()</code> calls in production
+      functions (<code>meanreversion.py:104</code>, <code>localvol_factory.py:171</code>,
+      <code>tools.py:40</code>, <code>scalendar.py:208</code>) with <code>logging.getLogger(__name__)</code>
+      already correctly used in the majority of modules. Several production files also contain
+      <code>if __name__ == "__main__": print("Hello")</code> stubs.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Library code that writes to stdout breaks any downstream application
+      that captures or redirects stdout. Enterprise platforms (trading systems, risk engines) expect library
+      log output to flow through the application's own logging infrastructure. This is a disqualifying issue
+      for enterprise sales.
+    </p>
+    <ul>
+      <li>Replace all <code>print()</code> in production code with <code>log.info()</code>, <code>log.warning()</code>, or <code>log.debug()</code>.</li>
+      <li>Consider adopting <strong>structlog</strong> for structured (JSON-serializable) log records — standard in cloud-native FinTech deployments.</li>
+      <li>Add a <strong>NullHandler</strong> at the library root (<code>logging.getLogger('sdevpy').addHandler(logging.NullHandler())</code>) so the library is silent by default until the application configures logging. This is the Python logging best practice for libraries.</li>
+      <li>Remove all <code>if __name__ == "__main__": print("Hello")</code> stubs; replace with meaningful examples or delete them.</li>
+    </ul>
+    <div class="packages"><span class="pkg">structlog</span></div>
+  </div>
+
+  <!-- R7 -->
+  <div class="rec high">
+    <div class="rec-header">
+      <span class="rec-num">R7</span>
+      <span class="rec-title">Adopt pydantic for data model validation across the library</span>
+      <span class="badge high">High</span>
+      <span class="effort-chip">Effort: Medium</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> Configuration objects use plain Python <code>@dataclass</code>
+      (<code>PdeConfig</code>, <code>McConfig</code>) with no field validation. Market data is passed
+      as plain dicts or keyword arguments. Input validity (e.g., <code>vol &gt; 0</code>,
+      <code>expiry &gt; valdate</code>, <code>strike &gt; 0</code>) is either absent or checked
+      inconsistently deep inside computation.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Validation at the boundary catches configuration errors before
+      they corrupt a book-level risk run. Pydantic models also auto-generate JSON schemas, making
+      API contracts machine-readable — useful for integration testing and documentation.
+    </p>
+    <pre><span class="c"># Before (plain dataclass, no validation)</span>
+@dataclass
+<span class="kw">class</span> <span class="fn">PdeConfig</span>:
+    n_timesteps: int = 25
+    n_meshes: int = 100
+
+<span class="c"># After (pydantic, validated)</span>
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, Field, field_validator
+
+<span class="kw">class</span> <span class="fn">PdeConfig</span>(BaseModel):
+    n_timesteps: int = Field(25, gt=0, description=<span class="st">"Number of PDE time steps"</span>)
+    n_meshes:    int = Field(100, gt=0, description=<span class="st">"Number of spatial mesh points"</span>)
+
+    @field_validator(<span class="st">'scheme'</span>)
+    <span class="kw">def</span> <span class="fn">validate_scheme</span>(cls, v):
+        allowed = {<span class="st">'Implicit'</span>, <span class="st">'CN'</span>, <span class="st">'Theta'</span>, <span class="st">'Explicit'</span>, <span class="st">'Rannacher'</span>}
+        <span class="kw">if</span> v <span class="kw">not in</span> allowed:
+            <span class="kw">raise</span> ValueError(<span class="st">f"scheme must be one of {allowed}"</span>)
+        <span class="kw">return</span> v</pre>
+    <div class="packages"><span class="pkg">pydantic</span><span class="pkg">pydantic-settings</span></div>
+  </div>
+
+  <!-- R8 -->
+  <div class="rec high">
+    <div class="rec-header">
+      <span class="rec-num">R8</span>
+      <span class="rec-title">Build a library-specific exception hierarchy</span>
+      <span class="badge high">High</span>
+      <span class="effort-chip">Effort: Low</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> Exceptions are a mix of <code>ValueError</code>,
+      <code>RuntimeError</code>, <code>TypeError</code>, <code>AttributeError</code>, and
+      <code>NotImplementedError</code> with no consistent hierarchy. A caller has no way to
+      distinguish a calibration failure from a model configuration error from a market data problem.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> In production systems, different exception types trigger different
+      recovery actions: a calibration failure might fall back to the previous day's parameters; a
+      market data error might trigger an alert; a pricing error might suppress the trade. Without a
+      typed exception hierarchy, all of these look identical to the caller.
+    </p>
+    <pre><span class="c"># sdevpy/exceptions.py</span>
+<span class="kw">class</span> <span class="fn">SdevpyError</span>(Exception): <span class="st">"""Base for all sdevpy errors"""</span>
+
+<span class="kw">class</span> <span class="fn">MarketDataError</span>(SdevpyError): <span class="st">"""Market data missing or invalid"""</span>
+<span class="kw">class</span> <span class="fn">CalibrationError</span>(SdevpyError): <span class="st">"""Calibration failed to converge"""</span>
+<span class="kw">class</span> <span class="fn">ModelError</span>(SdevpyError):       <span class="st">"""Model configuration or state error"""</span>
+<span class="kw">class</span> <span class="fn">PricingError</span>(SdevpyError):     <span class="st">"""Error during payoff evaluation"""</span>
+<span class="kw">class</span> <span class="fn">ArbitrageError</span>(ModelError):    <span class="st">"""Model violates no-arbitrage conditions"""</span></pre>
+    <p>Replace all generic exceptions that cross module or public-API boundaries with the appropriate subclass. Keep built-ins for internal assertions and programming errors.</p>
+  </div>
+
+  <!-- R9 -->
+  <div class="rec high">
+    <div class="rec-header">
+      <span class="rec-num">R9</span>
+      <span class="rec-title">Add a model reproducibility and audit trail framework</span>
+      <span class="badge market">Market-critical</span>
+      <span class="effort-chip">Effort: Medium</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> There is no formal mechanism for capturing the exact inputs,
+      random seed, model parameters, and library version used for a given pricing run. The MC
+      pricer does not log or persist what was computed or with what configuration.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Regulatory requirements (FRTB, Dodd-Frank, MiFID II model risk
+      governance) require institutions to demonstrate that a model can reproduce a given result.
+      This is a hard requirement for any risk or pricing model used in a regulated entity. Without
+      it, you cannot be used in a bank.
+    </p>
+    <ul>
+      <li>Add a <strong>PricingContext</strong> object that records: library version, git commit hash, model names and serialized parameters, random seed, valuation date, number of paths, and timings. Emit it as a structured log record at the end of each <code>price_book</code> call.</li>
+      <li>Use <strong>hashlib</strong> to fingerprint input market data and model parameters, so results can be reproduced from the fingerprint alone.</li>
+      <li>Expose a <code>price_book(..., seed=42)</code> parameter that seeds all RNGs deterministically and documents this in the API.</li>
+      <li>Consider integrating <strong>mlflow</strong> or a lightweight equivalent for parameter tracking across calibration runs.</li>
+    </ul>
+    <div class="packages"><span class="pkg">hashlib</span><span class="pkg">mlflow</span><span class="pkg">importlib.metadata</span></div>
+  </div>
+
+  <!-- R10 -->
+  <div class="rec medium">
+    <div class="rec-header">
+      <span class="rec-num">R10</span>
+      <span class="rec-title">Add end-to-end calibration and pricing tests; enforce coverage thresholds</span>
+      <span class="badge medium">Medium</span>
+      <span class="effort-chip">Effort: Medium</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> Unit tests cover isolated mathematical functions well, but the
+      full pipeline &mdash; construct market data &rarr; calibrate vol surface &rarr; price book by MC
+      &rarr; verify PV &mdash; has no automated test. The <code>MultiAssetHeston</code> model has no
+      tests at all. Coverage is not measured.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Integration-level bugs (wrong section index in calibration,
+      notional not applied) survived multiple reviews precisely because the uncovered path was never
+      executed automatically.
+    </p>
+    <ul>
+      <li>Add an <strong>integration test</strong> fixture: load sample market data &rarr; calibrate <code>TsSvi1</code> &rarr; price a vanilla book by MC &rarr; assert PV within 0.1% of PDE price.</li>
+      <li>Add <strong>property-based tests</strong> using <strong>Hypothesis</strong> for mathematical identities: Black put-call parity, Bachelier parity, SVI calendar-spread no-arbitrage.</li>
+      <li>Set a <strong>coverage minimum of 80%</strong> in <code>pyproject.toml</code> and enforce it in CI.</li>
+      <li>Use <strong>pytest-benchmark</strong> to add a regression test for MC throughput (paths/second) so performance regressions are caught automatically.</li>
+    </ul>
+    <div class="packages"><span class="pkg">hypothesis</span><span class="pkg">pytest-benchmark</span><span class="pkg">pytest-cov</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ TIER 3 -->
+  <div class="tier-header">
+    <span class="tier-dot" style="background:var(--yellow)"></span>
+    Tier 3 &mdash; Architecture and Performance
+  </div>
+
+  <!-- R11 -->
+  <div class="rec medium">
+    <div class="rec-header">
+      <span class="rec-num">R11</span>
+      <span class="rec-title">Parallelize Monte Carlo path generation with joblib or Ray</span>
+      <span class="badge perf">Performance</span>
+      <span class="effort-chip">Effort: Medium</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> <code>PathGenerator.generate_paths</code> and the MC pricer are
+      single-threaded. For a book of 100 trades with 100,000 paths each, the runtime is proportional to
+      <code>n_trades &times; n_paths &times; n_timesteps</code> in a single thread.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Production risk systems must price books in seconds, not minutes.
+      Parallelization is the fastest way to cut wall-clock time. Buyers evaluate performance benchmarks
+      before committing to a library.
+    </p>
+    <ul>
+      <li>Split the path batch into <code>n_workers</code> sub-batches and aggregate: <code>joblib.Parallel(n_jobs=-1)(generate_batch(seed+i) for i in range(n_workers))</code>.</li>
+      <li>For very large books, provide a <strong>Ray</strong> or <strong>Dask</strong> backend where each trade is priced as a remote task.</li>
+      <li>Alternatively, use <strong>numpy's <code>numba</code> JIT</strong> on the innermost path-stepping loops for single-threaded speedup without architecture changes.</li>
+      <li>Expose a simple <code>n_workers</code> parameter on <code>McConfig</code> with a default of 1 for backwards compatibility.</li>
+    </ul>
+    <div class="packages"><span class="pkg">joblib</span><span class="pkg">ray</span><span class="pkg">numba</span><span class="pkg">dask</span></div>
+  </div>
+
+  <!-- R12 -->
+  <div class="rec medium">
+    <div class="rec-header">
+      <span class="rec-num">R12</span>
+      <span class="rec-title">Accelerate tree roll-back with vectorized NumPy slices</span>
+      <span class="badge perf">Performance</span>
+      <span class="effort-chip">Effort: Low</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> Both <code>BinomialTree.roll_back</code> and
+      <code>TrinomialTree.roll_back</code> in <code>trees.py</code> build the continuation value vector
+      via Python list comprehensions — the same O(n<sup>2</sup>) anti-pattern that was correctly fixed in
+      the PDE schemes in the last review cycle.
+    </p>
+    <pre><span class="rm"><span class="c"># Current — Python list comprehension, O(n²) total</span>
+cont_v = np.asarray([df * (p * v[i + 1] + (1.0 - p) * v[i]) for i in range(size)])</span>
+<span class="ok"><span class="c"># Vectorized — single C-speed operation</span>
+cont_v = df * (p * v[1:size+1] + (1.0 - p) * v[:size])</span></pre>
+    <p>The trinomial version is analogously replaceable. For a 200-step tree, this is a ~100&times; speedup on the inner loop with zero architectural change.</p>
+  </div>
+
+  <!-- R13 -->
+  <div class="rec medium">
+    <div class="rec-header">
+      <span class="rec-num">R13</span>
+      <span class="rec-title">Adopt a plugin/registry pattern for model extensibility</span>
+      <span class="badge medium">Medium</span>
+      <span class="effort-chip">Effort: Medium</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> <code>impliedvol_factory.py</code> and <code>localvol_factory.py</code>
+      use hard-coded string matching (<code>match model_type: case 'TsSvi1': ...</code>). Adding a new
+      model requires modifying library source code, which is not possible for a client using the library
+      as a package.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Quant teams need to add proprietary models. If they cannot do so
+      without forking the library, they will fork it &mdash; and the vendor relationship ends.
+    </p>
+    <pre><span class="c"># Plugin registration via setuptools entry_points</span>
+<span class="c"># In the client's pyproject.toml:</span>
+[project.entry-points.<span class="st">"sdevpy.impliedvol_models"</span>]
+my_model = <span class="st">"my_package.models:MyImpliedVolModel"</span>
+
+<span class="c"># In sdevpy factory (auto-discovers registered models):</span>
+<span class="kw">import</span> importlib.metadata
+registry = {ep.name: ep.load() <span class="kw">for</span> ep <span class="kw">in</span>
+            importlib.metadata.entry_points(group=<span class="st">"sdevpy.impliedvol_models"</span>)}</pre>
+    <div class="packages"><span class="pkg">importlib.metadata</span><span class="pkg">setuptools</span></div>
+  </div>
+
+  <!-- R14 -->
+  <div class="rec medium">
+    <div class="rec-header">
+      <span class="rec-num">R14</span>
+      <span class="rec-title">Split the library into focused, independently installable packages</span>
+      <span class="badge medium">Medium</span>
+      <span class="effort-chip">Effort: High</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> <code>sdevpy</code> is a single monolithic package mixing
+      quantitative analytics, Monte Carlo, PDE, implied-vol calibration, local-vol calibration,
+      tree pricing, ML/LLM tooling, and time-series analysis. All dependencies (TensorFlow, Keras,
+      transformers) must be installed even if a client only needs Black-Scholes pricing.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Enterprise buyers want minimal footprint. A derivatives desk
+      does not want to install TensorFlow as a transitive dependency of a pricing library. Modular
+      packaging also allows independent versioning and testing.
+    </p>
+    <ul>
+      <li><strong>sdevpy-core</strong>: analytics (Black, Bachelier), market data interfaces, utilities. Depends only on numpy/scipy.</li>
+      <li><strong>sdevpy-derivatives</strong>: MC engine, PDE, tree, payoffs, vol models. Depends on sdevpy-core.</li>
+      <li><strong>sdevpy-calibration</strong>: implied-vol and local-vol calibration. Depends on sdevpy-derivatives.</li>
+      <li><strong>sdevpy-ml</strong>: ML surface generation, LLM tooling. Depends on sdevpy-core + optional ML deps.</li>
+      <li>Use a <strong>monorepo layout</strong> (one git repo, multiple packages under <code>packages/</code>) managed with <strong>hatch</strong> or <strong>uv workspaces</strong>.</li>
+    </ul>
+    <div class="packages"><span class="pkg">hatch</span><span class="pkg">uv</span></div>
+  </div>
+
+  <!-- R15 -->
+  <div class="rec medium">
+    <div class="rec-header">
+      <span class="rec-num">R15</span>
+      <span class="rec-title">Formalize calibration as a pipeline with observable state</span>
+      <span class="badge medium">Medium</span>
+      <span class="effort-chip">Effort: Medium</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> <code>TsIvCalibrator.calibrate</code> is a monolithic function.
+      The calibration loop is not interruptible, does not emit progress events, and convergence
+      diagnostics are only available by reading optimizer result objects after the fact.
+    </p>
+    <p>
+      <strong>Why it matters:</strong> Production calibration systems need to: report progress to a
+      dashboard, apply time limits per expiry, fall back to a prior-day surface on failure, and
+      expose the RMSE curve for model-risk governance. None of this is possible with the current
+      opaque loop.
+    </p>
+    <ul>
+      <li>Introduce a <strong>CalibrationCallback</strong> interface with hooks: <code>on_expiry_start</code>, <code>on_expiry_end(rmse, params)</code>, <code>on_failure(expiry, error)</code>.</li>
+      <li>Add a <strong>CalibrationResult</strong> dataclass that captures per-expiry RMSE, iteration count, wall-clock time, and whether the solver converged.</li>
+      <li>Add a <strong>time limit</strong> per expiry via <code>maxiter</code> and a <strong>fallback strategy</strong> parameter (keep previous params vs. raise).</li>
+      <li>Expose a <strong>warmstart</strong> option that initializes each expiry from the previous day's calibrated parameters.</li>
+    </ul>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ TIER 4 -->
+  <div class="tier-header">
+    <span class="tier-dot" style="background:var(--accent)"></span>
+    Tier 4 &mdash; Incremental Quality Improvements
+  </div>
+
+  <!-- R16 -->
+  <div class="rec low">
+    <div class="rec-header">
+      <span class="rec-num">R16</span>
+      <span class="rec-title">Replace <code>minimize_scalar(method='brent')</code> with a bounded solver across analytics</span>
+      <span class="badge low">Correctness</span>
+      <span class="effort-chip">Effort: Low</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> <code>black.implied_vol</code> and <code>bachelier.implied_vol_solve</code>
+      use <code>minimize_scalar(method='brent', bracket=(xmin, xmax))</code>. Brent's method with
+      <code>bracket=</code> does not constrain the search to <code>[xmin, xmax]</code> and can return
+      negative volatility for out-of-model prices.
+    </p>
+    <p>
+      <strong>Fix:</strong> Switch to <code>method='bounded'</code> with <code>bounds=(xmin, xmax)</code>,
+      or replace the scalar Brent solver with the already-present vectorized Newton-Raphson
+      (<code>implied_vol_newton</code>) which is both faster and more accurate. Add a post-solve
+      sanity check that raises <code>CalibrationError</code> if the returned vol is outside a
+      reasonable range.
+    </p>
+  </div>
+
+  <!-- R17 -->
+  <div class="rec low">
+    <div class="rec-header">
+      <span class="rec-num">R17</span>
+      <span class="rec-title">Add property-based tests for mathematical identities using Hypothesis</span>
+      <span class="badge low">Testing</span>
+      <span class="effort-chip">Effort: Low</span>
+    </div>
+    <p>
+      The current test suite uses fixed regression values. Property-based testing with
+      <strong>Hypothesis</strong> generates random inputs and verifies structural properties,
+      finding edge cases that regression tests miss.
+    </p>
+    <pre><span class="kw">from</span> hypothesis <span class="kw">import</span> given, settings
+<span class="kw">from</span> hypothesis.strategies <span class="kw">import</span> floats
+
+@given(
+    fwd=floats(min_value=50, max_value=200),
+    strike=floats(min_value=10, max_value=500),
+    vol=floats(min_value=0.01, max_value=2.0),
+    expiry=floats(min_value=0.01, max_value=5.0)
+)
+<span class="kw">def</span> <span class="fn">test_put_call_parity</span>(fwd, strike, vol, expiry):
+    call = black.price(expiry, strike, True,  fwd, vol)
+    put  = black.price(expiry, strike, False, fwd, vol)
+    assert np.isclose(call - put, fwd - strike, rtol=<span class="fn">1e-10</span>)</pre>
+    <div class="packages"><span class="pkg">hypothesis</span></div>
+  </div>
+
+  <!-- R18 -->
+  <div class="rec low">
+    <div class="rec-header">
+      <span class="rec-num">R18</span>
+      <span class="rec-title">Add correlation and vol surface input validation at market data boundaries</span>
+      <span class="badge low">Correctness</span>
+      <span class="effort-chip">Effort: Low</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> Correlations loaded from CSV are not validated to lie in
+      <code>[-1, 1]</code>, and the matrix is not checked for positive semi-definiteness before the
+      Cholesky decomposition. A typo (<code>1.5</code> instead of <code>0.5</code>) propagates
+      silently until simulation time. Similarly, vol surface sections are not checked for
+      per-expiry strike/vol count consistency.
+    </p>
+    <p>
+      Add validation in <code>correlations.py</code>: check all values in <code>[-1, 1+ε]</code>, then attempt Cholesky and wrap the <code>LinAlgError</code> in a descriptive <code>MarketDataError</code> with the offending matrix in the message.
+    </p>
+  </div>
+
+  <!-- R19 -->
+  <div class="rec low">
+    <div class="rec-header">
+      <span class="rec-num">R19</span>
+      <span class="rec-title">Standardize the test tolerance convention and tighten loose assertions</span>
+      <span class="badge low">Testing</span>
+      <span class="effort-chip">Effort: Low</span>
+    </div>
+    <p>
+      <strong>Current state:</strong> ~30 test call sites use <code>np.allclose(a, b, 1e-10)</code>,
+      which sets <code>rtol=1e-10</code> not <code>atol</code>. One call-put parity test uses
+      <code>atol=0.2</code>, giving essentially no quantitative guarantee. Tolerance semantics are
+      inconsistent across the test suite.
+    </p>
+    <p>
+      Define a project-wide <code>assert_close(a, b, atol, msg="")</code> helper in a
+      <code>tests/utils.py</code> module and replace all <code>np.allclose</code> calls with it.
+      This makes intent explicit, allows consistent error messages, and is a one-line change per
+      test site.
+    </p>
+  </div>
+
+  <!-- R20 -->
+  <div class="rec low">
+    <div class="rec-header">
+      <span class="rec-num">R20</span>
+      <span class="rec-title">Remove dead code, clean up <code>np.zeros</code> pre-allocations superseded by vectorization</span>
+      <span class="badge low">Code Quality</span>
+      <span class="effort-chip">Effort: Low</span>
+    </div>
+    <p>
+      Following the PDE vectorization in the last review cycle, the <code>np.zeros(n_x - 1)</code>
+      pre-allocations for <code>upper</code>, <code>main</code>, <code>lower</code> in
+      <code>pdeschemes.py</code> lines 72&ndash;74 and 109&ndash;111 are now dead — they are
+      immediately overwritten by the vectorized assignments. Similarly, the <code>pde_price = []</code>
+      initialization at <code>forwardpde.py:183</code> is discarded by the vectorized call two
+      lines later. These are cosmetic but signal incomplete refactoring to any contributor reading
+      the code.
+    </p>
+    <p>Also, <code>LogMixStrike</code> in <code>logmix.py</code> is a defined class that is entirely
+    commented out at every call site — it should be removed or the TODO tracked externally.</p>
+  </div>
+
+  <footer>
+    Generated by Claude Code &nbsp;&middot;&nbsp; sdevpy recommendations &nbsp;&middot;&nbsp; 2026-06-01
+  </footer>
+</div>
+</body>
+</html>

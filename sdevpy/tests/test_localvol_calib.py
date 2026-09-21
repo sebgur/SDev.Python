@@ -253,7 +253,6 @@ def test_calib_dupire():
     lv_test = np.asarray(lv[0])
     # print(lv_test)
     lv_ref = np.asarray([0.3291237, 0.16782647, 0.16614304])
-    # lv_ref = np.asarray([0.33384114, 0.18219919, 0.36166036])
     assert np.allclose(lv_test, lv_ref, rtol=0.0, atol=1e-8)
 
 
@@ -263,7 +262,6 @@ def test_dupire_impliedvol():
     test = dupire_formula(make_tssvi1(), ts=0.25, te=1.0, x=x)
     # print(test)
     ref = np.asarray([0.37100141, 0.24239379, 0.20644008])
-    # ref = np.asarray([0.36949807, 0.2413907, 0.20621366])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
@@ -272,7 +270,6 @@ def test_dupire_pdf():
     x = np.asarray([0.9, 1.0, 1.1])
     test = dupire_formula(make_logmix2(), ts=0.25, te=1.0, x=x)
     ref = np.asarray([0.20, 0.20, 0.20])
-    # ref = np.asarray([0.20000181, 0.20001192, 0.1999994])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 

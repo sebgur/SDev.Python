@@ -1,0 +1,6 @@
+interface:
+  display_name: "Recommendations"
+  short_description: "Ranked improvements for commercial FinTech quality"
+  default_prompt: "Use $recommendations to analyse this repository and write the HTML report."
+policy:
+  allow_implicit_invocation: false

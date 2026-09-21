@@ -15,8 +15,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-dependencies = ["pandas", "numpy", "scipy", "matplotlib", "holidays",
-                "pandas_market_calendars", "openpyxl", "colorlog",
+dependencies = ["pandas", "numpy", "scipy", "matplotlib", "holidays", "requests",
+                "pandas_market_calendars", "openpyxl", "colorlog", "torch",
                 "scikit-learn", "pyperclip", "statsmodels", "ta", "huggingface_hub",
                 "transformers", "tiktoken", "dicttoxml", "xmltodict"
 ]

@@ -18,7 +18,7 @@ name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get MarketDataProvider
 md_prov = MarketDataFileProvider()
-cal_prov = CalibrationDataFileProvider
+cal_prov = CalibrationDataFileProvider()
 
 # Choose model
 # model_name = 'VSVI'
@@ -31,7 +31,7 @@ config = {'model_name': model_name, 'store_date': valdate, 'pde_timesteps': 100,
 
 # Calibrate LV
 print("Launching calibration")
-calib_result = calibrate_lv_bysections(valdate, name, config, calc_pde_vols=True)
+calib_result = calibrate_lv_bysections(valdate, name, config, md_prov, cal_prov, calc_pde_vols=True)
 lv = calib_result['lv']
 
 # Dump LV result to file

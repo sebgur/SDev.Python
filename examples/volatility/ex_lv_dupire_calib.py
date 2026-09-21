@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sdevpy.market import provider as mdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
-from sdevpy.volatility.impliedvol import impliedvol_factory
+from sdevpy.calibration import provider as cdp
 from sdevpy.volatility.localvol.dupire_calib import calib_lv_dupire
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.timegrids import TimeGridBucket
@@ -28,7 +28,7 @@ up_p = 1.0 - lw_p # High percentile strike
 
 ################ Retrieve input data ##############################################################
 # Retrieve pre-calibrated implied vol surface
-iv_surface = impliedvol_factory.get_impliedvol(name, valdate, model_name)
+iv_surface = cdp.get_impliedvol(name, valdate, model_name)
 
 # Retrieve forward curve
 fwd_curve = mdp.get_eq_forward_curves([name], valdate, md_prov)[0]
