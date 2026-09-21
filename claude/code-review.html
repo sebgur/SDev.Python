@@ -197,45 +197,41 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-09-21 &nbsp;·&nbsp; <strong>17th review</strong> (full scan: every <code>*.py</code>/<code>*.ipynb</code> file outside <code>sdevpy/thirdparty</code>, including <code>examples/</code>, <code>notebooks/</code>, and files normally excluded by <code>pyproject.toml</code>; every finding below verified against this run's working copy with a direct file read, not carried over from the 16th review's text)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-09-21 &nbsp;·&nbsp; <strong>18th review</strong> (full scan: every <code>*.py</code>/<code>*.ipynb</code> file outside <code>sdevpy/thirdparty</code>, including <code>examples/</code>, <code>notebooks/</code>, <code>scripts/</code>, <code>docs/</code> and files excluded by <code>pyproject.toml</code>; every finding below was re-read in the current working copy, none carried over from the 17th review's text)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter">B-</div>
+    <div class="grade-letter">B</div>
     <div class="grade-details">
-      <h2>The FX volatility surface got a thorough, productive rework this cycle — but it ships broken, and most of the 16th review's open findings are still open</h2>
+      <h2>Most of the 17th review's findings are fixed — no critical issues remain, but the local-vol "get or new" path and the declared Python floor are still wrong</h2>
       <p>
-        A full session of hands-on work on <code>volatility/fx</code> (moneyness-axis redesign, a market-delta
-        bisection solver, calendar-arbitrage-consistent time interpolation, several real numerical bugs fixed
-        and verified) leaves that module in the best shape of any part of the codebase. But a new, more basic
-        defect surfaced while checking it: <strong><code>sdevpy/volatility/fx</code> and
-        <code>sdevpy/instruments</code> have no <code>__init__.py</code></strong>, and
-        <code>setuptools.find_packages()</code> — run directly against this project's own
-        <code>pyproject.toml</code> — confirms both are silently dropped from any real package build. Five of
-        the six 16th-review findings spot-checked this pass (unreachable local-vol fallback, book-dependent
-        barrier monitoring, the FX cross-settlement calendar gap, the stale-import example scripts, the
-        uncommented golden-master rebases) are still exactly as reported 16 days ago, and the
-        <code>sdevpy.tests.conftest</code> coupling flagged in one file last time has since spread to three
-        more.
+        The user-side work since the last review closed the two packaging defects (<code>__init__.py</code> added to
+        <code>volatility/fx</code> and <code>instruments</code>; <code>requests</code>/<code>torch</code> declared), removed the
+        production &rarr; <code>sdevpy.tests</code> import (now <code>sdevpy/datapaths.py</code>), made <code>WorstOfBarrier</code>
+        monitor its own date grid, routed <code>fx_spot_date</code> through the USD-inclusive calendar for every cross, and repaired both
+        local-vol example scripts. What remains is narrower: <code>get_local_vols</code> still cannot create a new local vol for any
+        real underlying (reproduced: <code>TypeError</code> with a model name, <code>ValueError</code> without), <code>pyproject.toml</code>
+        still declares <code>requires-python = "&gt;=3.6"</code> for code that needs 3.10+ and NumPy 2, and the fix to
+        <code>WorstOfBarrier</code> is not pinned by any test whose barrier can actually knock. Seven example/notebook files still import
+        modules that no longer exist. 430 tests pass in this interpreter; 8 test modules could not be collected here because
+        <code>statsmodels</code>, <code>requests</code> and other declared dependencies are not installed in this environment
+        (an environment gap, not a repo defect).
       </p>
     </div>
   </div>
 
-  <div class="progress-banner">
-    <strong>Still open from the 16th review (5 of 10 spot-checked, all re-verified in this run):</strong>
-    <code>get_localvol_or_new</code>'s new-model fallback still unreachable &nbsp;·&nbsp;
-    <code>WorstOfBarrier</code> still monitors the whole book's date grid, not its own &nbsp;·&nbsp;
-    <code>fx_spot_date</code> still skips the USD calendar for the six lag=1 crosses &nbsp;·&nbsp;
-    <code>ex_lv_section_calib.py</code>/<code>ex_lv_dupire_calib.py</code> still crash immediately &nbsp;·&nbsp;
-    golden-master values in <code>test_pde.py</code> still rebased with the old value left commented out &nbsp;·&nbsp;
-    <strong>and worse:</strong> the <code>sdevpy.tests.conftest</code> import (1 file, Medium, at #9 last time)
-    is now in 4 files across calibration, market data and llms
-  </div>
-
   <div class="progress-banner good">
-    <strong>Confirmed fixed since the 16th review:</strong>
-    <code>vsvi.py</code>'s validation message now says <em>"Negative vol"</em>, matching its own module
-    docstring, instead of <em>"Negative variance"</em>
+    <strong>Confirmed fixed since the 17th review (each checked against the current file):</strong>
+    <ul class="fixed-list">
+      <li><code>sdevpy/volatility/fx/__init__.py</code> and <code>sdevpy/instruments/__init__.py</code> now exist</li>
+      <li><code>requests</code> and <code>torch</code> are now in <code>pyproject.toml</code> dependencies</li>
+      <li>No production module imports <code>sdevpy.tests.conftest</code> any more (<code>datapaths.py</code> introduced; <code>conftest.py</code> re-exports it)</li>
+      <li><code>WorstOfBarrier</code> registers its own schedule via <code>make_schedule</code> and indexes <code>monitor_idxs</code> instead of the whole book's grid</li>
+      <li><code>fx_spot_date</code> now always uses <code>settle_cal</code> (<code>max(lag - 1, 0)</code>), so the six lag-1 crosses respect the USD calendar</li>
+      <li><code>get_localvol_or_new</code> checks <code>data is not None</code> before calling the raising factory (the fallback line is now reachable — but see #1)</li>
+      <li><code>ex_lv_section_calib.py</code> and <code>ex_lv_dupire_calib.py</code> now instantiate providers and use <code>cdp.get_impliedvol</code></li>
+      <li>Commented-out golden-master reference values removed from <code>test_pde.py</code> and <code>test_mc.py</code></li>
+    </ul>
   </div>
 
   <div class="scorecard">
@@ -247,44 +243,44 @@
       </thead>
       <tbody>
         <tr>
-          <td>Architecture</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean Provider/Protocol and ABC hierarchies where followed through (PDE schemes, <code>MarketDataProvider</code>); undermined by production code depending on the test package for defaults, and a package layout that no longer matches <code>pyproject.toml</code>'s own discovery rules</td>
+          <td>Architecture</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Clean Protocol/ABC layering (<code>MarketDataProvider</code>, <code>PdeScheme</code>, <code>LocalVol</code>) and the test-package dependency is gone; but "default" providers still resolve to <code>tests/data</code> fixtures, and pricing, ML, LLM and time-series code all sit behind one hard dependency list</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">FX vol surface, PDE tridiagonal schemes and MC path correlation all verified correct this pass; <code>WorstOfBarrier</code>, the local-vol fallback chain, and the FX settlement-calendar gap remain live, unfixed bugs</td>
+          <td>Correctness</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">PDE schemes are now fully vectorized and reference-checked; barrier monitoring and FX settlement fixed. Open: LV "new model" path crashes, Black Brent inversion returns garbage for infeasible prices, <code>Variance</code> keeps stale fixing state</td>
         </tr>
         <tr>
           <td>Error Handling</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">No bare <code>except:</code> or silently-swallowed exceptions found anywhere in the scan; <code>strike_from_delta</code>'s validity flags are a good pattern, now applied in <code>fx_volcalib.py</code> too — but <code>get_localvol_from_data</code> raises exactly where a graceful fallback was the whole point of the caller</td>
+          <td style="color:var(--muted);font-size:.83rem">Validity flags and explicit <code>ValueError</code>s are used well in the FX code; but <code>except Exception</code> &rarr; <code>-9999</code> in the ML data generators, and <code>price_vanilla_surface</code> fails with an unrelated NaN error instead of a clear one</td>
         </tr>
         <tr>
-          <td>Testing</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">430 tests pass cleanly; <code>fx_volinterpolation</code> now has thorough coverage. But <code>instruments/</code>, <code>montecarlo/payoffs/exotics.py</code> (including the buggy <code>WorstOfBarrier</code>), and the entire <code>machinelearning/pytorch</code>, <code>llms/gpt</code> and <code>tensorflow</code> trees have zero automated tests</td>
+          <td>Testing</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">430 passing tests, every test function has an assertion, golden-master clean-up done; but the barrier trade in <code>test_mc.py</code> cannot distinguish knocked from un-knocked, and <code>get_local_vols</code> for a new name is untested</td>
         </tr>
         <tr>
           <td>Code Quality</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">No mutable default arguments, no duplicate/shadowed function definitions, no hardcoded secrets anywhere in 223 files scanned; let down by stale demo code and reference values left commented-out rather than removed</td>
+          <td style="color:var(--muted);font-size:.83rem">No mutable defaults, no secrets, no bare <code>except:</code>; but large blocks of superseded code are kept as comments (e.g. <code>scalendar.py</code> ~90 lines, <code>forwardpde.py</code>, <code>fxforward.py</code>)</td>
         </tr>
         <tr>
-          <td>Maintainability</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Module reorganizations (<code>machinelearning</code> &rarr; <code>keras</code>/<code>pytorch</code> split) were not followed through into the example scripts and notebooks that depend on the old paths, several still broken 16+ days later</td>
-        </tr>
-        <tr>
-          <td>Type Safety</td><td>6 / 10</td>
+          <td>Maintainability</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">44% of functions carry return-type annotations codebase-wide; good use of <code>Protocol</code>/<code>ABC</code>/<code>dataclass</code> where present (<code>StrikeSolution</code>, <code>PdeConfig</code>, <code>CalibrationDataProvider</code>)</td>
+          <td style="color:var(--muted);font-size:.83rem">Good module layout; 7 examples/notebooks reference moved or deleted modules; ~59&nbsp;MB of binaries (<code>datasets.zip</code>, <code>weights.pth</code>) plus <code>models/</code> are committed, giving a 330&nbsp;MB <code>.git</code></td>
+        </tr>
+        <tr>
+          <td>Type Safety</td><td>5 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">44% of library functions carry a return annotation (measured over 1,017 functions); 18 payoff methods annotate <code>mkt_state: dict</code> though they receive a <code>MarketState</code>; no mypy/pyright configuration</td>
         </tr>
         <tr>
           <td>Documentation</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">58% docstring coverage; where present, often precise enough to catch its own bugs against (the vSVI message mismatch, <code>fx_spot_date</code>'s USD-calendar promise) — but that precision also means the drift is now documented, not just implied</td>
+          <td style="color:var(--muted);font-size:.83rem">58% docstring coverage, precise where present; drift in places (<code>ivol_guess</code> says &plusmn;6 stdevs, code uses 3; <code>TimeInterpolatedLocalVol.section</code> says "upper_bound", calls <code>lower_bound</code>; <code>datapaths.py</code> docstrings say "test" for production defaults)</td>
         </tr>
       </tbody>
     </table>
@@ -293,351 +289,295 @@
   <div class="section-title">Top 10 Issues</div>
 
   <!-- 1 -->
-  <div class="issue critical">
+  <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title">Two whole subpackages — <code>volatility/fx</code> and <code>instruments</code> — have no <code>__init__.py</code>, and are silently dropped by <code>pyproject.toml</code>'s own package discovery</span>
-      <span class="badge critical">Critical</span>
+      <span class="issue-title">The Monte-Carlo local-vol lookup still cannot create a new model for any real underlying — hardcoded test names, then a <code>TypeError</code></span>
+      <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/volatility/fx/ &nbsp;·&nbsp; sdevpy/instruments/ &nbsp;·&nbsp; pyproject.toml · lines 30-32</span>
-    <span class="verified">Verified: ran the project's own <code>setuptools.find_packages(where='.', include=['sdevpy*'])</code> against the checked-in <code>pyproject.toml</code></span>
+    <span class="loc">sdevpy/calibration/provider.py · lines 31, 45–47, 57–59, 72 &nbsp;·&nbsp; sdevpy/volatility/localvol/localvol_factory.py · lines 10–16</span>
+    <p class="verified">Verified: read the current files and reproduced with <code>get_local_vols(['SPX'], …, CalibrationDataFileProvider(), model_name='VSVI')</code></p>
     <p>
-      <strong>Why it's bad:</strong> Every other package directory in the repo has an <code>__init__.py</code>
-      (even if empty) — <code>sdevpy/market/fx/__init__.py</code>, <code>sdevpy/volatility/localvol/__init__.py</code>,
-      <code>sdevpy/volatility/impliedvol/__init__.py</code>, all present. <code>sdevpy/volatility/fx/</code> and
-      <code>sdevpy/instruments/</code> are the only two exceptions in the whole non-thirdparty tree. Running the
-      exact discovery call <code>pyproject.toml</code> is configured to use:
+      <strong>Why it's bad:</strong> The 17th review's fix made the "no stored file" branch reachable, but the branch itself
+      cannot run. <code>get_local_vols</code> (line 72) calls <code>get_localvol_or_new</code> without a <code>t_grid</code>, and the
+      fallback then calls <code>lvf.get_localvol_new(None, model_name)</code> &rarr; <code>create_sections(None, …)</code>, which does
+      <code>for t in t_grid</code>. Running it against a name with no stored file gives
+      <code>TypeError: 'NoneType' object is not iterable</code> — while the function's own docstring promises
+      "an error is thrown", i.e. a meaningful one. Without <code>model_name</code>, the lookup uses a map of the three test-fixture names:
     </p>
-    <pre><span class="kw">from</span> setuptools <span class="kw">import</span> find_packages
-pkgs = find_packages(where=<span class="st">'.'</span>, include=[<span class="st">'sdevpy*'</span>])
-<span class="kw">print</span>(<span class="st">'sdevpy.volatility.fx'</span> <span class="kw">in</span> pkgs)   <span class="c"># False</span>
-<span class="kw">print</span>(<span class="st">'sdevpy.instruments'</span>   <span class="kw">in</span> pkgs)   <span class="c"># False</span></pre>
+<pre>name_model_map = {<span class="st">'ABC'</span>: <span class="st">'BiExp'</span>, <span class="st">'KLM'</span>: <span class="st">'VSVI'</span>, <span class="st">'XYZ'</span>: <span class="st">'Matrix'</span>}   <span class="c"># provider.py:31 — fixture names in production code</span></pre>
     <p>
-      confirms both are excluded. In the dev checkout this is invisible — Python 3's implicit namespace
-      packages mean <code>import sdevpy.volatility.fx.fx_volcalib</code> still works when running from source,
-      which is exactly why nothing caught it. But any real distribution — <code>pip install .</code>,
-      a built wheel, a PEP 660 editable install, a CI artifact — uses this exact discovery call, and would
-      ship without <code>fx_volcalib.py</code>, <code>fx_volinterpolation.py</code>, <code>fx_deltastrike.py</code>,
-      <code>fx_vannavolga.py</code>, <code>fx_strangle.py</code> and <code>fx_calib_batch.py</code> — the entire
-      FX options surface this session's work went into — plus <code>instruments/constants.py</code>, which
-      <code>sdevpy/pde/forwardpde.py</code> imports directly (<code>OptionType</code>,
-      <code>string_to_optiontype</code>), so the PDE pricer would fail to import too.
+      so any real ticker raises <code>ValueError: No model name specified for name: SPX</code> (reproduced). Together, the "or new"
+      half of <code>price_book</code>'s local-vol resolution works only for the three names that ship with the unit tests.
     </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="ok">touch sdevpy/volatility/fx/__init__.py
-touch sdevpy/instruments/__init__.py</span>
-<span class="c"># both empty, matching every sibling package's __init__.py in this repo</span></pre>
+    <p><strong>Fix:</strong> Fail with a clear message when there is nothing to load and no grid to build from, and move the name&rarr;model map out of production code (into config or the test suite):</p>
+<pre><span class="kw">def</span> <span class="fn">get_localvol_or_new</span>(name, date, model_name, cal_prov, t_grid=<span class="kw">None</span>, force_new=<span class="kw">False</span>):
+<span class="rm">    model_name = (name_model_map.get(name, None) if model_name is None else model_name)</span>
+    <span class="kw">if</span> model_name <span class="kw">is None</span>:
+        <span class="kw">raise</span> ValueError(f<span class="st">"No model name specified for name: {name}"</span>)
+    ...
+    <span class="kw">if</span> lv <span class="kw">is None</span>:
+<span class="ok">        if t_grid is None:
+            raise ValueError(f"No stored local vol for {name} on {date:%Y-%m-%d} and no t_grid given to build a new one")</span>
+        log.info(f<span class="st">"Initializing new LV for {name}"</span>)
+        lv = lvf.get_localvol_new(t_grid, model_name)</pre>
+    <p>Then add a test in <code>test_localvol_calib.py</code> that calls <code>get_local_vols(['NOPE'], valdate, prov, model_name='VSVI')</code> and asserts the <code>ValueError</code>.</p>
   </div>
 
   <!-- 2 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title">The real Monte-Carlo pricer's local-vol resolution is broken two independent ways for any name that isn't a test fixture</span>
+      <span class="issue-title"><code>requires-python = "&gt;=3.6"</code> — the code needs Python 3.10+ and NumPy 2, and no dependency has a lower bound</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/calibration/provider.py · lines 24-31, 34-58 &nbsp;·&nbsp; sdevpy/volatility/localvol/localvol_factory.py · lines 50-53</span>
-    <span class="verified">Verified: read the current file; first half re-confirms the 16th review's #1 (still open, 16 days later)</span>
+    <span class="loc">pyproject.toml · lines 13, 18–21 &nbsp;·&nbsp; sdevpy/pde/forwardpde.py · lines 93, 183 &nbsp;·&nbsp; sdevpy/calibration/provider.py · line 13</span>
     <p>
-      <strong>Why it's bad:</strong> <code>mcpricer.py</code>'s real pricing entry point,
-      <code>price_book</code>, calls <code>get_local_vols</code> &rarr; <code>get_localvol_or_new</code> for every
-      name in the book with no explicit <code>model_name</code>. Two things go wrong on that path:
+      <strong>Why it's bad:</strong> The metadata tells pip that Python 3.6–3.9 is supported, but the package uses structural
+      pattern matching (<code>match option_type:</code> in <code>forwardpde.py:183</code> and <code>localvol_factory.py:26</code>),
+      PEP 604 unions (<code>dict|None</code> in <code>provider.py:13</code>, 21 library files use <code>match</code> or <code>dict|None</code>), and
+      <code>zip(..., strict=True)</code> (19 library call sites). On an older interpreter the install succeeds and the first import
+      fails with a <code>SyntaxError</code>. <code>np.trapezoid</code> (<code>forwardpde.py:93,111,128,134</code>,
+      <code>maths/integration.py:26</code>) exists only from NumPy 2.0, yet <code>numpy</code> is listed with no version, so an
+      environment with NumPy 1.x installs cleanly and the PDE pricer raises <code>AttributeError</code> at run time. The
+      <code>[tool.ruff]</code> table already targets <code>py313</code>, so the metadata contradicts the project's own linter config.
     </p>
-    <pre><span class="c"># provider.py — only three names are known, and they are the TEST fixture names</span>
-name_model_map = {<span class="st">'ABC'</span>: <span class="st">'BiExp'</span>, <span class="st">'KLM'</span>: <span class="st">'VSVI'</span>, <span class="st">'XYZ'</span>: <span class="st">'Matrix'</span>}
-<span class="c"># sdevpy/tests/data/calibdata/localvol/{ABC,KLM,XYZ} -- exactly these three</span>
+    <p><strong>Fix:</strong></p>
+<pre><span class="rm">requires-python = "&gt;=3.6"</span>
+<span class="ok">requires-python = "&gt;=3.10"</span>
 
-model_name = (name_model_map.get(name, None) <span class="kw">if</span> model_name <span class="kw">is</span> <span class="kw">None</span> <span class="kw">else</span> model_name)
-<span class="kw">if</span> model_name <span class="kw">is</span> <span class="kw">None</span>:
-    <span class="kw">raise</span> ValueError(<span class="fn">f</span><span class="st">"No model name specified for name: {name}"</span>)</pre>
-    <p>
-      Any real underlying (<code>"SPX"</code>, <code>"AAPL"</code>, whatever a real book holds) raises
-      immediately. And even with an explicit <code>model_name</code>, the second half is worse — it's silent
-      rather than loud. <code>get_localvol_or_new</code>'s comment says <em>"Try to get it from calibration
-      provider, None if absent"</em>, but the factory it calls through never returns None:
-    </p>
-    <pre><span class="c"># localvol_factory.py</span>
-<span class="kw">def</span> <span class="fn">get_localvol_from_data</span>(data, new_t_grid=<span class="kw">None</span>):
-    <span class="kw">if</span> data <span class="kw">is</span> <span class="kw">None</span>:
-        <span class="kw">raise</span> ValueError(<span class="st">'LocalVol data is None'</span>)  <span class="c"># raises instead of letting the caller fall back</span></pre>
-    <p>
-      so <code>get_localvol_or_new</code>'s <code>if lv is None: lv = lvf.get_localvol_new(...)</code> branch —
-      the one line that is supposed to create a fresh model when no calibration file exists yet, which is the
-      entire reason the function exists — is unreachable dead code. Pricing any name with no stored local-vol
-      file crashes with <code>ValueError('LocalVol data is None')</code> instead.
-    </p>
-    <p><strong>Fix:</strong> Check for missing data before it reaches the raising factory call, and stop hardcoding test names as the production default:</p>
-    <pre><span class="kw">def</span> <span class="fn">get_localvol_or_new</span>(name, date, model_name, cal_prov, t_grid=<span class="kw">None</span>, force_new=<span class="kw">False</span>):
-    <span class="kw">if</span> model_name <span class="kw">is</span> <span class="kw">None</span>:
-        <span class="kw">raise</span> ValueError(<span class="fn">f</span><span class="st">"No model name specified for name: {name}"</span>)  <span class="c"># no silent fixture map</span>
-
-    lv = <span class="kw">None</span>
-    <span class="kw">if</span> <span class="kw">not</span> force_new:
-        data = cal_prov.get_localvol_data(name, date, model_name)  <span class="ok"># check directly, don't go through the raising path</span>
-        <span class="kw">if</span> data <span class="kw">is</span> <span class="kw">not</span> <span class="kw">None</span>:
-            lv = lvf.get_localvol_from_data(data, t_grid)
-
-    <span class="kw">if</span> lv <span class="kw">is</span> <span class="kw">None</span>:
-        log.info(<span class="fn">f</span><span class="st">"Initializing new LV for {name}"</span>)
-        lv = lvf.get_localvol_new(t_grid, model_name)
-    <span class="kw">return</span> lv</pre>
+<span class="rm">dependencies = ["pandas", "numpy", "scipy", ...</span>
+<span class="ok">dependencies = ["pandas", "numpy&gt;=2.0", "scipy&gt;=1.11", ...</span></pre>
+    <p>Consider moving the heavy, non-pricing stacks (<code>torch</code>, <code>transformers</code>, <code>tiktoken</code>, <code>huggingface_hub</code>) into <code>[project.optional-dependencies]</code> extras (e.g. <code>ml</code>, <code>llm</code>) so a pricing-only install stays light.</p>
   </div>
 
   <!-- 3 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>WorstOfBarrier</code>'s knock-in/out result silently depends on which other trades happen to share its pricing book</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Production "default" providers silently read the unit-test fixtures</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/exotics.py · lines 19-45 &nbsp;·&nbsp; sdevpy/utilities/book.py · lines 43-52</span>
-    <span class="verified">Verified: still present, unchanged from the 16th review's #2</span>
+    <span class="loc">sdevpy/datapaths.py · lines 4–33 &nbsp;·&nbsp; sdevpy/market/fileprovider.py · line 27 &nbsp;·&nbsp; sdevpy/calibration/fileprovider.py · line 13 &nbsp;·&nbsp; pyproject.toml · line 40</span>
     <p>
-      <strong>Why it's bad:</strong> <code>set_valuation_date</code> registers only the expiry as this trade's
-      own event date:
+      <strong>Why it's bad:</strong> The import cycle to <code>sdevpy.tests</code> is gone, but the coupling moved rather than
+      disappeared: <code>datapaths.root_path()</code> is still <code>Path(__file__).parent / "tests" / "data"</code>, and
+      <code>MarketDataFileProvider()</code> / <code>CalibrationDataFileProvider()</code> with no argument use it. Any caller that forgets
+      <code>root=</code> prices real trades against fixture spots (ABC = 100, XYZ = 50) with no warning, and
+      <code>package-data</code> now has to ship <code>sdevpy.tests</code> data for the library to work at all. The module's own
+      docstrings ("Get test market data path") confirm these are test paths under a production name.
     </p>
-    <pre><span class="kw">def</span> <span class="fn">set_valuation_date</span>(self, valdate, md):
-    <span class="kw">if</span> self.expiry &lt; valdate:
-        <span class="kw">raise</span> ValueError(<span class="st">"Past trade found"</span>)
-    self.eventdates = [self.expiry]  <span class="c"># no interim monitoring dates registered</span></pre>
-    <p>
-      but <code>evaluate()</code> monitors the barrier over the <em>entire</em> simulated time axis of
-      <code>mkt_state.event_paths</code> — which is the whole <strong>book's</strong> merged event-date grid
-      (built by <code>Book.set_valuation_date</code> via <code>list_instrument_eventdates</code> across every
-      instrument in the book), not this trade's own dates:
-    </p>
-    <pre>paths = mkt_state.event_paths          <span class="c"># the BOOK's merged grid, not this trade's own</span>
-spot_all = self.paths_for_all(paths)
-min_path = spot_all.min(axis=2)
-knocked = (min_path &lt; self.barrier).any(axis=1)  <span class="c"># checked at every date in that merged grid</span></pre>
-    <p>
-      Pricing this trade alone monitors the barrier at essentially one time point (the expiry). Adding an
-      unrelated Asian option with a dense daily fixing schedule to the same book adds all of those extra dates
-      to the shared grid, and this trade's knock result changes purely because of another trade's presence —
-      with no error and no hint in the API that the dependency exists.
-    </p>
-    <p><strong>Fix:</strong> Register the trade's own intended monitoring dates in <code>set_valuation_date</code>
-    (e.g. a daily/weekly grid from trade start to expiry) and index <code>spot_all</code> using this trade's own
-    date indices, mirroring how <code>Average</code>/<code>Variance</code> in the same file resolve theirs.</p>
+    <p><strong>Fix:</strong> Make the root explicit for production use and keep the fixture default in the tests only:</p>
+<pre><span class="kw">class</span> <span class="fn">MarketDataFileProvider</span>(MarketDataProvider):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, root: str|Path):          <span class="c"># required, no silent fixture default</span>
+        self.root = Path(root)
+
+<span class="c"># sdevpy/tests/conftest.py</span>
+<span class="kw">def</span> <span class="fn">default_provider</span>():
+    <span class="kw">return</span> MarketDataFileProvider(Path(__file__).parent / <span class="st">"data"</span> / <span class="st">"marketdata"</span>)</pre>
+    <p>Alternatively read the root from <code>sdevpy/settings.py</code> / an environment variable and raise if it is unset.</p>
   </div>
 
   <!-- 4 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title"><code>fx_spot_date</code> silently skips the USD calendar for six lag=1 crosses, contradicting its own docstring</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">The <code>WorstOfBarrier</code> fix has no test that can fail if it regresses — the golden trade is deep out of the money</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/market/fx/fxforward.py · lines 87-101</span>
-    <span class="verified">Verified: still present, unchanged from the 16th review's #3</span>
+    <span class="loc">sdevpy/tests/test_mc.py · lines 38, 62 &nbsp;·&nbsp; sdevpy/montecarlo/payoffs/exotics.py · lines 26–44, 49–69</span>
     <p>
-      <strong>Why it's bad:</strong> The docstring is explicit that crosses always need the USD calendar:
+      <strong>Why it's bad:</strong> The only test touching the class prices
+      <code>WorstOfBarrier(['ABC','XYZ'], expiry, 90.0, 'Call', 35.0)</code> with spots 100 and 50. The worst-of
+      payoff is a 90-strike call on an asset starting at 50, so the reference PV is <code>0.00330715322</code>: the trade is worth
+      almost nothing whether or not the barrier knocks. Neither the "monitor only this trade's dates" fix (the 17th review's #3) nor
+      the knock-out logic can be told apart from a no-barrier vanilla by this test. The class docstring also states an unfixed
+      limitation — a trade struck in the past that has already knocked is treated as alive — which is not covered anywhere.
     </p>
-    <pre><span class="kw">def</span> <span class="fn">fx_spot_date</span>(date, forccy, domccy):
-    <span class="st">""" ... Crosses (neither leg USD) only need the first hop good in the pair's own
-        centers, then require USD too, since crosses settle via two USD legs. """</span>
-    lag = fx_spot_lag(forccy, domccy)
-    pair_cal = make_calendar(<span class="fn">f</span><span class="st">"{forccy},{domccy}"</span>)
-    <span class="kw">if</span> <span class="st">'USD'</span> <span class="kw">in</span> (forccy, domccy):
-        <span class="kw">return</span> pair_cal.add_business_days(date, lag)
+    <p><strong>Fix:</strong> Add tests with economically meaningful numbers, in <code>test_mc.py</code>:</p>
+<pre><span class="kw">def</span> <span class="fn">test_worstof_barrier_independent_of_book</span>():
+    <span class="c"># same trade priced alone vs. with a dense Asian trade in the book -> identical PV (same seed/paths)</span>
+    pv_alone = price([wob_trade])[<span class="st">'pv'</span>][<span class="fn">0</span>]
+    pv_book  = price([wob_trade, asian_trade])[<span class="st">'pv'</span>][<span class="fn">0</span>]
+    <span class="kw">assert</span> np.isclose(pv_alone, pv_book, rtol=<span class="fn">0</span>, atol=<span class="fn">1e-8</span>)
 
-    settle_cal = make_calendar(<span class="fn">f</span><span class="st">"{forccy},{domccy},USD"</span>)  <span class="c"># built...</span>
-    shifted_date = pair_cal.add_business_days(date, 1)
-    <span class="kw">return</span> settle_cal.add_business_days(shifted_date, lag - 1) <span class="kw">if</span> lag &gt; 1 <span class="kw">else</span> shifted_date  <span class="c"># ...but never used when lag == 1</span></pre>
-    <p>
-      <code>FX_SPOT_LAG_OVERRIDES</code> sets <code>lag = 1</code> for exactly six cross pairs with no USD leg
-      (CAD/KZT, CAD/PHP, CAD/TRY, KZT/PHP, KZT/TRY, PHP/TRY). For those six, <code>settle_cal</code> is built and
-      then thrown away — the ternary falls through to <code>shifted_date</code>, validated only against
-      <code>pair_cal</code>. If that settlement day is a US holiday but a good day for both actual currencies,
-      the function returns a date that isn't a valid USD settlement day, directly contradicting the convention
-      its own docstring states. No test in <code>test_fxdata.py</code> exercises any of the six affected pairs.
-    </p>
-    <p><strong>Fix:</strong> Always route through <code>settle_cal</code>, dropping the special case:</p>
-    <pre><span class="rm">return settle_cal.add_business_days(shifted_date, lag - 1) if lag > 1 else shifted_date</span>
-<span class="ok">return settle_cal.add_business_days(shifted_date, max(lag - 1, 0))</span></pre>
+<span class="kw">def</span> <span class="fn">test_worstof_barrier_knockout_reduces_value</span>():
+    <span class="c"># strike 45 (near the worst-of), barrier 49: must be strictly below the same option with barrier 0</span>
+    <span class="kw">assert</span> pv(barrier=<span class="fn">49.0</span>) &lt; pv(barrier=<span class="fn">0.0</span>)
+    <span class="kw">assert</span> np.isclose(pv(barrier=<span class="fn">0.0</span>), vanilla_worstof_pv, rtol=<span class="fn">0</span>, atol=<span class="fn">1e-8</span>)</pre>
   </div>
 
   <!-- 5 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title">Production data providers depend on the test package for their default paths — one file at the 16th review, now four across three subsystems</span>
-      <span class="badge high">High</span>
+      <span class="issue-title"><code>implied_vol_brent</code> minimises a squared error over an open bracket — infeasible prices return a plausible-looking vol</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/market/fileprovider.py · line 20 &nbsp;·&nbsp; sdevpy/calibration/fileprovider.py · line 5 &nbsp;·&nbsp; sdevpy/llms/llmfactory.py · line 9 &nbsp;·&nbsp; sdevpy/llms/gpt_model.py · line 121</span>
-    <span class="verified">Verified: <code>grep -rn "from sdevpy.tests import conftest"</code> across the whole tree</span>
+    <span class="loc">sdevpy/analytics/black.py · lines 43–58 (and its use as the low-vega fallback at line 116)</span>
+    <p class="verified">Verified: ran the function — <code>implied_vol_brent(1.0, 80, True, 100, 15.0)</code> (call price below its intrinsic value of 20) returns <code>1.0e-06</code>; a price of 1e-12 on a 200-strike call returns <code>1.0e-06</code>; no error either time</p>
     <p>
-      <strong>Why it's bad:</strong> The 16th review flagged this in <code>market/fileprovider.py</code> alone
-      (Medium, #9). It is still there, unfixed, and the same pattern has since spread to three more files:
+      <strong>Why it's bad:</strong> <code>minimize_scalar(error, bracket=(xmin, xmax), method='brent')</code> is a
+      <em>minimiser</em> given a two-point bracket, which is only a starting hint — Brent may leave <code>[xmin, xmax]</code>,
+      and <code>res.x</code> is returned without checking <code>res.success</code> or that the residual is near zero. When the price
+      is outside the no-arbitrage range there is no root, and the function still returns a number (1e-6 above). Because
+      <code>implied_vol_newton</code> hands every low-vega strike to this function, the worst cases — deep OTM strikes — are exactly
+      the ones that flow unchecked into calibration targets.
     </p>
-    <pre><span class="c"># market/fileprovider.py, calibration/fileprovider.py</span>
-<span class="kw">from</span> sdevpy.tests <span class="kw">import</span> conftest
-<span class="kw">class</span> <span class="fn">MarketDataFileProvider</span>(MarketDataProvider):
-    <span class="kw">def</span> <span class="fn">__init__</span>(self, root=<span class="kw">None</span>):
-        self.root = (Path(root) <span class="kw">if</span> root <span class="kw">is</span> <span class="kw">not</span> <span class="kw">None</span> <span class="kw">else</span> conftest.marketdata_path())
+    <p><strong>Fix:</strong> Bracket a genuine root of the price difference and validate the price first:</p>
+<pre><span class="kw">from</span> scipy.optimize <span class="kw">import</span> brentq
 
-<span class="c"># llms/llmfactory.py (module level), llms/gpt_model.py (function level)</span>
-<span class="kw">from</span> sdevpy.tests <span class="kw">import</span> conftest <span class="kw">as</span> tst</pre>
-    <p>
-      Every one of these is a real production code path — <code>MarketDataFileProvider()</code> and
-      <code>CalibrationDataFileProvider()</code> are both constructed with no <code>root</code> argument from
-      default context builders elsewhere in the codebase, and the LLM factory's model config resolution goes
-      through <code>tst.</code> the same way. Any packaging or deployment scenario that excludes
-      <code>sdevpy/tests</code> (issue #1 above shows the discovery config for this exact repo already drops
-      two other directories) would break every one of these imports at module load time, not at first use.
-    </p>
-    <p><strong>Fix:</strong> Move default data-root resolution into a non-test config/settings module (e.g.
-    <code>sdevpy/settings.py</code>, which already exists), and have <code>conftest.py</code> import from there
-    instead of the reverse — across all four files, not just the one flagged last time.</p>
+<span class="kw">def</span> <span class="fn">implied_vol_brent</span>(expiry, strike, is_call, fwd, fwd_price, vmin=<span class="fn">1e-6</span>, vmax=<span class="fn">10.0</span>):
+    lo = price(expiry, strike, is_call, fwd, vmin) - fwd_price
+    hi = price(expiry, strike, is_call, fwd, vmax) - fwd_price
+<span class="ok">    if lo &gt; 0 or hi &lt; 0:
+        raise ValueError(f"Price {fwd_price} outside the Black no-arbitrage range for K={strike}, T={expiry}")
+    return brentq(lambda v: price(expiry, strike, is_call, fwd, v) - fwd_price, vmin, vmax, xtol=1e-12)</span></pre>
   </div>
 
   <!-- 6 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title"><code>requests</code> and <code>torch</code> are imported by production code but never declared as dependencies</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Data generators turn <em>any</em> exception into a <code>-9999</code> training label</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/utilities/filemanager.py &nbsp;·&nbsp; sdevpy/utilities/restapi.py &nbsp;·&nbsp; sdevpy/llms/gpt/* &nbsp;·&nbsp; sdevpy/machinelearning/pytorch/* &nbsp;·&nbsp; pyproject.toml · lines 18-21</span>
-    <span class="verified">Verified: reproduced directly — <code>pytest</code> collection fails with <code>ModuleNotFoundError: No module named 'requests'</code> in this environment, whose installed packages match what <code>pyproject.toml</code> declares</span>
+    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · lines 232–240 &nbsp;·&nbsp; sdevpy/volatility/mlsurfacegen/smilegenerator.py · lines 122–127</span>
     <p>
-      <strong>Why it's bad:</strong> <code>pyproject.toml</code>'s <code>dependencies</code> list includes
-      <code>pandas</code>, <code>numpy</code>, <code>scipy</code>, ..., <code>huggingface_hub</code>,
-      <code>transformers</code>, <code>tiktoken</code> — but not <code>requests</code> or <code>torch</code>.
-      Both are imported unconditionally at module scope:
+      <strong>Why it's bad:</strong> Both sites wrap the Bachelier inversion in <code>except Exception</code> and append the
+      sentinel <code>-9999</code> as if it were a normal normal-vol. A genuine implied-vol failure (no solution) and a programming
+      error (<code>TypeError</code>, shape mismatch, a typo after a refactor) are indistinguishable, and nothing is logged. In
+      <code>smilegenerator.to_straddle_nvol</code> the sentinel is only removed when <code>cleanse=True</code> (the
+      <code>NVol &lt; min_vol</code> filter); with <code>cleanse=False</code>, and in
+      <code>price_straddles_ref</code>'s <code>output_nvol</code> branch, <code>-9999</code> flows straight into the dataset used
+      for network training.
     </p>
-    <pre><span class="c"># utilities/filemanager.py, utilities/restapi.py</span>
-<span class="kw">import</span> requests   <span class="c"># not in pyproject.toml dependencies</span>
-
-<span class="c"># llms/gpt/attention.py, gpt/gpt.py, gpt/training.py, machinelearning/pytorch/*</span>
-<span class="kw">import</span> torch      <span class="c"># not in pyproject.toml dependencies</span></pre>
-    <p>
-      A clean <code>pip install sdevpy</code> (or any CI job that installs strictly from the declared
-      dependencies) leaves <code>filemanager.py</code>, <code>restapi.py</code>, the entire
-      <code>llms/gpt</code> subtree and <code>machinelearning/pytorch</code> broken with
-      <code>ModuleNotFoundError</code> the moment they're imported.
-    </p>
-    <p><strong>Fix:</strong> Add both to <code>dependencies</code> in <code>pyproject.toml</code> (or, if GPT/PyTorch
-    support is meant to be optional, move them into an <code>[project.optional-dependencies]</code> extra and guard
-    the imports accordingly).</p>
+    <p><strong>Fix:</strong> Catch only the expected failure, use <code>NaN</code> (which pandas drops naturally), and log the count:</p>
+<pre>                    <span class="kw">try</span>:
+                        n_vol = bachelier.implied_vol_jaeckel(expiry, k, is_call, fwd, price)[<span class="fn">0</span>]
+<span class="rm">                    except Exception:
+                        n_vol = -9999</span>
+<span class="ok">                    except (ValueError, ArithmeticError, FloatingPointError):
+                        n_vol = np.nan
+                        n_failed += 1                      # log.warning(f"{n_failed} inversions failed") after the loop</span></pre>
   </div>
 
   <!-- 7 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title">Two local-vol calibration example scripts crash immediately on stale provider call signatures</span>
+      <span class="issue-title">Seven example/notebook files import modules that no longer exist</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">examples/volatility/ex_lv_section_calib.py · lines 21, 34, 38 &nbsp;·&nbsp; examples/volatility/ex_lv_dupire_calib.py · line 31</span>
-    <span class="verified">Verified: still present, unchanged from the 16th review's #5</span>
+    <span class="loc">examples/stovol/stovoltrain.py · lines 12–21 &nbsp;·&nbsp; examples/stovol/stovolinvtrain.py · lines 13–20 &nbsp;·&nbsp; 4 notebooks under notebooks/stovol/ &nbsp;·&nbsp; sdevpy/models/assetmodels.py · line 60</span>
+    <p class="verified">Verified: an AST scan of all 246 <code>.py</code>/<code>.ipynb</code> files checked every <code>sdevpy.*</code> import against the file tree; the results were then confirmed by <code>ls</code> (no <code>sdevpy/projects/</code>, no <code>machinelearning/topology.py</code>)</p>
     <p>
-      <strong>Why it's bad:</strong> <code>calibrate_lv_bysections</code> requires <code>md_prov</code> and
-      <code>cal_prov</code> as positional arguments with no defaults. The example never supplies them, and never
-      instantiates its provider class either:
+      <strong>Why it's bad:</strong> The machine-learning reorganisation moved <code>topology</code>, <code>learningschedules</code>,
+      <code>callbacks</code> and <code>load_learning_model</code> under <code>sdevpy/machinelearning/keras/</code>, moved the
+      <code>tf_*</code> metrics out of <code>maths/metrics.py</code> into <code>sdevpy/tensorflow/tf_metrics.py</code>, and dropped <code>sdevpy.projects</code>. Two examples and the notebooks
+      <code>Deep Learning SABR Calibration</code>, <code>Deep Learning StoVol-Colab</code>, <code>Deep Learning StoVol-MB</code> and
+      <code>StoVol Training.keras</code> still use the old paths and fail at their first import. Separately,
+      <code>assetmodels.py:60</code> (inside <code>__main__</code>) still does <code>from sdevpy.models import localvol_factory</code>, a module that
+      lives in <code>sdevpy.volatility.localvol</code>. These are the project's documentation-by-example for the ML stack, so a
+      new user hits an <code>ImportError</code> immediately.
     </p>
-    <pre>cal_prov = CalibrationDataFileProvider                                    <span class="c"># class, not an instance — missing "()"</span>
-...
-calib_result = calibrate_lv_bysections(valdate, name, config, calc_pde_vols=<span class="kw">True</span>)  <span class="c"># missing md_prov, cal_prov</span>
-...
-out_file = cal_prov.localvol_data_file(name, valdate, config[<span class="st">'model_name'</span>])       <span class="c"># called on the class itself</span></pre>
-    <p>
-      This raises <code>TypeError: calibrate_lv_bysections() missing 2 required positional arguments</code> on
-      the very first calibration call — confirmed by comparing against
-      <code>notebooks/volatility/LocalVol-Section.ipynb</code>, which correctly passes both. Separately,
-      <code>ex_lv_dupire_calib.py:31</code> calls <code>impliedvol_factory.get_impliedvol(name, valdate,
-      model_name)</code>, but <code>get_impliedvol</code> does not exist in that module —
-      <code>impliedvol_factory.py</code> only exposes <code>get_impliedvol_from_data</code> and
-      <code>get_impliedvol_new</code>. The real <code>get_impliedvol</code> lives in
-      <code>sdevpy.calibration.provider</code> and requires a <code>cal_prov</code> argument the example never
-      obtains, confirmed against the correct call pattern in
-      <code>notebooks/volatility/LocalVol-Dupire.ipynb</code>.
-    </p>
-    <p><strong>Fix:</strong> Instantiate <code>CalibrationDataFileProvider()</code>, obtain <code>md_prov</code>
-    the way the notebooks do, and pass both through; fix the <code>get_impliedvol</code> import/call site to
-    <code>sdevpy.calibration.provider.get_impliedvol</code>'s actual signature.</p>
+    <p><strong>Fix:</strong> Update the imports, e.g.:</p>
+<pre><span class="rm">from sdevpy.machinelearning.topology import compose_model</span>
+<span class="rm">from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model</span>
+<span class="rm">from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay</span>
+<span class="rm">from sdevpy.machinelearning.callbacks import RefCallback</span>
+<span class="rm">from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse</span>
+<span class="ok">from sdevpy.machinelearning.keras.topology import compose_model
+from sdevpy.machinelearning.keras.learningmodel import load_learning_model
+from sdevpy.machinelearning.learningmodel import LearningModel
+from sdevpy.machinelearning.keras.learningschedules import FlooredExponentialDecay
+from sdevpy.machinelearning.keras.callbacks import RefCallback
+from sdevpy.maths.metrics import bps_rmse
+from sdevpy.tensorflow.tf_metrics import tf_bps_rmse</span>
+
+<span class="rm">from sdevpy.models import localvol_factory as lvf</span>          <span class="c"># assetmodels.py:60</span>
+<span class="ok">from sdevpy.volatility.localvol import localvol_factory as lvf</span></pre>
+    <p>Then add a small test that imports every file under <code>examples/</code> with <code>ast</code> + <code>importlib.util.find_spec</code> so the next reorganisation cannot leave these behind.</p>
   </div>
 
   <!-- 8 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title">Golden-master test reference values are rebased in place with the old value left commented out, unexplained</span>
+      <span class="issue-title"><code>Variance</code> keeps a stale <code>current_fixing</code> when the payoff is re-valued on another date</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/tests/test_pde.py · lines 60-61, 81-82 &nbsp;·&nbsp; also test_mc.py, test_localvol_calib.py, test_impliedvol.py, test_localvol.py, test_marketdata.py</span>
-    <span class="verified">Verified: still present, unchanged from the 16th review's #6</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 474, 507–528</span>
     <p>
-      <strong>Why it's bad:</strong> The same pattern recurs across the numerical core of the test suite:
+      <strong>Why it's bad:</strong> <code>self.current_fixing = None</code> is set only in <code>__init__</code>.
+      <code>set_valuation_date</code> resets <code>current_sum</code> on every call but assigns <code>current_fixing</code> only
+      inside <code>if hist_fixings is not None and len(hist_fixings) &gt;= 1</code>. A trade object priced first on a late valuation date
+      (with history) and then on a date at or before the variance start (no history) keeps the earlier fixing.
+      <code>evaluate()</code> then executes the "add current increment" branch (line 489–491) and adds
+      <code>log(S₁ / old_fixing)²</code> to a brand-new variance swap. Payoff objects are stateful and <code>set_valuation_date</code> is called on them at every pricing run, so re-using a built
+      book across valuation dates is a natural use, and the resulting PV is wrong without any error.
     </p>
-    <pre>pde_ref = np.asarray([2.70428011, 10.60023123, 21.44746433, 60.16740876, 132.39777875, 279.0919945])
-<span class="c"># pde_ref = np.asarray([2.70606853, 10.6012976, 21.44167511, 60.14815888, 132.34671851, 279.04775693])  # old value</span></pre>
-    <p>
-      Nothing in the test or its history (as far as the file itself shows) says whether a given rebase reflects
-      a genuine fix or papers over a regression. In <code>test_pde.py</code> the file's own independent
-      closed-form reference makes it possible to tell (the new values are closer), but <code>test_mc.py</code>
-      has no such cross-check, so there is no way to tell from the test alone. Left unexplained across six
-      files, this weakens confidence that these tests would flag a real future regression, since "matches the
-      last observed output" and "matches the true answer" become indistinguishable in the diff.
-    </p>
-    <p><strong>Fix:</strong> When a reference value changes, delete the old one (git history preserves it already)
-    and add a one-line comment stating why it changed, e.g. <code># updated after fixing #N — bug caused Y% error vs. closed-form</code>.</p>
+    <p><strong>Fix:</strong> Reset all state at the top of <code>set_valuation_date</code>:</p>
+<pre>    <span class="kw">def</span> <span class="fn">set_valuation_date</span>(self, valdate, md: MarketDataProvider):
+<span class="ok">        self.current_sum = 0.0
+        self.current_fixing = None</span>
+        self.eventdates = []
+        hist_fixing_dates = []</pre>
+    <p>and add a test that prices one <code>Variance</code> instance on a late date, then on <code>start</code>, and compares with a freshly built instance.</p>
   </div>
 
   <!-- 9 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title">Large parts of the codebase have zero automated test coverage, including the buggiest module in this review</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Payoff and pricer type hints are wrong or missing, and nothing checks them</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/instruments/ &nbsp;·&nbsp; sdevpy/montecarlo/payoffs/exotics.py &nbsp;·&nbsp; sdevpy/machinelearning/pytorch/* &nbsp;·&nbsp; sdevpy/llms/gpt/* &nbsp;·&nbsp; sdevpy/tensorflow/*</span>
-    <span class="verified">Verified: 36 files under sdevpy/tests against 124 non-test, non-thirdparty source files; no test_*.py references WorstOfBarrier, instruments, or the pytorch/gpt/tensorflow trees</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · line 111 (and 17 more <code>mkt_state: dict</code>) &nbsp;·&nbsp; sdevpy/montecarlo/mcpricer.py · line 149</span>
     <p>
-      <strong>Why it's bad:</strong> <code>WorstOfBarrier</code> (issue #3 above) is exactly the kind of
-      nontrivial, path-dependent payoff logic that a unit test would have caught immediately — pricing it
-      alone versus in a book with an Asian option added would have produced two different numbers for the same
-      trade, with no test anywhere to notice. The same gap extends to <code>instruments/constants.py</code>
-      (imported directly by the PDE pricer, per issue #1), and to three entire subsystems
-      (<code>machinelearning/pytorch</code>, <code>llms/gpt</code>, <code>tensorflow</code>) with no
-      <code>test_*.py</code> file touching them at all.
+      <strong>Why it's bad:</strong> <code>Payoff.evaluate(self, mkt_state: dict)</code> is annotated with <code>dict</code> but every
+      implementation reads <code>mkt_state.event_paths</code> — an attribute of <code>MarketState</code>, not a dict — and
+      <code>MonteCarloPricer.build(...) -> dict</code> actually returns a <code>list</code> of report dicts. Annotations that
+      disagree with the code are worse than none, because tooling and readers trust them. Across 1,017 library functions only 44% have
+      a return annotation, and there is no <code>mypy</code>/<code>pyright</code> section in <code>pyproject.toml</code>, so no
+      mismatch is ever reported.
     </p>
-    <p><strong>Fix:</strong> Prioritize a <code>test_exotics.py</code> that prices <code>WorstOfBarrier</code>
-    alone and in a book with an unrelated dense-schedule trade, and asserts the two prices match — that alone
-    would have caught issue #3 directly. Follow with minimal smoke tests for <code>instruments/</code> and the
-    three untested subsystems.</p>
+    <p><strong>Fix:</strong></p>
+<pre><span class="rm">def evaluate(self, mkt_state: dict):</span>
+<span class="ok">def evaluate(self, mkt_state: "MarketState") -&gt; npt.NDArray[np.float64]:</span>
+
+<span class="rm">def build(self, mkt_state: dict, book) -&gt; dict:</span>
+<span class="ok">def build(self, mkt_state: MarketState, book: Book) -&gt; list[dict]:</span></pre>
+    <p>Move <code>MarketState</code> into its own small module (to avoid a circular import) and add a <code>[tool.mypy]</code> table starting with <code>files = ["sdevpy/montecarlo", "sdevpy/pde"]</code>.</p>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title">Two module reorganizations left example/demo import paths behind, still broken 16+ days later</span>
+      <span class="issue-title"><code>price_vanilla_surface</code> lacks the short-expiry guard that <code>price_vanillas</code> has</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/models/assetmodels.py · line 60 &nbsp;·&nbsp; examples/stovol/stovoltrain.py · lines 12-16</span>
-    <span class="verified">Verified: both raise on execution — direct import attempt for the first, file path checks for the second</span>
+    <span class="loc">sdevpy/pde/forwardpde.py · lines 137–141, 212–240 (guard exists only at line 269, in <code>price_vanillas</code>)</span>
+    <p class="verified">Verified: <code>price_vanilla_surface(valdate, [valdate], [[100.0]], fwd, ConstantLocalVol(0.2))</code> raises <code>ValueError: array must not contain infs or NaNs</code> (plus a divide-by-zero <code>RuntimeWarning</code> from <code>LocalVol.path_vol</code>); the single-expiry function gives the clear <code>Numerical method not supported before 1D</code></p>
     <p>
-      <strong>Why it's bad:</strong> <code>assetmodels.py</code>'s <code>__main__</code> demo block does:
+      <strong>Why it's bad:</strong> The two entry points share <code>calculate_densities</code>, but only
+      <code>price_vanillas</code> checks <code>expiry_time &lt; FWD_PDE_START_TIME</code>. For a surface whose first expiry is on the
+      valuation date (or in the past — <code>model_time</code> goes negative), <code>build_spotgrid(maturities[0], …)</code> is called with
+      <code>t = 0</code>, <code>path_vol</code> divides by zero, and the caller gets an error from inside SciPy that says nothing about
+      expiries. In a calibration loop over a quote surface with a same-day expiry this is a confusing failure.
     </p>
-    <pre><span class="kw">from</span> sdevpy.models <span class="kw">import</span> localvol_factory <span class="kw">as</span> lvf  <span class="c"># ImportError: no such module</span></pre>
-    <p>
-      but <code>localvol_factory.py</code> lives at <code>sdevpy.volatility.localvol.localvol_factory</code>, not
-      under <code>sdevpy.models</code> — confirmed via direct import, which raises immediately. Separately,
-      the 16th review's #4 (<code>machinelearning</code>'s <code>topology</code>/<code>learningmodel</code>/
-      <code>learningschedules</code>/<code>callbacks</code> &rarr; <code>keras/*</code> split) is still exactly
-      as reported: <code>stovoltrain.py</code> still imports
-      <code>sdevpy.machinelearning.topology</code>, which was confirmed absent
-      (<code>sdevpy/machinelearning/keras/topology.py</code> is the only copy that exists now).
-    </p>
-    <p><strong>Fix:</strong> Point <code>assetmodels.py</code>'s demo at
-    <code>sdevpy.volatility.localvol.localvol_factory</code>; update <code>stovoltrain.py</code> (and the other
-    still-affected example/notebook per the 16th review) to the <code>machinelearning.keras.*</code> paths.</p>
+    <p><strong>Fix:</strong> Validate once, inside <code>calculate_densities</code>, so both entry points are covered:</p>
+<pre><span class="kw">def</span> <span class="fn">calculate_densities</span>(maturities, lv, pde_config):
+<span class="ok">    if maturities[0] &lt; FWD_PDE_START_TIME:
+        raise ValueError(f"Forward PDE not supported before 1D; first maturity is t = {maturities[0]:.6f}")</span>
+    spotgrid_tmax = maturities[0] <span class="kw">if</span> pde_config.rescale_x <span class="kw">else</span> maturities[-1]</pre>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #17 &nbsp;·&nbsp; 2026-09-21 (full scan of every *.py/*.ipynb file outside sdevpy/thirdparty; every finding re-verified against this run's working copy — 5 of the 16th review's issues confirmed still open, 1 confirmed fixed, 1 new critical packaging defect found via direct <code>setuptools.find_packages()</code> execution)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #18 &nbsp;·&nbsp; 2026-09-21 (full scan of every *.py/*.ipynb file outside sdevpy/thirdparty; every finding read or reproduced against this run's working copy; 8 of the 17th review's issues confirmed fixed, 2 confirmed still open in part — see #1 and #7)
   </footer>
+
 </div>
 </body>
 </html>
