@@ -17,14 +17,14 @@ from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 from sdevpy.market.provider import MarketDataProvider
-from sdevpy.tests import conftest
+from sdevpy import datapaths
 log = logging.getLogger(__name__)
 
 
 class MarketDataFileProvider(MarketDataProvider):
     """ Reads market data from files on disk """
     def __init__(self, root: str|Path=None):
-        self.root = (Path(root) if root is not None else conftest.marketdata_path())
+        self.root = (Path(root) if root is not None else datapaths.marketdata_path())
 
     def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve:
         """ Retrieve yield curve """

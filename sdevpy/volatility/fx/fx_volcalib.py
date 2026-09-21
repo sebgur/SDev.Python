@@ -19,8 +19,10 @@ log = logging.getLogger(__name__)
 
 ################## TODO ###########################################################################
 # * Fix past Claude review, iterate a few times until relatively clean.
+# * Input real data, see if it resolves arbitrage checks
 # * Ask Codex for entire analysis of calibration flow. Iterate and converge.
-# * Ask Codex about the bad vanna-volga points on real data at 1M.
+# * Check if bad vanna-volga extra points still happen at 1M
+# * Ask Codex about the bad vanna-volga extra points
 # * Move yieldcurves to calib data provider
 # * Document solution search and market strangle in latex, add explanations in code comments
 
