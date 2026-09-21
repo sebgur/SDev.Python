@@ -49,7 +49,10 @@ def get_localvol_or_new(name: str, date: dt.datetime, model_name: str, cal_prov:
     # Look for an existing model file
     lv = None
     if not force_new: # Try to get it from calibration provider, None if absent
-        lv = get_localvol(name, date, model_name, cal_prov, t_grid=t_grid)
+        # lv = get_localvol(name, date, model_name, cal_prov, t_grid=t_grid)
+        data = cal_prov.get_localvol_data(name, date, model_name)
+        if data is not None:
+            lv = lvf.get_localvol_from_data(data, t_grid)
 
     if lv is None:
         log.info(f"Initializing new LV for {name}")
