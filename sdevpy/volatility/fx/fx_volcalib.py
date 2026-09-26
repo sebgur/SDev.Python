@@ -18,8 +18,6 @@ log = logging.getLogger(__name__)
 
 
 ################## TODO ###########################################################################
-# * Fix past Claude review, iterate a few times until relatively clean.
-# * Input real data, see if it resolves arbitrage checks
 # * Check if bad vanna-volga extra points still happen at 1M
 # * Ask Codex about the bad vanna-volga extra points
 # * Ask Codex for entire analysis of calibration flow. Check again with Opus.

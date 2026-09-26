@@ -188,34 +188,36 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-09-26 &nbsp;·&nbsp; <strong>19th review</strong> (full scan: every <code>*.py</code>/<code>*.ipynb</code> file outside <code>sdevpy/thirdparty</code>, including examples/, notebooks/, scripts/, docs/ and files excluded by <code>pyproject.toml</code>; every finding below was re-read in the current working copy, none carried over from the 18th review's text; <code>.claude/settings.json</code> was read first)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-09-26 &nbsp;·&nbsp; <strong>20th review</strong> (full scan: every <code>*.py</code>/<code>*.ipynb</code> file outside <code>sdevpy/thirdparty</code>, including examples/, notebooks/, scripts/, docs/ and files excluded by <code>pyproject.toml</code>; every finding below was re-read in the current working copy, none carried over from the 19th review's text; items listed under "Known and accepted" in <code>CLAUDE.md</code> were not reported)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--yellow)">B&minus;</div>
+    <div class="grade-letter">B</div>
     <div class="grade-details">
-      <h2>The dependency clean-up introduced a packaging regression, and the Black implied-vol inverter returns wrong numbers on easy inputs</h2>
+      <h2>Eight of the ten findings from the last review are fixed — one High packaging defect and a set of smaller robustness issues remain</h2>
       <p>
-        The uncommitted <code>pyproject.toml</code> work fixed the Python/NumPy floors and split heavy ML packages into
-        extras, which is the right direction. But <code>sdevpy/maths/metrics.py</code> still imports scikit-learn at module
-        level, and the core calibration modules import <code>metrics</code>, so a plain <code>pip install sdevpy</code> can no
-        longer import them. Separately, <code>black.implied_vol_brent</code> (also the low-vega fallback of the Newton
-        inverter) was reproduced returning 1e-6 for a 30% vol deep-OTM option and 3265% for an infeasible price.
-        The rest is carry-over: a stale-state bug in <code>Variance</code> (reproduced), a barrier test that cannot fail,
-        <code>-9999</code> labels, and examples that import moved modules. All 630 tests pass in the full development venv.
-        No critical issues.
+        The working tree is clean and all 633 tests pass (up from 630). The 19th review's two highest-severity
+        correctness bugs are gone: <code>implied_vol_brent</code> is now a bracketed root-finder with no-arbitrage checks, and
+        <code>Variance</code> no longer keeps a stale fixing (both re-run against the current code). The barrier test can now fail,
+        the default data root is overridable and logged, and <code>deny</code> rules now back the read-only-Python rule.
+        What is left: <code>sdevpy.maths.metrics</code> still hard-imports scikit-learn although it is now an optional dependency,
+        library code mutates NumPy's global error state and the global RNG, four notebooks and two <code>__main__</code> blocks still import moved code,
+        and there is no CI or type checker to catch regressions of this kind. No critical issues.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Improved since the 18th review (verified in the current files):</strong>
-    <code>requires-python</code> is now <code>&gt;=3.10</code> and <code>numpy&gt;=2.0</code>, <code>scipy&gt;=1.11</code> have lower bounds &nbsp;·&nbsp;
-    <code>get_localvol_or_new</code> now raises a clear <code>ValueError</code> instead of a <code>TypeError</code> when there is neither stored data nor a <code>t_grid</code> &nbsp;·&nbsp;
-    <code>implied_vol_brent</code> bracket widened to 2.0 with <code>xtol=1e-6</code> (the squared-error formulation is unchanged, see #2) &nbsp;·&nbsp;
-    <code>Variance.evaluate</code> no longer raises for brand-new swaps &nbsp;·&nbsp;
-    the test suite grew from 430 to 630 tests and every module now collects in the dev venv &nbsp;·&nbsp;
-    <code>.git</code> measures 113&nbsp;MB (18th review reported 330&nbsp;MB)
+    <strong>Fixed since the 19th review (verified in the current files):</strong>
+    <code>implied_vol_brent</code> now uses <code>brentq</code> with bound checks, Newton's low-vega fallback returns NaN, two new tests &nbsp;·&nbsp;
+    <code>Variance.set_valuation_date</code> resets <code>current_fixing</code> (re-valuing at the swap start now gives <code>None</code>, previously the stale 96.68) &nbsp;·&nbsp;
+    <code>SDEVPY_DATA</code> override plus a log line when default data is used, docstrings corrected &nbsp;·&nbsp;
+    <code>test_worstof_barrier_knocks</code> added (strike 30 in the money) &nbsp;·&nbsp;
+    <code>NVOL_FAILED</code> constant with a <code>min_vol &gt; 0</code> guard in <code>to_nvol</code> &nbsp;·&nbsp;
+    short-expiry guard added to <code>price_vanilla_surface</code> &nbsp;·&nbsp;
+    <code>stovoltrain.py</code>/<code>stovolinvtrain.py</code> imports repaired &nbsp;·&nbsp;
+    <code>deny</code> rules for <code>*.py</code>/<code>*.ipynb</code> edits added to <code>.claude/settings.json</code>, redundant <code>Bash(...)</code> entries removed &nbsp;·&nbsp;
+    provider error line wrapped, ~40 lines of superseded code deleted from <code>forwardpde.py</code>
   </div>
 
   <div class="scorecard">
@@ -229,42 +231,42 @@
         <tr>
           <td>Architecture</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Clean Protocol/ABC layering and the optional-extras split is a good move; but core modules still import an optional dependency (<code>metrics</code> &rarr; sklearn) and "default" providers resolve to test fixtures</td>
+          <td style="color:var(--muted);font-size:.83rem">Clean Protocol/ABC layering; data root now configurable; but the optional-extras split is not respected by core code (<code>metrics</code> &rarr; sklearn) and numerical modules change process-wide NumPy state</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Brent implied vol wrong for deep-OTM and infeasible inputs (reproduced); <code>Variance</code> keeps a stale fixing when re-valued (reproduced); PDE/MC/FX core is otherwise solid</td>
+          <td>Correctness</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Brent inversion and <code>Variance</code> state bugs fixed and reproduced as fixed; open: SABR data-generation noise is not reproducible despite a fixed seed, and <code>sabr.implied_vol</code> silently resets a caller's <code>np.seterr</code></td>
         </tr>
         <tr>
           <td>Error Handling</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">New explicit <code>ValueError</code> in the LV provider is welcome; but 6 <code>except Exception</code> sites, two of which turn any failure into a <code>-9999</code> training label, and implied-vol inversion never signals infeasibility</td>
+          <td style="color:var(--muted);font-size:.83rem">Explicit <code>ValueError</code>s for infeasible prices, missing t_grid and bad <code>min_vol</code>; 6 <code>except Exception</code> sites remain (two are deliberate sentinels), and <code>fx_calib_batch</code> logs failures without the traceback</td>
         </tr>
         <tr>
           <td>Testing</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">630 passing tests, up from 430; but the barrier trade in <code>test_mc.py</code> cannot tell knocked from un-knocked, there is no clean-install (core-only) test job, and LLM/GPT tests have no <code>importorskip</code></td>
+          <td style="color:var(--muted);font-size:.83rem">633 passing tests; new brent/barrier tests are meaningful; no <code>importorskip</code> for the ML/LLM tests, no CI workflow in the repo, and no test that the package imports with only core dependencies</td>
         </tr>
         <tr>
           <td>Code Quality</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">No mutable defaults, no bare <code>except:</code>; large blocks of superseded code kept as comments (<code>black.py</code>, <code>forwardpde.py</code>, <code>exotics.py</code>); one new line over the 120-char ruff limit (<code>provider.py:59</code>)</td>
+          <td style="color:var(--muted);font-size:.83rem">ruff (repo config) reports only 6 findings; but a regex heuristic counts ~550 comment lines that look like superseded code in library modules (scalendar.py 67, fx_volinterpolation.py 43, and the old <code>implied_vol_brent</code> now commented out in black.py)</td>
         </tr>
         <tr>
           <td>Maintainability</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Good module layout; 2 example scripts, 4 notebooks and one <code>__main__</code> block import modules that were moved; a persisted JSON key was renamed without updating all readers</td>
+          <td style="color:var(--muted);font-size:.83rem">Good module layout, examples repaired; 4 notebooks, one notebook cell and 2 <code>__main__</code> blocks still reference moved modules or a renamed JSON key; MC pricing prints timers on every call</td>
         </tr>
         <tr>
           <td>Type Safety</td><td>5 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">44% of the 1,017 library functions carry a return annotation (re-measured with <code>ast</code>); <code>mkt_state: dict</code> on payoffs that receive a <code>MarketState</code>; no mypy/pyright configuration</td>
+          <td style="color:var(--muted);font-size:.83rem">Unchanged: 44% of 1,017 library functions have a return annotation, 18 payoff methods annotate <code>mkt_state: dict</code> for a <code>MarketState</code>, no mypy/pyright configuration (0 matches in <code>pyproject.toml</code>)</td>
         </tr>
         <tr>
           <td>Documentation</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">58% docstring coverage (re-measured), precise where present; <code>datapaths.py</code> docstrings still say "test" for production defaults; the README/pyproject do not document the new <code>ml</code>/<code>tf</code> extras</td>
+          <td style="color:var(--muted);font-size:.83rem">58% docstring coverage (re-measured), datapaths docstrings corrected and the accepted-behaviour list in <code>CLAUDE.md</code> is a good addition; the <code>ml</code>/<code>tf</code> extras and <code>SDEVPY_DATA</code> are not documented in the README</td>
         </tr>
       </tbody>
     </table>
@@ -276,26 +278,22 @@
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title">scikit-learn was moved to an optional extra, but core calibration code still imports it through <code>sdevpy.maths.metrics</code></span>
+      <span class="issue-title">scikit-learn is optional in <code>pyproject.toml</code> but still imported at module level by the core calibration stack</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/maths/metrics.py · line 3 &nbsp;·&nbsp; pyproject.toml · lines 19–23</span>
+    <span class="loc">sdevpy/maths/metrics.py · lines 1–16 &nbsp;·&nbsp; pyproject.toml · lines 19–23</span>
     <p>
-      <strong>Verified:</strong> read the current files. <code>pyproject.toml</code> now lists <code>scikit-learn</code> only under
-      <code>[project.optional-dependencies] ml</code>, yet <code>metrics.py</code> starts with
-      <code>from sklearn.metrics import mean_squared_error</code>. <code>metrics</code> is imported at module level by
-      <code>volatility/impliedvol/impliedvol_calib.py:6</code>, <code>volatility/impliedvol/optionsurface.py:9</code> and
-      <code>volatility/localvol/lvsection_calib.py:14</code> — the non-ML implied-vol and local-vol calibration stack.
-      (This environment has every extra installed, so I could not run a clean core-only install; the failure follows
-      directly from the import chain.)
+      <strong>Verified (unchanged since the 19th review):</strong> <code>metrics.py</code> line 3 is still
+      <code>from sklearn.metrics import mean_squared_error</code>, and <code>scikit-learn</code> is listed only under the <code>ml</code> extra.
+      <code>metrics</code> is imported at module level by <code>impliedvol_calib.py:6</code>, <code>optionsurface.py:9</code> and
+      <code>lvsection_calib.py:14</code>. <code>test_llms.py</code> and <code>test_gpt.py</code> import the torch/transformers stack and there is no
+      <code>importorskip</code> anywhere in <code>sdevpy/tests</code>. (The dev venv has every extra, so I did not run a clean core-only install; the failure follows from the import chain.)
     </p>
     <p>
-      <strong>Why it's bad:</strong> <code>pip install sdevpy</code> now succeeds, but importing the calibrators raises
-      <code>ModuleNotFoundError: No module named 'sklearn'</code>. The sole use is three one-line squared-error formulas that NumPy does
-      natively, so a 30 MB dependency is being demanded for arithmetic. Likewise <code>test_llms.py</code> and
-      <code>test_gpt.py</code> import the torch/transformers stack unconditionally, so a core-only <code>pytest</code> fails at collection.
+      <strong>Why it's bad:</strong> <code>pip install sdevpy</code> succeeds, but importing the implied-vol and local-vol calibrators raises
+      <code>ModuleNotFoundError: No module named 'sklearn'</code>. The only use is three one-line squared-error formulas that NumPy provides.
     </p>
-    <p><strong>Fix</strong> — in <code>sdevpy/maths/metrics.py</code>, drop the sklearn import and use NumPy (equivalent to sklearn's uniform-average behaviour for 1-D and 2-D inputs):</p>
+    <p><strong>Fix</strong> — in <code>sdevpy/maths/metrics.py</code>:</p>
     <pre><span class="rm">from sklearn.metrics import mean_squared_error</span>
 
 <span class="kw">def</span> <span class="fn">mse</span>(set1, set2):
@@ -310,322 +308,287 @@
 <span class="kw">def</span> <span class="fn">rmse</span>(set1, set2):
     <span class="rm">return np.sqrt(mean_squared_error(set1, set2))</span>
     <span class="ok">return float(np.sqrt(mse(set1, set2)))</span></pre>
-    <p>
-      Then add <code>pytest.importorskip("torch")</code> / <code>importorskip("transformers")</code> at the top of
-      <code>test_llms.py</code> and <code>test_gpt.py</code>, and add a CI job that installs only the core dependencies and runs
-      <code>pytest</code>, so this class of regression is caught automatically.
-    </p>
+    <p>Then add <code>torch = pytest.importorskip("torch")</code> (and <code>transformers</code>) at the top of <code>test_llms.py</code> and <code>test_gpt.py</code>.</p>
   </div>
 
   <!-- 2 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title"><code>implied_vol_brent</code> returns confident wrong values: 1e-6 for a deep-OTM 30% option, 3265% for an infeasible price</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">Library code changes NumPy's process-wide error state and restores it to a hard-coded value (or not at all)</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/analytics/black.py · lines 42–58 (fallback use at line 115) &nbsp;·&nbsp; sdevpy/volatility/impliedvol/impliedvol.py · line 176</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/sabr.py · lines 30–35 &nbsp;·&nbsp; sdevpy/volatility/mlsurfacegen/smilegenerator.py · lines 113, 132</span>
     <p>
-      <strong>Verified by running it</strong> in the project venv:
+      <strong>Verified by running it:</strong>
     </p>
-    <pre>black.implied_vol_brent(1.0, 100.0, True, 100.0, 150.0)          <span class="c"># call price 150 &gt; forward 100: infeasible</span>
-<span class="rm">-&gt; 32.65</span>                                                        <span class="c"># 3265% vol, no error, no NaN</span>
-black.implied_vol_brent(0.1, 200.0, True, 100.0, price(0.1,200,True,100,0.30))
-<span class="rm">-&gt; 1.0e-06</span>                                                      <span class="c"># true answer is 0.30</span>
-black.implied_vol_newton(0.1, [200.0, 100.0], True, 100.0, ...)
-<span class="rm">-&gt; [1.0e-06, 0.30]</span>                                              <span class="c"># Newton's low-vega fallback returns the same wrong value</span></pre>
+    <pre>np.seterr(invalid=<span class="st">'raise'</span>)
+print(np.geterr()[<span class="st">'invalid'</span>])                 <span class="c"># raise</span>
+sabr.sabr_from_dict(1.0, k, 0.025, params)
+print(np.geterr()[<span class="st">'invalid'</span>])                 <span class="rm"># warn  -- the caller's setting was silently overwritten</span></pre>
     <p>
-      <strong>Why it's bad:</strong> The function minimises <code>(price(vol) - target)**2</code> with Brent's <em>minimiser</em> on a
-      two-point bracket. Squared error is tiny (&lt;1e-16) everywhere for low-vega options, so the tolerance test stops immediately at the
-      bracket edge; and for infeasible prices the minimiser follows the downhill direction outside the bracket instead of failing.
-      The Newton implementation hands exactly its hardest strikes (vega &lt; 1e-6) to this function, so the "robust fallback" is the
-      least reliable path. It is also the inverter used by <code>ParametricImpliedVol.black_volatility</code> whenever the model is
-      not log-normal-quoted, so wings of calibrated surfaces silently get vols of ~0 or absurd size.
+      <strong>Why it's bad:</strong> <code>sabr.implied_vol</code> calls <code>np.seterr(invalid='ignore')</code> and later
+      <code>np.seterr(invalid='warn')</code> instead of restoring the previous value, so any caller (or test) that had chosen <code>'raise'</code> loses it after the
+      first SABR call. If the <code>np.where</code> between the two calls raises, <code>invalid</code> stays <code>'ignore'</code> for the rest of the process,
+      hiding genuine NaNs everywhere. <code>SmileGenerator.to_nvol</code> does the same with <code>divide='raise'</code>/<code>'warn'</code>
+      without <code>try/finally</code>. (<code>SabrGenerator.generate_samples_inverse</code> does it correctly with <code>old = np.seterr(...)</code> and <code>finally</code>.)
     </p>
-    <p><strong>Fix</strong> — replace the minimiser with a bracketed root-finder on the price difference, and reject infeasible targets explicitly:</p>
-    <pre><span class="kw">from</span> scipy.optimize <span class="kw">import</span> brentq
-
-<span class="kw">def</span> <span class="fn">implied_vol_brent</span>(expiry, strike, is_call, fwd, fwd_price):
-    <span class="rm">options = {'xtol': 1e-6, 'maxiter': 100, 'disp': False}
-    ...
-    res = minimize_scalar(fun=error, bracket=(xmin, xmax), options=options, method='brent')
-    return res.x</span>
-    <span class="ok">w = 1.0 if is_call else -1.0
-    intrinsic = max(w * (fwd - strike), 0.0)
-    upper = fwd if is_call else strike            # no-arbitrage upper bound
-    if not (intrinsic &lt; fwd_price &lt; upper):
-        raise ValueError(f"Price {fwd_price} outside no-arbitrage bounds ({intrinsic}, {upper})")
-
-    f = lambda vol: price(expiry, strike, is_call, fwd, vol) - fwd_price
-    return brentq(f, 1e-8, 10.0, xtol=1e-12, rtol=1e-12)</span></pre>
-    <p>
-      Add two tests to <code>test_analytics.py</code>: a round-trip (<code>price</code> &rarr; <code>implied_vol_brent</code>) on a deep-OTM
-      strike (e.g. the case above, expecting 0.30 &plusmn; 1e-8), and <code>pytest.raises(ValueError)</code> for the infeasible price.
-      Callers that vectorise (<code>implied_vols_brent</code>, <code>implied_vol_newton</code>) should decide whether to catch the error and emit NaN.
-    </p>
+    <p><strong>Fix</strong> — use the context manager, which restores the previous state on exit, even on exceptions. In <code>sabr.py</code>:</p>
+    <pre><span class="rm">np.seterr(invalid='ignore')
+z2 = z * z
+correction = np.where(z2 &gt; 10.0 * m_epsilon, ..., ...)
+np.seterr(invalid='warn')</span>
+<span class="ok">z2 = z * z
+with np.errstate(invalid='ignore'):
+    correction = np.where(z2 &gt; 10.0 * m_epsilon,
+                          z / np.log((np.sqrt(1.0 - 2.0 * rho * z + z2) + z - rho) / (1.0 - rho)),
+                          1.0 - 0.5 * rho * z - (3.0 * rho * rho - 2.0) * z2 / 12.0)</span></pre>
+    <p>and in <code>smilegenerator.py</code> <code>to_nvol</code>, wrap the loop instead of the two <code>np.seterr</code> lines:</p>
+    <pre><span class="rm">np.seterr(divide='raise')
+...loop...
+np.seterr(divide='warn')</span>
+<span class="ok">with np.errstate(divide='raise'):
+    for i in range(num_samples):
+        ...</span></pre>
   </div>
 
   <!-- 3 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title"><code>Variance</code> keeps a stale <code>current_fixing</code> when the same payoff is re-valued on another date</span>
+      <span class="issue-title">Noise injection in the SABR generator uses the global NumPy RNG, so seeded datasets are not reproducible</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 507–528 (set_valuation_date), 474–481 (evaluate)</span>
+    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · lines 233, 237 &nbsp;·&nbsp; smilegenerator.py · line 24</span>
     <p>
-      <strong>Verified by running it:</strong> after <code>set_valuation_date(2025-12-15)</code> the payoff holds
-      <code>current_fixing = 96.6814</code>. Calling <code>set_valuation_date(2025-11-15)</code> on the same object (valdate = swap start,
-      so there are no historical fixings) resets <code>current_sum</code> to 0.0 but <em>leaves</em> <code>current_fixing = 96.6814</code>.
+      <strong>Verified by reading (not executed):</strong> <code>SmileGenerator.__init__</code> creates <code>self.rng = np.random.RandomState(seed)</code> (default seed 42) and
+      <code>generate_samples</code> draws all parameters from it. But in <code>price_straddles_ref</code>, the optional noise uses
+      <code>np.random.rand()</code> twice per strike (line 233 decides whether to add noise, line 237 draws its size).
     </p>
     <p>
-      <strong>Why it's bad:</strong> <code>set_valuation_date</code> only assigns <code>current_fixing</code> inside an <code>if</code>; it never
-      resets it. <code>evaluate()</code> then adds <code>log(spot_0 / 96.68)**2</code> as if a real fixing existed the day before
-      the swap starts, inflating the variance of every path. Book objects are routinely revalued across dates (scenarios, theta, risk bumps),
-      and the result is a plausible-looking wrong price rather than an error.
+      <strong>Why it's bad:</strong> With <code>noise_prob &gt; 0</code> two generators built with the same seed produce different training sets, so a model result cannot be reproduced
+      or compared across code changes, and a failing test cannot be replayed. The global RNG is also shared with anything else in the process.
     </p>
-    <p><strong>Fix</strong> — reset the state at the top of the method, in <code>basic.py</code>:</p>
-    <pre><span class="kw">def</span> <span class="fn">set_valuation_date</span>(self, valdate, md: MarketDataProvider):
-    self.eventdates = []
-    hist_fixing_dates = []
-    <span class="ok">self.current_sum = 0.0
-    self.current_fixing = None            # do not leak state from a previous valuation date</span>
-    ...
-    <span class="rm">self.current_sum = 0.0</span>               <span class="c"># (the later duplicate assignment can go)</span>
-    <span class="kw">if</span> hist_fixings <span class="kw">is not None and</span> len(hist_fixings) &gt; 1: ...</pre>
-    <p>Add a test that values the same <code>Variance</code> at two dates and compares against a fresh object for each date.</p>
+    <p><strong>Fix</strong> — in <code>sabrgenerator.py</code>, draw from the generator's own RNG:</p>
+    <pre><span class="rm">rand = np.random.rand()</span>
+<span class="ok">rand = self.rng.rand()</span>
+use_noise = (rand &lt; noise_prob)
+<span class="kw">if</span> use_noise:
+    <span class="rm">noise = (np.random.rand() - 0.5) * rel_noise / 0.5</span>
+    <span class="ok">noise = (self.rng.rand() - 0.5) * rel_noise / 0.5</span></pre>
+    <p>Add a test that two <code>SabrGenerator(seed=1)</code> instances with <code>noise_prob=0.5</code> return identical output.</p>
   </div>
 
   <!-- 4 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title">Monte-Carlo local-vol lookup still cannot create a new model, and the provider hardcodes the test names <code>ABC</code>/<code>KLM</code>/<code>XYZ</code></span>
+      <span class="issue-title">Four notebooks, one notebook cell and two <code>__main__</code> blocks still reference moved modules or a renamed key</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/calibration/provider.py · lines 31, 45–47, 57–62, 72–75</span>
+    <span class="loc">notebooks/stovol/ (Deep Learning SABR Calibration, Deep Learning StoVol-Colab, Deep Learning StoVol-MB, StoVol Training.keras) &nbsp;·&nbsp; notebooks/pinns/Deep Learning a PDE for Worst Of Options.ipynb · code cell 4 &nbsp;·&nbsp; sdevpy/models/assetmodels.py · line 60 &nbsp;·&nbsp; sdevpy/volatility/fx/fx_volcalib.py · line 278</span>
     <p>
-      <strong>Partly fixed:</strong> the new guard at line 58 turns the old <code>TypeError</code> into a clear <code>ValueError</code>
-      (reproduced: <code>get_local_vols(['SPX'], ..., model_name='VSVI')</code> now reports "No stored local vol for SPX ... no t_grid").
-      What remains:
+      <strong>Verified</strong> with an AST scan resolving every <code>sdevpy.*</code> import in every <code>.py</code>/<code>.ipynb</code> file (the two example scripts fixed since the last review no longer appear):
     </p>
     <p>
-      <strong>Why it's bad:</strong> (a) <code>get_local_vols</code> calls <code>get_localvol_or_new(name, valdate, model_name, cal_prov)</code> and
-      exposes no <code>t_grid</code> or <code>force_new</code>, so the "or new" branch is unreachable from it — every unknown name is an error.
-      (b) <code>name_model_map = {'ABC': 'BiExp', 'KLM': 'VSVI', 'XYZ': 'Matrix'}</code> is production code keyed on the unit-test fixtures' names; any real
-      underlying passed with <code>model_name=None</code> fails with "No model name specified". (c) The new line 59 is 125 characters, above
-      the project's own <code>line-length = 120</code> (E501 is selected in ruff).
+      <strong>Why it's bad:</strong> (a) The four stovol notebooks import <code>sdevpy.machinelearning.topology</code>, <code>.learningschedules</code>, <code>.callbacks</code> (now under
+      <code>machinelearning/keras/</code>) and three also <code>sdevpy.projects.stovol</code>, which does not exist. (b) In the Worst-Of notebook, cell 4 has
+      <code>if use_saved_models:</code> whose whole body is commented out: <code>IndentationError</code>. (c) <code>assetmodels.py:60</code> imports
+      <code>sdevpy.models.localvol_factory</code> and calls <code>lvf.test_data_folder()</code>; the factory now lives in <code>sdevpy.volatility.localvol</code>.
+      (d) <code>fx_volcalib.py:161</code> writes <code>'label_deltas'</code> but the demo at line 278 still reads <code>tenor_report['put_deltas']</code>: <code>KeyError</code>.
     </p>
-    <p><strong>Fix</strong> — in <code>provider.py</code>:</p>
-    <pre><span class="rm">name_model_map = {'ABC': 'BiExp', 'KLM': 'VSVI', 'XYZ': 'Matrix'}</span>
-<span class="ok">def get_local_vols(names, valdate, cal_prov, **kwargs):
-    model_map = kwargs.get('model_map', {})            # caller-supplied name -&gt; model
-    t_grid = kwargs.get('t_grid', None)
-    ...
-    for name in names:
-        model_name = kwargs.get('model_name') or model_map.get(name)
-        lvs.append(get_localvol_or_new(name, valdate, model_name, cal_prov, t_grid=t_grid))</span>
+    <p><strong>Fix:</strong></p>
+    <pre><span class="c"># in each stovol notebook's import cell (same edit you made in the two example scripts)</span>
+<span class="rm">from sdevpy.machinelearning.topology import compose_model
+from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay
+from sdevpy.machinelearning.callbacks import RefCallback</span>
+<span class="ok">from sdevpy.machinelearning.keras.topology import compose_model
+from sdevpy.machinelearning.keras.learningschedules import FlooredExponentialDecay
+from sdevpy.machinelearning.keras.callbacks import RefCallback</span>
 
-<span class="c"># and wrap the long message:</span>
-<span class="ok">raise ValueError(f"No stored local vol for {name} on {date:%Y-%m-%d} "
-                 "and no t_grid given to build a new one")</span></pre>
-    <p>Move the test-name map into <code>sdevpy/tests/conftest.py</code> and pass it via <code>model_map</code> from <code>test_mc.py</code>.</p>
+<span class="c"># Worst-Of notebook, cell 4: give the branch a body</span>
+<span class="kw">if</span> use_saved_models:
+    <span class="ok">pass  # (or restore the commented-out loading lines)</span>
+
+<span class="c"># fx_volcalib.py:278</span>
+<span class="rm">deltas = tenor_report['put_deltas']</span>
+<span class="ok">deltas = tenor_report['label_deltas']</span>
+
+<span class="c"># assetmodels.py:60 — point at the new module and drop the removed helper</span>
+<span class="rm">from sdevpy.models import localvol_factory as lvf</span>
+<span class="ok">from sdevpy.volatility.localvol import localvol_factory as lvf</span>
+<span class="c"># and replace lvf.test_data_folder() with datapaths.calibdata_path() / "localvol"</span></pre>
+    <p>
+      To stop this recurring, add a test that walks <code>examples/</code>, <code>scripts/</code> and notebook code cells and asserts every <code>sdevpy.*</code> import resolves with
+      <code>importlib.util.find_spec</code> (the scan I used is about 20 lines).
+    </p>
   </div>
 
   <!-- 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title">Production "default" data providers silently read the unit-test fixtures</span>
+      <span class="issue-title">No CI workflow and no type checker: nothing catches import-chain, typing or example regressions automatically</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/datapaths.py · lines 4–33 &nbsp;·&nbsp; sdevpy/market/fileprovider.py · line 27 &nbsp;·&nbsp; sdevpy/calibration/fileprovider.py · line 13 &nbsp;·&nbsp; pyproject.toml · line 41</span>
+    <span class="loc">repository root (no <code>.github/</code>) &nbsp;·&nbsp; pyproject.toml (no mypy/pyright section) &nbsp;·&nbsp; sdevpy/montecarlo/payoffs/basic.py · line 111 and 17 more <code>mkt_state: dict</code></span>
     <p>
-      <strong>Verified:</strong> <code>root_path()</code> returns <code>sdevpy/tests/data</code>, and <code>MarketDataFileProvider()</code> /
-      <code>CalibrationDataFileProvider()</code> fall back to it when no <code>root</code> is passed. The <code>datapaths.py</code> docstrings still say
-      "test market data path" while the module is used as the production default, and <code>pyproject.toml</code> ships
-      <code>tests/data/**/*</code> as package data.
+      <strong>Verified:</strong> <code>ls .github</code> finds nothing; <code>grep -c "mypy\|pyright" pyproject.toml</code> is 0. Re-measured with <code>ast</code>: 1,017 library functions,
+      44% with a return annotation, 58% with a docstring, 18 methods annotated <code>mkt_state: dict</code> although they receive a <code>MarketState</code>.
     </p>
     <p>
-      <strong>Why it's bad:</strong> Forgetting the <code>root</code> argument in a real run does not fail; it prices a book against
-      December-2025 fixture curves and spots, and writes calibration output into the package's test folder. Data location is configuration, not a default.
+      <strong>Why it's bad:</strong> The last two reviews found problems (#1 above, broken imports, an untested barrier) that a single automated job would have flagged the day they were introduced.
+      The wrong <code>dict</code> annotations actively mislead readers and IDEs, and a type checker would immediately point at them.
     </p>
-    <p><strong>Fix</strong> — read the root from an explicit setting and fail loudly when it is absent:</p>
-    <pre><span class="kw">import</span> os
-<span class="kw">def</span> <span class="fn">root_path</span>() -&gt; Path:
-    <span class="rm">return Path(__file__).parent / "tests" / "data"</span>
-    <span class="ok">env = os.environ.get("SDEVPY_DATA")
-    if env is None:
-        raise RuntimeError("Set SDEVPY_DATA or pass root= explicitly")
-    return Path(env)</span></pre>
-    <p>In <code>sdevpy/tests/conftest.py</code> keep a <code>TEST_DATA = Path(__file__).parent / "data"</code> and pass it explicitly to the providers used in tests (or set the env var in a session fixture).</p>
+    <p><strong>Fix</strong> — add a minimal workflow and a permissive mypy config:</p>
+    <pre><span class="c"># .github/workflows/ci.yml</span>
+<span class="ok">name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy: { matrix: { extras: ["", "[ml]"] } }      # core-only AND full install
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install -e ".${{ matrix.extras }}" pytest ruff
+      - run: ruff check sdevpy
+      - run: pytest sdevpy/tests -q</span>
+
+<span class="c"># pyproject.toml</span>
+<span class="ok">[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+exclude = ["sdevpy/thirdparty", "sdevpy/tests"]</span>
+
+<span class="c"># basic.py and the 17 other payoff methods</span>
+<span class="rm">def evaluate(self, mkt_state: dict):</span>
+<span class="ok">def evaluate(self, mkt_state: "MarketState") -&gt; np.ndarray:</span></pre>
+    <p>Start mypy without <code>--strict</code> and tighten module by module. The core-only matrix entry would have caught #1 on its own.</p>
   </div>
 
   <!-- 6 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">The worst-of barrier trade in <code>test_mc.py</code> cannot distinguish knocked from un-knocked</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Roughly 550 comment lines look like superseded code, including the old <code>implied_vol_brent</code> that was just replaced</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/tests/test_mc.py · lines 45–47, 62 &nbsp;·&nbsp; sdevpy/montecarlo/payoffs/exotics.py · lines 26–44</span>
+    <span class="loc">sdevpy/utilities/scalendar.py (67) · sdevpy/volatility/fx/fx_volinterpolation.py (43) · sdevpy/market/fixings.py (30) · sdevpy/market/fx/fxforward.py (30) · sdevpy/analytics/black.py (21, lines 43–54 and 124)</span>
     <p>
-      <strong>Verified:</strong> the test spots are ABC = 100 and XYZ = 50 (from <code>tests/data/marketdata/spot</code>) and the trade is
-      <code>WorstOfBarrier(['ABC','XYZ'], expiry, 90.0, 'Call', 35.0)</code>. The worst-of level is ~50, the strike is 90, and the golden value is
-      <code>0.00330715322</code>. A path only pays if the worst asset finishes above 90, which essentially never happens on a path that also dipped below 35.
+      <strong>Verified by a regex heuristic</strong> over non-test library files (comment lines that start like a statement: <code>def</code>, <code>return</code>, assignment, call). It can over-count prose that resembles code, so treat the total as approximate; the per-file counts above are the ones to inspect.
     </p>
     <p>
-      <strong>Why it's bad:</strong> The knock-out branch (<code>payoff[knocked] = 0</code>, and the monitored-date indexing that was the subject of an earlier fix) can be
-      deleted or broken without changing this reference value beyond noise. The test protects against nothing on the barrier logic.
+      <strong>Why it's bad:</strong> Dead code in comments drifts from the live code, is never executed or tested, and makes real changes harder to read. Git already stores the old versions. The deletions in <code>forwardpde.py</code> in the last commit show how much cleaner it reads.
     </p>
-    <p><strong>Fix</strong> — add a dedicated test whose payoff is materially in the money, so that knocking changes the answer:</p>
-    <pre><span class="ok">def test_worstof_barrier_knocks():
-    # Strike 30 vs worst-of level ~50: deep ITM, so the barrier at 45 (near XYZ's spot of 50) matters
-    no_barrier = price_worstof(strike=30.0, barrier=0.0)     # never knocks
-    with_barrier = price_worstof(strike=30.0, barrier=45.0)  # knocks on many paths
-    assert with_barrier &lt; 0.7 * no_barrier
-    assert price_worstof(strike=30.0, barrier=1e9) == 0.0    # always knocked</span></pre>
-    <p>where <code>price_worstof</code> builds a one-trade book like the existing test does.</p>
+    <p><strong>Fix</strong> — delete the old <code>implied_vol_brent</code> comment block in <code>black.py</code> (lines 43–54, plus the commented duplicate at line 124 and the commented <code>if np.all(...)</code> block in <code>implied_vol_newton</code>) now that the tests cover the new version, then go file by file through the list above with <code>git log -S</code> if you ever need an old version back.</p>
   </div>
 
   <!-- 7 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title">ML data generators turn any exception into a <code>-9999</code> training label</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title">Monte-Carlo pricing prints three timer lines to stdout on every call, with no way to turn it off</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/volatility/mlsurfacegen/sabrgenerator.py · lines 232–240 &nbsp;·&nbsp; sdevpy/volatility/mlsurfacegen/smilegenerator.py · lines 122–127</span>
+    <span class="loc">sdevpy/montecarlo/mcpricer.py · line 58 (and 183–186) &nbsp;·&nbsp; sdevpy/utilities/timer.py · line 28</span>
     <p>
-      <strong>Verified:</strong> both sites wrap <code>bachelier.implied_vol_jaeckel(...)</code> in <code>try/except Exception</code> and store <code>-9999</code>.
+      <strong>Verified:</strong> <code>price_book</code> always calls <code>mc.print_timers()</code>, and <code>Stopwatch.print</code> uses <code>print(f'Runtime(...)')</code>.
+      Every call, including those in <code>test_mc.py</code>, writes "Runtime(Generate spot paths): 0.0s" and two similar lines. I saw them in the output of my own runs.
     </p>
     <p>
-      <strong>Why it's bad:</strong> The sentinel is not filtered anywhere in these two functions, so it flows into the training set as a real target.
-      <code>except Exception</code> also swallows genuine bugs (wrong argument shapes, <code>AttributeError</code>, a broken import), so a typo
-      produces a whole dataset of <code>-9999</code>s and a model that trains "successfully".
+      <strong>Why it's bad:</strong> A library function printing on every call clutters logs and notebooks, cannot be silenced by the log level, and hides real output during calibrations that call the pricer thousands of times.
     </p>
-    <p><strong>Fix</strong> — catch only the numerical failure, use NaN, and drop or count the failures:</p>
-    <pre>    <span class="kw">except</span> <span class="rm">Exception</span>:
-        <span class="rm">n_vol = -9999</span>
-    <span class="kw">except</span> <span class="ok">(ValueError, FloatingPointError, ZeroDivisionError)</span>:
-        <span class="ok">n_vol = np.nan
-        n_failed += 1</span>
-    ...
-    <span class="ok">if n_failed:
-        log.warning(f"{n_failed} normal-vol inversions failed and were set to NaN")</span>
-    <span class="c"># and after generation: mask = ~np.isnan(y).any(axis=1); x, y = x[mask], y[mask]</span></pre>
+    <p><strong>Fix</strong> — in <code>mcpricer.py</code> send it through the logger:</p>
+    <pre>    mc_price = mc.pv(book)
+    <span class="rm">mc.print_timers()</span>
+    <span class="ok">if kwargs.get('print_timers', False):
+        mc.print_timers()
+    else:
+        log.debug("MC timers: " + ", ".join(f"{t.name}={t.elapsed():.2f}s" for t in mc.timers))</span></pre>
+    <p>and add <code>import logging</code> / <code>log = logging.getLogger(__name__)</code> at the top of the file (it has neither yet).</p>
   </div>
 
   <!-- 8 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title">Example scripts, notebooks and <code>__main__</code> blocks import modules that no longer exist, and a renamed JSON key was missed in one reader</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>gpt.py</code> loads a checkpoint with <code>torch.load</code> without <code>weights_only=True</code>, unlike the rest of the code</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">examples/stovol/stovoltrain.py · lines 9–21 &nbsp;·&nbsp; examples/stovol/stovolinvtrain.py · lines 8–20 &nbsp;·&nbsp; 4 notebooks under notebooks/stovol/ &nbsp;·&nbsp; sdevpy/models/assetmodels.py · line 60 &nbsp;·&nbsp; sdevpy/volatility/fx/fx_volcalib.py · line 280</span>
+    <span class="loc">sdevpy/llms/gpt/gpt.py · line 183 &nbsp;·&nbsp; compare sdevpy/machinelearning/pytorch/learningmodel.py · line 243</span>
     <p>
-      <strong>Verified</strong> with an AST scan that resolves every <code>sdevpy.*</code> import in all <code>.py</code> and <code>.ipynb</code> files:
+      <strong>Verified:</strong> <code>torch.load(weight_file, map_location=device)</code> at <code>gpt.py:183</code> has no <code>weights_only</code> argument, whereas
+      <code>learningmodel.py:243</code> passes <code>weights_only=True</code>. <code>pyproject.toml</code> lists <code>torch</code> without a version, and older releases (before 2.6) default to full pickle loading.
+      I confirmed the bundled test checkpoint loads fine with <code>weights_only=True</code> (torch 2.14 in the dev venv).
     </p>
     <p>
-      <strong>Why it's bad:</strong> (a) <code>stovoltrain.py</code> and <code>stovolinvtrain.py</code> import <code>sdevpy.machinelearning.topology</code>,
-      <code>.learningschedules</code> and <code>.callbacks</code> (now under <code>machinelearning/keras/</code> or <code>pytorch/</code>),
-      <code>stovoltrain.py</code> also <code>sdevpy.projects.stovol</code> (no <code>projects</code> package), and both import <code>tf_bps_rmse</code> from
-      <code>sdevpy.maths.metrics</code>, which only defines <code>mse, rmsew, rmse, bps_rmse</code>. The notebooks
-      <em>Deep Learning SABR Calibration</em>, <em>StoVol-Colab</em>, <em>StoVol-MB</em> and <em>StoVol Training.keras</em> fail on the same imports.
-      (b) <code>assetmodels.py:60</code> imports <code>sdevpy.models.localvol_factory</code> and calls <code>lvf.test_data_folder()</code>; the factory now lives in
-      <code>sdevpy.volatility.localvol</code> and has no such function. (c) <code>fx_volcalib.py:163</code> now writes <code>'label_deltas'</code> (and the fixture JSON
-      was migrated), but its own <code>__main__</code> demo still reads <code>tenor_report['put_deltas']</code> at line 280 &rarr; <code>KeyError</code>. Any stored file written by the previous version also
-      has the old key, with no version field to detect it. (d) The <em>Deep Learning a PDE for Worst Of Options</em> notebook has a code cell whose
-      <code>if use_saved_models:</code> body is entirely commented out — an <code>IndentationError</code> if run.
+      <strong>Why it's bad:</strong> Pickle loading executes code from the file. A weights file downloaded from a hub or received from someone else can run arbitrary code when the model is loaded on an older torch.
     </p>
-    <p><strong>Fix</strong> — update the imports to the current locations, and add a smoke test so this cannot rot again:</p>
-    <pre><span class="rm">from sdevpy.machinelearning.topology import compose_model</span>
-<span class="ok">from sdevpy.machinelearning.keras.topology import compose_model</span>
-<span class="rm">from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse</span>
-<span class="ok">from sdevpy.maths.metrics import bps_rmse
-from sdevpy.tensorflow.tf_metrics import tf_bps_rmse    # if it lives here; otherwise define it there</span>
-
-<span class="c"># fx_volcalib.py:280</span>
-<span class="rm">deltas = tenor_report['put_deltas']</span>
-<span class="ok">deltas = tenor_report['label_deltas']</span>
-
-<span class="c"># sdevpy/tests/test_imports.py -- fails fast when a moved module breaks an example</span>
-<span class="ok">@pytest.mark.parametrize("path", sorted(Path("examples").rglob("*.py")))
-def test_example_compiles_and_imports_resolve(path):
-    tree = ast.parse(path.read_text())
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("sdevpy"):
-            assert importlib.util.find_spec(node.module) is not None, f"{path}: {node.module}"</span></pre>
+    <p><strong>Fix</strong> — in <code>gpt.py</code>:</p>
+    <pre><span class="rm">checkpoint = torch.load(weight_file, map_location=device)</span>
+<span class="ok">checkpoint = torch.load(weight_file, map_location=device, weights_only=True)</span></pre>
   </div>
 
   <!-- 9 -->
-  <div class="issue medium">
+  <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title"><code>.claude/settings.json</code>: the "never modify Python files" rule is not enforced by any permission, and the allow-list is bloated</span>
-      <span class="badge medium">Medium</span>
+      <span class="issue-title"><code>.claude/settings.json</code>: the new deny rules are sound, but the bare <code>Bash</code> allow can still write Python files and some cruft remains</span>
+      <span class="badge low">Low</span>
     </div>
-    <span class="loc">.claude/settings.json · lines 3–70 (allow), 62–66 (deny)</span>
+    <span class="loc">.claude/settings.json · lines 3–15 (deny), 16–37 (allow), 38–41 (additionalDirectories)</span>
     <p>
-      <strong>Verified:</strong> I read the file before starting, as requested. Findings from the current copy:
+      <strong>Verified</strong> by reading the current file (read first, as before): the <code>deny</code> block now blocks <code>Edit</code>/<code>Write</code>/<code>NotebookEdit</code> on <code>*.py</code> and <code>*.ipynb</code> and
+      <code>sed -i</code>, <code>git checkout</code>, <code>git clean</code>; the allow list dropped ~35 redundant entries. Remaining points:
     </p>
     <p>
-      <strong>Why it's bad:</strong> (a) The bare <code>"Bash"</code> entry (line 5) already allows every shell command, which makes the ~30 more specific
-      <code>Bash(...)</code> entries redundant, including one-off leftovers such as <code>Bash(rm -f /tmp/dump_nb.py /tmp/dump_nb2.py)</code>, ten
-      <code>dump_nb.py</code> invocations and an <code>awk</code> line with a hard-coded temp file. (b) <code>CLAUDE.md</code> says Python and notebook files must never be edited, but nothing in
-      <code>deny</code> backs that up: <code>Bash(sed*)</code>, <code>Bash(cat > *)</code> and the bare <code>Bash</code> can all rewrite a <code>.py</code> file with no prompt. The
-      only protection is the model following instructions. (c) <code>deny</code> covers just three patterns; <code>git checkout -- .</code>, <code>git clean -fd</code>,
-      <code>rm -r -f</code> (flag order) and <code>git commit</code>/<code>git branch -D</code> are not covered. (d) Cruft: <code>Read(//tmp/**)</code> appears twice,
-      four <code>PowerShell(...)</code> entries on a macOS machine, <code>"\\tmp"</code> (a Windows-style path) in <code>additionalDirectories</code>, and
-      <code>Bash(python3 -m pytest sdevpy/tests/test_mc.py -x -q)</code> hard-codes a single test file.
+      <strong>Why it's bad:</strong> (a) The bare <code>"Bash"</code> allow still permits shell redirection (<code>cat &gt; x.py</code>, <code>tee</code>) and interpreter writes
+      (<code>python -c "open('x.py','w')..."</code>), which the deny prefix rules do not match, so the read-only rule is still partly convention. (b) Four <code>PowerShell(...)</code> entries and
+      <code>"\\tmp"</code> in <code>additionalDirectories</code> are Windows leftovers on a macOS machine. (c) <code>Bash(git checkout*)</code> also blocks the everyday <code>git checkout &lt;branch&gt;</code>; if that is unintended, <code>git restore</code>-style commands are the ones worth blocking.
     </p>
-    <p>
-      <strong>Fix</strong> — keep the no-prompt behaviour, but let <code>deny</code> enforce the read-only rule (deny always beats allow, and adds no prompts):
-    </p>
-    <pre>"deny": [
-  "Bash(rm -rf*)", "Bash(git push*)", "Bash(git reset --hard*)",
-  <span class="ok">"Edit(**/*.py)", "Write(**/*.py)", "Edit(**/*.ipynb)", "Write(**/*.ipynb)", "NotebookEdit(**)",
-  "Bash(sed -i*)", "Bash(git checkout*)", "Bash(git clean*)"</span>
-],
-"allow": [
-  "Bash",                                   <span class="c">// keep the bare entry ...</span>
-  <span class="rm">"Bash(grep*)", "Bash(awk*)", "Bash(wc*)", ... (all redundant)</span>   <span class="c">// ... and delete these</span>
-  <span class="rm">"Bash(rm -f /tmp/dump_nb.py /tmp/dump_nb2.py)", "Bash(python3 /tmp/dump_nb.py ...)"</span>
-  <span class="rm">"PowerShell(...)"</span>, <span class="rm">duplicate "Read(//tmp/**)"</span>
-]</pre>
-    <p>
-      Note that prefix-matched <code>Bash</code> rules can be bypassed (<code>cat &gt; x.py</code>, <code>tee</code>, <code>python -c "open(...).write"</code>). For a hard guarantee, add a
-      <code>PreToolUse</code> hook on <code>Bash</code> that rejects commands writing to <code>*.py</code>/<code>*.ipynb</code>.
-    </p>
+    <p><strong>Fix</strong> — for (a), a <code>PreToolUse</code> hook on <code>Bash</code> is the reliable barrier:</p>
+    <pre><span class="c">// .claude/settings.json</span>
+"hooks": {
+  "PreToolUse": [{
+    "matcher": "Bash",
+    "hooks": [{ "type": "command",
+      "command": "python3 -c \"import json,sys,re; c=json.load(sys.stdin)['tool_input']['command']; sys.exit(2 if re.search(r'(&gt;|tee |open\\()[^|;&amp;]*\\.(py|ipynb)\\b', c) else 0)\"" }]
+  }]
+}
+<span class="c">// and delete: the four "PowerShell(...)" entries and "\\tmp" from additionalDirectories</span></pre>
+    <p>Exit code 2 from a hook blocks the call and returns the message to Claude. This is a heuristic filter, not a sandbox; test it on a throwaway file first.</p>
   </div>
 
   <!-- 10 -->
   <div class="issue low">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title"><code>price_vanilla_surface</code> lacks the short-expiry guard that <code>price_vanillas</code> has</span>
+      <span class="issue-title"><code>calibrate_batch</code> logs a failed calibration without its traceback and returns <code>None</code> for it</span>
       <span class="badge low">Low</span>
     </div>
-    <span class="loc">sdevpy/pde/forwardpde.py · lines 212–240 (guard exists only at lines 269–270, in price_vanillas)</span>
+    <span class="loc">sdevpy/volatility/fx/fx_calib_batch.py · lines 44–49</span>
     <p>
-      <strong>Verified by reading</strong> (not executed): <code>price_vanillas</code> raises
-      <code>ValueError("Numerical method not supported before 1D ...")</code> when <code>expiry_time &lt; FWD_PDE_START_TIME</code>, but
-      <code>price_vanilla_surface</code> passes <code>expiry_times</code> straight into <code>calculate_densities</code>, where the first maturity also
-      sizes the spot grid (<code>spotgrid_tmax = maturities[0]</code> when <code>rescale_x</code>).
+      <strong>Verified:</strong> the handler is <code>except Exception as exc: log.error(f"Calibration failed for {pair} on {date}: {exc}")</code>, then <code>results[(pair, date)] = None</code>.
     </p>
     <p>
-      <strong>Why it's bad:</strong> The two public entry points to the same engine disagree on validation. A surface whose first expiry is under one day
-      reaches the density solver, whose start time is 1D, and fails (or produces a meaningless grid) far from the cause.
+      <strong>Why it's bad:</strong> For a batch of pairs and dates run in worker processes, "Calibration failed: 'tenor'" with no traceback rarely says which line failed. The <code>None</code> entries also flow to callers that must remember to check for them (the <code>__main__</code> block indexes <code>all_results[...]</code> and immediately uses the report).
     </p>
-    <p><strong>Fix</strong> — mirror the guard in <code>price_vanilla_surface</code>, right after <code>expiry_times</code> is computed:</p>
-    <pre>expiry_times = timegrids.model_time(valdate, expiries)
-<span class="ok">if np.min(expiry_times) &lt; FWD_PDE_START_TIME:
-    raise ValueError(f"Numerical method not supported before 1D, first expiry t = {np.min(expiry_times)}")</span></pre>
+    <p><strong>Fix</strong> — keep the batch running but keep the evidence:</p>
+    <pre>            <span class="kw">except</span> Exception:
+                <span class="rm">log.error(f"Calibration failed for {pair} on {date}: {exc}")</span>
+                <span class="ok">log.exception(f"Calibration failed for {pair} on {date}")</span>
+                results[(pair, date)] = None
+
+<span class="c"># and at the end of calibrate_batch:</span>
+<span class="ok">n_failed = sum(1 for r in results.values() if r is None)
+if n_failed:
+    log.warning(f"{n_failed} of {len(results)} calibrations failed, see errors above")</span></pre>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #19 &nbsp;·&nbsp; 2026-09-26 (full scan) &nbsp;·&nbsp; 630 tests passed in the project venv; #2 and #3 were reproduced by execution, #1 and #10 by reading the current source
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #20 &nbsp;·&nbsp; 2026-09-26 (full scan) &nbsp;·&nbsp; 633 tests passed in the project venv; #2 was reproduced by execution and #8's fix was confirmed against the bundled checkpoint; ruff (repo configuration) reports 6 findings
   </footer>
 </div>
 </body>

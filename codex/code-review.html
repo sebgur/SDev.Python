@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Codex Code Review — sdevpy</title>
+<style>
+:root{--bg:#0d1117;--p:#161b22;--p2:#1c2128;--b:#30363d;--t:#c9d1d9;--m:#8b949e;--a:#58a6ff;--g:#3fb950;--y:#d29922;--o:#f0883e;--r:#f85149;--v:#bc8cff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px/1.65 system-ui,sans-serif;padding:36px 20px}.c{max-width:1000px;margin:auto}header{border-bottom:1px solid var(--b);padding-bottom:20px;margin-bottom:28px}h1{margin:0;color:var(--a)}header p,.issue p{color:var(--m)}code,pre{font-family:ui-monospace,monospace}code{background:#21262d;color:var(--v);border:1px solid var(--b);border-radius:4px;padding:.08em .35em}.grade{display:flex;gap:26px;align-items:center;background:var(--p);border:1px solid var(--b);border-radius:10px;padding:22px 28px;margin-bottom:28px}.letter{font-size:64px;font-weight:800;color:var(--y)}.grade h2{margin:0}.grade p{margin:4px 0;color:var(--m)}.scope{background:var(--p);border-left:4px solid var(--g);padding:14px 18px;border-radius:8px}.section{font-size:19px;border-bottom:1px solid var(--b);padding-bottom:8px;margin-top:32px}.scores{width:100%;border-collapse:collapse;background:var(--p);border:1px solid var(--b)}.scores th,.scores td{padding:10px 14px;border-bottom:1px solid var(--b);text-align:left}.scores th{background:var(--p2);color:var(--m);font-size:12px;text-transform:uppercase}.scores td:nth-child(2){font-weight:700;white-space:nowrap}.issue{background:var(--p);border:1px solid var(--b);border-left:4px solid var(--y);border-radius:8px;padding:18px 20px;margin:15px 0}.issue.high{border-left-color:var(--o)}.issue.low{border-left-color:var(--a)}.ih{display:flex;gap:10px;align-items:flex-start}.num{color:var(--m);background:#21262d;padding:2px 8px;border-radius:4px;font-size:12px}.title{font-weight:700;flex:1}.badge{font-size:11px;font-weight:700;text-transform:uppercase;border-radius:14px;padding:3px 9px;background:#2c2005;color:var(--y)}.high .badge{background:#2d1e0f;color:var(--o)}.low .badge{background:#0c2a4a;color:var(--a)}.loc{display:inline-block;margin:9px 0;color:var(--a);background:#0c2a4a;border:1px solid #1f4068;padding:2px 8px;border-radius:4px;font:12px monospace}.issue p{margin:8px 0}.issue strong{color:var(--t)}pre{white-space:pre-wrap;background:#010409;border:1px solid var(--b);border-radius:6px;padding:13px 15px;overflow:auto;color:#e6edf3;font-size:12px}.rm{color:var(--r)}.ok{color:var(--g)}footer{border-top:1px solid var(--b);margin-top:32px;padding-top:14px;color:var(--m);font-size:12px}@media(max-width:650px){.grade{align-items:flex-start}.scores{font-size:12px}.scores th,.scores td{padding:7px}.ih{flex-wrap:wrap}}
+</style></head><body><div class="c">
+<header><h1>Codex Code Review — <code>sdevpy</code></h1><p>Full repository review · Python quantitative-finance library · 26 September 2026</p></header>
+<section class="grade"><div class="letter">B−</div><div><h2>Strong test baseline; important untested paths remain brittle</h2><p>The core library is modular and all 633 tests pass. Principal risks are stale notebooks and demos, incorrect shifted-lognormal filtering, process-wide NumPy state mutation, and surface plotting failures.</p></div></section>
+<div class="scope"><strong>Coverage:</strong> all 226 project <code>.py</code> files (28,815 lines) and all 20 <code>.ipynb</code> files (357 cells; 197 code cells) were read. <code>sdevpy/thirdparty</code>, environments, caches, and installed packages were excluded. Notebooks were parsed as JSON without execution or saving. No file was unreadable. <strong>Verification:</strong> 633 tests passed in 13.90s with 20 third-party <code>ComplexWarning</code> warnings. Existing Python files and notebooks were not modified.</div>
+<h2 class="section">Scorecard</h2>
+<table class="scores"><thead><tr><th>Category</th><th>Score</th><th>Rating</th><th>Notes</th></tr></thead><tbody>
+<tr><td>Architecture</td><td>8 / 10</td><td>Good</td><td>Clear domain packages and abstractions; examples/notebooks have drifted after package moves.</td></tr>
+<tr><td>Correctness</td><td>6 / 10</td><td>Adequate</td><td>Shifted quotes can be wrongly discarded; plotting fails for one or odd expiry counts.</td></tr>
+<tr><td>Error Handling</td><td>6 / 10</td><td>Adequate</td><td>Most validation is explicit, but batch failures lose tracebacks.</td></tr>
+<tr><td>Testing</td><td>8 / 10</td><td>Good</td><td>633 passing tests; notebook imports, plot cardinalities, RNG isolation, and shifted-negative rates are uncovered.</td></tr>
+<tr><td>Code Quality</td><td>6 / 10</td><td>Adequate</td><td>Readable overall; global state changes and unconditional stdout reduce composability.</td></tr>
+<tr><td>Maintainability</td><td>6 / 10</td><td>Adequate</td><td>Good layout; stale imports and README paths show moves are not checked end-to-end.</td></tr>
+<tr><td>Type Safety</td><td>5 / 10</td><td>Developing</td><td>448 of 1,017 library functions have return annotations; no mypy/pyright configuration.</td></tr>
+<tr><td>Documentation</td><td>6 / 10</td><td>Adequate</td><td>590 of 1,017 functions have docstrings; setup guidance and several paths are outdated.</td></tr>
+</tbody></table>
+<h2 class="section">Top 10 verified issues</h2>
+
+<article class="issue high"><div class="ih"><span class="num">#1</span><span class="title">Valid shifted-lognormal targets are silently discarded</span><span class="badge">High</span></div><span class="loc">sdevpy/volatility/impliedvol/optionsurface.py:64–80</span><p><strong>Evidence:</strong> <code>keep_positive</code> hard-codes <code>shift = 0</code> rather than using <code>target.market_shift</code>. A −1% forward and −0.5% strike with a +3% shift are valid in shifted space but removed; whole expiries can disappear because skipping is the default.</p><p><strong>Impact:</strong> negative-rate calibration baskets become incomplete and expiry alignment can change silently.</p><p><strong>Proposed replacement:</strong></p><pre><span class="rm">shift = 0
+f = target.forward + shift
+k = target.strike + shift</span>
+<span class="ok">shift = (target.market_shift
+         if target.quote_type == OptionQuoteType.ShiftedLogNormalVol else 0.0)
+f = target.forward + shift
+k = target.strike + shift</span></pre><p>Add a regression test using negative raw values that become positive after shifting.</p></article>
+
+<article class="issue high"><div class="ih"><span class="num">#2</span><span class="title">Shipped notebooks and demos reference removed modules or a renamed key</span><span class="badge">High</span></div><span class="loc">four notebooks in notebooks/stovol (import cells); sdevpy/models/assetmodels.py:58–71; sdevpy/volatility/fx/fx_volcalib.py:274–282</span><p><strong>Evidence:</strong> four notebooks import <code>sdevpy.machinelearning.topology</code>, <code>learningschedules</code>, and <code>callbacks</code>, now under <code>machinelearning.keras</code>; three import absent <code>sdevpy.projects.stovol</code>. The asset-model demo imports absent <code>sdevpy.models.localvol_factory</code>. FX calibration writes <code>label_deltas</code> at line 161 but its demo reads <code>put_deltas</code> at line 278.</p><p><strong>Impact:</strong> advertised workflows and direct module demos fail before useful work; the test suite does not exercise them.</p><p><strong>Proposed replacements:</strong></p><pre><span class="rm">from sdevpy.machinelearning.topology import compose_model
+from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay
+from sdevpy.machinelearning.callbacks import RefCallback</span>
+<span class="ok">from sdevpy.machinelearning.keras.topology import compose_model
+from sdevpy.machinelearning.keras.learningschedules import FlooredExponentialDecay
+from sdevpy.machinelearning.keras.callbacks import RefCallback</span>
+
+<span class="rm">from sdevpy.models import localvol_factory as lvf
+deltas = tenor_report['put_deltas']</span>
+<span class="ok">from sdevpy.volatility.localvol import localvol_factory as lvf
+deltas = tenor_report['label_deltas']</span></pre><p>Replace the removed project plotting helper with a current module or notebook-local helper, and test import resolution in notebook code cells and demos.</p></article>
+
+<article class="issue high"><div class="ih"><span class="num">#3</span><span class="title">Surface plotting crashes for one expiry and for every odd expiry count</span><span class="badge">High</span></div><span class="loc">sdevpy/volatility/impliedvol/optionsurface.py:193–214</span><p><strong>Evidence:</strong> <code>plt.subplots(1, 2)</code> returns a one-dimensional axes array, but code uses <code>axs[i, j]</code>. For 3, 5, … expiries, the final loop iteration indexes surface <code>k == num_charts</code>.</p><p><strong>Impact:</strong> a routine diagnostic/reporting path raises <code>IndexError</code> for common surface sizes.</p><p><strong>Proposed replacement:</strong></p><pre><span class="ok">fig, axs = plt.subplots(num_rows, num_cols, squeeze=False, layout="constrained")
+for k, ax in enumerate(axs.flat):
+    if k &gt;= num_charts:
+        ax.set_visible(False)
+        continue
+    ax.plot(strikes[k], ref_disp[k], color="blue", label=ref_name)
+    ax.plot(strikes[k], mod_disp[k], color="red", label=mod_name)
+    ax.set(xlabel="Strike", ylabel=ylabel, title=f"T={expiries[k, 0]}")
+    ax.legend(loc="upper right")</span></pre></article>
+
+<article class="issue"><div class="ih"><span class="num">#4</span><span class="title">Numerical routines overwrite NumPy’s process-wide error policy</span><span class="badge">Medium</span></div><span class="loc">sdevpy/volatility/impliedvol/models/sabr.py:27–35; sdevpy/volatility/mlsurfacegen/smilegenerator.py:109–132</span><p><strong>Evidence:</strong> SABR changes <code>invalid</code> to ignore and then hard-codes warn; <code>to_nvol</code> similarly changes <code>divide</code> from raise to warn. Neither restores the caller’s prior setting, and exceptions can skip restoration.</p><p><strong>Impact:</strong> these calls alter unrelated numerical behavior and may suppress later invalid-value warnings.</p><p><strong>Proposed replacement:</strong></p><pre><span class="rm">np.seterr(invalid='ignore')
+correction = np.where(...)
+np.seterr(invalid='warn')</span>
+<span class="ok">with np.errstate(invalid="ignore"):
+    correction = np.where(...)</span>
+
+<span class="rm">np.seterr(divide='raise')
+# conversion loop
+np.seterr(divide='warn')</span>
+<span class="ok">with np.errstate(divide="raise"):
+    # conversion loop</span></pre></article>
+
+<article class="issue"><div class="ih"><span class="num">#5</span><span class="title">Seeded SABR generation is non-reproducible when noise is enabled</span><span class="badge">Medium</span></div><span class="loc">sdevpy/volatility/mlsurfacegen/smilegenerator.py:17–24; sdevpy/volatility/mlsurfacegen/sabrgenerator.py:230–238</span><p><strong>Evidence:</strong> the generator owns seeded <code>self.rng</code>, but noise selection and magnitude use global <code>np.random.rand()</code>.</p><p><strong>Impact:</strong> identical seeds produce different datasets, weakening model comparison and reproducible debugging.</p><p><strong>Proposed replacement:</strong></p><pre><span class="rm">rand = np.random.rand()
+noise = (np.random.rand() - 0.5) * rel_noise / 0.5</span>
+<span class="ok">rand = self.rng.rand()
+noise = (self.rng.rand() - 0.5) * rel_noise / 0.5</span></pre></article>
+
+<article class="issue"><div class="ih"><span class="num">#6</span><span class="title">No CI workflow or configured type checker guards regressions</span><span class="badge">Medium</span></div><span class="loc">repository root (no .github directory); pyproject.toml; sdevpy library</span><p><strong>Evidence:</strong> there is no workflow directory and no mypy/pyright configuration. Only 448/1,017 library functions declare return types; payoff methods repeatedly annotate the structured market state as <code>dict</code>.</p><p><strong>Impact:</strong> stale notebook/demo imports are not caught on changes, and inaccurate annotations remain unchecked.</p><p><strong>Proposed additions:</strong></p><pre><span class="ok"># .github/workflows/ci.yml
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13"}
+      - run: pip install -e ".[ml]" pytest ruff mypy
+      - run: ruff check sdevpy
+      - run: pytest -q
+      - run: mypy sdevpy
+
+# pyproject.toml
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+exclude = ["sdevpy/thirdparty", "sdevpy/tests"]</span></pre></article>
+
+<article class="issue low"><div class="ih"><span class="num">#7</span><span class="title">Monte Carlo pricing always prints timing lines</span><span class="badge">Low</span></div><span class="loc">sdevpy/montecarlo/mcpricer.py:53–60, 183–186; sdevpy/utilities/timer.py:25–28</span><p><strong>Evidence:</strong> <code>price_book</code> unconditionally calls <code>mc.print_timers()</code>, which uses built-in <code>print</code>.</p><p><strong>Impact:</strong> callers cannot control output through logging; notebooks, services, and calibration runs accumulate noise.</p><p><strong>Proposed replacement:</strong></p><pre><span class="rm">mc_price = mc.pv(book)
+mc.print_timers()</span>
+<span class="ok">mc_price = mc.pv(book)
+if kwargs.get("print_timers", False):
+    mc.print_timers()</span></pre><p>Alternatively emit timings through a module logger at debug level.</p></article>
+
+<article class="issue low"><div class="ih"><span class="num">#8</span><span class="title">One checkpoint loader lacks the weights-only restriction</span><span class="badge">Low</span></div><span class="loc">sdevpy/llms/gpt/gpt.py:170–184</span><p><strong>Evidence:</strong> <code>torch.load(weight_file, map_location=device)</code> accepts full pickle payloads; the other repository loader in <code>machinelearning/pytorch/learningmodel.py</code> already passes <code>weights_only=True</code>.</p><p><strong>Impact:</strong> with configurations permitting unrestricted pickle, an untrusted checkpoint can execute code.</p><p><strong>Proposed replacement:</strong></p><pre><span class="rm">checkpoint = torch.load(weight_file, map_location=device)</span>
+<span class="ok">checkpoint = torch.load(weight_file, map_location=device, weights_only=True)</span></pre></article>
+
+<article class="issue low"><div class="ih"><span class="num">#9</span><span class="title">Parallel FX calibration drops worker traceback context</span><span class="badge">Low</span></div><span class="loc">sdevpy/volatility/fx/fx_calib_batch.py:40–51</span><p><strong>Evidence:</strong> the broad worker exception handler logs only the exception string and stores <code>None</code>.</p><p><strong>Impact:</strong> long multiprocess batch failures are hard to diagnose, while callers must remember values can be null.</p><p><strong>Proposed replacement:</strong></p><pre><span class="rm">except Exception as exc:
+    log.error(f"Calibration failed for {pair} on {date}: {exc}")
+    results[(pair, date)] = None</span>
+<span class="ok">except Exception:
+    log.exception("Calibration failed for %s on %s", pair, date)
+    results[(pair, date)] = None</span></pre><p>Also return or raise a failed-key summary so partial success is explicit.</p></article>
+
+<article class="issue low"><div class="ih"><span class="num">#10</span><span class="title">README paths and setup guidance do not match the repository</span><span class="badge">Low</span></div><span class="loc">README.md:18–31; pyproject.toml:11–23</span><p><strong>Evidence:</strong> README links notebooks directly under <code>notebooks/</code>, scripts under nonexistent <code>sdevpy/projects/stovol</code>, and AAD under nonexistent <code>projects/aad</code>. Current locations are <code>notebooks/stovol</code> and <code>examples/aad</code>. It gives no install command and does not explain <code>ml</code>/<code>tf</code> extras or <code>SDEVPY_DATA</code>.</p><p><strong>Impact:</strong> new users follow broken paths and cannot identify dependencies for advertised workflows.</p><p><strong>Proposed README addition/replacement:</strong></p><pre><span class="ok">## Installation
+pip install sdevpy
+pip install "sdevpy[ml]"  # PyTorch/transformers
+pip install "sdevpy[tf]"  # TensorFlow
+
+Set SDEVPY_DATA to the local market/calibration-data directory.
+Notebooks: notebooks/stovol/
+AAD examples: examples/aad/</span></pre><p>Remove the claim that corresponding scripts live under <code>sdevpy/projects/stovol</code>, or link their current location.</p></article>
+
+<footer>Generated by Codex · full repository review · scale: A = production-ready with minor issues; B = sound with material but contained risks; C = significant correctness/maintenance risk; D/F = unsafe or broadly nonfunctional. “−” is the lower end of a band.</footer>
+</div></body></html>
