@@ -6,7 +6,7 @@ import scipy.stats as sp
 from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.analytics import black
 from sdevpy.analytics import bachelier
-from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator
+from sdevpy.volatility.mlsurfacegen.smilegenerator import SmileGenerator, NVOL_FAILED
 from sdevpy.utilities import constants
 from sdevpy.maths import metrics
 from sdevpy.maths import optimization as opt
@@ -237,7 +237,7 @@ class SabrGenerator(SmileGenerator):
                             noise = (np.random.rand() - 0.5) * rel_noise / 0.5
                             n_vol = n_vol * (1.0 + noise)
                     except Exception:
-                        n_vol = -9999
+                        n_vol = NVOL_FAILED
                     k_prices.append(n_vol)
             else:
                 for sk in shifted_k[i]:  # Straddle prices

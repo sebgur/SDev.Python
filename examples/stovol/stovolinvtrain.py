@@ -10,14 +10,15 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import pandas as pd
-from sdevpy.machinelearning.topology import compose_model
+from sdevpy.machinelearning.keras.topology import compose_model
 from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model
-from sdevpy.machinelearning.learningschedules import FlooredExponentialDecay
-from sdevpy.machinelearning.callbacks import RefCallback
+from sdevpy.machinelearning.keras.learningschedules import FlooredExponentialDecay
+from sdevpy.machinelearning.keras.callbacks import RefCallback
 from sdevpy.machinelearning import datasets
 from sdevpy.utilities import filemanager
 from sdevpy.utilities.timer import Stopwatch
-from sdevpy.maths.metrics import bps_rmse, tf_bps_rmse
+from sdevpy.maths.metrics import bps_rmse
+from sdevpy.tensorflow.tf_metrics import tf_bps_rmse
 from sdevpy.volatility.mlsurfacegen.stovolfactory import set_generator
 from sdevpy.analytics import bachelier
 

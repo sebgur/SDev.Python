@@ -66,7 +66,6 @@ def density(maturity: float, lv: LocalVol, config: PdeConfig):
 def build_spotgrid(maturity: float, lv: LocalVol, config: PdeConfig) -> tuple[npt.ArrayLike, float, int]:
     """ Build spot grid for PDEs """
     iv_guess = lv.ivol_guess(maturity) * 1.2 # Conservative factor of 1.2 is common
-    # print(f"Mesh vol(build): {iv_guess}")
     n_meshes = config.n_meshes
     x_max = iv_guess * np.sqrt(maturity) * config.n_stdevs
     n_half = int(n_meshes / 2)
@@ -74,14 +73,6 @@ def build_spotgrid(maturity: float, lv: LocalVol, config: PdeConfig) -> tuple[np
 
     # Vectorized
     x_grid = np.arange(-n_half, n_half + 1) * dx
-
-    # # Old non-vectorized
-    # x_grid = np.zeros(2 * n_half + 1)
-    # x = 0.0
-    # for i in range(n_half):
-    #     x = x + dx
-    #     x_grid[n_half + 1 + i] = x
-    #     x_grid[n_half - 1 - i] = -x
 
     return x_grid, dx, n_half
 
@@ -192,20 +183,6 @@ def vanilla_expectation(fwd, p, x, strikes, option_type):
 
     pde_price = expectation(payoffs, p, x)
 
-    # # Old non-vectorized
-    # for k in strikes:
-    #     match option_type:
-    #         case OptionType.CALL:
-    #             payoff = np.maximum(spot - k, 0.0)
-    #         case OptionType.PUT:
-    #             payoff = np.maximum(k - spot, 0.0)
-    #         case OptionType.STRADDLE:
-    #             payoff = np.abs(spot - k)
-    #         case _:
-    #             raise ValueError(f"Unsupported option type: {option_type}")
-
-    #     pde_price.append(expectation(payoff, p, x))
-
     return pde_price
 
 
@@ -220,6 +197,8 @@ def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], str
 
     # Calculate expiry times
     expiry_times = timegrids.model_time(valdate, expiries)
+    if np.min(expiry_times) < FWD_PDE_START_TIME:
+        raise ValueError(f"Numerical method not supported before 1D, first expiry t = {np.min(expiry_times)}")
 
     # Set PDE config
     pde_config = get_pde_config(**kwargs)
@@ -261,7 +240,6 @@ def price_vanillas(valdate: dt.datetime, expiry: dt.datetime, strikes: list[floa
 
     # Set PDE config
     pde_config = get_pde_config(**kwargs)
-    # pde_config = get_pde_config(expiry_time, **kwargs)
 
     # Build sparse grid
     start_time = FWD_PDE_START_TIME
@@ -289,11 +267,6 @@ def price_vanillas(valdate: dt.datetime, expiry: dt.datetime, strikes: list[floa
     # Calculate prices
     fwd = fwd_curve.value(expiry)
     prices = vanilla_expectation(fwd, dens_p, dens_x, strikes, option_type)
-
-    # spot = fwd * np.exp(dens_x)
-    # for strike in strikes:
-    #     payoff = np.maximum(spot - strike, 0.0) if is_call else np.maximum(strike - spot, 0.0)
-    #     prices.append(expectation(payoff, dens_p, dens_x))
 
     return np.asarray(prices)
 

@@ -9,6 +9,9 @@ from sdevpy.machinelearning import datasets
 log = logging.getLogger(__name__)
 
 
+NVOL_FAILED = -9999.0 # Marks failed inversions, removed by the min_vol filter in to_nvol (needs min_vol > 0)
+
+
 class SmileGenerator(ABC):
     """ Base class for smile generation """
     def __init__(self, shift=0.0, num_expiries=15, num_strikes=10, seed=42):
@@ -124,7 +127,7 @@ class SmileGenerator(ABC):
             try:
                 nvol.append(bachelier.implied_vol_jaeckel(t[i], strike[i], self.is_call, fwd[i], price[i]))
             except Exception:
-                nvol.append(-9999)
+                nvol.append(NVOL_FAILED)
 
         np.seterr(divide='warn')  # Set back to warning
 
@@ -135,6 +138,9 @@ class SmileGenerator(ABC):
         if cleanse:
             data_df = data_df.drop(data_df[data_df.NVol > max_vol].index)
             data_df = data_df.drop(data_df[data_df.NVol < min_vol].index)
+
+        if cleanse and min_vol <= 0.0:
+            raise ValueError("min_vol must be positive, otherwise failed inversions (NVOL_FAILED) are kept")
 
         return data_df
 
