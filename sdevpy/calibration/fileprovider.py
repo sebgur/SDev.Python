@@ -2,12 +2,15 @@ import logging
 import datetime as dt
 from pathlib import Path
 from sdevpy.utilities import dates as dts
-from sdevpy import datapaths
 from sdevpy.utilities import jsonmanager as jsm
+from sdevpy.market import yieldcurve as ycrv
+from sdevpy.market.yieldcurve import YieldCurve
+from sdevpy.calibration.provider import CalibrationDataProvider
+from sdevpy import datapaths
 log = logging.getLogger(__name__)
 
 
-class CalibrationDataFileProvider:
+class CalibrationDataFileProvider(CalibrationDataProvider):
     """ Reads calibrated data from files on disk """
     def __init__(self, root: str|Path=None):
         if root is None:
@@ -15,6 +18,13 @@ class CalibrationDataFileProvider:
             log.info(f"No root given, using default data folder: {self.root}")
         else:
             self.root = Path(root)
+
+    def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve:
+        """ Retrieve yield curve """
+        folder = self.root / 'yieldcurves'
+        file = Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
+        curve = ycrv.yieldcurve_from_file(file)
+        return curve
 
     def get_impliedvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None:
         """ Retrieve implied vol data if existing, None otherwise """
@@ -62,3 +72,6 @@ class CalibrationDataFileProvider:
 
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
+    cal_provider = CalibrationDataFileProvider()
+    obj = cal_provider.get_yieldcurve("USD.SOFR.1D", valdate)
+    print(obj)

@@ -3,6 +3,8 @@ import datetime as dt
 import numpy as np
 from sdevpy.market import provider as mdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.calibration import provider as cal_mod
+from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.market import eqforward as eqf
 from sdevpy.market.fixings import FixingHandler, data_file
 
@@ -26,14 +28,9 @@ class ConstDiscountCurve:
 class FakeProvider(mdp.MarketDataProvider):
     def __init__(self, spots, valdate=None, rates=None):
         self._spots = spots
-        self._valdate = valdate
-        self._rates = rates or {}
 
     def get_spot(self, name, date):
         return self._spots[name]
-
-    def get_yieldcurve(self, name, date):
-        return ConstDiscountCurve(name, self._valdate or date, self._rates.get(name, 0.0))
 
     def _not_used(self, *args, **kwargs):
         raise NotImplementedError("FakeProvider only supports get_spot/get_yieldcurve for these tests")
@@ -46,6 +43,21 @@ class FakeProvider(mdp.MarketDataProvider):
     get_eq_forward_data = _not_used
     get_eq_vol_data = _not_used
     get_fx_vol_data = _not_used
+
+
+class FakeCalibProvider(cal_mod.CalibrationDataProvider):
+    def __init__(self, valdate=None, rates=None):
+        self._valdate = valdate
+        self._rates = rates or {}
+
+    def get_yieldcurve(self, name, date):
+        return ConstDiscountCurve(name, self._valdate or date, self._rates.get(name, 0.0))
+
+    def _not_used(self, *args, **kwargs):
+        raise NotImplementedError("FakeCalibProvider only supports get_yieldcurve for these tests")
+
+    get_impliedvol_data = _not_used
+    get_localvol_data = _not_used
 
 
 ###################################################################################################
@@ -125,7 +137,7 @@ def test_eqforward_creation():
 
     # Create forward curve
     curve = eqf.EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
-    yieldcurve = md.get_yieldcurve('USD.SOFR.1D', valdate)
+    yieldcurve = CalibrationDataFileProvider().get_yieldcurve('USD.SOFR.1D', valdate)
     curve.calibrate(test_data, spot, yieldcurve)
 
     # Interpolate and display
@@ -198,24 +210,24 @@ class TestGetFxSpot:
 
 class TestXccyCurve:
     def test_usd_returns_rfr_curve(self):
-        provider = FakeProvider({})
+        provider = FakeCalibProvider({})
         assert provider.get_xccycurve('USD', dt.datetime(2025, 12, 15)).name == 'USD.SOFR.1D'
 
     def test_non_usd_returns_xccy_curve(self):
-        provider = FakeProvider({})
+        provider = FakeCalibProvider({})
         assert provider.get_xccycurve('EUR', dt.datetime(2025, 12, 15)).name == 'EUR.XCCY'
 
     def test_unknown_rfr_currency_raises(self):
-        provider = FakeProvider({})
+        provider = FakeCalibProvider({})
         with pytest.raises(ValueError):
             provider.get_rfrcurve('JPY', dt.datetime(2025, 12, 15))
 
 
 def test_get_fx_forward_curve():
     valdate = dt.datetime(2025, 8, 12)
-    provider = FakeProvider({'EURUSD': 1.10}, valdate=valdate,
-                             rates={'EUR.XCCY': 0.03, 'USD.SOFR.1D': 0.05})
-    curve = provider.get_fx_forward_curve('EURUSD', valdate)
+    md_prov = FakeProvider({'EURUSD': 1.10})
+    cal_prov = FakeCalibProvider(valdate=valdate, rates={'EUR.XCCY': 0.03, 'USD.SOFR.1D': 0.05})
+    curve = cal_prov.get_fx_forward_curve('EURUSD', valdate, md_prov)
     assert curve.value(curve.spot_date()) == pytest.approx(1.10)
 
 

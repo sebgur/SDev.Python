@@ -25,7 +25,7 @@ model_name = 'LogMix3' # TsSvi1, TsSvi2, LogMix2, LogMix3
 dump_to_file = True
 
 # Retrieve forward curve
-fwd_curve = mdp.get_eq_forward_curves([name], valdate, md_prov)[0]
+fwd_curve = md_prov.get_eq_forward_curves([name], valdate, md_prov)[0]
 
 # Retrieve option data
 option_data = md_prov.get_eq_vol_data(name, valdate)

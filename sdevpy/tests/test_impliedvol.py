@@ -11,7 +11,6 @@ from sdevpy.volatility.impliedvol.models.logmix import LogMix
 from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
-from sdevpy.calibration import provider as cdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.impliedvol.models.cubicvol import (
@@ -316,7 +315,7 @@ def test_logmix():
 def test_logmix_from_file():
     name, date = 'ABC', dt.datetime(2025, 12, 15)
     cal_prov = CalibrationDataFileProvider()
-    ivol = cdp.get_impliedvol(name, date, 'LogMix3', cal_prov)
+    ivol = cal_prov.get_impliedvol(name, date, 'LogMix3')
     n_mix = ivol.n_mix
     params = ivol.params
     assert n_mix == 3

@@ -19,26 +19,27 @@ from sdevpy.volatility.fx.fx_volcalib import FxVolCalibrator
 log = logging.getLogger(__name__)
 
 
-def _calibrate_one(pair: str, date: dt.date, md_prov_factory) -> dict:
+def _calibrate_one(pair: str, date: dt.date, md_prov_factory, cal_prov_factory) -> dict:
     """ Runs in a worker process: build a fresh provider there rather than
         pickling a shared one across the process boundary. """
     md_prov = md_prov_factory()
-    calibrator = FxVolCalibrator(pair, md_prov)
+    cal_prov = cal_prov_factory()
+    calibrator = FxVolCalibrator(pair, md_prov, cal_prov)
     return calibrator.calibrate(date)
 
 
-def calibrate_batch(pairs: list[str], dates: list[dt.date], md_prov_factory,
+def calibrate_batch(pairs: list[str], dates: list[dt.date], md_prov_factory, cal_prov_factory,
                      max_workers: int = None) -> dict[tuple[str, dt.date], dict]:
     """ Calibrates every (pair, date) combination in parallel, one FxVolCalibrator
-        surface per task. md_prov_factory is a zero-arg callable (e.g. a provider
-        class, or functools.partial(MarketDataFileProvider, root=...)) — each
+        surface per task. md_prov_factory and cal_prov_factory are zero-arg callable (e.g. a provider
+        class, or functools.partial(MarketDataFileProvider, CalibrationDataFileProvider, root=...)) — each
         worker calls it once for its own provider instance. """
     max_workers = max_workers or os.cpu_count()
     tasks = [(pair, date) for pair in pairs for date in dates]
     results = {}
 
     with ProcessPoolExecutor(max_workers=max_workers) as pool:
-        futures = {pool.submit(_calibrate_one, pair, date, md_prov_factory): (pair, date)
+        futures = {pool.submit(_calibrate_one, pair, date, md_prov_factory, cal_prov_factory): (pair, date)
                    for pair, date in tasks}
         for future in as_completed(futures):
             pair, date = futures[future]
@@ -53,9 +54,10 @@ def calibrate_batch(pairs: list[str], dates: list[dt.date], md_prov_factory,
 
 if __name__ == "__main__":
     from sdevpy.market.fileprovider import MarketDataFileProvider
+    from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 
     pairs = ["EURUSD", "USDJPY", "GBPUSD"]
     dates = [dt.datetime(2025, 12, d) for d in range(1, 20)]
 
-    all_results = calibrate_batch(pairs, dates, MarketDataFileProvider)
+    all_results = calibrate_batch(pairs, dates, MarketDataFileProvider, CalibrationDataFileProvider)
     report = all_results[("EURUSD", dates[0])]   # {'tenor_reports': [...]}

@@ -5,6 +5,7 @@ import logging
 from sdevpy.utilities import dates as dts
 from sdevpy.market.provider import MarketDataProvider
 from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.calibration.provider import CalibrationDataProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.market.fx import fxconventions
 from sdevpy.market.fx.fxforward import fx_pillar_date
@@ -17,16 +18,12 @@ from sdevpy.utilities import jsonmanager as jsm
 log = logging.getLogger(__name__)
 
 
-################## TODO ###########################################################################
-# * Move yieldcurves to calib data provider
-# * Document solution search and market strangle in latex, add explanations in code comments
-
-
 class FxVolCalibrator:
-    def __init__(self, pair: str, md_prov: MarketDataProvider,
+    def __init__(self, pair: str, md_prov: MarketDataProvider, cal_prov: CalibrationDataProvider,
                  extra_deltas=(0.05, 0.01), tail_method: str='exact', delta_tol: float=1e-4):
         self.pair = pair
         self.md_prov = md_prov
+        self.cal_prov = cal_prov
         self.extra_deltas = tuple(extra_deltas) if extra_deltas else ()
         self.tail_method = tail_method
         self.delta_tol = delta_tol
@@ -230,8 +227,8 @@ class FxVolCalibrator:
         log.debug(f"Spot: {self.spot}")
 
         # Fetch rate curves
-        self.forcurve = self.md_prov.get_xccycurve(self.forccy, self.date)
-        self.domcurve = self.md_prov.get_xccycurve(self.domccy, self.date)
+        self.forcurve = self.cal_prov.get_xccycurve(self.forccy, self.date)
+        self.domcurve = self.cal_prov.get_xccycurve(self.domccy, self.date)
 
         # Fetch vol
         self.vol_data = self.md_prov.get_fx_vol_data(self.pair, self.date)
@@ -255,7 +252,7 @@ if __name__ == "__main__":
     cal_prov = CalibrationDataFileProvider()
 
     # Create calibrator
-    calibrator = FxVolCalibrator(pair, md_prov, extra_deltas=None)
+    calibrator = FxVolCalibrator(pair, md_prov, cal_prov, extra_deltas=None)
 
     # Calibrate
     cal_timer = timer.Stopwatch('calibrate')

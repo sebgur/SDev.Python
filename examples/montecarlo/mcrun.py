@@ -8,7 +8,6 @@ from sdevpy.montecarlo.mcpricer import price_book
 from sdevpy.analytics import black
 from sdevpy.utilities import timegrids
 from sdevpy.utilities import book as bk
-from sdevpy.market import provider as mdp
 from sdevpy.pricingcontext import default_pricing_context
 from sdevpy import logger
 logger.configure()
@@ -79,8 +78,8 @@ if __name__ == "__main__":
 
     # Closed-form for vanilla
     md_prov = ctx.market_provider
-    disc_curve = md_prov.get_yieldcurve(book.csa_curve_id, valdate)
-    fwd_curves = mdp.get_eq_forward_curves(names, valdate, md_prov)
+    disc_curve = ctx.calib_provider.get_yieldcurve(book.csa_curve_id, valdate)
+    fwd_curves = md_prov.get_eq_forward_curves(names, valdate, md_prov)
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx].value(expiry)
     df = disc_curve.discount(expiry)

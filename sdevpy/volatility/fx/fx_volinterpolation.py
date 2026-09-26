@@ -410,7 +410,7 @@ class FxVolInterpolation:
 
         return v
 
-def interpolation_from_fxvol_data(vol_data: dict, md_prov, **kwargs) -> FxVolInterpolation:
+def interpolation_from_fxvol_data(vol_data: dict, md_prov, cal_prov, **kwargs) -> FxVolInterpolation:
     """ Build the surface interpolation straight from the calibrated data as returned by
         CalibrationDataFileProvider.get_fxvol_data """
     smile_interp = kwargs.get('smile_interp', 'pchip') # pchip, akima, cubicspline, linear
@@ -422,8 +422,8 @@ def interpolation_from_fxvol_data(vol_data: dict, md_prov, **kwargs) -> FxVolInt
     valdate = dt.datetime.strptime(vol_data['date'], dts.DATE_FILE_FORMAT)
     forccy, domccy = conventional_pair_name(*parse_fx_pair(pair))
     spot = md_prov.get_fx_spot(forccy, domccy, valdate)
-    forcurve = md_prov.get_xccycurve(forccy, valdate)
-    domcurve = md_prov.get_xccycurve(domccy, valdate)
+    forcurve = cal_prov.get_xccycurve(forccy, valdate)
+    domcurve = cal_prov.get_xccycurve(domccy, valdate)
     spot_delta_cutoff = vol_data['spot_delta_cutoff']
 
     expiries, interps, fwds = [], [], []
@@ -460,7 +460,7 @@ if __name__ == "__main__":
     smile_extrap = 'flat' # builtin, flat
     time_interp = 'var' # var, vol2, vol
     time_extrap = 'flat' # flat, linear
-    surface = interpolation_from_fxvol_data(vol_data, md_prov, smile_interp=smile_interp, smile_extrap=smile_extrap,
+    surface = interpolation_from_fxvol_data(vol_data, md_prov, cal_prov, smile_interp=smile_interp, smile_extrap=smile_extrap,
                                             time_interp=time_interp, time_extrap=time_extrap)
     surface.calendar_check()
 

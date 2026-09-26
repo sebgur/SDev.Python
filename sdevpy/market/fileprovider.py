@@ -5,8 +5,6 @@ from pathlib import Path
 from sdevpy.utilities import dates as dts
 from sdevpy.market import spot as spot_mod
 from sdevpy.market import correlations
-from sdevpy.market import yieldcurve as ycrv
-from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.market import eqforward as eqfwd
 from sdevpy.market import eqvolsurface as eqvol
 from sdevpy.market.fx import fxvolsurface as fxvol
@@ -29,13 +27,6 @@ class MarketDataFileProvider(MarketDataProvider):
             log.info(f"No root given, using default data folder: {self.root}")
         else:
             self.root = Path(root)
-
-    def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve:
-        """ Retrieve yield curve """
-        folder = self.root / 'yieldcurves'
-        file = Path(folder) / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
-        curve = ycrv.yieldcurve_from_file(file)
-        return curve
 
     def get_fixings(self, name: str, dates: dt.datetime|list[dt.datetime], interpolate: bool=False) -> list[float]:
         """ Retrieve fixings """
@@ -96,6 +87,3 @@ class MarketDataFileProvider(MarketDataProvider):
 
 if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
-    md_provider = MarketDataFileProvider()
-    obj = md_provider.get_yieldcurve("USD.SOFR.1D", valdate)
-    print(obj)

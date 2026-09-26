@@ -2,25 +2,16 @@ import logging
 from abc import ABC, abstractmethod
 import datetime as dt
 import numpy as np
-from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.market.spot import SpotData
 from sdevpy.market.eqforward import EqForwardData, EqForwardCurve
 from sdevpy.market.fx import fxconventions
-from sdevpy.market.fx.fxforward import FxForwardCurve
 from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 log = logging.getLogger(__name__)
 
 
-RFR_CURVES = {fxconventions.USD: 'USD.SOFR.1D'}
-
-
-# @runtime_checkable
 class MarketDataProvider(ABC):
-    @abstractmethod
-    def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve: ...
-
     @abstractmethod
     def get_fixings(self, name: str, dates: dt.datetime|list[dt.datetime], **kwargs) -> list[float]: ...
 
@@ -48,24 +39,6 @@ class MarketDataProvider(ABC):
     @abstractmethod
     def get_fx_vol_data(self, pair: str, date: dt.datetime) -> FxVolSurfaceData: ...
 
-    def get_rfrcurve(self, ccy: str, date: dt.datetime) -> YieldCurve:
-        """ Get RFR curve in the specified currency """
-        if ccy in RFR_CURVES:
-            return self.get_yieldcurve(RFR_CURVES[ccy], date)
-        else:
-            raise ValueError(f"Currency not set in RFR curve map: {ccy}")
-
-    def get_xccycurve(self, ccy: str, date: dt.datetime) -> YieldCurve:
-        """ Get cross-currency curve to USD for given ccy. Return USD RFR curve if ccy = USD.
-            By enforced convention, the cross-currency curve to USD for e.g. EUR must be EUR.XCCY. """
-        if ccy == fxconventions.USD:
-            log.debug('Requested USD xccy curve: effectively USD RFR')
-            return self.get_rfrcurve(fxconventions.USD, date)
-        else:
-            curve_id = f"{ccy}.XCCY"
-            log.debug(f'Requested {ccy} xccy curve: effectively {curve_id}')
-            return self.get_yieldcurve(curve_id, date)
-
     def get_eq_forward_curves(self, names: list[str], date: dt.datetime) -> list[EqForwardCurve]:
         """ Retrieve EQ forward curves """
         spots = self.get_spots(names, date)
@@ -77,17 +50,6 @@ class MarketDataProvider(ABC):
             fwd_curves.append(curve)
 
         return fwd_curves
-
-    def get_fx_forward_curve(self, name: str, date: dt.datetime) -> FxForwardCurve:
-        """ Retrieve FX forward curves """
-        forccy, domccy = fxconventions.parse_fx_pair(name)
-        spot = self.get_fx_spot(forccy, domccy, date)
-        forcurve = self.get_xccycurve(forccy, date)
-        domcurve = self.get_xccycurve(domccy, date)
-
-        curve = FxForwardCurve(date, forccy, domccy)
-        curve.load_calibrated(spot, forcurve, domcurve)
-        return curve
 
     def get_fx_spot(self, forccy: str, domccy: str, date: dt.datetime) -> float:
         """ Units of domccy per unit of forccy, e.g. get_fx_spot('EUR', 'USD', ...) ~ 1.05. USD legs are read

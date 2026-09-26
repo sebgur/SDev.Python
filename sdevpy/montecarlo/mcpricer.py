@@ -8,8 +8,6 @@ from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.models.assetmodels import MultiAssetGBM
 from sdevpy.montecarlo.pathgenerator import PathGenerator
 from sdevpy.pricingcontext import PricingContext
-from sdevpy.market import provider as mdp
-from sdevpy.calibration import provider as cal_prov_mod
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
@@ -35,10 +33,10 @@ def price_book(valdate: dt.datetime, book: Book, ctx: PricingContext, **kwargs) 
 
     # Retrieve modelling data
     names = book.names
-    disc_curve = md_prov.get_yieldcurve(book.csa_curve_id, valdate)
+    disc_curve = cal_prov.get_yieldcurve(book.csa_curve_id, valdate)
     spot = md_prov.get_spots(names, valdate)
     fwd_curves = md_prov.get_eq_forward_curves(names, valdate)
-    lvs = cal_prov_mod.get_local_vols(names, valdate, cal_prov, **kwargs)
+    lvs = cal_prov.get_local_vols(names, valdate, **kwargs)
     corr = md_prov.get_correlations(names, valdate)
 
     # Build time grid
@@ -221,7 +219,7 @@ def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], str
     sim_prices = sim_prices['pv']
 
     # Calculate forward prices and reformat container (per expiry)
-    disc_curve = ctx.market_provider.get_yieldcurve(book.csa_curve_id, valdate)
+    disc_curve = ctx.calib_provider.get_yieldcurve(book.csa_curve_id, valdate)
     mc_prices = []
     count = 0
     for i in range(len(expiries)):

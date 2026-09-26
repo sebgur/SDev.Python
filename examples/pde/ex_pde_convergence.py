@@ -3,7 +3,7 @@ import numpy as np
 from scipy.stats import norm
 from sdevpy.market import provider as mdp
 from sdevpy.market.fileprovider import MarketDataFileProvider
-from sdevpy.volatility.localvol import localvol_factory as lvf
+from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.pde import forwardpde as fpde
@@ -18,6 +18,7 @@ name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get MarketDataProvider
 md_prov = MarketDataFileProvider()
+cal_prov = CalibrationDataFileProvider()
 
 # Specify products
 tenor = '1y'
@@ -28,13 +29,13 @@ strike_percentiles = np.linspace(0.01, 0.99, n_strikes)
 strike_conf = norm.ppf(strike_percentiles)
 
 # Retrieve forward curve
-fwd_curve = mdp.get_eq_forward_curves([name], valdate, md_prov)[0]
+fwd_curve = md_prov.get_eq_forward_curves([name], valdate)[0]
 
 # Retrieve local volatility
 cvol = 0.40
 cf_vols = [cvol] * n_strikes
 lv = ConstantLocalVol(cvol)
-lv = lvf.get_local_vols([name], valdate)[0]
+lv = cal_prov.get_local_vols([name], valdate)[0]
 
 # Specify strikes using LV variance at ATM
 lv_vol = lv.path_vol(expiry_time, 0.0)

@@ -13,8 +13,7 @@ from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
-from sdevpy.market.provider import MarketDataProvider#, get_eq_forward_curves
-from sdevpy.calibration import provider as cal_prov_mod
+from sdevpy.market.provider import MarketDataProvider
 from sdevpy.calibration.provider import CalibrationDataProvider
 from sdevpy.instruments.constants import string_to_optiontype, OptionType
 log = logging.getLogger(__name__)
@@ -49,10 +48,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, md_pr
     # Initial LV: either from scratch or from existing
     lv_t_grid = [0.0] # LV time grid
     lv_t_grid.extend(expiry_grid[:-1])
-    lv = cal_prov_mod.get_localvol_or_new(name, valdate, model_name, cal_prov, t_grid=lv_t_grid,
-                                          force_new=force_restart)
-    # lv = lvf.load_param_lv(name, valdate, folder=config.get('lv_folder', None), t_grid=lv_t_grid,
-    #                        force_new=force_restart, model_name=model_name)
+    lv = cal_prov.get_localvol_or_new(name, valdate, model_name, t_grid=lv_t_grid, force_new=force_restart)
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
 
     # Set forward PDE
@@ -74,7 +70,7 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, md_pr
 
     # Set objective
     obj_builder = LvObjectiveBuilder(lv, expiry_grid, fwds, strike_surface, cf_price_surface, pde_config,
-                                     penalty_type=penalty_type)#, verbose=verbose)
+                                     penalty_type=penalty_type)
     objective = obj_builder.objective
 
     # Optimizer settings
