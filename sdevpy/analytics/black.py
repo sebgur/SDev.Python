@@ -4,7 +4,8 @@ import numpy as np
 import numpy.typing as npt
 # from scipy.stats import norm
 from scipy.special import ndtr
-from scipy.optimize import minimize_scalar
+from scipy.optimize import brentq
+# from scipy.optimize import minimize_scalar
 from sdevpy.utilities.tools import isiterable
 from sdevpy.analytics.schadner import implied_vol_schadner
 from sdevpy.maths.constants import C_1_SQRT_2PI
@@ -39,23 +40,33 @@ def implied_vol(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: bool, fwd
     return implied_vol_schadner(expiry, strike, is_call, fwd, fwd_price)
 
 
+# def implied_vol_brent(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
+#     """ Direct method by numerical inversion using Brent. Non-vectorized due to solver. """
+#     # Trial config
+#     options = {'xtol': 1e-6, 'maxiter': 100, 'disp': False}
+#     xmin = 1e-6
+#     xmax = 2.0
+#     def error(vol):
+#         premium = price(expiry, strike, is_call, fwd, vol)
+#         return (premium - fwd_price) ** 2
+
+#     res = minimize_scalar(fun=error, bracket=(xmin, xmax), options=options, method='brent')
+#     return res.x
+
+
 def implied_vol_brent(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
-    """ Direct method by numerical inversion using Brent. Non-vectorized due to solver. """
-    # Trial config
-    options = {'xtol': 1e-6, 'maxiter': 100, 'disp': False}
-    xmin = 1e-6
-    xmax = 2.0
-    # # Original config
-    # options = {'xtol': 1e-4, 'maxiter': 100, 'disp': False}
-    # xmin = 1e-6
-    # xmax = 1.0
+    """ Direct method by numerical inversion using Brent root-finding on the price difference.
+        Non-vectorized due to solver. Raises ValueError if the price violates no-arbitrage bounds. """
+    w = 1.0 if is_call else -1.0
+    intrinsic = max(w * (fwd - strike), 0.0)
+    upper = fwd if is_call else strike  # Undiscounted forward price upper bound
+    if not intrinsic < fwd_price < upper:
+        raise ValueError(f"Price {fwd_price} outside no-arbitrage bounds ({intrinsic}, {upper})")
 
-    def error(vol):
-        premium = price(expiry, strike, is_call, fwd, vol)
-        return (premium - fwd_price) ** 2
+    def diff(vol):
+        return price(expiry, strike, is_call, fwd, vol) - fwd_price
 
-    res = minimize_scalar(fun=error, bracket=(xmin, xmax), options=options, method='brent')
-    return res.x
+    return brentq(diff, 1e-8, 10.0, xtol=1e-12, rtol=1e-12)
 
 
 def implied_vols_brent(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd: float,
@@ -90,18 +101,12 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
         d1 = np.log(fwd / strike) / s + 0.5 * s
         pdf = C_1_SQRT_2PI * np.exp(-0.5 * d1 * d1) # No scipy.special equivalent to norm.pdf
         vega = fwd * pdf * sqrt_t
-        # vega = fwd * norm.pdf(d1) * sqrt_t
         low_vega_mask |= np.abs(vega) < vega_floor
 
         diff = price(expiry, strike, is_call, fwd, vol) - fwd_price
         safe_vega = np.where(low_vega_mask, 1.0, vega) # placeholder, these entries get overwritten by Brent below
         vol = np.where(low_vega_mask, vol, vol - diff / safe_vega)
-        # vol -= diff / vega
         vol = np.maximum(vol, 1e-8) # Keep vol positive
-
-        # if np.all(np.abs(diff) < tol):
-        #     converged = True
-        #     break
 
         active = ~low_vega_mask
         if not np.any(active) or np.all(np.abs(diff[active]) < tol):
@@ -112,7 +117,11 @@ def implied_vol_newton(expiry: float, strike: npt.ArrayLike, is_call: bool, fwd:
         n_low = int(np.sum(low_vega_mask))
         log.debug(f"{n_low} strike(s) had vega below {vega_floor}; falling back to Brent's method")
         for i in np.flatnonzero(low_vega_mask):
-            vol[i] = implied_vol_brent(expiry, strike[i], is_call, fwd, fwd_price[i])
+            try:
+                vol[i] = implied_vol_brent(expiry, strike[i], is_call, fwd, fwd_price[i])
+            except ValueError: # Price at/beyond a no-arbitrage bound: vol is not identifiable
+                vol[i] = np.nan
+            # vol[i] = implied_vol_brent(expiry, strike[i], is_call, fwd, fwd_price[i])
 
     if not converged:
         log.warning("max_iter reached without full convergence")

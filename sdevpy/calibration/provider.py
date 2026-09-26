@@ -55,6 +55,9 @@ def get_localvol_or_new(name: str, date: dt.datetime, model_name: str, cal_prov:
             lv = lvf.get_localvol_from_data(data, t_grid)
 
     if lv is None:
+        if t_grid is None:
+            raise ValueError(f"No stored local vol for {name} on {date:%Y-%m-%d} and no t_grid given to build a new one")
+
         log.info(f"Initializing new LV for {name}")
         lv = lvf.get_localvol_new(t_grid, model_name)
 

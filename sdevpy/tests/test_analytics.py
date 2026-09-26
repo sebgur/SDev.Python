@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 from sdevpy.analytics import black
 from sdevpy.analytics import bachelier
@@ -55,6 +56,18 @@ def test_black_roundtrip_newton():
     test = black.implied_vol_newton(expiry, strikes, True, fwd, p)
     ref = np.asarray([0.25, 0.25, 0.25])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-6)
+
+
+def test_implied_vol_brent_round_trip():
+    for strike, vol in [(200.0, 0.30), (100.0, 0.30), (50.0, 0.30), (100.0, 2.5)]:
+        is_call = strike >= 100.0 # OTM/ATM only: deep ITM prices carry no recoverable time value
+        p = black.price(0.1, strike, is_call, 100.0, vol)
+        assert black.implied_vol_brent(0.1, strike, is_call, 100.0, p) == pytest.approx(vol, abs=1e-6)
+
+
+def test_implied_vol_brent_infeasible_price():
+    with pytest.raises(ValueError):
+        black.implied_vol_brent(1.0, 100.0, True, 100.0, 150.0)  # Call above the forward
 
 
 ############ Bachelier ############################################################################
@@ -151,10 +164,9 @@ def test_implied_vol_newton_deep_itm_uses_brent_fallback():
 
     test = black.implied_vol_newton(expiry, strikes, True, fwd, p)
 
-    # assert not np.any(np.isnan(test))
-    # assert np.allclose(test, [vol] * 4, rtol=0.0, atol=1e-4)
-    assert np.all(np.isfinite(test))
+    assert np.all(np.isfinite(test[:3]))
     assert np.allclose(test[:3], [vol] * 3, rtol=0.0, atol=1e-4)
+    assert np.isnan(test[3]) # Deep ITM: price equals intrinsic, vol not identifiable
 
 
 if __name__ == "__main__":

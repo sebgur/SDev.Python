@@ -10,18 +10,18 @@ license = {file = "LICENSE"}
 authors = [{ name="Sebastien Gurrieri", email="sebgur@gmail.com" }]
 description = "Python package for Finance"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-dependencies = ["pandas", "numpy", "scipy", "matplotlib", "holidays", "requests",
-                "pandas_market_calendars", "openpyxl", "colorlog", "torch",
-                "scikit-learn", "pyperclip", "statsmodels", "ta", "huggingface_hub",
-                "transformers", "tiktoken", "dicttoxml", "xmltodict"
-]
-#dependencies = ["pyperclip", "tensorflow", "scikit-learn",
-# "tensorflow_probability", "silence_tensorflow"]
+dependencies = ["pandas", "numpy>=2.0", "scipy>=1.11", "matplotlib", "holidays", "requests",
+                "pandas_market_calendars", "openpyxl", "colorlog", "pyperclip", "statsmodels",
+                "ta", "dicttoxml", "xmltodict", "scikit-learn"]
+
+[project.optional-dependencies]
+ml = ["torch", "huggingface_hub", "transformers", "tiktoken"]
+tf = ["tensorflow", "tensorflow_probability", "silence_tensorflow"]
 
 [project.urls]
 "Git" = "https://github.com/sebgur/SDev.Python"

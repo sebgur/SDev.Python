@@ -1,12 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(**)",
-      "Read(//tmp/**)",
       "Agent(**)",
-      "Skill(**)",
-      "Write(/claude/**)",
-      "Bash(**)",
+      "Bash",
       "Bash(grep*)",
       "Bash(awk*)",
       "Bash(wc*)",
@@ -15,16 +11,12 @@
       "Bash(sort*)",
       "Bash(sleep*)",
       "Bash(cat*)",
+      "Bash(cat > *)",
       "Bash(git log*)",
       "Bash(git status*)",
       "Bash(git diff*)",
-      "PowerShell(Get-ChildItem *)",
-      "PowerShell(git log *)",
-      "PowerShell(git diff *)",
-      "PowerShell(git status*)",
-      "Edit(/.claude/skills/code-review/**)",
-      "Edit(/.claude/skills/recommendations/**)",
-      "Edit(/.claude/skills/test-review/**)",
+      "Bash(git ls-files*)",
+      "Bash(awk -F/ '{ if \\(NF>1\\) print $1\"/\"$2; else print $1 }' /tmp/review_files.txt)",
       "Bash(python3 /tmp/dump_nb.py \"notebooks/algos/get_data.ipynb\")",
       "Bash(python3 /tmp/dump_nb.py \"notebooks/algos/get_yahoo.ipynb\")",
       "Bash(python3 /tmp/dump_nb.py \"notebooks/algos/ndel_cointegration.ipynb\")",
@@ -35,11 +27,46 @@
       "Bash(python3 /tmp/dump_nb.py \"notebooks/pinns/Deep Learning a PDE for Worst Of Options.ipynb\")",
       "Bash(python3 /tmp/dump_nb.py \"notebooks/stovol/StoVol Training.torch.ipynb\")",
       "Bash(python3 /tmp/dump_nb.py \"notebooks/stovol/StoVol Training.ipynb\")",
-      "Bash(cat > *)",
-      "Bash(rm -f /tmp/dump_nb.py /tmp/dump_nb2.py)"
+      "Bash(rm -f /tmp/dump_nb.py /tmp/dump_nb2.py)",
+      "Bash(python3 -m pytest sdevpy/tests/test_mc.py -x -q)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip3 show *)",
+      "Bash(.venv314/bin/python*)",
+      "Bash(./.venv314/bin/python*)",
+      "Bash(.venv314/bin/pytest*)",
+      "Bash(./.venv314/bin/pytest*)",
+      "Bash(.venv314/bin/pip*)",
+      "Bash(source .venv314/bin/activate*)",
+      "Bash(. .venv314/bin/activate*)",
+      "Bash(sed*)",
+      "Edit(/claude/**)",
+      "Edit(//tmp/**)",
+      "Edit(/.claude/skills/code-review/**)",
+      "Edit(/.claude/skills/recommendations/**)",
+      "Edit(/.claude/skills/test-review/**)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(git log *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git status*)",
+      "Read(**)",
+      "Read(//tmp/**)",
+      "Read(//private/tmp/**)",
+      "Read(//tmp/**)",
+      "Skill(**)",
+      "Skill(keybindings-help)",
+      "Skill(keybindings-help:*)",
+      "Write(/claude/**)",
+      "Write(//tmp/**)",
+      "Write(//private/tmp/**)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push*)",
+      "Bash(git reset --hard*)"
     ],
     "additionalDirectories": [
-      "\\tmp"
+      "\\tmp",
+      "/private/tmp"
     ]
   }
 }
