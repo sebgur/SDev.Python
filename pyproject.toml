@@ -20,8 +20,8 @@ dependencies = ["pandas", "numpy>=2.0", "scipy>=1.11", "matplotlib", "holidays",
                 "ta", "dicttoxml", "xmltodict", "scikit-learn"]
 
 [project.optional-dependencies]
-ml = ["torch", "huggingface_hub", "transformers", "tiktoken"]
-tf = ["tensorflow", "tensorflow_probability", "silence_tensorflow"]
+ml = ["torch", "huggingface_hub", "transformers", "tiktoken"] # AI/LLMs
+tf = ["tensorflow", "tensorflow_probability", "silence_tensorflow"] # TensorFlow
 
 [project.urls]
 "Git" = "https://github.com/sebgur/SDev.Python"
@@ -44,6 +44,10 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "N", "W", "UP", "B"]
 ignore = ["E401", "I001"]
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = ["sdevpy/thirdparty", "sdevpy/tests"]
 
 [tool.coverage.run]
 omit = [
