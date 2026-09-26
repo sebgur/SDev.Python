@@ -14,3 +14,9 @@ Do not read, write, or update any files in the memory directory. Do not use the 
 - Before reporting any issue, read the exact file and line number directly with the Read tool.
 - Discard any finding that cannot be confirmed in the current file. Do not trust subagent summaries.
 - Do not carry over findings from previous reviews without re-verifying them in the current working copy.
+
+## Known and accepted — do not report
+
+- Local vol lookup (sdevpy/calibration/provider.py): get_local_vols only retrieves calibrated
+  models and never creates new ones; name_model_map intentionally holds the test underlyings
+  (ABC, KLM, XYZ). Existing indices such as SPX are deliberately not supported.

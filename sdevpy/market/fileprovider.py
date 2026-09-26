@@ -24,7 +24,11 @@ log = logging.getLogger(__name__)
 class MarketDataFileProvider(MarketDataProvider):
     """ Reads market data from files on disk """
     def __init__(self, root: str|Path=None):
-        self.root = (Path(root) if root is not None else datapaths.marketdata_path())
+        if root is None:
+            self.root = datapaths.marketdata_path()
+            log.info(f"No root given, using default data folder: {self.root}")
+        else:
+            self.root = Path(root)
 
     def get_yieldcurve(self, name: str, date: dt.datetime) -> YieldCurve:
         """ Retrieve yield curve """

@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from sdevpy.utilities.scalendar import make_schedule
 from sdevpy.utilities.tools import rand_str
 from sdevpy.market.provider import MarketDataProvider
-# from sdevpy.market import fixings as fxgs
 
 
 def list_payoff_eventdates(payoffs):
@@ -520,6 +519,7 @@ class Variance(Payoff):
 
         # Calculate historical variance up to the day before valuation
         self.current_sum = 0.0
+        self.current_fixing = None
         if hist_fixings is not None and len(hist_fixings) > 1:
             log_returns = np.diff(np.log(np.asarray(hist_fixings)))
             self.current_sum = np.power(log_returns, 2).sum()

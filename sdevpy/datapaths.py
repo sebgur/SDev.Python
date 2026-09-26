@@ -1,32 +1,36 @@
+import os
 from pathlib import Path
 
 
 def root_path() -> Path:
-    """ Get test root path """
-    path = Path(__file__).parent / "tests" / "data"
-    return path
+    """ Get root path """
+    env = os.environ.get("SDEVPY_DATA")
+    if env is not None:
+        return Path(env)
+
+    return Path(__file__).parent / "tests" / "data"
 
 
 def marketdata_path() -> Path:
-    """ Get test market data path """
+    """ Get market data path """
     path = root_path() / "marketdata"
     return path
 
 
 def calibdata_path() -> Path:
-    """ Get test calibrated data path """
+    """ Get calibrated data path """
     path = root_path() / "calibdata"
     return path
 
 
 def staticdata_path() -> Path:
-    """ Get test static data path """
+    """ Get static data path """
     path = root_path() / "staticdata"
     return path
 
 
 def dataset_path() -> Path:
-    """ Get test dataset path """
+    """ Get dataset path """
     path = root_path() / "datasets"
     return path
 

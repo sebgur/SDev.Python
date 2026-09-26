@@ -10,7 +10,11 @@ log = logging.getLogger(__name__)
 class CalibrationDataFileProvider:
     """ Reads calibrated data from files on disk """
     def __init__(self, root: str|Path=None):
-        self.root = (Path(root) if root is not None else datapaths.calibdata_path())
+        if root is None:
+            self.root = datapaths.calibdata_path()
+            log.info(f"No root given, using default data folder: {self.root}")
+        else:
+            self.root = Path(root)
 
     def get_impliedvol_data(self, name: str, date: dt.datetime, model_name: str) -> dict|None:
         """ Retrieve implied vol data if existing, None otherwise """
