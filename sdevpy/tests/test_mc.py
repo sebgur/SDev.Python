@@ -87,5 +87,31 @@ def test_path_interpolation():
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
+def price_worstof(strike: float, barrier: float) -> float:
+    """ PV of a single worst-of barrier call on ABC/XYZ, using the same setup as test_mc """
+    valdate = dt.datetime(2025, 12, 15)
+    expiry = dt.datetime(2026, 12, 15)
+    index = WorstOfBarrier(['ABC', 'XYZ'], expiry, strike, 'Call', barrier)
+    cf = cfl.Cashflow(index, expiry)
+    book = bk.Book()
+    book.add_trades([Trade(Instrument(cashflow_legs=[[cf]]))])
+
+    lv = ConstantLocalVol(0.20)
+    lv_map = {'ABC': lv, 'XYZ': lv}
+    res = price_book(valdate, book, default_pricing_context(), scramble=False, constr_type='brownianbridge',
+                     rng_type='sobol', n_paths=2000, lv_map=lv_map)
+    return float(res['pv'][0])
+
+
+def test_worstof_barrier_knocks():
+    # Strike 30 against a worst-of level around 50 (XYZ spot): clearly in the money, so the barrier matters
+    no_barrier = price_worstof(strike=30.0, barrier=0.0) # Barrier 0: can never be crossed
+    with_barrier = price_worstof(strike=30.0, barrier=45.0) # Close to XYZ's spot: knocks on many paths
+    always_knocked = price_worstof(strike=30.0, barrier=1e9) # Above every path: always knocked
+
+    assert with_barrier < 0.7 * no_barrier
+    assert always_knocked == 0.0
+
+
 if __name__ == "__main__":
     test_mc()
