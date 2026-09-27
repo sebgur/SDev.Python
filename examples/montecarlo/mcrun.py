@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     # Closed-form for vanilla
     mkt = ctx.market_repo[valdate]
-    disc_curve = ctx.calib_provider.get_yieldcurve(book.csa_curve_id, valdate)
+    disc_curve = ctx.calib_repo[valdate].get_yieldcurve(book.csa_curve_id)
     fwd_curves = mkt.get_eq_forward_curves(names)
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx].value(expiry)

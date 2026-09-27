@@ -1,10 +1,9 @@
 import numpy as np
 import datetime as dt
 import matplotlib.pyplot as plt
-from sdevpy.pricingcontext import default_market_repository
+from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
 from sdevpy.utilities import timegrids
-from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.maths import metrics
 from sdevpy import logger
 logger.configure()
@@ -17,8 +16,9 @@ name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get datasets
 md_repo = default_market_repository()
-cal_prov = CalibrationDataFileProvider()
+cal_repo = default_calibration_repository()
 mkt = md_repo[valdate]
+calib = cal_repo[valdate]
 
 # Choose model
 # model_name = 'VSVI'
@@ -31,11 +31,11 @@ config = {'model_name': model_name, 'store_date': valdate, 'pde_timesteps': 100,
 
 # Calibrate LV
 print("Launching calibration")
-calib_result = calibrate_lv_bysections(name, config, mkt, cal_prov, calc_pde_vols=True)
+calib_result = calibrate_lv_bysections(name, config, mkt, calib, calc_pde_vols=True)
 lv = calib_result['lv']
 
 # Dump LV result to file
-out_file = cal_prov.localvol_data_file(name, valdate, config['model_name'])
+out_file = calib.save_localvol(name, config['model_name'], lv)
 print(f"Dumping LV result to file: {out_file}")
 lv.dump(out_file)
 

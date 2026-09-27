@@ -2,6 +2,7 @@ import numpy as np
 import datetime as dt
 import pytest
 from scipy.integrate import quad
+from sdevpy.pricingcontext import default_calibration_repository
 from sdevpy.utilities.tools import isequal
 from sdevpy.volatility.impliedvol.models import svi, biexp, cubicvol, vsvi
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvObjectiveBuilder, TsIvCalibrator
@@ -12,7 +13,6 @@ from sdevpy.volatility.impliedvol.models import sabr
 from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
 from sdevpy.pricingcontext import default_market_repository
-from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.impliedvol.models.cubicvol import (
     create_section, cubicvol_check_params, calculate_epsilon,
     is_valid_left, is_valid_right
@@ -314,8 +314,8 @@ def test_logmix():
 
 def test_logmix_from_file():
     name, date = 'ABC', dt.datetime(2025, 12, 15)
-    cal_prov = CalibrationDataFileProvider()
-    ivol = cal_prov.get_impliedvol(name, date, 'LogMix3')
+    calib = default_calibration_repository()[date]
+    ivol = calib.get_impliedvol(name, 'LogMix3')
     n_mix = ivol.n_mix
     params = ivol.params
     assert n_mix == 3

@@ -1,6 +1,5 @@
 import logging
 import datetime as dt
-# from collections import OrderedDict
 from sdevpy.utilities.datedrepository import DatedRepository
 from sdevpy.market.source import MarketDataSource
 from sdevpy.market.dataset import MarketDataSet

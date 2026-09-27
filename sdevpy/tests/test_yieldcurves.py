@@ -1,11 +1,10 @@
 import pytest
 import datetime as dt
 import numpy as np
-from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
+from sdevpy.pricingcontext import default_calibration_repository
 from sdevpy.market import yieldcurve as ycrv
 from sdevpy.utilities import timegrids as tg
 from sdevpy.market.yieldcurve import InterpolatedYieldCurve
-# from sdevpy.utilities import timegrids as tg
 
 
 def _make_curve(interp_var='zerorate', interp_type='linear'):
@@ -88,8 +87,8 @@ def test_yieldcurve_reading():
     ztimes = tg.model_time(valdate, zdates)
 
     # Read curve
-    cal_prov = CalibrationDataFileProvider()
-    curve = cal_prov.get_yieldcurve(name, valdate)
+    calib = default_calibration_repository()[valdate]
+    curve = calib.get_yieldcurve(name)
     dfs = curve.discount(zdates)
     test = -np.log(dfs) / ztimes
     ref = np.asarray([0.00589787, 0.01375476, 0.01850221, 0.02168115, 0.02991536])

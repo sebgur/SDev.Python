@@ -1,6 +1,7 @@
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
+from sdevpy.pricingcontext import default_calibration_repository
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, MatrixLocalVol
 from sdevpy.volatility.impliedvol.models.biexp import BiExpSection
 from sdevpy.volatility.impliedvol.models.tssvi1 import TsSvi1
@@ -10,7 +11,6 @@ from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder
 from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.utilities.tools import isequal
-from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 
 
 ############### TEST HELPERS ######################################################################
@@ -220,8 +220,8 @@ def test_lv_bymatrix_dump():
 def test_lv_matrix_read():
     name, valdate = 'ABC', dt.datetime(2025, 12, 15)
     model_name = 'Matrix'
-    cal_prov = CalibrationDataFileProvider()
-    lv = cal_prov.get_localvol(name, valdate, model_name)
+    calib = default_calibration_repository()[valdate]
+    lv = calib.get_localvol(name, model_name)
     section = lv.section_at_index(1)
     time = section.time
     assert isequal(time, 0.020202020202020204)

@@ -3,8 +3,7 @@ import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
 from sdevpy.maths.metrics import rmse
-from sdevpy.pricingcontext import default_market_repository
-from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
+from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
 from sdevpy.utilities import timegrids
@@ -17,7 +16,7 @@ name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get MarketDataProvider
 mkt = default_market_repository()[valdate]
-cal_prov = CalibrationDataFileProvider()
+calib = default_calibration_repository()[valdate]
 
 # Choose model
 model_name = 'LogMix3' # TsSvi1, TsSvi2, LogMix2, LogMix3
@@ -79,6 +78,6 @@ plt.show()
 
 # Dump to file
 if dump_to_file:
-    file = cal_prov.impliedvol_data_file(name, valdate, model_name)
-    iv_surface.dump(file)
+    file = calib.save_impliedvol_data_file(name, model_name)
+    # iv_surface.dump(file)
     print(f"Dumping model to file: {file}")

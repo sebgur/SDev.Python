@@ -2,8 +2,7 @@ import datetime as dt
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
-from sdevpy.pricingcontext import default_market_repository
-from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
+from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 from sdevpy.volatility.localvol.dupire_calib import calib_lv_dupire
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.timegrids import TimeGridBucket
@@ -16,7 +15,7 @@ name, valdate, model_name = "ABC", dt.datetime(2025, 12, 15), 'LogMix3'
 
 # Get MarketDataProvider
 mkt = default_market_repository()[valdate]
-cal_prov = CalibrationDataFileProvider()
+calib = default_calibration_repository()[valdate]
 
 # Choose LV diagnostic grids
 test_tenors = ['1M', '3M', '6M', '9M', '1Y', '2Y'] # Must have len = 6
@@ -26,7 +25,7 @@ up_p = 1.0 - lw_p # High percentile strike
 
 ################ Retrieve input data ##############################################################
 # Retrieve pre-calibrated implied vol surface
-iv_surface = cal_prov.get_impliedvol(name, valdate, model_name)
+iv_surface = calib.get_impliedvol(name, model_name)
 
 # Retrieve forward curve
 fwd_curve = mkt.get_eq_forward_curves([name])[0]
@@ -75,10 +74,10 @@ lv_matrix = lv_calib['lv_matrix']
 lv = lv_calib['lv']
 
 # Dump LV result to file
-out_file = cal_prov.localvol_data_file(name, valdate, 'Matrix')
-print(f"Dumping LV result to file: {out_file}")
 lv.valdate = lv.snapdate = valdate
-lv.dump(out_file)
+out_file = calib.save_localvol_data(name, 'Matrix', lv)
+print(f"Dumping LV result to file: {out_file}")
+# lv.dump(out_file)
 
 # View the LV along the strike at several expiries
 t_idx = [upper_bound(lv_t, tp) for tp in test_times]

@@ -17,6 +17,6 @@ Do not read, write, or update any files in the memory directory. Do not use the 
 
 ## Known and accepted — do not report
 
-- Local vol lookup (sdevpy/calibration/provider.py): get_local_vols only retrieves calibrated
+- Local vol lookup (sdevpy/calibration/dataset.py): get_local_vols only retrieves calibrated
   models and never creates new ones; name_model_map intentionally holds the test underlyings
   (ABC, KLM, XYZ). Existing indices such as SPX are deliberately not supported.

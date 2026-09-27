@@ -1,8 +1,7 @@
 import datetime as dt
 import numpy as np
 from scipy.stats import norm
-from sdevpy.pricingcontext import default_market_repository
-from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
+from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.pde import forwardpde as fpde
@@ -17,7 +16,7 @@ name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get MarketDataProvider
 mkt = default_market_repository()[valdate]
-cal_prov = CalibrationDataFileProvider()
+calib = default_calibration_repository()[valdate]
 
 # Specify products
 tenor = '1y'
@@ -34,7 +33,7 @@ fwd_curve = mkt.get_eq_forward_curves([name])[0]
 cvol = 0.40
 cf_vols = [cvol] * n_strikes
 lv = ConstantLocalVol(cvol)
-lv = cal_prov.get_local_vols([name], valdate)[0]
+lv = calib.get_local_vols([name])[0]
 
 # Specify strikes using LV variance at ATM
 lv_vol = lv.path_vol(expiry_time, 0.0)
