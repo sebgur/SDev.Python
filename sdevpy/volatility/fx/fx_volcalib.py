@@ -2,7 +2,6 @@
 import datetime as dt
 import numpy as np
 import logging
-from sdevpy.pricingcontext import default_market_repository
 from sdevpy.utilities import dates as dts
 from sdevpy.market.repository import MarketDataRepository
 from sdevpy.calibration.provider import CalibrationDataProvider
@@ -243,6 +242,7 @@ class FxVolCalibrator:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+    from sdevpy.pricingcontext import default_market_repository
 
     # Choose test case
     pair = "USDJPY"
