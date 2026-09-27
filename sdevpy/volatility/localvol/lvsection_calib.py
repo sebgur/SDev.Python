@@ -13,13 +13,13 @@ from sdevpy.analytics import black
 from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market.dataset import MarketDataSet
-from sdevpy.calibration.provider import CalibrationDataProvider
+from sdevpy.calibration.dataset import CalibrationDataSet
 from sdevpy.instruments.constants import string_to_optiontype, OptionType
 log = logging.getLogger(__name__)
 
 
 def calibrate_lv_bysections(name: str, config: dict, mkt: MarketDataSet,
-                            cal_prov: CalibrationDataProvider, **kwargs) -> dict:
+                            calib: CalibrationDataSet, **kwargs) -> dict:
     """ Calibrate InterpolatedParamLocalVol type to market data """
     # Arguments
     calc_pde_vols = kwargs.get('calc_pde_vols', False)
@@ -48,7 +48,7 @@ def calibrate_lv_bysections(name: str, config: dict, mkt: MarketDataSet,
     # Initial LV: either from scratch or from existing
     lv_t_grid = [0.0] # LV time grid
     lv_t_grid.extend(expiry_grid[:-1])
-    lv = cal_prov.get_localvol_or_new(name, valdate, model_name, t_grid=lv_t_grid, force_new=force_restart)
+    lv = calib.get_localvol_or_new(name, model_name, t_grid=lv_t_grid, force_new=force_restart)
     lv.name, lv.valdate, lv.snapdate = name, valdate, valdate
 
     # Set forward PDE

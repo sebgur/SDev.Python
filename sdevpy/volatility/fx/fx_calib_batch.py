@@ -17,16 +17,16 @@ from sdevpy.volatility.fx.fx_volcalib import FxVolCalibrator
 log = logging.getLogger(__name__)
 
 
-def _calibrate_one(pair: str, date: dt.date, md_repo_factory, cal_prov_factory) -> dict:
+def _calibrate_one(pair: str, date: dt.date, md_repo_factory, cal_repo_factory) -> dict:
     """ Runs in a worker process: build a fresh provider there rather than
         pickling a shared one across the process boundary. """
     md_repo = md_repo_factory()
-    cal_prov = cal_prov_factory()
-    calibrator = FxVolCalibrator(pair, md_repo, cal_prov)
+    cal_repo = cal_repo_factory()
+    calibrator = FxVolCalibrator(pair, md_repo, cal_repo)
     return calibrator.calibrate(date)
 
 
-def calibrate_batch(pairs: list[str], dates: list[dt.date], md_repo_factory, cal_prov_factory,
+def calibrate_batch(pairs: list[str], dates: list[dt.date], md_repo_factory, cal_repo_factory,
                      max_workers: int = None) -> dict[tuple[str, dt.date], dict]:
     """ Calibrates every (pair, date) combination in parallel, one FxVolCalibrator
         surface per task. md_prov_factory and cal_prov_factory are zero-arg callable (e.g. a provider
@@ -37,7 +37,7 @@ def calibrate_batch(pairs: list[str], dates: list[dt.date], md_repo_factory, cal
     results = {}
 
     with ProcessPoolExecutor(max_workers=max_workers) as pool:
-        futures = {pool.submit(_calibrate_one, pair, date, md_repo_factory, cal_prov_factory): (pair, date)
+        futures = {pool.submit(_calibrate_one, pair, date, md_repo_factory, cal_repo_factory): (pair, date)
                    for pair, date in tasks}
         for future in as_completed(futures):
             pair, date = futures[future]
@@ -51,11 +51,10 @@ def calibrate_batch(pairs: list[str], dates: list[dt.date], md_repo_factory, cal
 
 
 if __name__ == "__main__":
-    from sdevpy.pricingcontext import default_market_repository
-    from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
+    from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 
     pairs = ["EURUSD", "USDJPY", "GBPUSD"]
     dates = [dt.datetime(2025, 12, d) for d in range(1, 20)]
 
-    all_results = calibrate_batch(pairs, dates, default_market_repository, CalibrationDataFileProvider)
+    all_results = calibrate_batch(pairs, dates, default_market_repository, default_calibration_repository)
     report = all_results[("EURUSD", dates[0])]   # {'tenor_reports': [...]}

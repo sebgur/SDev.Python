@@ -12,8 +12,7 @@ from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
 from sdevpy.maths import metrics, constants
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
-from sdevpy.pricingcontext import default_market_repository
-from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
+from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder, PenaltyType
 from sdevpy.volatility.impliedvol.impliedvol import LvMethod
 from sdevpy.analytics import black
@@ -228,7 +227,7 @@ def test_calibrate_lv_bysections_unknown_penalty_type_raises():
               'force_restart': True, 'penalty_type': 'bogus'}
     with pytest.raises(ValueError, match="Unsupported penalty type"):
         calibrate_lv_bysections(CALIB_NAME, config, default_market_repository()[CALIB_VALDATE],
-                                CalibrationDataFileProvider())
+                                default_calibration_repository()[CALIB_VALDATE])
 
 
 ##################### End Other paths ##############################################################
@@ -368,8 +367,8 @@ def test_calibrate_lv_bysections():
     calib_config = CALIB_CONFIG.copy()
     calib_config['force_restart'] = True
     mkt = default_market_repository()[CALIB_VALDATE]
-    cal_prov = CalibrationDataFileProvider()
-    result = calibrate_lv_bysections(CALIB_NAME, calib_config, mkt, cal_prov, calc_pde_vols=True)
+    calib = default_calibration_repository()[CALIB_VALDATE]
+    result = calibrate_lv_bysections(CALIB_NAME, calib_config, mkt, calib, calc_pde_vols=True)
     lv, iv_data, pde_vols = result['lv'], result['iv_data'], result['pde_vols']
 
     # Check output consistency
@@ -391,8 +390,8 @@ def test_calibrate_lv_bysections_least_squares():
     calib_config['optimizer'] = 'LeastSquares'
     calib_config['model_name'] = "VSVI"
     mkt = default_market_repository()[CALIB_VALDATE]
-    cal_prov = CalibrationDataFileProvider()
-    result = calibrate_lv_bysections(CALIB_NAME, calib_config, mkt, cal_prov, calc_pde_vols=True)
+    calib = default_calibration_repository()[CALIB_VALDATE]
+    result = calibrate_lv_bysections(CALIB_NAME, calib_config, mkt, calib, calc_pde_vols=True)
     lv, iv_data, pde_vols = result['lv'], result['iv_data'], result['pde_vols']
     # iv_data, pde_vols = result['iv_data'], result['pde_vols']
 

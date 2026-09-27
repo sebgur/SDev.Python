@@ -4,8 +4,7 @@ import numpy as np
 import logging
 from sdevpy.utilities import dates as dts
 from sdevpy.market.repository import MarketDataRepository
-from sdevpy.calibration.provider import CalibrationDataProvider
-from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
+from sdevpy.calibration.repository import CalibrationDataRepository
 from sdevpy.market.fx import fxconventions
 from sdevpy.market.fx.fxforward import fx_pillar_date
 from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly, fx_option_dates
@@ -18,11 +17,11 @@ log = logging.getLogger(__name__)
 
 
 class FxVolCalibrator:
-    def __init__(self, pair: str, md_repo: MarketDataRepository, cal_prov: CalibrationDataProvider,
+    def __init__(self, pair: str, md_repo: MarketDataRepository, cal_repo: CalibrationDataRepository,
                  extra_deltas=(0.05, 0.01), tail_method: str='exact', delta_tol: float=1e-4):
         self.pair = pair
         self.md_repo = md_repo
-        self.cal_prov = cal_prov
+        self.cal_repo = cal_repo
         self.extra_deltas = tuple(extra_deltas) if extra_deltas else ()
         self.tail_method = tail_method
         self.delta_tol = delta_tol
@@ -154,8 +153,8 @@ class FxVolCalibrator:
                   'label_deltas': label_deltas, 'strikes': strikes, 'vols': vols}
         return report
 
-    def dump(self, file: str) -> None:
-        """ Dump calibrated data to file. Builds a fresh dict rather than converting in place:
+    def dump_data(self) -> dict:
+        """ Dump calibrated data to dicitionary. Builds a fresh dict rather than converting in place:
             self.report holds real dates and must keep holding them after a dump. """
         tenor_reports = [{**r,
                           'expiry': r['expiry'].strftime(dts.DATE_FILE_FORMAT),
@@ -164,8 +163,11 @@ class FxVolCalibrator:
         data = {**self.report,
                 'date': self.report['date'].strftime(dts.DATE_FILE_FORMAT),
                 'tenor_reports': tenor_reports}
+        return data
 
-        jsm.serialize(data, file)
+    def dump(self, file: str) -> None:
+        """ Export data to json file """
+        jsm.serialize(self.dump_data(), file)
 
     # Fixed point iteration. ToDo: check if we don't already have it and move to a more suitable place if any.
     def _vol_at_delta(self, smile, expiry, df_f, df_d, delta, is_call, seed, spot_delta,
@@ -221,14 +223,15 @@ class FxVolCalibrator:
         """ Fetch market data on given date """
         self.date = date
         mkt = self.md_repo[date]
+        calib = self.cal_repo[date]
 
         # Fetch spot
         self.spot = mkt.get_fx_spot(self.forccy, self.domccy)
         log.debug(f"Spot: {self.spot}")
 
         # Fetch rate curves
-        self.forcurve = self.cal_prov.get_xccycurve(self.forccy, self.date)
-        self.domcurve = self.cal_prov.get_xccycurve(self.domccy, self.date)
+        self.forcurve = calib.get_xccycurve(self.forccy)
+        self.domcurve = calib.get_xccycurve(self.domccy)
 
         # Fetch vol
         self.vol_data = mkt.get_fx_vol_data(self.pair)
@@ -242,7 +245,7 @@ class FxVolCalibrator:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from sdevpy.pricingcontext import default_market_repository
+    from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 
     # Choose test case
     pair = "USDJPY"
@@ -250,10 +253,10 @@ if __name__ == "__main__":
 
     # Get market and calibration data providers
     md_repo = default_market_repository()
-    cal_prov = CalibrationDataFileProvider()
+    cal_repo = default_calibration_repository()
 
     # Create calibrator
-    calibrator = FxVolCalibrator(pair, md_repo, cal_prov, extra_deltas=None)
+    calibrator = FxVolCalibrator(pair, md_repo, cal_repo, extra_deltas=None)
 
     # Calibrate
     cal_timer = timer.Stopwatch('calibrate')
@@ -262,12 +265,12 @@ if __name__ == "__main__":
     cal_timer.stop()
 
     # Output to file
-    file = cal_prov.fxvol_data_file(pair, valdate)
+    file = cal_repo[valdate].save_fxvol_data(pair, calibrator.dump_data())
     calibrator.dump(file)
     cal_timer.print()
 
     # Retrieve data from file and define interpolation
-    vol_data = cal_prov.get_fxvol_data(pair, valdate)
+    vol_data = cal_repo[valdate].get_fxvol_data(pair)
     tenors, ten_deltas, ten_vols, ten_interps = [], [], [], []
     for tenor_report in vol_data['tenor_reports']:
         deltas = tenor_report['label_deltas'] # x-axis, already sorted ascending

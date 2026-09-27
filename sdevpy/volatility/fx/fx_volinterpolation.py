@@ -5,6 +5,7 @@ import numpy.typing as npt
 from sdevpy.utilities import dates as dts
 from sdevpy.maths.interpolation import create_interpolation, Interpolation
 from sdevpy.market.repository import MarketDataRepository
+from sdevpy.calibration.repository import CalibrationDataRepository
 from sdevpy.market.fx.fxconventions import (fx_market_yearfraction, conventional_pair_name, parse_fx_pair,
                                             is_premium_adjusted)
 from sdevpy.market.fx.fxforward import fx_spot_date, fx_pillar_date
@@ -341,7 +342,7 @@ class FxVolInterpolation:
 
         return v
 
-def interpolation_from_fxvol_data(vol_data: dict, md_repo: MarketDataRepository, cal_prov,
+def interpolation_from_fxvol_data(vol_data: dict, md_repo: MarketDataRepository, cal_repo: CalibrationDataRepository,
                                   **kwargs) -> FxVolInterpolation:
     """ Build the surface interpolation straight from the calibrated data as returned by
         CalibrationDataFileProvider.get_fxvol_data """
@@ -354,8 +355,9 @@ def interpolation_from_fxvol_data(vol_data: dict, md_repo: MarketDataRepository,
     valdate = dt.datetime.strptime(vol_data['date'], dts.DATE_FILE_FORMAT)
     forccy, domccy = conventional_pair_name(*parse_fx_pair(pair))
     spot = md_repo[valdate].get_fx_spot(forccy, domccy)
-    forcurve = cal_prov.get_xccycurve(forccy, valdate)
-    domcurve = cal_prov.get_xccycurve(domccy, valdate)
+    calib = cal_repo[valdate]
+    forcurve = calib.get_xccycurve(forccy)
+    domcurve = calib.get_xccycurve(domccy)
     spot_delta_cutoff = vol_data['spot_delta_cutoff']
 
     expiries, interps, fwds = [], [], []

@@ -24,20 +24,18 @@ def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) 
 
 def price_book(valdate: dt.datetime, book: Book, ctx: PricingContext, **kwargs) -> dict:
     """ Price book (PV) by Monte-Carlo """
-    md_repo = ctx.market_repo
-    cal_prov = ctx.calib_provider
-    mkt = md_repo[valdate]
+    mkt, calib = ctx.at(valdate)
 
     book.set_nameindexes()
-    book.set_valuation_date(valdate, md_repo)
+    book.set_valuation_date(valdate, ctx.market_repo)
     eventdates = book.eventdates
 
     # Retrieve modelling data
     names = book.names
-    disc_curve = cal_prov.get_yieldcurve(book.csa_curve_id, valdate)
+    disc_curve = calib.get_yieldcurve(book.csa_curve_id)
     spot = mkt.get_spots(names)
     fwd_curves = mkt.get_eq_forward_curves(names)
-    lvs = cal_prov.get_local_vols(names, valdate, **kwargs)
+    lvs = calib.get_local_vols(names, **kwargs)
     corr = mkt.get_correlations(names)
 
     # Build time grid
@@ -220,7 +218,7 @@ def price_vanilla_surface(valdate: dt.datetime, expiries: list[dt.datetime], str
     sim_prices = sim_prices['pv']
 
     # Calculate forward prices and reformat container (per expiry)
-    disc_curve = ctx.calib_provider.get_yieldcurve(book.csa_curve_id, valdate)
+    disc_curve = ctx.calib_repo[valdate].get_yieldcurve(book.csa_curve_id)
     mc_prices = []
     count = 0
     for i in range(len(expiries)):
