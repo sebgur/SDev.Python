@@ -1,15 +1,13 @@
 {
     // Modify pythonpath
     "terminal.integrated.env.windows": {"PYTHONPATH": "${workspaceFolder}"},
-    "terminal.integrated.shellArgs.windows": [
-        "-ExecutionPolicy",
-        "Bypass"
-    ],
-    "python.testing.pytestArgs": [
-        "sdevpy"
-    ],
+    "python.testing.pytestArgs": ["sdevpy"],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "workbench.editor.enablePreview": false,
+    // Use the project venv by default in the terminal
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv314/bin/python",
     "python.terminal.activateEnvironment": true,
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    // Python Environments extension: use venvs instead of system Python
+    "python-envs.defaultEnvManager": "ms-python.python:venv"
 }
