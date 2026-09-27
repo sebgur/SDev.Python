@@ -1,8 +1,7 @@
 import datetime as dt
 import numpy as np
 from scipy.stats import norm
-from sdevpy.market import provider as mdp
-from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.pricingcontext import default_market_repository
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.localvol.localvol import ConstantLocalVol
 from sdevpy.pde.pdeschemes import PdeConfig
@@ -17,7 +16,7 @@ from sdevpy.analytics import black
 name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get MarketDataProvider
-md_prov = MarketDataFileProvider()
+mkt = default_market_repository()[valdate]
 cal_prov = CalibrationDataFileProvider()
 
 # Specify products
@@ -29,7 +28,7 @@ strike_percentiles = np.linspace(0.01, 0.99, n_strikes)
 strike_conf = norm.ppf(strike_percentiles)
 
 # Retrieve forward curve
-fwd_curve = md_prov.get_eq_forward_curves([name], valdate)[0]
+fwd_curve = mkt.get_eq_forward_curves([name])[0]
 
 # Retrieve local volatility
 cvol = 0.40

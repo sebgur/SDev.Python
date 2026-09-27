@@ -57,20 +57,19 @@ class NumericalImpliedVol(ImpliedVol):
 if __name__ == "__main__":
     import datetime as dt
     import numpy as np
-    from sdevpy.market import provider as mdp
-    from sdevpy.market.fileprovider import MarketDataFileProvider
+    from sdevpy.pricingcontext import default_market_repository
     from sdevpy.utilities import timegrids
     from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
     from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol, DFLT_PDE_CONFIG
 
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
-    md = MarketDataFileProvider()
+    mkt = default_market_repository()[valdate]
 
     # Retrieve forward curve
-    fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
+    fwd_curve = mkt.get_eq_forward_curves([name])[0]
 
     # Retrieve option data
-    option_data = md.get_eq_vol_data(name, valdate)
+    option_data = mkt.get_eq_vol_data(name)
     mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
 
     # Access data in object
@@ -111,7 +110,7 @@ if __name__ == "__main__":
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Retrieve forward curve
-    fwd_curve = mdp.get_eq_forward_curves([name], valdate, md)[0]
+    fwd_curve = mkt.get_eq_forward_curves([name])[0]
 
     # fwds = surface_data.forwards
     fwds = fwd_curve.value(expiries)

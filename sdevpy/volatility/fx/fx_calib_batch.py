@@ -3,7 +3,7 @@ Container is a flat {(pair, date): report} dict — simplest to index into, and 
  (one row per pair/date/tenor) if that's more convenient for analysis.
 md_repo_factory is passed instead of a repository instance because Windows uses the spawn start method — objects handed
  to workers must pickle cleanly, and a class reference (or a functools.partial of one) does that safely whereas a live
-  provider holding file handles/connections might not.
+  repository holding file handles/connections might not.
 The if __name__ == "__main__": guard is required on Windows with spawn; _calibrate_one and calibrate_batch must stay at
  module level (not nested) so they're picklable.
 Per-task try/except means one missing date (e.g. a holiday with no quotes) doesn't kill the whole batch — you'll see

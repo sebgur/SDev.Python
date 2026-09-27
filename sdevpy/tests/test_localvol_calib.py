@@ -13,7 +13,6 @@ from sdevpy.maths import metrics, constants
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
 from sdevpy.pricingcontext import default_market_repository
-from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder, PenaltyType
 from sdevpy.volatility.impliedvol.impliedvol import LvMethod

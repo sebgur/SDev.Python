@@ -3,8 +3,7 @@ import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
 from sdevpy.maths.metrics import rmse
-from sdevpy.market import provider as mdp
-from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.pricingcontext import default_market_repository
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
@@ -17,7 +16,7 @@ logger.configure(sdevpy_level='info')
 name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get MarketDataProvider
-md_prov = MarketDataFileProvider()
+mkt = default_market_repository()[valdate]
 cal_prov = CalibrationDataFileProvider()
 
 # Choose model
@@ -25,10 +24,10 @@ model_name = 'LogMix3' # TsSvi1, TsSvi2, LogMix2, LogMix3
 dump_to_file = True
 
 # Retrieve forward curve
-fwd_curve = md_prov.get_eq_forward_curves([name], valdate, md_prov)[0]
+fwd_curve = mkt.get_eq_forward_curves([name])[0]
 
 # Retrieve option data
-option_data = md_prov.get_eq_vol_data(name, valdate)
+option_data = mkt.get_eq_vol_data(name)
 mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
 
 # Access data in object

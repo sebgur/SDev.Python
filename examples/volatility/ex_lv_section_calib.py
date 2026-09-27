@@ -15,7 +15,7 @@ n_digits = 6
 np.set_printoptions(suppress=True, precision=n_digits)
 name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
-# Get MarketDataProvider
+# Get datasets
 md_repo = default_market_repository()
 cal_prov = CalibrationDataFileProvider()
 mkt = md_repo[valdate]

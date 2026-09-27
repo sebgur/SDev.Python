@@ -77,9 +77,9 @@ if __name__ == "__main__":
     print(f"Number of assets: {len(names)}")
 
     # Closed-form for vanilla
-    md_prov = ctx.market_provider
+    mkt = ctx.market_repo[valdate]
     disc_curve = ctx.calib_provider.get_yieldcurve(book.csa_curve_id, valdate)
-    fwd_curves = md_prov.get_eq_forward_curves(names, valdate, md_prov)
+    fwd_curves = mkt.get_eq_forward_curves(names)
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx].value(expiry)
     df = disc_curve.discount(expiry)
