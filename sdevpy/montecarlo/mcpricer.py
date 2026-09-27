@@ -1,5 +1,6 @@
 """ The MC path builder only requires the paths of the underlying assets as a big
     multi-d vector. This way we can get those paths from an independent engine. """
+import logging
 import numpy as np
 import numpy.typing as npt
 import datetime as dt
@@ -12,6 +13,7 @@ from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
 from sdevpy.utilities.book import Book
+log = logging.getLogger(__name__)
 
 
 def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) -> npt.ArrayLike:
@@ -52,7 +54,9 @@ def price_book(valdate: dt.datetime, book: Book, ctx: PricingContext, **kwargs) 
     event_times = timegrids.model_time(valdate, eventdates)
     mc = MonteCarloPricer(generator, n_paths, event_times, disc_curve)
     mc_price = mc.pv(book)
-    mc.print_timers()
+    if kwargs.get('print_timers', False):
+        mc.print_timers()
+    log.debug("MC timers: " + ", ".join(f"{t.name}={t.elapsed():.2f}s" for t in mc.timers))
 
     return mc_price
 

@@ -4,7 +4,7 @@ import torch.nn as nn
 import tiktoken
 from sdevpy.llms.gpt.gpt import LayerNorm, FeedForward, TransformerBlock, GptTransformer
 import sdevpy.llms.gpt.textgen as tg
-from examples.gpt.raschka.app_dummpy_gpt import DummyGPTModel
+from examples.gpt.raschka.app_dummy_gpt import DummyGPTModel
 from examples.gpt.raschka import app_dnn
 
 
