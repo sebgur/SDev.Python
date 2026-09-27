@@ -7,7 +7,16 @@
         market strangle (`atm_vol+ms`): the flat vol used to find both strikes and price the package.
                                         This is the "market strangle" proper.
         smile strangle (calibrated): the corrected number such that a real smile function, evaluated at its own vols
-                                     at those same strikes, reprices the same market-strangle premium
+                                     at those same strikes, reprices the same market-strangle premium.
+
+    The market strangle (ms) is converted into butterfly. The model is generic and passed through build_smile().
+    We find the butterfly such that the price of the strangle at its market strikes but with the vols from the model,
+    matches the strangle quoted price:
+
+        C(K_c, smile(K_c)) + P(K_p, smile(K_p)) = C(K_c, atm + ms) + P(K_p, atm + ms)
+
+    The rhs is the market price, with the market strikes found by their definition given the quoted ms vol, i.e.
+    that both the call and the put equal the chosen delta (its opposite for the put).
 """
 import numpy as np
 import datetime as dt
