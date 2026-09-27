@@ -6,7 +6,7 @@ from sdevpy.market.source import MarketDataSource
 from sdevpy.market.dataset import MarketDataSet
 from sdevpy.calibration.source import CalibrationDataSource
 from sdevpy.calibration.dataset import CalibrationDataSet
-from sdevpy.market import eqforward as eqf
+from sdevpy.market.eq import eqforward as eqf
 from sdevpy.market.fixings import FixingHandler, data_file
 from sdevpy.market.spot import SpotData
 

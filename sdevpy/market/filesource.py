@@ -5,13 +5,13 @@ from pathlib import Path
 from sdevpy.utilities import dates as dts
 from sdevpy.market import spot as spot_mod
 from sdevpy.market import correlations
-from sdevpy.market import eqforward as eqfwd
-from sdevpy.market import eqvolsurface as eqvol
+from sdevpy.market.eq import eqforward as eqfwd
+from sdevpy.market.eq import eqvolsurface as eqvol
+from sdevpy.market.eq.eqforward import EqForwardData
+from sdevpy.market.eq.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fx import fxvolsurface as fxvol
 from sdevpy.market import fixings
 from sdevpy.market.spot import SpotData
-from sdevpy.market.eqforward import EqForwardData
-from sdevpy.market.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 from sdevpy.market.source import MarketDataSource

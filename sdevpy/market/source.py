@@ -2,8 +2,8 @@ import datetime as dt
 import numpy as np
 from abc import ABC, abstractmethod
 from sdevpy.market.spot import SpotData
-from sdevpy.market.eqforward import EqForwardData
-from sdevpy.market.eqvolsurface import EqVolSurfaceData
+from sdevpy.market.eq.eqforward import EqForwardData
+from sdevpy.market.eq.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 

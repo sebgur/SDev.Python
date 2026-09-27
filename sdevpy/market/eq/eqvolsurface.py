@@ -6,7 +6,7 @@ from sdevpy.utilities import dates
 from sdevpy.utilities import timegrids
 from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.analytics import black
-from sdevpy.market.eqforward import EqForwardCurve
+from sdevpy.market.eq.eqforward import EqForwardCurve
 log = logging.getLogger(__name__)
 
 
