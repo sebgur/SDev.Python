@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from sdevpy.market.repository import MarketDataRepository
 from sdevpy.market.filesource import MarketDataFileSource
-# from sdevpy.market.provider import MarketDataProvider
-# from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.provider import CalibrationDataProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 
@@ -10,7 +8,6 @@ from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 @dataclass
 class PricingContext:
     market_repo: MarketDataRepository
-    # market_provider: MarketDataProvider
     calib_provider: CalibrationDataProvider
 
 

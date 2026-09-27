@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 import datetime as dt
 from sdevpy.market.yieldcurve import YieldCurve
-from sdevpy.market.provider import MarketDataProvider
+from sdevpy.market.dataset import MarketDataSet
 from sdevpy.market.fx import fxconventions
 from sdevpy.market.fx.fxforward import FxForwardCurve
 from sdevpy.volatility.impliedvol import impliedvol as iv_mod
@@ -44,10 +44,10 @@ class CalibrationDataProvider(ABC):
             log.debug(f'Requested {ccy} xccy curve: effectively {curve_id}')
             return self.get_yieldcurve(curve_id, date)
 
-    def get_fx_forward_curve(self, name: str, date: dt.datetime, md_prov: MarketDataProvider) -> FxForwardCurve:
+    def get_fx_forward_curve(self, name: str, date: dt.datetime, mkt: MarketDataSet) -> FxForwardCurve:
         """ Retrieve FX forward curves """
         forccy, domccy = fxconventions.parse_fx_pair(name)
-        spot = md_prov.get_fx_spot(forccy, domccy, date)
+        spot = mkt.get_fx_spot(forccy, domccy)
         forcurve = self.get_xccycurve(forccy, date)
         domcurve = self.get_xccycurve(domccy, date)
 

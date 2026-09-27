@@ -1,12 +1,14 @@
 import pytest
 import datetime as dt
 import numpy as np
-from sdevpy.market import provider as mdp
+from sdevpy.market.source import MarketDataSource
+from sdevpy.market.dataset import MarketDataSet
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration import provider as cal_mod
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.market import eqforward as eqf
 from sdevpy.market.fixings import FixingHandler, data_file
+from sdevpy.market.spot import SpotData
 
 
 class ConstDiscountCurve:
@@ -25,21 +27,18 @@ class ConstDiscountCurve:
         return np.exp(-self.rate * t)
 
 
-class FakeProvider(mdp.MarketDataProvider):
-    def __init__(self, spots, valdate=None, rates=None):
+class FakeSource(MarketDataSource):
+    def __init__(self, spots):
         self._spots = spots
 
-    def get_spot(self, name, date):
-        return self._spots[name]
+    def get_spot_data(self, name, date):
+        return SpotData(date, self._spots[name])
 
     def _not_used(self, *args, **kwargs):
-        raise NotImplementedError("FakeProvider only supports get_spot/get_yieldcurve for these tests")
+        raise NotImplementedError("FakeSource only supports get_spot_data for these tests")
 
-    get_fixings = _not_used
     get_fixing_handler = _not_used
     get_correlations = _not_used
-    get_spots = _not_used
-    get_spot_data = _not_used
     get_eq_forward_data = _not_used
     get_eq_vol_data = _not_used
     get_fx_vol_data = _not_used
@@ -185,27 +184,33 @@ def test_eq_option_strikes():
 
 
 class TestGetFxSpot:
+    VALDATE = dt.datetime(2025, 12, 15)
+
+    def _mkt(self, spots):
+        return MarketDataSet(self.VALDATE, FakeSource(spots))
+
     def test_direct_usd_pair_conventional_order(self):
-        provider = FakeProvider({'EURUSD': 1.10})
-        assert provider.get_fx_spot('EUR', 'USD', dt.datetime(2025, 12, 15)) == pytest.approx(1.10)
+        mkt = self._mkt({'EURUSD': 1.10})
+        assert mkt.get_fx_spot('EUR', 'USD') == pytest.approx(1.10)
 
     def test_direct_usd_pair_reversed_request_inverts(self):
-        provider = FakeProvider({'EURUSD': 1.10})
-        result = provider.get_fx_spot('USD', 'EUR', dt.datetime(2025, 12, 15))
+        mkt = self._mkt({'EURUSD': 1.10})
+        result = mkt.get_fx_spot('USD', 'EUR')
         assert result == pytest.approx(1.0 / 1.10)
 
     def test_base_side_usd_pair(self):
-        provider = FakeProvider({'USDJPY': 150.0})
-        assert provider.get_fx_spot('USD', 'JPY', dt.datetime(2025, 12, 15)) == pytest.approx(150.0)
+        mkt = self._mkt({'USDJPY': 150.0})
+        # provider = FakeProvider({'USDJPY': 150.0})
+        assert mkt.get_fx_spot('USD', 'JPY') == pytest.approx(150.0)
 
     def test_cross_triangulates_through_usd(self):
-        provider = FakeProvider({'EURUSD': 1.10, 'USDJPY': 150.0})
-        result = provider.get_fx_spot('EUR', 'JPY', dt.datetime(2025, 12, 15))
+        mkt = self._mkt({'EURUSD': 1.10, 'USDJPY': 150.0})
+        result = mkt.get_fx_spot('EUR', 'JPY')
         assert result == pytest.approx(1.10 * 150.0)  # EURJPY = EURUSD * USDJPY
 
     def test_same_currency_returns_one(self):
-        provider = FakeProvider({})
-        assert provider.get_fx_spot('EUR', 'EUR', dt.datetime(2025, 12, 15)) == 1.0
+        mkt = self._mkt({})
+        assert mkt.get_fx_spot('EUR', 'EUR') == 1.0
 
 
 class TestXccyCurve:
@@ -225,9 +230,9 @@ class TestXccyCurve:
 
 def test_get_fx_forward_curve():
     valdate = dt.datetime(2025, 8, 12)
-    md_prov = FakeProvider({'EURUSD': 1.10})
+    mkt = MarketDataSet(valdate, FakeSource({'EURUSD': 1.10}))
     cal_prov = FakeCalibProvider(valdate=valdate, rates={'EUR.XCCY': 0.03, 'USD.SOFR.1D': 0.05})
-    curve = cal_prov.get_fx_forward_curve('EURUSD', valdate, md_prov)
+    curve = cal_prov.get_fx_forward_curve('EURUSD', valdate, mkt)
     assert curve.value(curve.spot_date()) == pytest.approx(1.10)
 
 

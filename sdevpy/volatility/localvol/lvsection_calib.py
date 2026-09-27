@@ -1,4 +1,3 @@
-import datetime as dt
 import numpy as np
 import numpy.typing as npt
 import logging
@@ -13,13 +12,13 @@ from sdevpy.pde import forwardpde as fpde
 from sdevpy.analytics import black
 from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
-from sdevpy.market.provider import MarketDataProvider
+from sdevpy.market.dataset import MarketDataSet
 from sdevpy.calibration.provider import CalibrationDataProvider
 from sdevpy.instruments.constants import string_to_optiontype, OptionType
 log = logging.getLogger(__name__)
 
 
-def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, md_prov: MarketDataProvider,
+def calibrate_lv_bysections(name: str, config: dict, mkt: MarketDataSet,
                             cal_prov: CalibrationDataProvider, **kwargs) -> dict:
     """ Calibrate InterpolatedParamLocalVol type to market data """
     # Arguments
@@ -27,11 +26,12 @@ def calibrate_lv_bysections(valdate: dt.datetime, name: str, config: dict, md_pr
     force_restart = config.get('force_restart', False)
     model_name = config.get('model_name', 'VSVI')
 
+    valdate = mkt.date
     # Retrieve forward curve
-    fwd_curve = md_prov.get_eq_forward_curves([name], valdate)[0]
+    fwd_curve = mkt.get_eq_forward_curves([name])[0]
 
     # Retrieve target market option data
-    surface_data = md_prov.get_eq_vol_data(name, valdate)
+    surface_data = mkt.get_eq_vol_data(name)
     expiries = surface_data.expiries
     fwds = fwd_curve.value(expiries)
     strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')

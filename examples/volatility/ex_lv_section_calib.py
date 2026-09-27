@@ -1,10 +1,9 @@
 import numpy as np
 import datetime as dt
 import matplotlib.pyplot as plt
+from sdevpy.pricingcontext import default_market_repository
 from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
 from sdevpy.utilities import timegrids
-from sdevpy.market import provider as mdp
-from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.maths import metrics
 from sdevpy import logger
@@ -17,8 +16,9 @@ np.set_printoptions(suppress=True, precision=n_digits)
 name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
 # Get MarketDataProvider
-md_prov = MarketDataFileProvider()
+md_repo = default_market_repository()
 cal_prov = CalibrationDataFileProvider()
+mkt = md_repo[valdate]
 
 # Choose model
 # model_name = 'VSVI'
@@ -31,7 +31,7 @@ config = {'model_name': model_name, 'store_date': valdate, 'pde_timesteps': 100,
 
 # Calibrate LV
 print("Launching calibration")
-calib_result = calibrate_lv_bysections(valdate, name, config, md_prov, cal_prov, calc_pde_vols=True)
+calib_result = calibrate_lv_bysections(name, config, mkt, cal_prov, calc_pde_vols=True)
 lv = calib_result['lv']
 
 # Dump LV result to file
@@ -47,7 +47,7 @@ expiries = surface_data.expiries
 expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
 # Retrieve forward curve
-fwd_curve = md_prov.get_eq_forward_curves([name], valdate)[0]
+fwd_curve = mkt.get_eq_forward_curves([name])[0]
 
 # fwds = surface_data.forwards
 fwds = fwd_curve.value(expiries)

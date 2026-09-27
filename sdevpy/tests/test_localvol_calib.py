@@ -12,6 +12,7 @@ from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
 from sdevpy.maths import metrics, constants
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
+from sdevpy.pricingcontext import default_market_repository
 from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.volatility.localvol.lvsection_calib import LvObjectiveBuilder, PenaltyType
@@ -227,8 +228,8 @@ def test_calibrate_lv_bysections_unknown_penalty_type_raises():
     config = {'model_name': 'BiExp', 'pde_timesteps': 10, 'pde_spotsteps': 30,
               'force_restart': True, 'penalty_type': 'bogus'}
     with pytest.raises(ValueError, match="Unsupported penalty type"):
-        calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, config,
-                                MarketDataFileProvider(), CalibrationDataFileProvider())
+        calibrate_lv_bysections(CALIB_NAME, config, default_market_repository()[CALIB_VALDATE],
+                                CalibrationDataFileProvider())
 
 
 ##################### End Other paths ##############################################################
@@ -367,10 +368,9 @@ def test_calibrate_lv_bysections():
     """ Calibrated LV must reproduce market vols within 200 bps RMSE at each expiry """
     calib_config = CALIB_CONFIG.copy()
     calib_config['force_restart'] = True
-    md_prov = MarketDataFileProvider()
+    mkt = default_market_repository()[CALIB_VALDATE]
     cal_prov = CalibrationDataFileProvider()
-    result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, calib_config, md_prov, cal_prov,
-                                     calc_pde_vols=True)
+    result = calibrate_lv_bysections(CALIB_NAME, calib_config, mkt, cal_prov, calc_pde_vols=True)
     lv, iv_data, pde_vols = result['lv'], result['iv_data'], result['pde_vols']
 
     # Check output consistency
@@ -391,10 +391,9 @@ def test_calibrate_lv_bysections_least_squares():
     calib_config = CALIB_CONFIG.copy()
     calib_config['optimizer'] = 'LeastSquares'
     calib_config['model_name'] = "VSVI"
-    md_prov = MarketDataFileProvider()
+    mkt = default_market_repository()[CALIB_VALDATE]
     cal_prov = CalibrationDataFileProvider()
-    result = calibrate_lv_bysections(CALIB_VALDATE, CALIB_NAME, calib_config, md_prov, cal_prov,
-                                     calc_pde_vols=True)
+    result = calibrate_lv_bysections(CALIB_NAME, calib_config, mkt, cal_prov, calc_pde_vols=True)
     lv, iv_data, pde_vols = result['lv'], result['iv_data'], result['pde_vols']
     # iv_data, pde_vols = result['iv_data'], result['pde_vols']
 

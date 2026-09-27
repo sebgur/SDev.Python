@@ -19,10 +19,10 @@ from sdevpy.volatility.fx.fx_volcalib import FxVolCalibrator
 log = logging.getLogger(__name__)
 
 
-def _calibrate_one(pair: str, date: dt.date, md_prov_factory, cal_prov_factory) -> dict:
+def _calibrate_one(pair: str, date: dt.date, md_repo_factory, cal_prov_factory) -> dict:
     """ Runs in a worker process: build a fresh provider there rather than
         pickling a shared one across the process boundary. """
-    md_prov = md_prov_factory()
+    md_prov = md_repo_factory()
     cal_prov = cal_prov_factory()
     calibrator = FxVolCalibrator(pair, md_prov, cal_prov)
     return calibrator.calibrate(date)
@@ -53,11 +53,11 @@ def calibrate_batch(pairs: list[str], dates: list[dt.date], md_prov_factory, cal
 
 
 if __name__ == "__main__":
-    from sdevpy.market.fileprovider import MarketDataFileProvider
+    from sdevpy.pricingcontext import default_market_repository
     from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 
     pairs = ["EURUSD", "USDJPY", "GBPUSD"]
     dates = [dt.datetime(2025, 12, d) for d in range(1, 20)]
 
-    all_results = calibrate_batch(pairs, dates, MarketDataFileProvider, CalibrationDataFileProvider)
+    all_results = calibrate_batch(pairs, dates, default_market_repository, CalibrationDataFileProvider)
     report = all_results[("EURUSD", dates[0])]   # {'tenor_reports': [...]}

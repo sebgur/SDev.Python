@@ -9,5 +9,6 @@
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv314/bin/python",
     "python.terminal.activateEnvironment": true,
     // Python Environments extension: use venvs instead of system Python
-    "python-envs.defaultEnvManager": "ms-python.python:venv"
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "editor.hover.enabled": "onKeyboardModifier"
 }

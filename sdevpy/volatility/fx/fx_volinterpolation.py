@@ -4,6 +4,7 @@ import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities import dates as dts
 from sdevpy.maths.interpolation import create_interpolation, Interpolation
+from sdevpy.market.repository import MarketDataRepository
 from sdevpy.market.fx.fxconventions import (fx_market_yearfraction, conventional_pair_name, parse_fx_pair,
                                             is_premium_adjusted)
 from sdevpy.market.fx.fxforward import fx_spot_date, fx_pillar_date
@@ -410,7 +411,8 @@ class FxVolInterpolation:
 
         return v
 
-def interpolation_from_fxvol_data(vol_data: dict, md_prov, cal_prov, **kwargs) -> FxVolInterpolation:
+def interpolation_from_fxvol_data(vol_data: dict, md_repo: MarketDataRepository, cal_prov,
+                                  **kwargs) -> FxVolInterpolation:
     """ Build the surface interpolation straight from the calibrated data as returned by
         CalibrationDataFileProvider.get_fxvol_data """
     smile_interp = kwargs.get('smile_interp', 'pchip') # pchip, akima, cubicspline, linear
@@ -421,7 +423,7 @@ def interpolation_from_fxvol_data(vol_data: dict, md_prov, cal_prov, **kwargs) -
     pair = vol_data['pair']
     valdate = dt.datetime.strptime(vol_data['date'], dts.DATE_FILE_FORMAT)
     forccy, domccy = conventional_pair_name(*parse_fx_pair(pair))
-    spot = md_prov.get_fx_spot(forccy, domccy, valdate)
+    spot = md_repo[valdate].get_fx_spot(forccy, domccy)
     forcurve = cal_prov.get_xccycurve(forccy, valdate)
     domcurve = cal_prov.get_xccycurve(domccy, valdate)
     spot_delta_cutoff = vol_data['spot_delta_cutoff']
@@ -444,7 +446,7 @@ def interpolation_from_fxvol_data(vol_data: dict, md_prov, cal_prov, **kwargs) -
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    from sdevpy.market.fileprovider import MarketDataFileProvider
+    from sdevpy.pricingcontext import default_market_repository
     from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
     from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
 
@@ -452,7 +454,7 @@ if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
 
     # Retrieve calibrated data and build the two-dimensional interpolation
-    md_prov = MarketDataFileProvider()
+    md_repo = default_market_repository()
     cal_prov = CalibrationDataFileProvider()
     vol_data = cal_prov.get_fxvol_data(pair, valdate)
     data_sections = vol_data['tenor_reports']
@@ -460,7 +462,8 @@ if __name__ == "__main__":
     smile_extrap = 'flat' # builtin, flat
     time_interp = 'var' # var, vol2, vol
     time_extrap = 'flat' # flat, linear
-    surface = interpolation_from_fxvol_data(vol_data, md_prov, cal_prov, smile_interp=smile_interp, smile_extrap=smile_extrap,
+    surface = interpolation_from_fxvol_data(vol_data, md_repo, cal_prov, smile_interp=smile_interp,
+                                            smile_extrap=smile_extrap,
                                             time_interp=time_interp, time_extrap=time_extrap)
     surface.calendar_check()
 

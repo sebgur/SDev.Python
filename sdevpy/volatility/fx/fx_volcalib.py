@@ -2,9 +2,9 @@
 import datetime as dt
 import numpy as np
 import logging
+from sdevpy.pricingcontext import default_market_repository
 from sdevpy.utilities import dates as dts
-from sdevpy.market.provider import MarketDataProvider
-from sdevpy.market.fileprovider import MarketDataFileProvider
+from sdevpy.market.repository import MarketDataRepository
 from sdevpy.calibration.provider import CalibrationDataProvider
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.market.fx import fxconventions
@@ -19,10 +19,10 @@ log = logging.getLogger(__name__)
 
 
 class FxVolCalibrator:
-    def __init__(self, pair: str, md_prov: MarketDataProvider, cal_prov: CalibrationDataProvider,
+    def __init__(self, pair: str, md_repo: MarketDataRepository, cal_prov: CalibrationDataProvider,
                  extra_deltas=(0.05, 0.01), tail_method: str='exact', delta_tol: float=1e-4):
         self.pair = pair
-        self.md_prov = md_prov
+        self.md_repo = md_repo
         self.cal_prov = cal_prov
         self.extra_deltas = tuple(extra_deltas) if extra_deltas else ()
         self.tail_method = tail_method
@@ -221,9 +221,10 @@ class FxVolCalibrator:
     def _fetch_market_data(self, date: dt.date) -> None:
         """ Fetch market data on given date """
         self.date = date
+        mkt = self.md_repo[date]
 
         # Fetch spot
-        self.spot = self.md_prov.get_fx_spot(self.forccy, self.domccy, self.date)
+        self.spot = mkt.get_fx_spot(self.forccy, self.domccy)
         log.debug(f"Spot: {self.spot}")
 
         # Fetch rate curves
@@ -231,7 +232,7 @@ class FxVolCalibrator:
         self.domcurve = self.cal_prov.get_xccycurve(self.domccy, self.date)
 
         # Fetch vol
-        self.vol_data = self.md_prov.get_fx_vol_data(self.pair, self.date)
+        self.vol_data = mkt.get_fx_vol_data(self.pair)
         # self.vol_data.pretty_print()
 
         # Others
@@ -248,11 +249,11 @@ if __name__ == "__main__":
     valdate = dt.datetime(2025, 12, 15)
 
     # Get market and calibration data providers
-    md_prov = MarketDataFileProvider()
+    md_repo = default_market_repository()
     cal_prov = CalibrationDataFileProvider()
 
     # Create calibrator
-    calibrator = FxVolCalibrator(pair, md_prov, cal_prov, extra_deltas=None)
+    calibrator = FxVolCalibrator(pair, md_repo, cal_prov, extra_deltas=None)
 
     # Calibrate
     cal_timer = timer.Stopwatch('calibrate')
