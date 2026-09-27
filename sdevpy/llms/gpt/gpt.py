@@ -180,7 +180,7 @@ def load_model_from_path(path: str|Path, device=None) -> GptTransformer:
 
     weight_file = path / "weights.pth"
     if weight_file.exists():
-        checkpoint = torch.load(weight_file, map_location=device)
+        checkpoint = torch.load(weight_file, map_location=device, weights_only=True)
         model.load_state_dict(checkpoint["model_state_dict"])
     else:
         log.warning("Weight file not found: random weight initialization")
