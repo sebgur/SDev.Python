@@ -1,9 +1,9 @@
 import pytest
 import datetime as dt
 import numpy as np
+from sdevpy.pricingcontext import default_market_repository
 from sdevpy.market.source import MarketDataSource
 from sdevpy.market.dataset import MarketDataSet
-from sdevpy.market.fileprovider import MarketDataFileProvider
 from sdevpy.calibration import provider as cal_mod
 from sdevpy.calibration.fileprovider import CalibrationDataFileProvider
 from sdevpy.market import eqforward as eqf
@@ -108,9 +108,8 @@ def test_data_file_returns_correct_path():
 def test_correlations():
     names = ['ABC', 'KLM', 'XYZ']
     valdate = dt.datetime(2025, 12, 15)
-    md = MarketDataFileProvider()
-    c = md.get_correlations(names, valdate)
-    # c = correlations.get_correlations(names, valdate)
+    mkt = default_market_repository()[valdate]
+    c = mkt.get_correlations(names)
     ref = np.asarray([0.5, 0.1, 0.1])
     test = np.asarray([c[0, 1], c[0, 2], c[1, 2]])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
@@ -120,8 +119,8 @@ def test_spotdata():
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Fetch data
-    md = MarketDataFileProvider()
-    test = md.get_spot(name, valdate)
+    mkt = default_market_repository()[valdate]
+    test = mkt.get_spot(name)
     ref = 100.0
     assert test == ref
 
@@ -131,8 +130,8 @@ def test_eqforward_creation():
     spot = 100.0
 
     # Get data from existing file
-    md = MarketDataFileProvider()
-    test_data = md.get_eq_forward_data(name, valdate)
+    mkt = default_market_repository()[valdate]
+    test_data = mkt.get_eq_forward_data(name)
 
     # Create forward curve
     curve = eqf.EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
@@ -153,11 +152,11 @@ def test_eq_option_strikes():
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Retrieve market option data object
-    md = MarketDataFileProvider()
-    vol_data = md.get_eq_vol_data(name, valdate)
+    mkt = default_market_repository()[valdate]
+    vol_data = mkt.get_eq_vol_data(name)
 
     # Retrieve forward curve
-    fwd_curve = md.get_eq_forward_curves([name], valdate)[0]
+    fwd_curve = mkt.get_eq_forward_curves([name])[0]
 
     # Access data in object
     test = vol_data.get_strikes(fwd_curve, 'absolute')
