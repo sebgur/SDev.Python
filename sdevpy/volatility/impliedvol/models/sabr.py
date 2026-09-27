@@ -27,12 +27,11 @@ def implied_vol(t: float, k: npt.ArrayLike, f: float, alpha: float, beta: float,
     m_epsilon = 1e-15
     # Unfortunately where() evaluates both so gives warning when going on the wrong side.
     # We temporarily suspend the warning of division by 0.
-    np.seterr(invalid='ignore')
     z2 = z * z
-    correction = np.where(z2 > 10.0 * m_epsilon,
-                          z / np.log((np.sqrt(1.0 - 2.0 * rho * z + z2) + z - rho) / (1.0 - rho)),
-                          1.0 - 0.5 * rho * z - (3.0 * rho * rho - 2.0) * z2 / 12.0)
-    np.seterr(invalid='warn')
+    with np.errstate(invalid='ignore'):
+        correction = np.where(z2 > 10.0 * m_epsilon,
+                            z / np.log((np.sqrt(1.0 - 2.0 * rho * z + z2) + z - rho) / (1.0 - rho)),
+                            1.0 - 0.5 * rho * z - (3.0 * rho * rho - 2.0) * z2 / 12.0)
 
     return tmp1 / tmp2 * correction
 

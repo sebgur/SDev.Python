@@ -88,7 +88,6 @@ class SmileGenerator(ABC):
 
     def convert_strikes(self, expiries, strike_inputs, fwd, parameters, input_method='Strikes'):
         """ Convert strike inputs into absolute strikes using the strike input_method """
-        # pylint: disable=unused-argument
         if input_method == 'Strikes':
             strikes = strike_inputs
         elif input_method == 'Spreads':
@@ -110,7 +109,6 @@ class SmileGenerator(ABC):
         """ Calculate normal implied vol and remove errors. Further remove points that are not
             in the given min/max range """
         # Calculate normal vols
-        np.seterr(divide='raise')  # To catch errors and warnings
         t = data_df.Ttm
         fwd = data_df.F
         strike = data_df.K
@@ -120,16 +118,15 @@ class SmileGenerator(ABC):
         num_print = 10000
         num_batches = int(num_samples / num_print) + 1
         batch_id = 0
-        for i in range(num_samples):
-            if i % num_print == 0:
-                batch_id = batch_id + 1
-                log.info(f"Converting to normal vol, batch {batch_id:,} out of {num_batches:,}")
-            try:
-                nvol.append(bachelier.implied_vol_jaeckel(t[i], strike[i], self.is_call, fwd[i], price[i]))
-            except Exception:
-                nvol.append(NVOL_FAILED)
-
-        np.seterr(divide='warn')  # Set back to warning
+        with np.errstate(divide='raise'):
+            for i in range(num_samples):
+                if i % num_print == 0:
+                    batch_id = batch_id + 1
+                    log.info(f"Converting to normal vol, batch {batch_id:,} out of {num_batches:,}")
+                try:
+                    nvol.append(bachelier.implied_vol_jaeckel(t[i], strike[i], self.is_call, fwd[i], price[i]))
+                except Exception:
+                    nvol.append(NVOL_FAILED)
 
         data_df['NVol'] = nvol
         # data_df['BSVol'] = bsvol
@@ -143,42 +140,6 @@ class SmileGenerator(ABC):
             raise ValueError("min_vol must be positive, otherwise failed inversions (NVOL_FAILED) are kept")
 
         return data_df
-
-    # def to_straddle_nvol(self, data_df, cleanse=True, min_vol=0.0001, max_vol=0.1):
-    #     """ Calculate normal implied vol and remove errors. Further remove points that are not
-    #         in the given min/max range """
-    #     # Calculate normal vols
-    #     np.seterr(divide='raise')  # To catch errors and warnings
-    #     n_strikes = data_df.shape[1] - 6
-    #     t = data_df.Ttm
-    #     fwd = data_df.F
-    #     # strike = data_df.K
-    #     # price = data_df.Price
-    #     nvol = []
-    #     num_samples = t.shape[0]
-    #     num_print = 10000
-    #     num_batches = int(num_samples / num_print) + 1
-    #     batch_id = 0
-    #     for i in range(num_samples):
-    #         if i % num_print == 0:
-    #             batch_id = batch_id + 1
-    #             print(f"Converting to normal vol, batch {batch_id:,} out of {num_batches:,}")
-    #         try:
-    #             nvol.append(bachelier.implied_vol(t[i], strike[i], self.is_call, fwd[i], price[i]))
-    #         except (Exception,):
-    #             nvol.append(-9999)
-
-    #     np.seterr(divide='warn')  # Set back to warning
-
-    #     data_df['NVol'] = nvol
-    #     # data_df['BSVol'] = bsvol
-
-    #     # Remove out of range
-    #     if cleanse:
-    #         data_df = data_df.drop(data_df[data_df.NVol > max_vol].index)
-    #         data_df = data_df.drop(data_df[data_df.NVol < min_vol].index)
-
-    #     return data_df
 
     def target_is_call(self):
         """ True if the fit target is call options, False if puts """
