@@ -270,7 +270,7 @@ if __name__ == "__main__":
     vol_data = cal_prov.get_fxvol_data(pair, valdate)
     tenors, ten_deltas, ten_vols, ten_interps = [], [], [], []
     for tenor_report in vol_data['tenor_reports']:
-        deltas = tenor_report['put_deltas'] # x-axis, already sorted ascending
+        deltas = tenor_report['label_deltas'] # x-axis, already sorted ascending
         vols = tenor_report['vols'] # y-axis
         tenor = tenor_report.get('tenor', tenor_report['expiry'])  # falls back to expiry if 'tenor' isn't added
         interp = create_interpolation(interp='pchip', l_extrap='builtin', r_extrap='builtin',

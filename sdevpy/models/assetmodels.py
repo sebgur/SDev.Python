@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
-
-
-# TEST_VOL = 0.20
+from sdevpy import datapaths
 
 
 class FactorModel(ABC):
@@ -57,14 +55,14 @@ class MultiAssetGBM(FactorModel):
 
 if __name__ == "__main__":
     import datetime as dt
-    from sdevpy.models import localvol_factory as lvf
+    from sdevpy.volatility.localvol import localvol_factory as lvf
     path = np.asarray([[-0.5, 0.1, 0.5], [-0.1, 0.15, 0.4], [-0.0001, 0.05, 0.25], [0.12, 0.07, 0.18]])
     print(f"Path: {path.shape}")
 
     # Get LV
     name = "ABC"
     valdate = dt.datetime(2025, 12, 15)
-    folder = lvf.test_data_folder()
+    folder = datapaths.calibdata_path() / "localvol"
 
     # Load
     store_date = valdate
