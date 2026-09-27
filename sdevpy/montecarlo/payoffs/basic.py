@@ -3,7 +3,7 @@ import datetime as dt
 from abc import ABC, abstractmethod
 from sdevpy.utilities.scalendar import make_schedule
 from sdevpy.utilities.tools import rand_str
-from sdevpy.market.provider import MarketDataProvider
+from sdevpy.market.repository import MarketDataRepository
 
 
 def list_payoff_eventdates(payoffs):
@@ -81,7 +81,7 @@ class Instrument:
             for cf in leg:
                 cf.payoff.set_nameindexes(names)
 
-    def set_valuation_date(self, valdate: dt.datetime, md: MarketDataProvider):
+    def set_valuation_date(self, valdate: dt.datetime, md: MarketDataRepository):
         for leg in self.cashflow_legs:
             for cf in leg:
                 cf.payoff.set_valuation_date(valdate, md)

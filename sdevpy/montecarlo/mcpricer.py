@@ -24,20 +24,21 @@ def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) 
 
 def price_book(valdate: dt.datetime, book: Book, ctx: PricingContext, **kwargs) -> dict:
     """ Price book (PV) by Monte-Carlo """
-    md_prov = ctx.market_provider
+    md_repo = ctx.market_repo
     cal_prov = ctx.calib_provider
+    mkt = md_repo[valdate]
 
     book.set_nameindexes()
-    book.set_valuation_date(valdate, md_prov)
+    book.set_valuation_date(valdate, md_repo)
     eventdates = book.eventdates
 
     # Retrieve modelling data
     names = book.names
     disc_curve = cal_prov.get_yieldcurve(book.csa_curve_id, valdate)
-    spot = md_prov.get_spots(names, valdate)
-    fwd_curves = md_prov.get_eq_forward_curves(names, valdate)
+    spot = mkt.get_spots(names)
+    fwd_curves = mkt.get_eq_forward_curves(names)
     lvs = cal_prov.get_local_vols(names, valdate, **kwargs)
-    corr = md_prov.get_correlations(names, valdate)
+    corr = mkt.get_correlations(names)
 
     # Build time grid
     disc_tgrid = build_timegrid(valdate, eventdates, McConfig(**kwargs))
