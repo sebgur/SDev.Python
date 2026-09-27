@@ -35,9 +35,8 @@ calib_result = calibrate_lv_bysections(name, config, mkt, calib, calc_pde_vols=T
 lv = calib_result['lv']
 
 # Dump LV result to file
-out_file = calib.save_localvol(name, config['model_name'], lv)
-print(f"Dumping LV result to file: {out_file}")
-lv.dump(out_file)
+calib.save_localvol(name, config['model_name'], lv)
+print(f"Saved {config['model_name']} LV for {name} on {valdate:%Y-%m-%d}")
 
 # ################ DIAGNOSTICS ################################################################
 # Retrieve results for diagnostics

@@ -75,9 +75,8 @@ lv = lv_calib['lv']
 
 # Dump LV result to file
 lv.valdate = lv.snapdate = valdate
-out_file = calib.save_localvol_data(name, 'Matrix', lv)
-print(f"Dumping LV result to file: {out_file}")
-# lv.dump(out_file)
+calib.save_localvol(name, 'Matrix', lv)
+print(f"Saved Matrix LV for {name} on {valdate:%Y-%m-%d}")
 
 # View the LV along the strike at several expiries
 t_idx = [upper_bound(lv_t, tp) for tp in test_times]

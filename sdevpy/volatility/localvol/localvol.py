@@ -209,8 +209,8 @@ class InterpolatedLocalVolSection(LocalVolSection):
         that can be optimized on, and it is used by the LocalVol subtype InterpolatedParamLocalVol. """
     def __init__(self, time: float, logm_list: list[float], vol_list: list[float], **kwargs):
         super().__init__(time)
-        self.logm_list = logm_list
-        self.vol_list = vol_list
+        self.logm_list = np.asarray(logm_list, dtype=float)
+        self.vol_list = np.asarray(vol_list,dtype=float)
         interp_type = kwargs.get('interpolation', 'cubicspline')
         self.interp_type = interp_type
         self.interp = create_interpolation(interp=interp_type, l_extrap='flat', r_extrap='flat')

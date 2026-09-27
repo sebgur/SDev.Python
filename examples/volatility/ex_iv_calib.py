@@ -78,6 +78,5 @@ plt.show()
 
 # Dump to file
 if dump_to_file:
-    file = calib.save_impliedvol_data_file(name, model_name)
-    # iv_surface.dump(file)
-    print(f"Dumping model to file: {file}")
+    calib.save_impliedvol(name, model_name, iv_surface)
+    print(f"Saved {model_name} implied vol for {name} on {valdate:%Y-%m-%d}")

@@ -1,3 +1,4 @@
+import pytest
 import datetime as dt
 import numpy as np
 import numpy.typing as npt
@@ -228,6 +229,23 @@ def test_lv_matrix_read():
     assert section.interp_type == 'cubicspline'
     assert len(section.logm_list) == 100
     assert len(section.vol_list) == 100
+
+
+@pytest.mark.parametrize('model_name', ['Matrix', 'BiExp'])
+def test_lv_reload_keeps_metadata_and_can_be_saved_again(tmp_path, model_name):
+    """ An LV read from storage keeps its name/dates and round-trips through save """
+    from sdevpy.calibration.filesource import CalibrationDataFileSource
+    from sdevpy.calibration.repository import CalibrationDataRepository
+
+    name, valdate = 'ABC', dt.datetime(2025, 12, 15)
+    lv = default_calibration_repository()[valdate].get_localvol(name, model_name)
+    assert lv.name == name
+    assert lv.valdate == valdate
+    assert lv.snapdate == valdate
+
+    calib = CalibrationDataRepository(CalibrationDataFileSource(tmp_path))[valdate]
+    calib.save_localvol(name, model_name, lv)  # Failed before: no valdate / list has no tolist
+    assert calib.get_localvol(name, model_name).dump_data() == lv.dump_data()
 
 
 ##################### LV by sections ##############################################################

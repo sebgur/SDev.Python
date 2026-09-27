@@ -265,8 +265,7 @@ if __name__ == "__main__":
     cal_timer.stop()
 
     # Output to file
-    file = cal_repo[valdate].save_fxvol_data(pair, calibrator.dump_data())
-    calibrator.dump(file)
+    cal_repo[valdate].save_fxvol_data(pair, calibrator.dump_data())
     cal_timer.print()
 
     # Retrieve data from file and define interpolation

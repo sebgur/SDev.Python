@@ -29,7 +29,7 @@ def _calibrate_one(pair: str, date: dt.date, md_repo_factory, cal_repo_factory) 
 def calibrate_batch(pairs: list[str], dates: list[dt.date], md_repo_factory, cal_repo_factory,
                      max_workers: int = None) -> dict[tuple[str, dt.date], dict]:
     """ Calibrates every (pair, date) combination in parallel, one FxVolCalibrator
-        surface per task. md_prov_factory and cal_prov_factory are zero-arg callable (e.g. a provider
+        surface per task. md_repo_factory and cal_repo_factory are zero-arg callable (e.g. a provider
         class, or functools.partial(default_market_repository, default_calibration_repository, root=...)) — each
         worker calls it once for its own provider instance. """
     max_workers = max_workers or os.cpu_count()

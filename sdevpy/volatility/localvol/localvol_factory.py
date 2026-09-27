@@ -1,4 +1,6 @@
 import logging
+import datetime as dt
+from sdevpy.utilities import dates as dts
 from sdevpy.volatility.impliedvol.models import biexp, vsvi, cubicvol
 from sdevpy.volatility.localvol import localvol
 from sdevpy.volatility.localvol.localvol import InterpolatedParamLocalVol, LocalVolSection
@@ -38,6 +40,18 @@ def create_section(config: dict) -> LocalVolSection:
             raise ValueError(f"Unknown section type: {model}")
 
     return section
+
+
+def _localvol_metadata(data: dict) -> dict:
+    """ Name and dates stored by LocalVol.dump_data, as constructor kwargs """
+    meta = {}
+    if 'name' in data:
+        meta['name'] = data['name']
+    if data.get('valdate') is not None:
+        meta['valdate'] = dt.datetime.strptime(data['valdate'], dts.DATE_FORMAT)
+    if data.get('snapdate') is not None:
+        meta['snapdate'] = dt.datetime.strptime(data['snapdate'], dts.DATETIME_FORMAT)
+    return meta
 
 
 def get_localvol_new(t_grid: list[float], model_name: str) -> InterpolatedParamLocalVol:
@@ -107,7 +121,7 @@ def get_localvol_from_data(data: dict, new_t_grid: list[float]=None) -> localvol
             new_section_grid.append(section)
 
     # Create LV
-    lv = localvol.InterpolatedParamLocalVol(new_section_grid)
+    lv = localvol.InterpolatedParamLocalVol(new_section_grid, **_localvol_metadata(data))
     return lv
 
 
