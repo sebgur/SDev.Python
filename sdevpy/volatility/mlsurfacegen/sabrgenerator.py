@@ -230,11 +230,13 @@ class SabrGenerator(SmileGenerator):
                     try:
                         n_vol = bachelier.implied_vol_jaeckel(expiry, k, is_call, fwd, price)[0]
                         # Include noise or not
-                        rand = np.random.rand()
+                        rand = self.rng.rand()
+                        # rand = np.random.rand()
                         use_noise = (rand < noise_prob)
                         # Multiply n_vol by noise
                         if use_noise:
-                            noise = (np.random.rand() - 0.5) * rel_noise / 0.5
+                            noise = (self.rng.rand() - 0.5) * rel_noise / 0.5
+                            # noise = (np.random.rand() - 0.5) * rel_noise / 0.5
                             n_vol = n_vol * (1.0 + noise)
                     except Exception:
                         n_vol = NVOL_FAILED

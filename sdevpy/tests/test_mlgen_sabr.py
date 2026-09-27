@@ -59,7 +59,8 @@ class TestSabrGeneratorPriceStraddlesRefNvol:
         mock_black.return_value = np.array([0.001])
         mock_jaeckel.return_value = np.array([0.005])
         g = SabrGenerator(shift=0.0)
-        with patch("numpy.random.rand", side_effect=[0.0, 0.9]):
+        with patch.object(g, "rng") as mock_rng:
+            mock_rng.rand.side_effect = [0.0, 0.9]
             # First call: gate (0.0 < 1.0 → noise on)
             # Second call: magnitude  noise = (0.9-0.5)*0.1/0.5 = 0.08
             result = g.price_straddles_ref(
