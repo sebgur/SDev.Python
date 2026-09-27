@@ -213,58 +213,6 @@ class FxVolInterpolation:
 
         raise RuntimeError(f"Delta strike solve did not converge in {max_iter} iterations")
 
-    ###################################################################################################
-
-    # def vol_at_delta(self, expiry, delta, option_type, iters: int=80) -> npt.ArrayLike:
-    #     """ Vol at a MARKET delta quote, e.g. delta=0.25 option_type='C' for a 25-delta call.
-    #         A delta quote pins strike and vol jointly, so solve the single root
-    #             g(K) = bs_delta(K, vol_at_strike(K)) - target = 0
-    #         by bisection in log-strike: one loop, no solver nested inside it. """
-    #     lo, hi, t, f = self._delta_bracket(expiry, delta, option_type, iters)
-    #     return self.vol_at_strike(t, np.exp(0.5 * (lo + hi)), fwd=f)
-
-    # def strike_at_delta(self, expiry, delta, option_type, iters: int=80) -> npt.ArrayLike:
-    #     """ Strike of a market delta quote, from the same bisection """
-    #     lo, hi, _, _ = self._delta_bracket(expiry, delta, option_type, iters)
-    #     return np.exp(0.5 * (lo + hi))
-
-    # def _delta_bracket(self, expiry, delta, option_type, iters) -> tuple:
-    #     """ Bisect g(K) in log-strike. Returns the final bracket, the times and the forward, so
-    #         both callers share one solve and one consistent forward. """
-    #     f, df_f = self._fwd_and_df_f(expiry)
-    #     t = self._to_times(expiry)
-    #     prem_adj = self.prem_adj
-    #     spot_delta = np.asarray(expiry) <= self.spot_delta_cutoff_date
-
-    #     phi = 1.0 if str(option_type).upper().startswith('C') else -1.0
-    #     target = phi * np.abs(np.asarray(delta, dtype=float))
-    #     disc = np.where(spot_delta, df_f, 1.0)
-    #     t, f, target, disc = np.broadcast_arrays(np.atleast_1d(t), np.atleast_1d(f),
-    #                                              np.atleast_1d(target), np.atleast_1d(disc))
-
-    #     # Bracket in log-strike, same generous width strike_from_delta uses by default
-    #     width = 15.0 * np.asarray(self.vol_at_strike(t, f, fwd=f)) * np.sqrt(t) + 8.0
-    #     lo, hi = np.log(f) - width, np.log(f) + width
-
-    #     def g(log_k):
-    #         k = np.exp(log_k)
-    #         return bs_delta(f, k, self.vol_at_strike(t, k, fwd=f), t, phi, disc, prem_adj) - target
-
-    #     g_hi = g(hi)
-    #     for _ in range(iters): # orientation-agnostic: handles both wings
-    #         mid = 0.5 * (lo + hi)
-    #         take_low = (g(mid) > 0) == (g_hi > 0)
-    #         hi = np.where(take_low, mid, hi)
-    #         lo = np.where(take_low, lo, mid)
-
-    #     return lo, hi, t, f
-
-    # def var_at_delta(self, expiry: npt.ArrayLike, put_delta: npt.ArrayLike) -> npt.ArrayLike:
-    #     """ Variance sigma^2 * t at (expiry, put delta) """
-    #     t = self._to_times(expiry)
-    #     v = self.vol_at_delta(t, put_delta)
-    #     return v * v * t
-
     def var_at_strike(self, expiry, strike, fwd=None) -> npt.ArrayLike:
         t = self._to_times(expiry)
         v = self.vol_at_strike(expiry, strike, fwd=fwd)
@@ -272,18 +220,6 @@ class FxVolInterpolation:
 
     def pillar_strikes(self, idx: int) -> npt.ArrayLike:
         return self.fwds[idx] * np.exp(np.asarray(self.interps[idx].x_grid, dtype=float))
-
-    # def forward(self, expiry: npt.ArrayLike) -> npt.ArrayLike:
-    #     """ Delivery-date forward S * df_f(T_set) / df_d(T_set) for the given expiry dates """
-    #     arr = np.asarray(expiry)
-    #     if arr.dtype.kind in 'fiu':
-    #         raise TypeError("Cannot derive the forward from a year fraction: pass expiry dates, "
-    #                         "or pass fwd explicitly")
-
-    #     settle = [self.settlement(e) for e in arr.reshape(-1).tolist()]
-    #     df_f = np.asarray(self.forcurve.discount(settle), dtype=float).reshape(arr.shape)
-    #     df_d = np.asarray(self.domcurve.discount(settle), dtype=float).reshape(arr.shape)
-    #     return self.spot * df_f / df_d
 
     def forward(self, expiry: npt.ArrayLike) -> npt.ArrayLike:
         """ Delivery-date forward S * df_f(T_set) / df_d(T_set) for the given expiry dates """
@@ -333,12 +269,6 @@ class FxVolInterpolation:
         k = np.atleast_1d(np.asarray(strikes, dtype=float))
         f = self.forward(e)
         return self.vol_at_strike(e[:, None], k[None, :], fwd=f[:, None])
-
-    # def vol_grid(self, expiries: npt.ArrayLike, deltas: npt.ArrayLike) -> npt.ArrayLike:
-    #     """ Vols on the full (expiry, delta) grid, shape (n_expiries, n_deltas) """
-    #     t = np.atleast_1d(self._to_times(expiries))
-    #     d = np.atleast_1d(np.asarray(deltas, dtype=float))
-    #     return self.vol_at_delta(t[:, None], d[None, :])
 
     def calendar_check(self, moneyness: npt.ArrayLike=None) -> bool:
         """ At each FIXED log-forward-moneyness, total variance must be non-decreasing in expiry

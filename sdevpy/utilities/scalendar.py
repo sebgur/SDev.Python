@@ -73,50 +73,6 @@ class Calendar:
                 count += step
         return count
 
-    # def make_schedule(self, start: dt.date, end: dt.date, term: str, convention: BDC = BDC.MF,
-    #                         stub: str = "short_front", # short_front|long_front|short_back|long_back
-    #                         eom: bool = False, convert_to_datetime: bool = False) -> list[dt.date]:
-    #     """ Generate a schedule of adjusted dates from start to end """
-    #     period = dts.period(term)
-    #     use_eom = eom and is_eom(start)
-
-    #     # 1) Generate unadjusted roll dates
-    #     if stub in ("short_back", "long_back"):
-    #         # Roll forward from start
-    #         roll_dates, d = [start], start
-    #         while True:
-    #             d += period
-    #             roll_dates.append(min(d, end))
-    #             if d >= end:
-    #                 break
-    #         if stub == "long_back" and len(roll_dates) > 2:
-    #             roll_dates.pop(-2) # merge last two periods into one long stub
-    #     else:
-    #         # Roll backwards from end (industry standard for front stubs)
-    #         roll_dates, d = [end], end
-    #         while True:
-    #             d -= period
-    #             roll_dates.insert(0, max(d, start))
-    #             if d <= start:
-    #                 break
-    #         if stub == "long_front" and len(roll_dates) > 2:
-    #             roll_dates.pop(1) # merge first two periods into one long stub
-
-    #     # 2) Apply end-of-month roll
-    #     if use_eom:
-    #         roll_dates = [to_eom(d) for d in roll_dates]
-
-    #     # 3) Adjust all dates in one pass
-    #     period_ends = roll_dates[:] # Effectively take them all
-    #     seen = set()
-    #     adjusted = []
-    #     for d in period_ends:
-    #         a = self.adjust(d, convention)
-    #         if a not in seen:
-    #             adjusted.append(a)
-    #             seen.add(a)
-
-    #     return to_datetime(adjusted) if convert_to_datetime else adjusted
     def _regular_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str="short_front",
                             eom: bool=False, roll_convention: str=None) -> list[dt.date]:
         """ Generate deduplicated unadjusted roll dates from start to end (no BDC applied) """

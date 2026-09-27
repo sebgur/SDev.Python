@@ -5,14 +5,10 @@ import numpy.typing as npt
 # from scipy.stats import norm
 from scipy.special import ndtr
 from scipy.optimize import brentq
-# from scipy.optimize import minimize_scalar
 from sdevpy.utilities.tools import isiterable
 from sdevpy.analytics.schadner import implied_vol_schadner
 from sdevpy.maths.constants import C_1_SQRT_2PI
 log = logging.getLogger(__name__)
-
-
-# _INV_SQRT_2PI = 1.0 / np.sqrt(2.0 * np.pi)
 
 
 def price(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: npt.ArrayLike, fwd: npt.ArrayLike,
@@ -38,20 +34,6 @@ def implied_vol(expiry: npt.ArrayLike, strike: npt.ArrayLike, is_call: bool, fwd
                 fwd_price: npt.ArrayLike) -> npt.NDArray[np.float64]:
     """ Black-Scholes inversion, using the Schadner method """
     return implied_vol_schadner(expiry, strike, is_call, fwd, fwd_price)
-
-
-# def implied_vol_brent(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:
-#     """ Direct method by numerical inversion using Brent. Non-vectorized due to solver. """
-#     # Trial config
-#     options = {'xtol': 1e-6, 'maxiter': 100, 'disp': False}
-#     xmin = 1e-6
-#     xmax = 2.0
-#     def error(vol):
-#         premium = price(expiry, strike, is_call, fwd, vol)
-#         return (premium - fwd_price) ** 2
-
-#     res = minimize_scalar(fun=error, bracket=(xmin, xmax), options=options, method='brent')
-#     return res.x
 
 
 def implied_vol_brent(expiry: float, strike: float, is_call: bool, fwd: float, fwd_price: float) -> float:

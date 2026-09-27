@@ -1,8 +1,6 @@
 import datetime as dt
-# from pathlib import Path
 import numpy.typing as npt
 from sdevpy.utilities import dates as dts
-# from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.utilities.scalendar import make_calendar, BDC, to_eom, is_last_business_day_of_month
 
@@ -24,33 +22,6 @@ DEFAULT_SPOT_LAG_DAYS = 2
 # Note: if we want to generate the FX forward date (delivery, whatever we call it),
 # we should do so using directly the fx_pillar_date() method in this file.
 # That is: FX Forward(delivery = 1Y) => fx_pillar_date(valdate, "1Y").
-
-
-# class FxForwardData:
-#     def __init__(self, valdate: str, spot_date: str, spot: float, pillars: dict, **kwargs):
-#         self.valdate = valdate
-#         self.snapdate = kwargs.get('snapdate', self.valdate)
-#         self.name = kwargs.get('name', '')
-#         self.spot_date = spot_date
-#         self.spot = spot
-
-#         pillars.sort(key=lambda x: x['expiry'])
-#         self.expiries = np.asarray([p['expiry'] for p in pillars])
-#         self.forwards = np.asarray([p['forward'] for p in pillars])
-
-#     def dump(self, file: str|Path, indent: int=2):
-#         """ Dump data into file """
-#         data = self.dump_data()
-#         jsm.serialize(data, file, indent)
-
-#     def dump_data(self) -> dict:
-#         """ Dump data to dictionary """
-#         pillars = [{'expiry': e.strftime(dts.DATE_FORMAT), 'forward': f}
-#                    for e, f in zip(self.expiries, self.forwards, strict=True)]
-#         return {'name': self.name, 'valdate': self.valdate.strftime(dts.DATE_FORMAT),
-#                 'snapdate': self.snapdate.strftime(dts.DATETIME_FORMAT),
-#                 'spot_date': self.spot_date.strftime(dts.DATE_FORMAT),
-#                 'spot': self.spot, 'pillars': pillars}
 
 
 class FxForwardCurve:
