@@ -13,7 +13,7 @@ import os
 import datetime as dt
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from sdevpy.volatility.fx.fx_volcalib import FxVolCalibrator
+from sdevpy.volatility.fx.fxvolcalib import FxVolCalibrator
 log = logging.getLogger(__name__)
 
 

@@ -3,10 +3,10 @@ import datetime as dt
 import numpy as np
 from itertools import pairwise
 from sdevpy.analytics import black
-from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quotes, vv_weights,
-                                                lagrange_weights, bs_vega)
-from sdevpy.volatility.fx.fx_strangle import market_strangle, calibrate_smile_strangle
-from sdevpy.volatility.fx.fx_deltastrike import atm_strike
+from sdevpy.volatility.fx.fxvannavolga import (VannaVolgaSmile, smile_from_quotes, vv_weights,
+                                               lagrange_weights, bs_vega)
+from sdevpy.volatility.fx.fxstrangle import market_strangle, calibrate_smile_strangle
+from sdevpy.volatility.fx.fxdeltastrike import atm_strike
 from sdevpy.conventions.fxconventions import fx_market_yearfraction
 
 

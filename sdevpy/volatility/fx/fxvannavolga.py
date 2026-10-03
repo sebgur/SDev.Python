@@ -28,8 +28,8 @@ import numpy.typing as npt
 # from scipy.stats import norm
 from sdevpy.analytics import black
 from sdevpy.conventions.fxconventions import fx_market_yearfraction
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
-from sdevpy.volatility.fx import fx_strangle
+from sdevpy.volatility.fx.fxdeltastrike import strike_from_delta, atm_strike
+from sdevpy.volatility.fx import fxstrangle
 from sdevpy.maths.constants import C_1_SQRT_2PI
 
 
@@ -223,8 +223,8 @@ def smile_from_quotes(valdate: dt.datetime, expiry: dt.datetime, spot: float, df
             return _smile_from_smile_butterfly(valdate, expiry, spot, df_f, df_d, atm_vol, rr, trial_bf,
                                                delta, prem_adjusted, 'none', **kwargs)
 
-        smile_bf = fx_strangle.calibrate_smile_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, bf,
-                                                        build_smile, delta, prem_adjusted, **kwargs)
+        smile_bf = fxstrangle.calibrate_smile_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, bf,
+                                                       build_smile, delta, prem_adjusted, **kwargs)
     else:
         smile_bf = bf
 
@@ -239,14 +239,14 @@ def smile_from_quotes(valdate: dt.datetime, expiry: dt.datetime, spot: float, df
 def wingvols_from_market_strangle_vv(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
                                      atm_vol: float, rr: float, ms: float, delta: float, prem_adjusted: bool,
                                      **kwargs) -> tuple:
-    """ Specific form fx_strangle's generic version with a Vanna-Volga build_smile to construct
+    """ Specific form fxstrangle's generic version with a Vanna-Volga build_smile to construct
         from a candidate strangle """
     def build_smile(trial_bf):
         return _smile_from_smile_butterfly(valdate, expiry, spot, df_f, df_d, atm_vol, rr, trial_bf, delta,
                                            prem_adjusted, 'none', **kwargs)
 
-    return fx_strangle.wingvols_from_market_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, ms,
-                                                     build_smile, delta, prem_adjusted, **kwargs)
+    return fxstrangle.wingvols_from_market_strangle(valdate, expiry, spot, df_f, df_d, atm_vol, rr, ms,
+                                                    build_smile, delta, prem_adjusted, **kwargs)
 
 if __name__ == "__main__":
     r_d, r_f = 0.04, 0.02

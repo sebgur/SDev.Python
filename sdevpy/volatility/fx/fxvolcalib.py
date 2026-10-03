@@ -10,9 +10,9 @@ from sdevpy.maths.interpolation import create_interpolation
 from sdevpy.calibration.repository import CalibrationDataRepository
 from sdevpy.market.repository import MarketDataRepository
 from sdevpy.conventions.fxdates import fx_pillar_date, fx_option_dates
-from sdevpy.volatility.fx.fx_strangle import wingvols_from_butterfly
-from sdevpy.volatility.fx.fx_vannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta, atm_strike
+from sdevpy.volatility.fx.fxstrangle import wingvols_from_butterfly
+from sdevpy.volatility.fx.fxvannavolga import wingvols_from_market_strangle_vv, VannaVolgaSmile
+from sdevpy.volatility.fx.fxdeltastrike import strike_from_delta, atm_strike
 log = logging.getLogger(__name__)
 
 

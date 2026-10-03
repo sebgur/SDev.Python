@@ -22,7 +22,7 @@ import numpy as np
 import datetime as dt
 from scipy.optimize import brentq
 from sdevpy.analytics import black
-from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
+from sdevpy.volatility.fx.fxdeltastrike import strike_from_delta
 from sdevpy.conventions.fxconventions import fx_market_yearfraction
 
 

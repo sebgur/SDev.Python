@@ -9,7 +9,7 @@ from sdevpy.calibration.repository import CalibrationDataRepository
 from sdevpy.conventions.fxconventions import (fx_market_yearfraction, conventional_pair_name, parse_fx_pair,
                                               is_premium_adjusted)
 from sdevpy.conventions.fxdates import fx_spot_date, fx_pillar_date
-from sdevpy.volatility.fx.fx_deltastrike import bs_delta
+from sdevpy.volatility.fx.fxdeltastrike import bs_delta
 log = logging.getLogger(__name__)
 
 
@@ -379,7 +379,7 @@ def interpolation_from_fxvoldata(vol_data: dict, md_repo: MarketDataRepository, 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
-    from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
+    from sdevpy.volatility.fx.fxdeltastrike import strike_from_delta
 
     pair = "USDJPY"
     valdate = dt.datetime(2025, 12, 15)
