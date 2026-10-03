@@ -158,10 +158,11 @@ def test_eq_option_strikes():
 
     # Retrieve market option data object
     mkt = default_market_repository()[valdate]
+    calib = default_calibration_repository()[valdate]
     vol_data = mkt.get_eq_vol_data(name)
 
     # Retrieve forward curve
-    fwd_curve = mkt.get_eq_forward_curves([name])[0]
+    fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
 
     # Access data in object
     test = eqvs.get_strikes(vol_data, fwd_curve, 'absolute')

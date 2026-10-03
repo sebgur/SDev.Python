@@ -28,7 +28,7 @@ up_p = 1.0 - lw_p # High percentile strike
 iv_surface = calib.get_impliedvol(name, model_name)
 
 # Retrieve forward curve
-fwd_curve = mkt.get_eq_forward_curves([name])[0]
+fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
 
 # Define expiries at which we will observe the accuracy
 test_expiries = [dts.advance(valdate, tenor) for tenor in test_tenors]

@@ -58,16 +58,17 @@ class NumericalImpliedVol(ImpliedVol):
 if __name__ == "__main__":
     import datetime as dt
     import numpy as np
-    from sdevpy.pricingcontext import default_market_repository
+    from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
     from sdevpy.utilities import timegrids
     from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
     from sdevpy.volatility.impliedvol.numerical_impliedvol import NumericalImpliedVol, DFLT_PDE_CONFIG
 
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
     mkt = default_market_repository()[valdate]
+    calib = default_calibration_repository()[valdate]
 
     # Retrieve forward curve
-    fwd_curve = mkt.get_eq_forward_curves([name])[0]
+    fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
 
     # Retrieve option data
     option_data = mkt.get_eq_vol_data(name)
@@ -98,7 +99,7 @@ if __name__ == "__main__":
 
     # Calibrate LV
     print("Launching calibration")
-    calib_result = calibrate_lv_bysections(valdate, name, config, verbose=True, calc_pde_vols=True)
+    calib_result = calibrate_lv_bysections(name, config, mkt, verbose=True, calc_pde_vols=True)
     lv = calib_result['lv']
     print(lv)
 
@@ -111,7 +112,7 @@ if __name__ == "__main__":
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Retrieve forward curve
-    fwd_curve = mkt.get_eq_forward_curves([name])[0]
+    fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
 
     # fwds = surface_data.forwards
     fwds = fwd_curve.value(expiries)

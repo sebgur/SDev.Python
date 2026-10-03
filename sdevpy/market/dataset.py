@@ -4,7 +4,6 @@ from collections.abc import Callable, Hashable
 from sdevpy.market.source import MarketDataSource
 from sdevpy.market.spot import SpotData
 from sdevpy.market.eq.eqforward import EqForwardData
-from sdevpy.calibration.eq.eqforward import EqForwardCurve
 from sdevpy.market.eq.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
 from sdevpy.conventions import fxconventions
@@ -68,15 +67,15 @@ class MarketDataSet:
     def get_spots(self, names: list[str]) -> np.ndarray:
         return np.asarray([self.get_spot(n) for n in names])
 
-    def get_eq_forward_curve(self, name: str) -> EqForwardCurve:
-        def build():
-            curve = EqForwardCurve(valdate=self.date, interp_var='forward', interp_type='cubicspline')
-            curve.calibrate(self.get_eq_forward_data(name), self.get_spot(name))
-            return curve
-        return self._get('eqfwdcurve', name, build)
+    # def get_eq_forward_curve(self, name: str) -> EqForwardCurve:
+    #     def build():
+    #         curve = EqForwardCurve(valdate=self.date, interp_var='forward', interp_type='cubicspline')
+    #         curve.calibrate(self.get_eq_forward_data(name), self.get_spot(name))
+    #         return curve
+    #     return self._get('eqfwdcurve', name, build)
 
-    def get_eq_forward_curves(self, names: list[str]) -> list[EqForwardCurve]:
-        return [self.get_eq_forward_curve(n) for n in names]
+    # def get_eq_forward_curves(self, names: list[str]) -> list[EqForwardCurve]:
+    #     return [self.get_eq_forward_curve(n) for n in names]
 
     def get_fx_spot(self, forccy: str, domccy: str) -> float:
         if forccy == domccy:

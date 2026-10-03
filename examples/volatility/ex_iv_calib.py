@@ -24,7 +24,7 @@ model_name = 'LogMix3' # TsSvi1, TsSvi2, LogMix2, LogMix3
 dump_to_file = True
 
 # Retrieve forward curve
-fwd_curve = mkt.get_eq_forward_curves([name])[0]
+fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
 
 # Retrieve option data
 option_data = mkt.get_eq_vol_data(name)

@@ -5,8 +5,9 @@ from collections.abc import Callable, Hashable
 from sdevpy.conventions import fxconventions
 from sdevpy.calibration.source import CalibrationDataSource
 from sdevpy.calibration.rates.yieldcurve import YieldCurve
-from sdevpy.market.dataset import MarketDataSet
+from sdevpy.calibration.eq.eqforward import EqForwardCurve
 from sdevpy.calibration.fx.fxforward import FxForwardCurve
+from sdevpy.market.dataset import MarketDataSet
 from sdevpy.volatility.impliedvol import impliedvol as iv_mod
 from sdevpy.volatility.impliedvol import impliedvol_factory as ivf
 from sdevpy.volatility.localvol import localvol as lv_mod
@@ -81,6 +82,18 @@ class CalibrationDataSet:
         curve.load_calibrated(mkt.get_fx_spot(forccy, domccy),
                               self.get_xccycurve(forccy), self.get_xccycurve(domccy))
         return curve
+
+    def get_eq_forward_curve(self, name: str, mkt: MarketDataSet) -> EqForwardCurve:
+        """ EQ forward curve. Not cached: it depends on mkt, which may be a bumped dataset """
+        if mkt.date != self.date:
+            raise ValueError(f"Market data {mkt.date} does not match calibration date {self.date}")
+
+        curve = EqForwardCurve(valdate=self.date, interp_var='forward', interp_type='cubicspline')
+        curve.calibrate(mkt.get_eq_forward_data(name), mkt.get_spot(name))
+        return curve
+
+    def get_eq_forward_curves(self, names: list[str], mkt: MarketDataSet) -> list[EqForwardCurve]:
+        return [self.get_eq_forward_curve(n, mkt) for n in names]
 
     # Build vol models (not cached)
     def get_impliedvol(self, name: str, model_name: str) -> iv_mod.ImpliedVol:

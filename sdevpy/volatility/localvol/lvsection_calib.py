@@ -29,7 +29,7 @@ def calibrate_lv_bysections(name: str, config: dict, mkt: MarketDataSet,
 
     valdate = mkt.date
     # Retrieve forward curve
-    fwd_curve = mkt.get_eq_forward_curves([name])[0]
+    fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
 
     # Retrieve target market option data
     surface_data = mkt.get_eq_vol_data(name)
