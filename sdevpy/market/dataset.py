@@ -16,7 +16,7 @@ class MarketDataSet:
             - 'kind' is an object type (say EQ forward, EQ vol, etc.)
             - 'key' is the identifier/name of the object (say SPX, etc.).
 
-        RAW_KINDS can be bumped/overriden. Non-RAW_KINDS are rebuilt after bump. """
+        RAW_KINDS can be bumped/overriden. """
     RAW_KINDS = {'spot', 'eqfwd', 'eqvol', 'fxvol', 'corr'}
 
     def __init__(self, date: dt.datetime, source: MarketDataSource, base: 'MarketDataSet|None'=None):
@@ -37,8 +37,7 @@ class MarketDataSet:
 
     def with_overrides(self, overrides: dict[tuple[str, Hashable], object]) -> 'MarketDataSet':
         """ New dataset where the given raw DTOs are replaced. Other raw DTOs are shared with this
-            dataset, derived objects (curves, FX crosses) are rebuilt from the overridden data.
-            The bumped set will build its derived types from the raw DTOs of the base and the
+            dataset. The bumped set will build its derived types from the raw DTOs of the base and the
             bumped DTOs it received as overrides. """
         bumped = MarketDataSet(self.date, self._source, base=self)
         bumped._cache.update(overrides)
@@ -60,22 +59,12 @@ class MarketDataSet:
     def get_correlations(self, names: list[str]) -> np.ndarray:
         return self._get('corr', tuple(names), lambda: self._source.get_correlations(names, self.date))
 
-    # Retrieve derived objects (cached)
+    # Convenience accessors on DTOs (cached)
     def get_spot(self, name: str) -> float:
         return self.get_spot_data(name).value
 
     def get_spots(self, names: list[str]) -> np.ndarray:
         return np.asarray([self.get_spot(n) for n in names])
-
-    # def get_eq_forward_curve(self, name: str) -> EqForwardCurve:
-    #     def build():
-    #         curve = EqForwardCurve(valdate=self.date, interp_var='forward', interp_type='cubicspline')
-    #         curve.calibrate(self.get_eq_forward_data(name), self.get_spot(name))
-    #         return curve
-    #     return self._get('eqfwdcurve', name, build)
-
-    # def get_eq_forward_curves(self, names: list[str]) -> list[EqForwardCurve]:
-    #     return [self.get_eq_forward_curve(n) for n in names]
 
     def get_fx_spot(self, forccy: str, domccy: str) -> float:
         if forccy == domccy:
