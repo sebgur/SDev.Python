@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 import datetime as dt
 import numpy as np

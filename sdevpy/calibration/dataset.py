@@ -6,7 +6,7 @@ from sdevpy.conventions import fxconventions
 from sdevpy.calibration.source import CalibrationDataSource
 from sdevpy.calibration.rates.yieldcurve import YieldCurve
 from sdevpy.market.dataset import MarketDataSet
-from sdevpy.market.fx.fxforward import FxForwardCurve
+from sdevpy.calibration.fx.fxforward import FxForwardCurve
 from sdevpy.volatility.impliedvol import impliedvol as iv_mod
 from sdevpy.volatility.impliedvol import impliedvol_factory as ivf
 from sdevpy.volatility.localvol import localvol as lv_mod

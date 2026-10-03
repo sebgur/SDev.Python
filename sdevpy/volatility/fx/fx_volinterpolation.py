@@ -8,7 +8,7 @@ from sdevpy.market.repository import MarketDataRepository
 from sdevpy.calibration.repository import CalibrationDataRepository
 from sdevpy.conventions.fxconventions import (fx_market_yearfraction, conventional_pair_name, parse_fx_pair,
                                               is_premium_adjusted)
-from sdevpy.market.fx.fxforward import fx_spot_date, fx_pillar_date
+from sdevpy.conventions.fxdates import fx_spot_date, fx_pillar_date
 from sdevpy.volatility.fx.fx_deltastrike import bs_delta
 log = logging.getLogger(__name__)
 

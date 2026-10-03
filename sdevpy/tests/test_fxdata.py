@@ -2,7 +2,8 @@ import pytest
 import datetime as dt
 import numpy as np
 from sdevpy.conventions import fxconventions
-from sdevpy.market.fx.fxforward import FxForwardCurve, fx_spot_lag, fx_spot_date
+from sdevpy.conventions.fxdates import fx_spot_lag, fx_spot_date
+from sdevpy.calibration.fx.fxforward import FxForwardCurve
 
 
 def test_parse_fx_pair():

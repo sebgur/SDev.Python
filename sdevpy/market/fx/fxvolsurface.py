@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import jsonmanager as jsm
-from sdevpy.market.fx.fxforward import fx_pillar_date, fx_spot_date
+from sdevpy.conventions.fxdates import fx_pillar_date, fx_spot_date
 
 
 class FxVolSurfaceData:

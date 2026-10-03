@@ -1,8 +1,6 @@
 import datetime as dt
-import numpy.typing as npt
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities.scalendar import make_calendar, BDC, to_eom, is_last_business_day_of_month
-from sdevpy.calibration.rates.yieldcurve import YieldCurve
 
 
 FX_SPOT_LAG_OVERRIDES = {
@@ -22,33 +20,6 @@ DEFAULT_SPOT_LAG_DAYS = 2
 # Note: if we want to generate the FX forward date (delivery, whatever we call it),
 # we should do so using directly the fx_pillar_date() method in this file.
 # That is: FX Forward(delivery = 1Y) => fx_pillar_date(valdate, "1Y").
-
-
-class FxForwardCurve:
-    def __init__(self, valdate: dt.datetime, forccy: str, domccy: str):
-        self.valdate = valdate
-        self.forccy, self.domccy = forccy, domccy
-        self.spot0 = None
-        self.domcurve, self.forcurve = None, None
-
-    def load_calibrated(self, spot: float, forcurve: YieldCurve, domcurve: YieldCurve) -> None:
-        """ Given already curves and spot, imply the t=0 spot equivalent """
-        sdate = self.spot_date()
-        self.forcurve = forcurve
-        self.domcurve = domcurve
-        # Imply spot at t = 0
-        self.spot0 = spot / self.forcurve.discount(sdate) * self.domcurve.discount(sdate)
-
-    def value(self, date: dt.datetime | list[dt.datetime]) -> npt.ArrayLike:
-        return self.spot0 * self.forcurve.discount(date) / self.domcurve.discount(date)
-
-    def value_float(self, t) -> npt.ArrayLike:
-        return self.spot0 * self.forcurve.discount_float(t) / self.domcurve.discount_float(t)
-
-    def spot_date(self) -> dt.datetime:
-        """ Calculate spot date corresponding to valdate """
-        return fx_spot_date(self.valdate, self.forccy, self.domccy)
-
 
 def fx_spot_lag(forccy: str, domccy: str) -> int:
     """ Business days from trade date to spot, per FX market convention """
@@ -98,22 +69,3 @@ def fx_pillar_date(valdate: dt.datetime, tenor_str: str, forccy: str, domccy: st
         # raw = spot + dts.period(tenor_str)
 
     return pair_cal.adjust(raw, convention)
-
-# def fxforwarddata_from_file(file: str|Path) -> FxForwardData:
-#     """ Extract FxForwardData object out of file """
-#     data = jsm.deserialize(file)
-
-#     pillars = data.get('pillars')
-#     for pillar in pillars:
-#         pillar['expiry'] = dt.datetime.strptime(pillar['expiry'], dts.DATE_FORMAT)
-
-#     valdate = dt.datetime.strptime(data.get('valdate'), dts.DATE_FORMAT)
-#     spot_date = dt.datetime.strptime(data.get('spot_date'), dts.DATE_FORMAT)
-#     snapdate = dt.datetime.strptime(data.get('snapdate'), dts.DATETIME_FORMAT)
-
-#     return FxForwardData(valdate, spot_date, data.get('spot'), pillars,
-#                          name=data.get('name'), snapdate=snapdate)
-
-
-if __name__ == "__main__":
-    print("Hello")
