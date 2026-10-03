@@ -1,12 +1,13 @@
 import logging
 import numpy as np
 import numpy.typing as npt
-from sdevpy.volatility.impliedvol.parametric_impliedvol import ParametricImpliedVol
 from sdevpy.maths import constants
 from sdevpy.maths.metrics import rmse
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.utilities import timegrids
 from sdevpy.volatility.impliedvol.optionsurface import OptionQuoteType
+from sdevpy.volatility.impliedvol.parametric_impliedvol import ParametricImpliedVol
+from sdevpy.calibration.eq import eqvolsurface as eqvs
 log = logging.getLogger(__name__)
 
 
@@ -102,9 +103,9 @@ class TsIvCalibrator:
         option_data = mkt_data['option_data']
         expiries = option_data.expiries
         fwds = fwd_curve.value(expiries)
-        strike_surface = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
+        strike_surface = eqvs.get_strikes(option_data, fwd_curve=fwd_curve, to_type='absolute')
         vol_surface = option_data.vols
-        price_surface = option_data.get_prices(fwd_curve, option_type='call') # Just calls for now
+        price_surface = eqvs.get_prices(option_data, fwd_curve, option_type='call') # Just calls for now
 
         # Reformat inputs to flat vectors
         valdate = option_data.valdate

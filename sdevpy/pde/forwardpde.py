@@ -5,7 +5,7 @@ from sdevpy.pde import pdeschemes
 from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.tools import isequal
-from sdevpy.market.eq.eqforward import EqForwardCurve
+from sdevpy.calibration.eq.eqforward import EqForwardCurve
 from sdevpy.volatility.localvol.localvol import LocalVol
 from sdevpy.instruments.constants import OptionType, string_to_optiontype
 

@@ -8,6 +8,7 @@ from sdevpy.pde.pdeschemes import PdeConfig
 from sdevpy.utilities.tools import isequal
 from sdevpy.utilities import timegrids
 from sdevpy.instruments.constants import string_to_optiontype
+from sdevpy.calibration.eq import eqvolsurface as eqvs
 
 
 DFLT_PDE_CONFIG = PdeConfig()
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     # Access data in object
     expiries = option_data.expiries
     fwds = fwd_curve.value(expiries)
-    mkt_strikes = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
+    mkt_strikes = eqvs.get_strikes(option_data, fwd_curve=fwd_curve, to_type='absolute')
     mkt_vols = option_data.vols
 
     # Quick check of size consistency
@@ -114,7 +115,7 @@ if __name__ == "__main__":
 
     # fwds = surface_data.forwards
     fwds = fwd_curve.value(expiries)
-    strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
+    strike_surface = eqvs.get_strikes(surface_data, fwd_curve=fwd_curve, to_type='absolute')
     vol_surface = surface_data.vols
 
     is_call = True

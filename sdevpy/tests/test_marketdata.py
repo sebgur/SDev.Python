@@ -6,7 +6,8 @@ from sdevpy.market.source import MarketDataSource
 from sdevpy.market.dataset import MarketDataSet
 from sdevpy.calibration.source import CalibrationDataSource
 from sdevpy.calibration.dataset import CalibrationDataSet
-from sdevpy.market.eq import eqforward as eqf
+from sdevpy.calibration.eq import eqvolsurface as eqvs
+from sdevpy.calibration.eq import eqforward as eqf
 from sdevpy.market.fixings import FixingHandler, data_file
 from sdevpy.market.spot import SpotData
 
@@ -163,7 +164,7 @@ def test_eq_option_strikes():
     fwd_curve = mkt.get_eq_forward_curves([name])[0]
 
     # Access data in object
-    test = vol_data.get_strikes(fwd_curve, 'absolute')
+    test = eqvs.get_strikes(vol_data, fwd_curve, 'absolute')
     # print(test)
 
     ref = np.asarray([[90.26318122, 94.70076604, 99.88756326, 105.35844335, 110.53815253],
@@ -174,7 +175,7 @@ def test_eq_option_strikes():
                       [46.17835038, 64.83651535, 94.53027807, 137.82316066, 193.51001927]])
     assert(np.allclose(test, ref, rtol=0.0, atol=1e-8))
 
-    test = vol_data.get_strikes(fwd_curve, 'relative')
+    test = eqvs.get_strikes(vol_data, fwd_curve, 'relative')
     # print(test)
 
     ref = np.asarray([[0.90082835, 0.94511554, 0.99687988, 1.05147937, 1.10317297],

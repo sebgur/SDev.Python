@@ -6,6 +6,7 @@ from sdevpy.maths.metrics import rmse
 from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 from sdevpy.volatility.impliedvol import impliedvol_factory
 from sdevpy.volatility.impliedvol.impliedvol_calib import TsIvCalibrator
+from sdevpy.calibration.eq import eqvolsurface as eqvs
 from sdevpy.utilities import timegrids
 from sdevpy import logger
 logger.configure(sdevpy_level='info')
@@ -32,7 +33,7 @@ mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
 # Access data in object
 expiries = option_data.expiries
 fwds = fwd_curve.value(expiries)
-mkt_strikes = option_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
+mkt_strikes = eqvs.get_strikes(option_data, fwd_curve=fwd_curve, to_type='absolute')
 mkt_vols = option_data.vols
 
 # Quick check of size consistency

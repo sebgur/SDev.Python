@@ -3,6 +3,7 @@ import datetime as dt
 import matplotlib.pyplot as plt
 from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 from sdevpy.volatility.localvol.lvsection_calib import calibrate_lv_bysections
+from sdevpy.calibration.eq import eqvolsurface as eqvs
 from sdevpy.utilities import timegrids
 from sdevpy.maths import metrics
 from sdevpy import logger
@@ -50,7 +51,7 @@ fwd_curve = mkt.get_eq_forward_curves([name])[0]
 
 # fwds = surface_data.forwards
 fwds = fwd_curve.value(expiries)
-strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
+strike_surface = eqvs.get_strikes(surface_data, fwd_curve=fwd_curve, to_type='absolute')
 vol_surface = surface_data.vols
 
 # Calculate RMSEs on vols

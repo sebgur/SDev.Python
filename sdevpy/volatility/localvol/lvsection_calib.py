@@ -14,6 +14,7 @@ from sdevpy.maths import metrics, constants
 from sdevpy.maths.optimization import create_optimizer
 from sdevpy.market.dataset import MarketDataSet
 from sdevpy.calibration.dataset import CalibrationDataSet
+from sdevpy.calibration.eq import eqvolsurface as eqvs
 from sdevpy.instruments.constants import string_to_optiontype, OptionType
 log = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def calibrate_lv_bysections(name: str, config: dict, mkt: MarketDataSet,
     surface_data = mkt.get_eq_vol_data(name)
     expiries = surface_data.expiries
     fwds = fwd_curve.value(expiries)
-    strike_surface = surface_data.get_strikes(fwd_curve=fwd_curve, to_type='absolute')
+    strike_surface = eqvs.get_strikes(surface_data, fwd_curve=fwd_curve, to_type='absolute')
     vol_surface = surface_data.vols
 
     # Set calibration time grid

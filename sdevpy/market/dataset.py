@@ -3,7 +3,8 @@ import numpy as np
 from collections.abc import Callable, Hashable
 from sdevpy.market.source import MarketDataSource
 from sdevpy.market.spot import SpotData
-from sdevpy.market.eq.eqforward import EqForwardData, EqForwardCurve
+from sdevpy.market.eq.eqforward import EqForwardData
+from sdevpy.calibration.eq.eqforward import EqForwardCurve
 from sdevpy.market.eq.eqvolsurface import EqVolSurfaceData
 from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
 from sdevpy.conventions import fxconventions
