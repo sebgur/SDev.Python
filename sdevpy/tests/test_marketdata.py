@@ -32,17 +32,17 @@ class FakeSource(MarketDataSource):
     def __init__(self, spots):
         self._spots = spots
 
-    def get_spot_data(self, name, date):
+    def get_spotdata(self, name, date):
         return SpotData(date, self._spots[name])
 
     def _not_used(self, *args, **kwargs):
-        raise NotImplementedError("FakeSource only supports get_spot_data for these tests")
+        raise NotImplementedError("FakeSource only supports get_spotdata for these tests")
 
     get_fixing_handler = _not_used
     get_correlations = _not_used
-    get_eq_forward_data = _not_used
-    get_eq_vol_data = _not_used
-    get_fx_vol_data = _not_used
+    get_eqforwarddata = _not_used
+    get_eqvoldata = _not_used
+    get_fxvoldata = _not_used
 
 
 class FakeCalibSource(CalibrationDataSource):
@@ -58,10 +58,10 @@ class FakeCalibSource(CalibrationDataSource):
 
     get_impliedvol_data = _not_used
     get_localvol_data = _not_used
-    get_fxvol_data = _not_used
+    get_fxvoldata = _not_used
     save_impliedvol_data = _not_used
     save_localvol_data = _not_used
-    save_fxvol_data = _not_used
+    save_fxvoldata = _not_used
 
 
 ###################################################################################################
@@ -136,7 +136,7 @@ def test_eqforward_creation():
 
     # Get data from existing file
     mkt = default_market_repository()[valdate]
-    test_data = mkt.get_eq_forward_data(name)
+    test_data = mkt.get_eqforwarddata(name)
 
     # Create forward curve
     curve = eqf.EqForwardCurve(valdate=valdate, interp_var='forward', interp_type='cubicspline')
@@ -153,16 +153,16 @@ def test_eqforward_creation():
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
 
-def test_eq_option_strikes():
+def test_eqoption_strikes():
     name, valdate = "ABC", dt.datetime(2025, 12, 15)
 
     # Retrieve market option data object
     mkt = default_market_repository()[valdate]
     calib = default_calibration_repository()[valdate]
-    vol_data = mkt.get_eq_vol_data(name)
+    vol_data = mkt.get_eqvoldata(name)
 
     # Retrieve forward curve
-    fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
+    fwd_curve = calib.get_eqforwardcurves([name], mkt)[0]
 
     # Access data in object
     test = eqvs.get_strikes(vol_data, fwd_curve, 'absolute')
@@ -196,26 +196,26 @@ class TestGetFxSpot:
 
     def test_direct_usd_pair_conventional_order(self):
         mkt = self._mkt({'EURUSD': 1.10})
-        assert mkt.get_fx_spot('EUR', 'USD') == pytest.approx(1.10)
+        assert mkt.get_fxspot('EUR', 'USD') == pytest.approx(1.10)
 
     def test_direct_usd_pair_reversed_request_inverts(self):
         mkt = self._mkt({'EURUSD': 1.10})
-        result = mkt.get_fx_spot('USD', 'EUR')
+        result = mkt.get_fxspot('USD', 'EUR')
         assert result == pytest.approx(1.0 / 1.10)
 
     def test_base_side_usd_pair(self):
         mkt = self._mkt({'USDJPY': 150.0})
         # provider = FakeProvider({'USDJPY': 150.0})
-        assert mkt.get_fx_spot('USD', 'JPY') == pytest.approx(150.0)
+        assert mkt.get_fxspot('USD', 'JPY') == pytest.approx(150.0)
 
     def test_cross_triangulates_through_usd(self):
         mkt = self._mkt({'EURUSD': 1.10, 'USDJPY': 150.0})
-        result = mkt.get_fx_spot('EUR', 'JPY')
+        result = mkt.get_fxspot('EUR', 'JPY')
         assert result == pytest.approx(1.10 * 150.0)  # EURJPY = EURUSD * USDJPY
 
     def test_same_currency_returns_one(self):
         mkt = self._mkt({})
-        assert mkt.get_fx_spot('EUR', 'EUR') == 1.0
+        assert mkt.get_fxspot('EUR', 'EUR') == 1.0
 
 
 class TestXccyCurve:
@@ -235,20 +235,20 @@ class TestXccyCurve:
             self._calib().get_rfrcurve('JPY')
 
 
-def test_get_fx_forward_curve():
+def test_get_fxforwardcurve():
     valdate = dt.datetime(2025, 8, 12)
     mkt = MarketDataSet(valdate, FakeSource({'EURUSD': 1.10}))
     calib = CalibrationDataSet(valdate, FakeCalibSource(valdate=valdate, rates={'EUR.XCCY': 0.03, 'USD.SOFR.1D': 0.05}))
-    curve = calib.get_fx_forward_curve('EURUSD', mkt)
+    curve = calib.get_fxforwardcurve('EURUSD', mkt)
     assert curve.value(curve.spot_date()) == pytest.approx(1.10)
 
 
-def test_get_fx_forward_curve_rejects_mismatched_market_date():
+def test_get_fxforwardcurve_rejects_mismatched_market_date():
     calib = CalibrationDataSet(dt.datetime(2025, 8, 12), FakeCalibSource())
     mkt = MarketDataSet(dt.datetime(2025, 8, 13), FakeSource({'EURUSD': 1.10}))
     with pytest.raises(ValueError):
-        calib.get_fx_forward_curve('EURUSD', mkt)
+        calib.get_fxforwardcurve('EURUSD', mkt)
 
 
 if __name__ == "__main__":
-    test_eq_option_strikes()
+    test_eqoption_strikes()

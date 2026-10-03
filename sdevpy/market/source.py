@@ -2,9 +2,9 @@ import datetime as dt
 import numpy as np
 from abc import ABC, abstractmethod
 from sdevpy.market.spot import SpotData
-from sdevpy.market.eq.eqforward import EqForwardData
-from sdevpy.market.eq.eqvolsurface import EqVolSurfaceData
-from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
+from sdevpy.market.eq.eqforwarddata import EqForwardData
+from sdevpy.market.eq.eqvoldata import EqVolData
+from sdevpy.market.fx.fxvoldata import FxVolData
 from sdevpy.market.fixings import FixingHandler
 
 
@@ -17,13 +17,13 @@ class MarketDataSource(ABC):
     def get_correlations(self, names: list[str], date: dt.datetime) -> np.ndarray: ...
 
     @abstractmethod
-    def get_spot_data(self, name: str, date: dt.datetime) -> SpotData: ...
+    def get_spotdata(self, name: str, date: dt.datetime) -> SpotData: ...
 
     @abstractmethod
-    def get_eq_forward_data(self, name: str, date: dt.datetime) -> EqForwardData: ...
+    def get_eqforwarddata(self, name: str, date: dt.datetime) -> EqForwardData: ...
 
     @abstractmethod
-    def get_eq_vol_data(self, name: str, date: dt.datetime) -> EqVolSurfaceData: ...
+    def get_eqvoldata(self, name: str, date: dt.datetime) -> EqVolData: ...
 
     @abstractmethod
-    def get_fx_vol_data(self, pair: str, date: dt.datetime) -> FxVolSurfaceData: ...
+    def get_fxvoldata(self, pair: str, date: dt.datetime) -> FxVolData: ...

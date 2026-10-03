@@ -41,7 +41,7 @@ class InMemorySource(CalibrationDataSource):
         self.reads.append(('lv', name, date, model_name))
         return self.lv.get((name, date, model_name))
 
-    def get_fxvol_data(self, pair, date):
+    def get_fxvoldata(self, pair, date):
         self.reads.append(('fx', pair, date))
         return self.fx.get((pair, date))
 
@@ -51,7 +51,7 @@ class InMemorySource(CalibrationDataSource):
     def save_localvol_data(self, name, date, model_name, data):
         self.lv[(name, date, model_name)] = data
 
-    def save_fxvol_data(self, pair, date, data):
+    def save_fxvoldata(self, pair, date, data):
         self.fx[(pair, date)] = data
 
 
@@ -178,9 +178,9 @@ class TestDatasetSave:
     def test_save_replaces_cached_data(self):
         source = InMemorySource(fx={('USDJPY', VALDATE): {'v': 1}})
         calib = CalibrationDataSet(VALDATE, source)
-        assert calib.get_fxvol_data('USDJPY') == {'v': 1}
-        calib.save_fxvol_data('USDJPY', {'v': 2})
-        assert calib.get_fxvol_data('USDJPY') == {'v': 2}
+        assert calib.get_fxvoldata('USDJPY') == {'v': 1}
+        calib.save_fxvoldata('USDJPY', {'v': 2})
+        assert calib.get_fxvoldata('USDJPY') == {'v': 2}
 
     def test_save_localvol_stores_its_dump(self):
         calib, source = _biexp_calib()
@@ -205,14 +205,14 @@ class TestFileSource:
         source = CalibrationDataFileSource(tmp_path)
         assert source.get_localvol_data('ABC', VALDATE, 'BiExp') is None
         assert source.get_impliedvol_data('ABC', VALDATE, 'LogMix3') is None
-        assert source.get_fxvol_data('USDJPY', VALDATE) is None
+        assert source.get_fxvoldata('USDJPY', VALDATE) is None
         assert list(tmp_path.iterdir()) == []
 
     def test_save_writes_the_expected_layout(self, tmp_path):
         source = CalibrationDataFileSource(tmp_path)
         source.save_localvol_data('ABC', VALDATE, 'BiExp', {'a': 1})
         source.save_impliedvol_data('ABC', VALDATE, 'LogMix3', {'b': 2})
-        source.save_fxvol_data('USDJPY', VALDATE, {'c': 3})
+        source.save_fxvoldata('USDJPY', VALDATE, {'c': 3})
         files = sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob('*.json'))
         assert files == ['fxvol/USDJPY/20251215-000000.json',
                          'impliedvol/ABC/20251215-000000.LogMix3.json',
@@ -220,13 +220,13 @@ class TestFileSource:
 
     def test_save_overwrites(self, tmp_path):
         source = CalibrationDataFileSource(tmp_path)
-        source.save_fxvol_data('USDJPY', VALDATE, {'v': 1})
-        source.save_fxvol_data('USDJPY', VALDATE, {'v': 2})
-        assert source.get_fxvol_data('USDJPY', VALDATE) == {'v': 2}
+        source.save_fxvoldata('USDJPY', VALDATE, {'v': 1})
+        source.save_fxvoldata('USDJPY', VALDATE, {'v': 2})
+        assert source.get_fxvoldata('USDJPY', VALDATE) == {'v': 2}
 
     def test_stored_test_data_is_read_from_default_root(self):
         assert BIEXP_DATA is not None and LOGMIX_DATA is not None
-        assert REF_CALIB.get_fxvol_data('USDJPY') is not None
+        assert REF_CALIB.get_fxvoldata('USDJPY') is not None
         assert REF_CALIB.get_yieldcurve('USD.SOFR.1D') is not None
 
 
@@ -252,7 +252,7 @@ class TestRoundTrip:
         assert calib.get_impliedvol('ABC', 'LogMix3').dump_data() == ivol.dump_data()
 
     def test_fxvol_round_trip(self, tmp_path):
-        data = copy.deepcopy(REF_CALIB.get_fxvol_data('USDJPY'))
+        data = copy.deepcopy(REF_CALIB.get_fxvoldata('USDJPY'))
         calib = self._calib(tmp_path)
-        calib.save_fxvol_data('USDJPY', data)
-        assert calib.get_fxvol_data('USDJPY') == data
+        calib.save_fxvoldata('USDJPY', data)
+        assert calib.get_fxvoldata('USDJPY') == data

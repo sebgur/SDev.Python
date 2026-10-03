@@ -29,10 +29,10 @@ def calibrate_lv_bysections(name: str, config: dict, mkt: MarketDataSet,
 
     valdate = mkt.date
     # Retrieve forward curve
-    fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
+    fwd_curve = calib.get_eqforwardcurves([name], mkt)[0]
 
     # Retrieve target market option data
-    surface_data = mkt.get_eq_vol_data(name)
+    surface_data = mkt.get_eqvoldata(name)
     expiries = surface_data.expiries
     fwds = fwd_curve.value(expiries)
     strike_surface = eqvs.get_strikes(surface_data, fwd_curve=fwd_curve, to_type='absolute')

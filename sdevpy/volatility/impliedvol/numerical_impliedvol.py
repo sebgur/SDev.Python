@@ -68,10 +68,10 @@ if __name__ == "__main__":
     calib = default_calibration_repository()[valdate]
 
     # Retrieve forward curve
-    fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
+    fwd_curve = calib.get_eqforwardcurves([name], mkt)[0]
 
     # Retrieve option data
-    option_data = mkt.get_eq_vol_data(name)
+    option_data = mkt.get_eqvoldata(name)
     mkt_data = {'option_data': option_data, 'forward_curve': fwd_curve}
 
     # Access data in object
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     expiry_grid = np.array([timegrids.model_time(valdate, expiry) for expiry in expiries])
 
     # Retrieve forward curve
-    fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
+    fwd_curve = calib.get_eqforwardcurves([name], mkt)[0]
 
     # fwds = surface_data.forwards
     fwds = fwd_curve.value(expiries)

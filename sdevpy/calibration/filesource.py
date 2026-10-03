@@ -31,7 +31,7 @@ class CalibrationDataFileSource(CalibrationDataSource):
         """ Retrieve local vol data if existing, None otherwise """
         return self._read(self._data_file('localvol', name, date, model_name))
 
-    def get_fxvol_data(self, pair: str, date: dt.datetime) -> dict|None:
+    def get_fxvoldata(self, pair: str, date: dt.datetime) -> dict|None:
         """ Retrieve FX vol data if existing, None otherwise """
         return self._read(self._data_file('fxvol', pair, date))
 
@@ -41,7 +41,7 @@ class CalibrationDataFileSource(CalibrationDataSource):
     def save_localvol_data(self, name: str, date: dt.datetime, model_name: str, data: dict) -> None:
         self._write(self._data_file('localvol', name, date, model_name), data)
 
-    def save_fxvol_data(self, pair: str, date: dt.datetime, data: dict) -> None:
+    def save_fxvoldata(self, pair: str, date: dt.datetime, data: dict) -> None:
         self._write(self._data_file('fxvol', pair, date), data)
 
     def _data_file(self, category: str, name: str, date: dt.datetime, model_name: str|None=None) -> Path:

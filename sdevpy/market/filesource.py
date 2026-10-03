@@ -5,14 +5,14 @@ from pathlib import Path
 from sdevpy.utilities import dates as dts
 from sdevpy.market import spot as spot_mod
 from sdevpy.market import correlations
-from sdevpy.market.eq import eqforward as eqfwd
-from sdevpy.market.eq import eqvolsurface as eqvol
-from sdevpy.market.eq.eqforward import EqForwardData
-from sdevpy.market.eq.eqvolsurface import EqVolSurfaceData
-from sdevpy.market.fx import fxvolsurface as fxvol
+from sdevpy.market.eq import eqforwarddata as eqfwd
+from sdevpy.market.eq import eqvoldata as eqvol
+from sdevpy.market.eq.eqforwarddata import EqForwardData
+from sdevpy.market.eq.eqvoldata import EqVolData
+from sdevpy.market.fx import fxvoldata as fxvol
+from sdevpy.market.fx.fxvoldata import FxVolData
 from sdevpy.market import fixings
 from sdevpy.market.spot import SpotData
-from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
 from sdevpy.market.fixings import FixingHandler
 from sdevpy.market.source import MarketDataSource
 from sdevpy import datapaths
@@ -38,21 +38,21 @@ class MarketDataFileSource(MarketDataSource):
         folder = self.root / 'correlations'
         return correlations.get_correlations(names, date, folder=folder)
 
-    def get_spot_data(self, name: str, date: dt.datetime) -> SpotData:
+    def get_spotdata(self, name: str, date: dt.datetime) -> SpotData:
         """ Retrieve spot data object """
         return spot_mod.spotdata_from_file(self._data_file('spot', name, date))
 
-    def get_eq_forward_data(self, name: str, date: dt.datetime) -> EqForwardData:
+    def get_eqforwarddata(self, name: str, date: dt.datetime) -> EqForwardData:
         """ Retrieve EQ forward data object """
         return eqfwd.eqforwarddata_from_file(self._data_file('eqforwards', name, date))
 
-    def get_eq_vol_data(self, name: str, date: dt.datetime) -> EqVolSurfaceData:
+    def get_eqvoldata(self, name: str, date: dt.datetime) -> EqVolData:
         """ Retrieve EQ vol surface data object """
-        return eqvol.eqvolsurfacedata_from_file(self._data_file('eqoptions', name, date))
+        return eqvol.eqvoldata_from_file(self._data_file('eqoptions', name, date))
 
-    def get_fx_vol_data(self, pair: str, date: dt.datetime) -> FxVolSurfaceData:
+    def get_fxvoldata(self, pair: str, date: dt.datetime) -> FxVolData:
         """ Retrieve FX vol surface data object """
-        return fxvol.fxvolsurfacedata_from_file(self._data_file('fxoptions', pair, date))
+        return fxvol.fxvoldata_from_file(self._data_file('fxoptions', pair, date))
 
     def _data_file(self, category: str, name: str, date: dt.datetime) -> Path:
         """ Data file for given category, name and date: root/category/name/yyyymmdd.json """

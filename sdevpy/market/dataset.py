@@ -3,9 +3,9 @@ import numpy as np
 from collections.abc import Callable, Hashable
 from sdevpy.market.source import MarketDataSource
 from sdevpy.market.spot import SpotData
-from sdevpy.market.eq.eqforward import EqForwardData
-from sdevpy.market.eq.eqvolsurface import EqVolSurfaceData
-from sdevpy.market.fx.fxvolsurface import FxVolSurfaceData
+from sdevpy.market.eq.eqforwarddata import EqForwardData
+from sdevpy.market.eq.eqvoldata import EqVolData
+from sdevpy.market.fx.fxvoldata import FxVolData
 from sdevpy.conventions import fxconventions
 
 
@@ -44,29 +44,29 @@ class MarketDataSet:
         return bumped
 
     # Retrieve DTOs (cached)
-    def get_spot_data(self, name: str) -> SpotData:
-        return self._get('spot', name, lambda: self._source.get_spot_data(name, self.date))
+    def get_spotdata(self, name: str) -> SpotData:
+        return self._get('spot', name, lambda: self._source.get_spotdata(name, self.date))
 
-    def get_eq_forward_data(self, name: str) -> EqForwardData:
-        return self._get('eqfwd', name, lambda: self._source.get_eq_forward_data(name, self.date))
+    def get_eqforwarddata(self, name: str) -> EqForwardData:
+        return self._get('eqfwd', name, lambda: self._source.get_eqforwarddata(name, self.date))
 
-    def get_eq_vol_data(self, name: str) -> EqVolSurfaceData:
-        return self._get('eqvol', name, lambda: self._source.get_eq_vol_data(name, self.date))
+    def get_eqvoldata(self, name: str) -> EqVolData:
+        return self._get('eqvol', name, lambda: self._source.get_eqvoldata(name, self.date))
 
-    def get_fx_vol_data(self, pair: str) -> FxVolSurfaceData:
-        return self._get('fxvol', pair, lambda: self._source.get_fx_vol_data(pair, self.date))
+    def get_fxvoldata(self, pair: str) -> FxVolData:
+        return self._get('fxvol', pair, lambda: self._source.get_fxvoldata(pair, self.date))
 
     def get_correlations(self, names: list[str]) -> np.ndarray:
         return self._get('corr', tuple(names), lambda: self._source.get_correlations(names, self.date))
 
     # Convenience accessors on DTOs (cached)
     def get_spot(self, name: str) -> float:
-        return self.get_spot_data(name).value
+        return self.get_spotdata(name).value
 
     def get_spots(self, names: list[str]) -> np.ndarray:
         return np.asarray([self.get_spot(n) for n in names])
 
-    def get_fx_spot(self, forccy: str, domccy: str) -> float:
+    def get_fxspot(self, forccy: str, domccy: str) -> float:
         if forccy == domccy:
             return 1.0
         return self._usd_leg_spot(forccy) / self._usd_leg_spot(domccy)

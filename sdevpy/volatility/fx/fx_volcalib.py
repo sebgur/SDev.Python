@@ -226,7 +226,7 @@ class FxVolCalibrator:
         calib = self.cal_repo[date]
 
         # Fetch spot
-        self.spot = mkt.get_fx_spot(self.forccy, self.domccy)
+        self.spot = mkt.get_fxspot(self.forccy, self.domccy)
         log.debug(f"Spot: {self.spot}")
 
         # Fetch rate curves
@@ -234,7 +234,7 @@ class FxVolCalibrator:
         self.domcurve = calib.get_xccycurve(self.domccy)
 
         # Fetch vol
-        self.vol_data = mkt.get_fx_vol_data(self.pair)
+        self.vol_data = mkt.get_fxvoldata(self.pair)
         # self.vol_data.pretty_print()
 
         # Others
@@ -265,11 +265,11 @@ if __name__ == "__main__":
     cal_timer.stop()
 
     # Output to file
-    cal_repo[valdate].save_fxvol_data(pair, calibrator.dump_data())
+    cal_repo[valdate].save_fxvoldata(pair, calibrator.dump_data())
     cal_timer.print()
 
     # Retrieve data from file and define interpolation
-    vol_data = cal_repo[valdate].get_fxvol_data(pair)
+    vol_data = cal_repo[valdate].get_fxvoldata(pair)
     tenors, ten_deltas, ten_vols, ten_interps = [], [], [], []
     for tenor_report in vol_data['tenor_reports']:
         deltas = tenor_report['label_deltas'] # x-axis, already sorted ascending

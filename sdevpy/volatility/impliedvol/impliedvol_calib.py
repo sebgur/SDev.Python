@@ -64,7 +64,6 @@ class TsIvCalibrator:
         self.result = None
         self.sol = None
 
-    # def calibrate(self, mkt_data: EqVolSurfaceData, init_point=None) -> None:
     def calibrate(self, mkt_data: dict, init_point=None) -> None:
         # Retrieve target data
         self.prepare_target_data(mkt_data)
@@ -97,7 +96,7 @@ class TsIvCalibrator:
         # Make sure model is left at solution point
         self.model.update_params(self.sol)
 
-    def prepare_target_data(self, mkt_data: dict) -> None:# EqVolSurfaceData) -> None:
+    def prepare_target_data(self, mkt_data: dict) -> None:
         """ Flatten target market data into lists of values along all expiries """
         fwd_curve = mkt_data['forward_curve']
         option_data = mkt_data['option_data']

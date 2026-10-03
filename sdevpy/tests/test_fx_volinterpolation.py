@@ -9,7 +9,7 @@ from sdevpy.maths.interpolation import create_interpolation
 from sdevpy.conventions import fxconventions
 from sdevpy.conventions.fxconventions import fx_market_yearfraction
 from sdevpy.conventions.fxdates import fx_spot_date, fx_option_dates
-from sdevpy.volatility.fx.fx_volinterpolation import FxVolInterpolation, interpolation_from_fxvol_data
+from sdevpy.volatility.fx.fx_volinterpolation import FxVolInterpolation, interpolation_from_fxvoldata
 
 
 PAIR = "USDJPY"
@@ -18,7 +18,7 @@ FORCCY, DOMCCY = fxconventions.conventional_pair_name(*fxconventions.parse_fx_pa
 MD_REPO = default_market_repository()
 CAL_REPO = default_calibration_repository()
 CALIB = CAL_REPO[VALDATE]
-SPOT = MD_REPO[VALDATE].get_fx_spot(FORCCY, DOMCCY)
+SPOT = MD_REPO[VALDATE].get_fxspot(FORCCY, DOMCCY)
 FORCURVE = CALIB.get_xccycurve(FORCCY)
 DOMCURVE = CALIB.get_xccycurve(DOMCCY)
 
@@ -354,9 +354,9 @@ class TestCalendarCheck:
 class TestDeltaQuotes:
     @staticmethod
     def _market_surface():
-        data = copy.deepcopy(CALIB.get_fxvol_data(PAIR))
-        return data, interpolation_from_fxvol_data(data, MD_REPO, CAL_REPO, smile_interp='linear',
-                                                   smile_extrap='flat')
+        data = copy.deepcopy(CALIB.get_fxvoldata(PAIR))
+        return data, interpolation_from_fxvoldata(data, MD_REPO, CAL_REPO, smile_interp='linear',
+                                                  smile_extrap='flat')
 
     @pytest.mark.parametrize('tenor', ['1W', '1M', '6M', '1Y', '2Y'])
     def test_market_delta_quotes_round_trip(self, tenor):
@@ -409,17 +409,17 @@ class TestSinglePillar:
 class TestFromCalibratedData:
     @staticmethod
     def _data():
-        return copy.deepcopy(CALIB.get_fxvol_data(PAIR))
+        return copy.deepcopy(CALIB.get_fxvoldata(PAIR))
 
     def test_builds_one_pillar_per_tenor_report(self):
         data = self._data()
-        s = interpolation_from_fxvol_data(data, MD_REPO, CAL_REPO)
+        s = interpolation_from_fxvoldata(data, MD_REPO, CAL_REPO)
         assert len(s.expiries) == len(data['tenor_reports'])
         assert s.valdate == VALDATE and s.pair == PAIR
 
     def test_pillar_expiries_and_forwards_match_the_file(self):
         data = self._data()
-        s = interpolation_from_fxvol_data(data, MD_REPO, CAL_REPO)
+        s = interpolation_from_fxvoldata(data, MD_REPO, CAL_REPO)
         reports = sorted(data['tenor_reports'], key=lambda r: r['expiry'])
         assert s.expiries == [dt.datetime.strptime(r['expiry'], dts.DATE_FILE_FORMAT)
                               for r in reports]
@@ -427,11 +427,11 @@ class TestFromCalibratedData:
 
     def test_stored_forwards_agree_with_the_curves(self):
         """ The axis was built with the calibration's forwards; the curves must reproduce them """
-        assert interpolation_from_fxvol_data(self._data(), MD_REPO, CAL_REPO).check_forwards() is True
+        assert interpolation_from_fxvoldata(self._data(), MD_REPO, CAL_REPO).check_forwards() is True
 
     def test_market_vols_are_reproduced_at_every_quoted_strike(self):
         data = self._data()
-        s = interpolation_from_fxvol_data(data, MD_REPO, CAL_REPO, smile_interp='linear', smile_extrap='flat')
+        s = interpolation_from_fxvoldata(data, MD_REPO, CAL_REPO, smile_interp='linear', smile_extrap='flat')
         for r in data['tenor_reports']:
             expiry = dt.datetime.strptime(r['expiry'], dts.DATE_FILE_FORMAT)
             assert s.vol_at_strike(expiry, r['strikes']) == pytest.approx(r['vols'])
@@ -440,13 +440,13 @@ class TestFromCalibratedData:
         data = self._data()
         data['tenor_reports'][0].pop('fwd')
         with pytest.raises(KeyError):
-            interpolation_from_fxvol_data(data, MD_REPO, CAL_REPO)
+            interpolation_from_fxvoldata(data, MD_REPO, CAL_REPO)
 
     def test_calendar_check_flags_the_1m_dip_in_the_test_data(self, caplog):
         """ The stored USDJPY set is mostly one repeated smile, with 1W and 1M carrying different
             quotes. The 1M smile sits below the block, so total variance falls from 3W to 1M on
             the call wing: a real (small) calendar arbitrage in the data, correctly detected. """
-        s = interpolation_from_fxvol_data(self._data(), MD_REPO, CAL_REPO)
+        s = interpolation_from_fxvoldata(self._data(), MD_REPO, CAL_REPO)
         with caplog.at_level('WARNING'):
             assert s.calendar_check() is False
         assert 'Calendar arbitrage' in caplog.text
@@ -454,10 +454,10 @@ class TestFromCalibratedData:
     def test_calendar_check_passes_away_from_the_1m_pillar(self):
         data = self._data()
         data['tenor_reports'] = [r for r in data['tenor_reports'] if r['tenor'] != '1M']
-        assert interpolation_from_fxvol_data(data, MD_REPO, CAL_REPO).calendar_check() is True
+        assert interpolation_from_fxvoldata(data, MD_REPO, CAL_REPO).calendar_check() is True
 
     def test_whole_market_surface_evaluates_in_one_vectorized_call(self):
-        s = interpolation_from_fxvol_data(self._data(), MD_REPO, CAL_REPO)
+        s = interpolation_from_fxvoldata(self._data(), MD_REPO, CAL_REPO)
         t = np.linspace(0.01, 5.0, 60)
         m = np.linspace(-0.5, 0.5, 40)
         v = s.vol_at_moneyness(t[:, None], m[None, :])

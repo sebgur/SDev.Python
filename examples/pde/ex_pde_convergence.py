@@ -27,7 +27,7 @@ strike_percentiles = np.linspace(0.01, 0.99, n_strikes)
 strike_conf = norm.ppf(strike_percentiles)
 
 # Retrieve forward curve
-fwd_curve = calib.get_eq_forward_curves([name], mkt)[0]
+fwd_curve = calib.get_eqforwardcurves([name], mkt)[0]
 
 # Retrieve local volatility
 cvol = 0.40

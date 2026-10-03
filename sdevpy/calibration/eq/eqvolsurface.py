@@ -1,11 +1,11 @@
 import numpy.typing as npt
 from sdevpy.utilities import timegrids
 from sdevpy.analytics import black
-from sdevpy.market.eq.eqvolsurface import EqVolSurfaceData
+from sdevpy.market.eq.eqvoldata import EqVolData
 from sdevpy.calibration.eq.eqforward import EqForwardCurve
 
 
-def get_prices(vol_data: EqVolSurfaceData, fwd_curve: EqForwardCurve, option_type: str='call') -> list[npt.NDArray]:
+def get_prices(vol_data: EqVolData, fwd_curve: EqForwardCurve, option_type: str='call') -> list[npt.NDArray]:
     """ Retrieve prices """
     option_type_lw = option_type.lower()
     prices = []
@@ -30,7 +30,7 @@ def get_prices(vol_data: EqVolSurfaceData, fwd_curve: EqForwardCurve, option_typ
     return prices
 
 
-def get_strikes(vol_data: EqVolSurfaceData, fwd_curve: EqForwardCurve=None,
+def get_strikes(vol_data: EqVolData, fwd_curve: EqForwardCurve=None,
                 to_type: str='absolute') -> list[npt.NDArray]:
     """ Retrieve strikes, absolute or relative """
     to_type_lw = to_type.lower()

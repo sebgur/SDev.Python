@@ -53,8 +53,8 @@ class CalibrationDataSet:
         return self._get('lvdata', (name, model_name),
                          lambda: self._source.get_localvol_data(name, self.date, model_name))
 
-    def get_fxvol_data(self, pair: str) -> dict|None:
-        return self._get('fxvoldata', pair, lambda: self._source.get_fxvol_data(pair, self.date))
+    def get_fxvoldata(self, pair: str) -> dict|None:
+        return self._get('fxvoldata', pair, lambda: self._source.get_fxvoldata(pair, self.date))
 
     # Retrieve curves
     def get_rfrcurve(self, ccy: str) -> YieldCurve:
@@ -73,27 +73,27 @@ class CalibrationDataSet:
         log.debug(f'Requested {ccy} xccy curve: effectively {curve_id}')
         return self.get_yieldcurve(curve_id)
 
-    def get_fx_forward_curve(self, pair: str, mkt: MarketDataSet) -> FxForwardCurve:
+    def get_fxforwardcurve(self, pair: str, mkt: MarketDataSet) -> FxForwardCurve:
         """ FX forward curve. Not cached: it depends on mkt, which may be a bumped dataset """
         if mkt.date != self.date:
             raise ValueError(f"Market date {mkt.date} does not match calibration date {self.date}")
         forccy, domccy = fxconventions.parse_fx_pair(pair)
         curve = FxForwardCurve(self.date, forccy, domccy)
-        curve.load_calibrated(mkt.get_fx_spot(forccy, domccy),
+        curve.load_calibrated(mkt.get_fxspot(forccy, domccy),
                               self.get_xccycurve(forccy), self.get_xccycurve(domccy))
         return curve
 
-    def get_eq_forward_curve(self, name: str, mkt: MarketDataSet) -> EqForwardCurve:
+    def get_eqforwardcurve(self, name: str, mkt: MarketDataSet) -> EqForwardCurve:
         """ EQ forward curve. Not cached: it depends on mkt, which may be a bumped dataset """
         if mkt.date != self.date:
             raise ValueError(f"Market data {mkt.date} does not match calibration date {self.date}")
 
         curve = EqForwardCurve(valdate=self.date, interp_var='forward', interp_type='cubicspline')
-        curve.calibrate(mkt.get_eq_forward_data(name), mkt.get_spot(name))
+        curve.calibrate(mkt.get_eqforwarddata(name), mkt.get_spot(name))
         return curve
 
-    def get_eq_forward_curves(self, names: list[str], mkt: MarketDataSet) -> list[EqForwardCurve]:
-        return [self.get_eq_forward_curve(n, mkt) for n in names]
+    def get_eqforwardcurves(self, names: list[str], mkt: MarketDataSet) -> list[EqForwardCurve]:
+        return [self.get_eqforwardcurve(n, mkt) for n in names]
 
     # Build vol models (not cached)
     def get_impliedvol(self, name: str, model_name: str) -> iv_mod.ImpliedVol:
@@ -159,8 +159,8 @@ class CalibrationDataSet:
         self._source.save_localvol_data(name, self.date, model_name, data)
         self._cache.pop(('lvdata', (name, model_name)), None)
 
-    def save_fxvol_data(self, pair: str, data: dict) -> None:
-        self._source.save_fxvol_data(pair, self.date, data)
+    def save_fxvoldata(self, pair: str, data: dict) -> None:
+        self._source.save_fxvoldata(pair, self.date, data)
         self._cache.pop(('fxvoldata', pair), None)
 
     def clear(self):

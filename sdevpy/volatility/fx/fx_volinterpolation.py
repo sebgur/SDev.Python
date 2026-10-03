@@ -342,10 +342,10 @@ class FxVolInterpolation:
 
         return v
 
-def interpolation_from_fxvol_data(vol_data: dict, md_repo: MarketDataRepository, cal_repo: CalibrationDataRepository,
-                                  **kwargs) -> FxVolInterpolation:
+def interpolation_from_fxvoldata(vol_data: dict, md_repo: MarketDataRepository, cal_repo: CalibrationDataRepository,
+                                 **kwargs) -> FxVolInterpolation:
     """ Build the surface interpolation straight from the calibrated data as returned by
-        CalibrationDataSet.get_fxvol_data """
+        CalibrationDataSet.get_fxvoldata """
     smile_interp = kwargs.get('smile_interp', 'pchip') # pchip, akima, cubicspline, linear
     smile_extrap = kwargs.get('smile_extrap', 'flat') # builtin, flat, use for both left and right
     time_interp = kwargs.get('time_interp', 'var') # var, vol2, vol
@@ -354,7 +354,7 @@ def interpolation_from_fxvol_data(vol_data: dict, md_repo: MarketDataRepository,
     pair = vol_data['pair']
     valdate = dt.datetime.strptime(vol_data['date'], dts.DATE_FILE_FORMAT)
     forccy, domccy = conventional_pair_name(*parse_fx_pair(pair))
-    spot = md_repo[valdate].get_fx_spot(forccy, domccy)
+    spot = md_repo[valdate].get_fxspot(forccy, domccy)
     calib = cal_repo[valdate]
     forcurve = calib.get_xccycurve(forccy)
     domcurve = calib.get_xccycurve(domccy)
@@ -387,15 +387,15 @@ if __name__ == "__main__":
     # Retrieve calibrated data and build the two-dimensional interpolation
     md_repo = default_market_repository()
     cal_repo = default_calibration_repository()
-    vol_data = cal_repo[valdate].get_fxvol_data(pair)
+    vol_data = cal_repo[valdate].get_fxvoldata(pair)
     data_sections = vol_data['tenor_reports']
     smile_interp = 'linear' # pchip, akima, cubicspline, linear
     smile_extrap = 'flat' # builtin, flat
     time_interp = 'var' # var, vol2, vol
     time_extrap = 'flat' # flat, linear
-    surface = interpolation_from_fxvol_data(vol_data, md_repo, cal_repo, smile_interp=smile_interp,
-                                            smile_extrap=smile_extrap,
-                                            time_interp=time_interp, time_extrap=time_extrap)
+    surface = interpolation_from_fxvoldata(vol_data, md_repo, cal_repo, smile_interp=smile_interp,
+                                           smile_extrap=smile_extrap,
+                                           time_interp=time_interp, time_extrap=time_extrap)
     surface.calendar_check()
 
     print(f"Expiries: {surface.expiries}")

@@ -79,7 +79,7 @@ if __name__ == "__main__":
     # Closed-form for vanilla
     mkt, calib = ctx.at(valdate)
     disc_curve = calib.get_yieldcurve(book.csa_curve_id)
-    fwd_curves = calib.get_eq_forward_curves(names, mkt)
+    fwd_curves = calib.get_eqforwardcurves(names, mkt)
     name_idx = names.index(v_name)
     fwd = fwd_curves[name_idx].value(expiry)
     df = disc_curve.discount(expiry)
