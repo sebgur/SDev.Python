@@ -54,7 +54,7 @@ class FxVolData:
 
         return {
             "name": self.name,
-            "valdate": self.valdate.strftime(dts.DATE_FORMAT),
+            "valdate": self.valdate.strftime(dts.DATETIME_FORMAT),
             "snapdate": self.snapdate.strftime(dts.DATETIME_FORMAT),
             "market_strangle_quote": self.market_strangle_quote,
             "spot_delta_cutoff": self.spot_delta_cutoff,
@@ -67,7 +67,7 @@ class FxVolData:
         print(sep)
         print(sep)
         print(f"Name: {self.name}")
-        print(f"Valuation date: {self.valdate.strftime(dts.DATE_FORMAT)}")
+        print(f"Valuation date: {self.valdate.strftime(dts.DATETIME_FORMAT)}")
         print(f"Snap date: {self.snapdate.strftime(dts.DATETIME_FORMAT)}")
         print(f"Market strangle quote: {self.market_strangle_quote}")
         n_exp = len(self.tenors)
@@ -97,7 +97,7 @@ def fxvoldata_from_file(file: str | Path) -> FxVolData:
     sections = data.get("sections")
 
     return FxVolData(
-        dt.datetime.strptime(valdate, dts.DATE_FORMAT),
+        dt.datetime.strptime(valdate, dts.DATETIME_FORMAT),
         sections,
         name=name,
         snapdate=dt.datetime.strptime(snapdate, dts.DATETIME_FORMAT),

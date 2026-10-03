@@ -128,7 +128,7 @@ class InterpolatedYieldCurve(YieldCurve):
             raise RuntimeError("Failure to set curve interpolation")
 
     def dump_data(self):
-        data = {'name': self.name, 'valdate': self.valdate.strftime(dts.DATE_FORMAT),
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dts.DATETIME_FORMAT),
                 'snapdate': self.snapdate.strftime(dts.DATETIME_FORMAT),
                 'interp_var': self.interp_var_str, 'interp_type': self.interp_type}
 
@@ -158,7 +158,7 @@ def yieldcurve_from_file(file: str|Path) -> InterpolatedYieldCurve:
     interp_type = data.get('interp_type')
     pillars = data.get('pillars')
 
-    valdate = dt.datetime.strptime(valdate, dts.DATE_FORMAT)
+    valdate = dt.datetime.strptime(valdate, dts.DATETIME_FORMAT)
     curve = InterpolatedYieldCurve(valdate=valdate, interp_var=interp_var, interp_type=interp_type,
                                    name=name, snapdate=snapdate)
 

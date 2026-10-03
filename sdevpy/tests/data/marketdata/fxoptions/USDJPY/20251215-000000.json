@@ -1,6 +1,6 @@
 {
   "name": "USDJPY",
-  "valdate": "15-Dec-2025",
+  "valdate": "15-Dec-2025 00:00:00",
   "snapdate": "15-Dec-2025 00:00:00",
   "market_strangle_quote": false,
   "sections": [
