@@ -8,8 +8,7 @@ from sdevpy.utilities import dates as dts
 from sdevpy.maths.interpolation import create_interpolation
 from sdevpy.conventions import fxconventions
 from sdevpy.conventions.fxconventions import fx_market_yearfraction
-from sdevpy.conventions.fxdates import fx_spot_date
-from sdevpy.market.fx.fxvolsurface import fx_option_dates
+from sdevpy.conventions.fxdates import fx_spot_date, fx_option_dates
 from sdevpy.volatility.fx.fx_volinterpolation import FxVolInterpolation, interpolation_from_fxvol_data
 
 

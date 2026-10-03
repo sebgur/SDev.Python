@@ -69,3 +69,10 @@ def fx_pillar_date(valdate: dt.datetime, tenor_str: str, forccy: str, domccy: st
         # raw = spot + dts.period(tenor_str)
 
     return pair_cal.adjust(raw, convention)
+
+
+def fx_option_dates(valdate: dt.datetime, tenor: str, forccy: str, domccy: str) -> tuple[dt.datetime, dt.datetime]:
+    """ Calculate FX option expiry and delivery dates """
+    expiry = fx_pillar_date(valdate, tenor, forccy, domccy)
+    delivery = fx_spot_date(expiry, forccy, domccy)
+    return expiry, delivery

@@ -23,7 +23,6 @@ import datetime as dt
 from scipy.optimize import brentq
 from sdevpy.analytics import black
 from sdevpy.volatility.fx.fx_deltastrike import strike_from_delta
-from sdevpy.market.fx.fxvolsurface import wingvols_from_butterfly
 from sdevpy.conventions.fxconventions import fx_market_yearfraction
 
 
@@ -50,6 +49,13 @@ def market_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f
     k_put, k_call = float(sol_put.k), float(sol_call.k)
     price = float(black.price(t, k_call, True, fwd, vol_ms) + black.price(t, k_put, False, fwd, vol_ms))
     return k_put, k_call, price, vol_ms
+
+
+def wingvols_from_butterfly(atm_vol: float, rr: float, bf: float) -> tuple[float, float]:
+    """ Wing vols at the quoted delta, given atm_vol/rr/bf where bf is the butterfly """
+    vol_call = atm_vol + bf + 0.5 * rr
+    vol_put = atm_vol + bf - 0.5 * rr
+    return vol_put, vol_call
 
 
 def calibrate_smile_strangle(valdate: dt.datetime, expiry: dt.datetime, spot: float, df_f: float, df_d: float,
