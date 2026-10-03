@@ -56,7 +56,7 @@ class MarketDataFileSource(MarketDataSource):
 
     def _data_file(self, category: str, name: str, date: dt.datetime) -> Path:
         """ Data file for given category, name and date: root/category/name/yyyymmdd.json """
-        return self.root / category / name / (date.strftime(dts.DATE_FILE_FORMAT) + ".json")
+        return self.root / category / name / (date.strftime(dts.DATETIME_FILE_FORMAT) + ".json")
 
 
 if __name__ == "__main__":

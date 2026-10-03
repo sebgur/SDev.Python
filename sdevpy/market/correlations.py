@@ -7,7 +7,6 @@ from sdevpy.utilities import dates as dts
 
 def get_correlations(names: list[str], date: dt.datetime, **kwargs):
     """ Retrieve correlation matrix for given names """
-    # print(names)
     # Load data from file
     file = data_file(date, **kwargs)
     data_df = pd.read_csv(file, index_col=0)
@@ -55,7 +54,7 @@ def add_correlations(date: dt.datetime, names1: list[str], names2: list[str], va
 
 def data_file(date: dt.datetime, folder: str|Path) -> Path:
     """ Return the data file given the date and folder """
-    return Path(folder) / (date.strftime(dts.DATE_FILE_FORMAT) + ".csv")
+    return Path(folder) / (date.strftime(dts.DATETIME_FILE_FORMAT) + ".csv")
 
 
 if __name__ == "__main__":

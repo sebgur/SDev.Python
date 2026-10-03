@@ -45,8 +45,8 @@ class CalibrationDataFileSource(CalibrationDataSource):
         self._write(self._data_file('fxvol', pair, date), data)
 
     def _data_file(self, category: str, name: str, date: dt.datetime, model_name: str|None=None) -> Path:
-        """ Data file for given category, name and date: root/category/name/yyyymmdd[.model].json """
-        stem = date.strftime(dts.DATE_FILE_FORMAT)
+        """ Data file for given category, name and date: root/category/name/yyyymmdd-hhmmss[.model].json """
+        stem = date.strftime(dts.DATETIME_FILE_FORMAT)
         if model_name is not None:
             stem += "." + model_name
         return self.root / category / name / (stem + ".json")

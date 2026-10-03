@@ -352,7 +352,7 @@ def interpolation_from_fxvoldata(vol_data: dict, md_repo: MarketDataRepository, 
     time_extrap = kwargs.get('time_extrap', 'flat') # flat, linear
 
     pair = vol_data['pair']
-    valdate = dt.datetime.strptime(vol_data['date'], dts.DATE_FILE_FORMAT)
+    valdate = dt.datetime.strptime(vol_data['date'], dts.DATETIME_FILE_FORMAT)
     forccy, domccy = conventional_pair_name(*parse_fx_pair(pair))
     spot = md_repo[valdate].get_fxspot(forccy, domccy)
     calib = cal_repo[valdate]
@@ -369,7 +369,7 @@ def interpolation_from_fxvoldata(vol_data: dict, md_repo: MarketDataRepository, 
         moneyness = np.log(np.asarray(report['strikes'], dtype=float) / fwd)
         interps.append(create_interpolation(interp=smile_interp, l_extrap=smile_extrap, r_extrap=smile_extrap,
                                             x_grid=moneyness, y_grid=report['vols']))
-        expiries.append(dt.datetime.strptime(report['expiry'], dts.DATE_FILE_FORMAT))
+        expiries.append(dt.datetime.strptime(report['expiry'], dts.DATETIME_FILE_FORMAT))
         fwds.append(fwd)
 
     return FxVolInterpolation(valdate, expiries, interps, fwds, pair, spot, forcurve, domcurve,

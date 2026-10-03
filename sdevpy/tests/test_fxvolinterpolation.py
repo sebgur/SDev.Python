@@ -363,7 +363,7 @@ class TestDeltaQuotes:
         """ The calibrated 10d/25d put and call quotes must come back exactly """
         data, s = self._market_surface()
         r = [x for x in data['tenor_reports'] if x['tenor'] == tenor][0]
-        expiry = dt.datetime.strptime(r['expiry'], dts.DATE_FILE_FORMAT)
+        expiry = dt.datetime.strptime(r['expiry'], dts.DATETIME_FILE_FORMAT)
         for d, typ, idx in ((0.10, 'P', 0), (0.25, 'P', 1), (0.25, 'C', 3), (0.10, 'C', 4)):
             got = float(np.ravel(s.vol_at_delta(expiry, d, typ))[0])
             assert got == pytest.approx(r['vols'][idx], abs=1e-8)
@@ -372,7 +372,7 @@ class TestDeltaQuotes:
     def test_strike_at_delta_recovers_the_calibrated_strikes(self, tenor):
         data, s = self._market_surface()
         r = [x for x in data['tenor_reports'] if x['tenor'] == tenor][0]
-        expiry = dt.datetime.strptime(r['expiry'], dts.DATE_FILE_FORMAT)
+        expiry = dt.datetime.strptime(r['expiry'], dts.DATETIME_FILE_FORMAT)
         for d, typ, idx in ((0.10, 'P', 0), (0.25, 'P', 1), (0.25, 'C', 3), (0.10, 'C', 4)):
             k = float(np.ravel(s.strike_at_delta(expiry, d, typ))[0])
             assert k == pytest.approx(r['strikes'][idx], rel=1e-8)
@@ -380,7 +380,7 @@ class TestDeltaQuotes:
     def test_delta_quotes_are_vectorized_across_tenors(self):
         data, s = self._market_surface()
         reports = sorted(data['tenor_reports'], key=lambda r: r['expiry'])
-        expiries = np.asarray([dt.datetime.strptime(r['expiry'], dts.DATE_FILE_FORMAT)
+        expiries = np.asarray([dt.datetime.strptime(r['expiry'], dts.DATETIME_FILE_FORMAT)
                                for r in reports], dtype=object)
         got = s.vol_at_delta(expiries, 0.25, 'P')
         assert got == pytest.approx([r['vols'][1] for r in reports], abs=1e-8)
@@ -388,7 +388,7 @@ class TestDeltaQuotes:
     def test_vol_at_delta_agrees_with_vol_at_strike_at_its_own_strike(self):
         data, s = self._market_surface()
         r = [x for x in data['tenor_reports'] if x['tenor'] == '1Y'][0]
-        expiry = dt.datetime.strptime(r['expiry'], dts.DATE_FILE_FORMAT)
+        expiry = dt.datetime.strptime(r['expiry'], dts.DATETIME_FILE_FORMAT)
         k = s.strike_at_delta(expiry, 0.25, 'C')
         assert s.vol_at_delta(expiry, 0.25, 'C') == pytest.approx(s.vol_at_strike(expiry, k))
 
@@ -421,7 +421,7 @@ class TestFromCalibratedData:
         data = self._data()
         s = interpolation_from_fxvoldata(data, MD_REPO, CAL_REPO)
         reports = sorted(data['tenor_reports'], key=lambda r: r['expiry'])
-        assert s.expiries == [dt.datetime.strptime(r['expiry'], dts.DATE_FILE_FORMAT)
+        assert s.expiries == [dt.datetime.strptime(r['expiry'], dts.DATETIME_FILE_FORMAT)
                               for r in reports]
         assert s.fwds == pytest.approx([r['fwd'] for r in reports])
 
@@ -433,7 +433,7 @@ class TestFromCalibratedData:
         data = self._data()
         s = interpolation_from_fxvoldata(data, MD_REPO, CAL_REPO, smile_interp='linear', smile_extrap='flat')
         for r in data['tenor_reports']:
-            expiry = dt.datetime.strptime(r['expiry'], dts.DATE_FILE_FORMAT)
+            expiry = dt.datetime.strptime(r['expiry'], dts.DATETIME_FILE_FORMAT)
             assert s.vol_at_strike(expiry, r['strikes']) == pytest.approx(r['vols'])
 
     def test_missing_forward_raises(self):

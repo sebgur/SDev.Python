@@ -157,11 +157,11 @@ class FxVolCalibrator:
         """ Dump calibrated data to dicitionary. Builds a fresh dict rather than converting in place:
             self.report holds real dates and must keep holding them after a dump. """
         tenor_reports = [{**r,
-                          'expiry': r['expiry'].strftime(dts.DATE_FILE_FORMAT),
-                          'settlement': r['settlement'].strftime(dts.DATE_FILE_FORMAT)}
+                          'expiry': r['expiry'].strftime(dts.DATETIME_FILE_FORMAT),
+                          'settlement': r['settlement'].strftime(dts.DATETIME_FILE_FORMAT)}
                          for r in self.report['tenor_reports']]
         data = {**self.report,
-                'date': self.report['date'].strftime(dts.DATE_FILE_FORMAT),
+                'date': self.report['date'].strftime(dts.DATETIME_FILE_FORMAT),
                 'tenor_reports': tenor_reports}
         return data
 
