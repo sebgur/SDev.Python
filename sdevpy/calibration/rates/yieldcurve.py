@@ -52,7 +52,7 @@ class InterpolatedYieldCurve(YieldCurve):
                 return np.exp(-y * t)
             case YieldCurveVariable.DISCOUNT:
                 return y
-            case YieldCurveVariable.LOG_DISCOUNT:
+            case YieldCurveVariable.LOGDISCOUNT:
                 return np.exp(y)
             case _:
                 raise RuntimeError(f"Unsupported interpolation variable: {str(self.interp_var)}")
@@ -76,7 +76,7 @@ class InterpolatedYieldCurve(YieldCurve):
         if self.interp_var == YieldCurveVariable.ZERORATE:
             times = timegrids.model_time(self.valdate, self.dates)
             data_y = -np.log(self.dfs) / times
-        elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOG_DISCOUNT]:
+        elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOGDISCOUNT]:
             times = [0.0]
             times.extend(timegrids.model_time(self.valdate, self.dates))
             times = np.asarray(times)
@@ -97,8 +97,8 @@ class InterpolatedYieldCurve(YieldCurve):
                 self.interp_var = YieldCurveVariable.ZERORATE
             case 'discount':
                 self.interp_var = YieldCurveVariable.DISCOUNT
-            case 'log_discount':
-                self.interp_var = YieldCurveVariable.LOG_DISCOUNT
+            case 'logdiscount':
+                self.interp_var = YieldCurveVariable.LOGDISCOUNT
             case _:
                 raise RuntimeError(f"Unknown interpolation variable: {self.interp_var_str}")
 
@@ -113,7 +113,7 @@ class InterpolatedYieldCurve(YieldCurve):
                                                            bc_type='clamped')
                 case _:
                     raise RuntimeError(f"Unsupported scheme: {scheme}")
-        elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOG_DISCOUNT]:
+        elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOGDISCOUNT]:
             match scheme:
                 case 'linear':
                     self.interp = itp.create_interpolation(interp=scheme, l_extrap='none', r_extrap='none')
@@ -144,7 +144,7 @@ class InterpolatedYieldCurve(YieldCurve):
 class YieldCurveVariable(Enum):
     ZERORATE = 0
     DISCOUNT = 1
-    LOG_DISCOUNT = 2
+    LOGDISCOUNT = 2
 
 
 def yieldcurve_from_file(file: str|Path) -> InterpolatedYieldCurve:

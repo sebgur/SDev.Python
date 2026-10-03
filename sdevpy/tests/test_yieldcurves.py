@@ -22,7 +22,7 @@ def test_yieldcurve_mode():
     df = curve.discount(dates[0])
     assert abs(df - dfs[0]) < 1e-6
 
-    curve, valdate, dates, dfs = _make_curve(interp_var='log_discount')
+    curve, valdate, dates, dfs = _make_curve(interp_var='logdiscount')
     df = curve.discount(dates[1])
     assert abs(df - dfs[1]) < 1e-6
 
