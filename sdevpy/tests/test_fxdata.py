@@ -1,9 +1,8 @@
 import pytest
 import datetime as dt
 import numpy as np
-from sdevpy.market.fx import fxconventions
+from sdevpy.conventions import fxconventions
 from sdevpy.market.fx.fxforward import FxForwardCurve, fx_spot_lag, fx_spot_date
-#from sdevpy.volatility.fx import fx_deltastrike
 
 
 def test_parse_fx_pair():

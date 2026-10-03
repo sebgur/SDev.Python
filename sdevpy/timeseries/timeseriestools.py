@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from enum import Enum
-from sdevpy.market.fx import fxconventions
+from sdevpy.conventions import fxconventions
 
 
 class ToShiftOrNot(Enum):

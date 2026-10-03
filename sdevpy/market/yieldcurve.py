@@ -30,8 +30,7 @@ class YieldCurve(ABC):
 
     def dump(self, file: str, indent: int=2):
         data = self.dump_data()
-        with open(file, 'w') as f:
-            json.dump(data, f, indent=indent)
+        jsm.serialize(data, file, indent=indent)
 
 
 class InterpolatedYieldCurve(YieldCurve):

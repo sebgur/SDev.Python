@@ -8,6 +8,7 @@ from sdevpy.utilities.tools import isiterable
 DATE_FORMAT = '%d-%b-%Y'
 DATETIME_FORMAT = '%d-%b-%Y %H:%M:%S'
 DATE_FILE_FORMAT = '%Y%m%d-%H%M%S'
+DATETIME_FILE_FORMAT = '%Y%m%d-%H%M%S'
 _ANCHOR = dt.datetime(1960, 1, 1) # Arbitrary but fixed (only relative ordering matters)
 
 # ON, TN and SN are all smaller, by market convention, to any tenor in D/W/M/Y

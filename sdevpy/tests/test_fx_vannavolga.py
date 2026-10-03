@@ -7,7 +7,7 @@ from sdevpy.volatility.fx.fx_vannavolga import (VannaVolgaSmile, smile_from_quot
                                                 lagrange_weights, bs_vega)
 from sdevpy.volatility.fx.fx_strangle import market_strangle, calibrate_smile_strangle
 from sdevpy.volatility.fx.fx_deltastrike import atm_strike
-from sdevpy.market.fx.fxconventions import fx_market_yearfraction
+from sdevpy.conventions.fxconventions import fx_market_yearfraction
 
 
 SPOT, R_D, R_F, EXPIRY = 1.10, 0.04, 0.02, 1.0

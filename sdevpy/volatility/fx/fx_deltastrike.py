@@ -41,7 +41,7 @@ import numpy as np
 import numpy.typing as npt
 # from scipy.stats import norm
 from scipy.special import ndtr, ndtri
-from sdevpy.market.fx.fxconventions import fx_market_yearfraction
+from sdevpy.conventions.fxconventions import fx_market_yearfraction
 
 
 def atm_strike(valdate: dt.datetime, expiry: dt.datetime, fwd: float, atm_vol: float, prem_adj: bool) -> float:

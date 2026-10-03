@@ -6,10 +6,10 @@ import copy
 from sdevpy.pricingcontext import default_market_repository, default_calibration_repository
 from sdevpy.utilities import dates as dts
 from sdevpy.maths.interpolation import create_interpolation
-from sdevpy.market.fx import fxconventions
+from sdevpy.conventions import fxconventions
+from sdevpy.conventions.fxconventions import fx_market_yearfraction
 from sdevpy.market.fx.fxforward import fx_spot_date
 from sdevpy.market.fx.fxvolsurface import fx_option_dates
-from sdevpy.market.fx.fxconventions import fx_market_yearfraction
 from sdevpy.volatility.fx.fx_volinterpolation import FxVolInterpolation, interpolation_from_fxvol_data
 
 
