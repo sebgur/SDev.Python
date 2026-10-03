@@ -1,6 +1,6 @@
 import datetime as dt
 from abc import ABC, abstractmethod
-from sdevpy.market.yieldcurve import YieldCurve
+from sdevpy.calibration.rates.yieldcurve import YieldCurve
 
 
 class CalibrationDataSource(ABC):

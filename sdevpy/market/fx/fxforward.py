@@ -1,8 +1,8 @@
 import datetime as dt
 import numpy.typing as npt
 from sdevpy.utilities import dates as dts
-from sdevpy.market.yieldcurve import YieldCurve
 from sdevpy.utilities.scalendar import make_calendar, BDC, to_eom, is_last_business_day_of_month
+from sdevpy.calibration.rates.yieldcurve import YieldCurve
 
 
 FX_SPOT_LAG_OVERRIDES = {

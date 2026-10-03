@@ -1,10 +1,10 @@
 import pytest
 import datetime as dt
 import numpy as np
-from sdevpy.pricingcontext import default_calibration_repository
-from sdevpy.market import yieldcurve as ycrv
 from sdevpy.utilities import timegrids as tg
-from sdevpy.market.yieldcurve import InterpolatedYieldCurve
+from sdevpy.pricingcontext import default_calibration_repository
+from sdevpy.calibration.rates import yieldcurve as ycrv
+from sdevpy.calibration.rates.yieldcurve import InterpolatedYieldCurve
 
 
 def _make_curve(interp_var='zerorate', interp_type='linear'):

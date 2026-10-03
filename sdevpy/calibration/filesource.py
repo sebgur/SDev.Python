@@ -3,8 +3,8 @@ import datetime as dt
 from pathlib import Path
 from sdevpy.utilities import dates as dts
 from sdevpy.utilities import jsonmanager as jsm
-from sdevpy.market import yieldcurve as ycrv
-from sdevpy.market.yieldcurve import YieldCurve
+from sdevpy.calibration.rates import yieldcurve as ycrv
+from sdevpy.calibration.rates.yieldcurve import YieldCurve
 from sdevpy.calibration.source import CalibrationDataSource
 from sdevpy import datapaths
 log = logging.getLogger(__name__)
