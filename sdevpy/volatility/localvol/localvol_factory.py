@@ -28,6 +28,8 @@ def create_section(config: dict) -> LocalVolSection:
         raise ValueError("Invalid section input in local vol file")
 
     match model.lower():
+        case 'flat':
+            section = localvol.FlatLocalVolSection(time, config['vol'])
         case 'biexp':
             section = biexp.create_section(time, param_config)
         case 'cubicvol':
@@ -48,7 +50,7 @@ def _localvol_metadata(data: dict) -> dict:
     if 'name' in data:
         meta['name'] = data['name']
     if data.get('valdate') is not None:
-        meta['valdate'] = dt.datetime.strptime(data['valdate'], dts.DATE_FORMAT)
+        meta['valdate'] = dt.datetime.strptime(data['valdate'], dts.DATETIME_FORMAT)
     if data.get('snapdate') is not None:
         meta['snapdate'] = dt.datetime.strptime(data['snapdate'], dts.DATETIME_FORMAT)
     return meta

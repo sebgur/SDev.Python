@@ -142,7 +142,7 @@ class TimeInterpolatedLocalVol(LocalVol):
         for section in self.sections:
             sections.append(section.dump())
 
-        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATETIME_FORMAT),
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
                 'sections': sections}
         return data
@@ -230,7 +230,9 @@ class InterpolatedLocalVolSection(LocalVolSection):
 def create_interpolated_section(time: float, config: dict) -> LocalVolSection:
     """ Create InterpolatedLocalVolSection from dictionary """
     logm_list, vol_list = config['logm'], config['vol']
-    section = InterpolatedLocalVolSection(time, logm_list, vol_list)
+    # section = InterpolatedLocalVolSection(time, logm_list, vol_list)
+    section = InterpolatedLocalVolSection(time, logm_list, vol_list,
+                                          interpolation=config.get('model', 'cubicspline'))
     return section
 
 
@@ -309,13 +311,6 @@ class VectorLocalVol(TimeInterpolatedLocalVol):
 
         # Create sections
         self.sections = [FlatLocalVolSection(t, v) for t, v in zip(self.t_grid, self.vol_grid, strict=True)]
-        # sections = []
-        # for i in range(len(self.t_grid)):
-        #     t, vol = self.t_grid[i], self.vol_grid[i]
-        #     sections.append(FlatLocalVolSection(t, vol))
-
-        # # Instantiate base
-        # super().__init__(sections, **kwargs)
 
 
 class ConstantLocalVol(LocalVol):
@@ -343,8 +338,11 @@ class ConstantLocalVol(LocalVol):
         if self.snapdate is None:
             raise ValueError("Cannot dump ConstantLocalVol: no snap date")
 
-        return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
-                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 'vol': self.vol}
+        # return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATETIME_FORMAT),
+        #         'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 'vol': self.vol}
+        return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATETIME_FORMAT),
+                'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
+                'sections': [self.section(self.tmax).dump()]}
 
 
 if __name__ == "__main__":
