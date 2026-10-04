@@ -86,7 +86,7 @@ def calibrate_lv_bysections(name: str, config: dict, mkt: MarketDataSet,
     old_x, old_dx, old_p = None, None, None
 
     # if verbose:
-    log.info(f"Val date: {valdate.strftime(dates.DATE_FORMAT)}")
+    log.info(f"Val date: {valdate.strftime(dates.DATETIME_FORMAT)}")
     log.info(f"Model: {model_name}")
     log.info(f"PDE time steps: {pde_config.n_timesteps}")
     log.info(f"PDE spot steps: {pde_config.n_meshes}")

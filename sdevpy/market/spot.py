@@ -20,7 +20,7 @@ class SpotData:
 
     def dump_data(self) -> dict:
         """ Dump object to dictionary """
-        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATETIME_FORMAT),
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 'value': self.value}
         return data
 
@@ -34,7 +34,7 @@ def spotdata_from_file(file: str|Path) -> SpotData:
     snapdate = data.get('snapdate')
     value = data.get('value')
 
-    data = SpotData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), value,
+    data = SpotData(dt.datetime.strptime(valdate, dates.DATETIME_FORMAT), value,
                     name=name, snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT))
     return data
 

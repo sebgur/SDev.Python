@@ -30,7 +30,7 @@ class EqForwardData:
             pillar = {'expiry': expiry_str, 'forward': forward}
             pillars.append(pillar)
 
-        data = {'name': self.name, 'valdate': self.valdate.strftime(dts.DATE_FORMAT),
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dts.DATETIME_FORMAT),
                 'snapdate': self.snapdate.strftime(dts.DATETIME_FORMAT), 'pillars': pillars}
         return data
 
@@ -51,7 +51,7 @@ def eqforwarddata_from_file(file: str|Path) -> EqForwardData:
         date = dt.datetime.strptime(date_str, dts.DATE_FORMAT)
         pillar['expiry'] = date
 
-    data = EqForwardData(dt.datetime.strptime(valdate, dts.DATE_FORMAT), pillars,
+    data = EqForwardData(dt.datetime.strptime(valdate, dts.DATETIME_FORMAT), pillars,
                          name=name, snapdate=dt.datetime.strptime(snapdate, dts.DATETIME_FORMAT))
     return data
 

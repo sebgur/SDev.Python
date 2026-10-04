@@ -45,7 +45,7 @@ class EqVolData:
                        'vols': self.vols[i].tolist()}
             sections.append(section)
 
-        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATE_FORMAT),
+        data = {'name': self.name, 'valdate': self.valdate.strftime(dates.DATETIME_FORMAT),
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
                 'strike_input_type': self.strike_input_type, 'sections': sections}
 
@@ -89,7 +89,7 @@ def eqvoldata_from_file(file: str) -> EqVolData:
         date = dt.datetime.strptime(date_str, dates.DATE_FORMAT)
         section['expiry'] = date
 
-    data = EqVolData(dt.datetime.strptime(valdate, dates.DATE_FORMAT), sections, name=name,
+    data = EqVolData(dt.datetime.strptime(valdate, dates.DATETIME_FORMAT), sections, name=name,
                      snapdate=dt.datetime.strptime(snapdate, dates.DATETIME_FORMAT),
                      strike_input_type=strike_input_type)
     return data

@@ -338,8 +338,6 @@ class ConstantLocalVol(LocalVol):
         if self.snapdate is None:
             raise ValueError("Cannot dump ConstantLocalVol: no snap date")
 
-        # return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATETIME_FORMAT),
-        #         'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT), 'vol': self.vol}
         return {'name': self.name, 'valdate': self.valdate.strftime(dates.DATETIME_FORMAT),
                 'snapdate': self.snapdate.strftime(dates.DATETIME_FORMAT),
                 'sections': [self.section(self.tmax).dump()]}
