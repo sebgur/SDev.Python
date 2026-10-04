@@ -103,24 +103,33 @@ class InterpolatedYieldCurve(YieldCurve):
                 raise RuntimeError(f"Unknown interpolation variable: {self.interp_var_str}")
 
         # Set interpolation
-        scheme = self.interp_type.lower()
+        interp, _, extrap = self.interp_type.lower().partition('-')
+        interp, extrap = interp.strip(), extrap.strip()
         if self.interp_var == YieldCurveVariable.ZERORATE:
-            match scheme:
-                case 'linear':
-                    self.interp = itp.create_interpolation(interp=scheme, l_extrap='flat', r_extrap='flat')
+            extrap = extrap or 'flat'
+            match interp:
+                case 'linear' | 'bspline' | 'pchip' | 'akima':
+                    self.interp = itp.create_interpolation(interp=interp, l_extrap=extrap, r_extrap=extrap)
                 case 'cubicspline':
-                    self.interp = itp.create_interpolation(interp=scheme, l_extrap='flat', r_extrap='flat',
-                                                           bc_type='clamped')
+                    if extrap == 'flat':
+                        # Use clamped spline to arrive smoothly at flat junctions
+                        self.interp = itp.create_interpolation(interp=interp, l_extrap='flat', r_extrap='flat',
+                                                               bc_type='clamped')
+                    else:
+                        self.interp = itp.create_interpolation(interp=interp, l_extrap=extrap, r_extrap=extrap)
                 case _:
-                    raise RuntimeError(f"Unsupported scheme: {scheme}")
+                    raise RuntimeError(f"Unsupported scheme: {self.interp_type}")
         elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOGDISCOUNT]:
-            match scheme:
-                case 'linear':
-                    self.interp = itp.create_interpolation(interp=scheme, l_extrap='none', r_extrap='none')
-                case 'cubicspline':
-                    self.interp = itp.create_interpolation(interp=scheme, l_extrap='none', r_extrap='none')
+            extrap = extrap or 'none'
+            # Left extrapolation forbidden as these two variables always start at 0 by construction
+            if extrap == 'flat':
+                raise ValueError("Flat extrapolations are not acceptable when extrapolation discount/log-discount")
+
+            match interp:
+                case 'linear' | 'bspline' | 'pchip' | 'akima' | 'cubicspline':
+                    self.interp = itp.create_interpolation(interp=interp, l_extrap='none', r_extrap=extrap)
                 case _:
-                    raise RuntimeError(f"Unsupported scheme: {scheme}")
+                    raise RuntimeError(f"Unsupported scheme: {self.interp_type}")
         else:
             raise RuntimeError("Unknown interpolation variable(2)")
 
