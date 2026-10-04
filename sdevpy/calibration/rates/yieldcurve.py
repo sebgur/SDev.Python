@@ -1,3 +1,18 @@
+""" Yield curve interpolation/extrapolation given pillar dates and discount factors.
+    Interpolation variables: zero-rate, discount or log-discount.
+        - discount/log-discount: the t = 0 point is systematically added (with discount = 1.0) and
+          the interpolations have it as node. This implies that no extrapolation is ever needed on the
+          short end side.
+    Interpolation methods: linear, cubic spline, b-spline, akima, monotone cubic-hermit (pchip)
+    Extrapolation: to forbid extrapolation, pass 'none'. To use the interpolation method as extrapolation,
+    pass 'builtin'. 'flat' and 'linear' are the other available values.
+    Cases:
+        - zero-rate: default is flat on both ends. When in cubicspline interpolation, 'flat' extrapolation
+                     is combined with the cubic spline with 0 first derivative at the junctions
+        - discount/log-discount: short-end extrapolation is forbidden (as unnecessary since the t = 0 point
+                                 is always included). Long-end extrapolation is forbidden by default. 'flat'
+                                 is also forbidden as it is not considered meaningful for these variables.
+"""
 from pathlib import Path
 import datetime as dt
 import numpy as np

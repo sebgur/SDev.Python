@@ -144,11 +144,6 @@ def calibrate_lv_bysections(name: str, config: dict, mkt: MarketDataSet,
         log.info(f"RMSE(prices): {rmse:.4f}")
         log.info(f"Number evals: {obj_builder.n_evals}")
         log.info("-"*50)
-        # if disp_opt:
-        # print(f"Result f: {result.fun}")
-        # print(f"Func evals: {result['nfev']}")
-        # for key in result.keys():
-        #     print(key + "\n", result[key])
 
         # Retrieve RMSE on vols
         if calc_pde_vols:
@@ -167,10 +162,9 @@ class LvObjectiveBuilder:
     def __init__(self, lv: TimeInterpolatedLocalVol, expiry_grid: list[float], fwds: list[float],
                  strike_surface: list[list[float]], cf_price_surface:list[list[float]],
                  pde_config: PdeConfig, option_type: str='straddle',
-                 penalty_type: PenaltyType=PenaltyType.INFINITY):#, verbose: bool=False):
+                 penalty_type: PenaltyType=PenaltyType.INFINITY):
         self.expiry_grid = expiry_grid
         self.option_type = string_to_optiontype(option_type)
-        # self.verbose = verbose
 
         # Check consistency of time grids
         if len(lv.t_grid) <= 1:
@@ -192,7 +186,8 @@ class LvObjectiveBuilder:
         self.fwds = fwds
         self.lv = lv
         self.pde_config = pde_config
-        self.start_time = 0.0
+        self.start_time = fpde.FWD_PDE_START_TIME
+        # self.start_time = 0.0
         self.penalty_type = penalty_type
 
         # Slice variables
@@ -299,7 +294,7 @@ class LvObjectiveBuilder:
 
     def initialize(self) -> tuple[npt.ArrayLike, float, npt.ArrayLike]:
         """ Initialize calibrator to first expiry by calculating the initial density at start_time """
-        self.start_time = fpde.FWD_PDE_START_TIME
+        # self.start_time = fpde.FWD_PDE_START_TIME
         if self.expiry_grid[0] <= self.start_time:
             raise RuntimeError("First expiry too early to use analytical start in forward PDE")
 
@@ -311,9 +306,6 @@ class LvObjectiveBuilder:
         old_p = fpde.lognormal_density(old_x, self.start_time, lnvol)
 
         return old_x, old_dx, old_p
-
-    # def reset_history(self) -> None:
-    #     self.history = [None] * len(self.expiry_grid)
 
     def get_history(self) -> list[dict]:
         return self.history
@@ -333,13 +325,6 @@ class LvObjectiveBuilder:
                     pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, call))
                 case _:
                     raise ValueError(f"Unknown option type: {self.option_type}")
-            # if self.option_type == 0:
-            #     pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, p))
-            # elif self.option_type == 1:
-            #     pde_vols.append(black.implied_vol(expiry, k, False, self.fwd, p))
-            # else:
-            #     call = (p - k + self.fwd) / 2.0
-            #     pde_vols.append(black.implied_vol(expiry, k, True, self.fwd, call))
 
         return pde_vols
 

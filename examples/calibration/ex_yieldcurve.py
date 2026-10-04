@@ -41,15 +41,18 @@ print("Interpolated curve")
 print(interp_df.head(10).to_string(index=False, formatters=pd_date_fmt))
 
 # Plot
-plot_start, plot_end = dt.datetime(2025, 12, 15), dt.datetime(2026, 5, 15) # Early part
+plot_start, plot_end = dt.datetime(2052, 12, 15), dt.datetime(2065, 5, 15) # Early part
 plot_pillar_df = pillar_df[pillar_df['Date'].between(plot_start, plot_end)]
 plot_interp_df = interp_df[interp_df['Date'].between(plot_start, plot_end)]
 
-fig, axs = plt.subplots(1, 2)
+fig, axs = plt.subplots(1, 2, figsize=(12, 6))
 axs[0].scatter(plot_pillar_df['Date'], plot_pillar_df['DF'])
 axs[0].plot(plot_interp_df['Date'], plot_interp_df['DF'])
+axs[0].set_title('Discount factors')
 
 axs[1].scatter(plot_pillar_df['Date'], plot_pillar_df['ZR'])
 axs[1].plot(plot_interp_df['Date'], plot_interp_df['ZR'])
+axs[1].set_title('Zero-rates')
 
+plt.tight_layout()
 plt.show()
