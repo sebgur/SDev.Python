@@ -17,7 +17,7 @@ from sdevpy.utilities.book import Book
 log = logging.getLogger(__name__)
 
 
-def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) -> npt.ArrayLike:
+def build_timegrid(valdate: dt.datetime, eventdates: npt.NDArray, config) -> npt.NDArray[np.float64]:
     """ Create simple time grid based on max of eventdates """
     max_date = eventdates.max()
     max_t = timegrids.model_time(valdate, max_date)

@@ -162,7 +162,7 @@ class BucketTimeGridBuilder(TimeGridBuilder):
         return fine_grid
 
 
-def model_time(date1: npt.ArrayLike, date2: npt.ArrayLike) -> npt.ArrayLike:
+def model_time(date1: dt.datetime|npt.NDArray, date2: dt.datetime|npt.NDArray) -> float|npt.NDArray[np.float64]:
     """ Yearfraction (time) between two dates for models, using simply (date2 - date1) / 365."""
     spans = np.asarray(date2) - np.asarray(date1)
     if tools.isiterable(spans):
