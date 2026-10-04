@@ -10,7 +10,7 @@ license = {file = "LICENSE"}
 authors = [{ name="Sebastien Gurrieri", email="sebgur@gmail.com" }]
 description = "Python package for Finance"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",

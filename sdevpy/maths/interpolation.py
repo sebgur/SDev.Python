@@ -135,10 +135,10 @@ class BSplineInterpolator(Interpolator):
             * either of: natural, clamped, not-a-knot, periodic
     """
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         self.degree = kwargs.get('degree', 3)
         self.bc_type = kwargs.get('bc_type', 'not-a-knot')
         self.interp = None
+        super().__init__(**kwargs)
 
     def initialize(self):
         self.interp = spi.make_interp_spline(self.x_grid, self.y_grid, bc_type=self.bc_type, k=self.degree)
@@ -150,7 +150,11 @@ class BSplineInterpolator(Interpolator):
 
 @register_interpolator("step")
 class StepInterpolator(Interpolator):
-    """ Wrapping numpy. direction can be left or right, defaulting to lef """
+    """ Wrapping numpy. direction can be left or right, defaulting to left.
+        Both left and right respond the node value when exactly at the node and
+        both extrapolate flat beyond the first/last node.
+        Left: when we are between two nodes, we answer the value of the left node
+        Right: when we are between two nodes, we answer the value of the right node """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.direction = kwargs.get('direction', 'left').lower()
@@ -165,7 +169,7 @@ class StepInterpolator(Interpolator):
 
     def value(self, x):
         if self.direction == 'left':
-            indices = np.searchsorted(self.x_grid, x, side='right')
+            indices = np.searchsorted(self.x_grid, x, side='right') - 1
             indices = np.clip(indices, 0, len(self.y_grid) - 1)
             ilen = safe_len(indices)
             if ilen == 0:
@@ -173,7 +177,7 @@ class StepInterpolator(Interpolator):
             else:
                 y = np.asarray([self.y_grid[i] for i in indices])
         elif self.direction == 'right':
-            indices = np.searchsorted(self.x_grid, x, side='left') - 1
+            indices = np.searchsorted(self.x_grid, x, side='left')
             indices = np.clip(indices, 0, len(self.y_grid) - 1)
             ilen = safe_len(indices)
             if ilen == 0:
@@ -291,8 +295,10 @@ class Interpolation:
         """ Interpolated values at point x """
         x = np.asarray(x)
         v = self.interp.value(x)
-        below = (x < self.x_grid[0] + self.eps)
-        above = (x > self.x_grid[-1] - self.eps)
+        below = (x < self.x_grid[0] - self.eps)
+        above = (x > self.x_grid[-1] + self.eps)
+        # below = (x < self.x_grid[0] + self.eps)
+        # above = (x > self.x_grid[-1] - self.eps)
 
         v = np.where(below, self.l_extrap.value(x), v)
         v = np.where(above, self.r_extrap.value(x), v)

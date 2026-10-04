@@ -18,8 +18,8 @@ def test_linear_interpolation():
 
 
 def test_cubicspline_interpolation():
-    type = 'cubicspline'
-    interp = itp.create_interpolation(interp=type, l_extrap='builtin', r_extrap='flat')
+    type_ = 'cubicspline'
+    interp = itp.create_interpolation(interp=type_, l_extrap='builtin', r_extrap='flat')
     interp.set_data(X_GRID, Y_GRID)
     test = interp.value(TEST_X)
     ref = np.asarray([6.15, 10, 11.5232, 18, 21.52, 25, 23.6098, 22, 22])
@@ -27,17 +27,34 @@ def test_cubicspline_interpolation():
 
 
 def test_step_interpolation():
-    type = 'step'
-    interp = itp.create_interpolation(interp=type, l_extrap='flat', r_extrap='builtin')
+    type_ = 'step'
+    # Left
+    interp = itp.create_interpolation(interp=type_, l_extrap='flat', r_extrap='builtin', direction='left')
     interp.set_data(X_GRID, Y_GRID)
     test = interp.value(TEST_X)
-    ref = np.asarray([10, 10, 18, 25, 25, 22, 22, 22, 22])
+    # print("X_GRID", X_GRID)
+    # print("Y_GRID", Y_GRID)
+    # print("TEST_X", TEST_X)
+    # print("Left")
+    # print(test)
+    ref = np.asarray([10, 10, 10, 18, 18, 25, 25, 22, 22])
+    # print(ref)
+    assert np.allclose(test, ref, rtol=0.0, atol=1e-10)
+
+    # Right
+    interp = itp.create_interpolation(interp=type_, l_extrap='flat', r_extrap='builtin', direction='right')
+    interp.set_data(X_GRID, Y_GRID)
+    test = interp.value(TEST_X)
+    # print("Right")
+    # print(test)
+    ref = np.asarray([10, 10, 18, 18, 25, 25, 22, 22, 22])
+    # print(ref)
     assert np.allclose(test, ref, rtol=0.0, atol=1e-10)
 
 
 def test_bspline_interpolation():
-    type = 'bspline'
-    interp = itp.create_interpolation(interp=type, l_extrap='builtin', r_extrap='linear')
+    type_ = 'bspline'
+    interp = itp.create_interpolation(interp=type_, l_extrap='builtin', r_extrap='linear')
     interp.set_data(X_GRID, Y_GRID)
     test = interp.value(TEST_X)
     # test = np.asarray(interp.value(TEST_X))
@@ -46,9 +63,4 @@ def test_bspline_interpolation():
 
 
 if __name__ == "__main__":
-    type = 'bspline'
-    interp = itp.create_interpolation(interp=type, l_extrap='builtin', r_extrap='linear')
-    interp.set_data(X_GRID, Y_GRID)
-    test = interp.value(TEST_X)
-    print(test)
-    # clp.export1d(test)
+    test_step_interpolation()
