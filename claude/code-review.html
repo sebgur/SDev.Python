@@ -188,84 +188,82 @@
 
   <header>
     <h1>Claude's Code Review — <code>sdevpy</code></h1>
-    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-09-27 &nbsp;·&nbsp; <strong>22nd review</strong> (full scan: every *.py / *.ipynb outside <code>sdevpy/thirdparty</code>, including examples/, notebooks/, scripts/, docs/ and files excluded in pyproject.toml; every finding was re-read in the current working copy at <code>f0ae20e</code>; items listed as "Known and accepted" in CLAUDE.md were not reported)</p>
+    <p>Quantitative finance library &nbsp;·&nbsp; Python &nbsp;·&nbsp; Reviewed 2026-10-04 &nbsp;·&nbsp; <strong>23rd review</strong> (full scan: every *.py / *.ipynb outside <code>sdevpy/thirdparty</code>, including examples/, notebooks/, scripts/, docs/ and files excluded in pyproject.toml; working copy at <code>d89e704</code>; every finding below was re-read in the current files and, where marked "reproduced", run; items listed as "Known and accepted" in CLAUDE.md were not reported)</p>
   </header>
 
   <div class="grade-card">
-    <div class="grade-letter" style="color:var(--yellow)">C+</div>
+    <div class="grade-letter" style="color:var(--yellow)">B-</div>
     <div class="grade-details">
-      <h2>The new calibration repository is clean and the MC engine checks out against Black, but four high-severity defects are still open</h2>
+      <h2>Three of last review's four high-severity defects are fixed; one new high-severity bug in the CubicVol local vol section, and extrapolation still fails silently with NaN</h2>
       <p>
-        All 663 tests pass in 5.6 s and ruff reports only 5 findings. The new <code>CalibrationDataSource → CalibrationDataSet → CalibrationDataRepository</code>
-        layering mirrors the market-data stack well and comes with 30 new tests that write to <code>tmp_path</code>.
-        As a sanity check, I priced 6M and 1Y calls under a flat 20% vol by Monte Carlo and compared them with Black: they agree to within 0.01.
-        The grade stays at C+ because four high-severity problems remain, each confirmed in the current code:
-        (1) the LV section calibrator starts the first expiry's PDE at t=0, while the pricer starts at 1/365;
-        (2) discount-factor yield curves return NaN at the valuation date;
-        (3) linear matrix local vols silently reload as cubic splines, which changes the vols;
-        (4) the new <code>DatedRepository[T]</code> syntax needs Python 3.12, but the package declares support for 3.10.
-        On top of that, the examples write their calibrations into the test-fixture folder, because that folder is the library's default data root.
+        All 665 tests pass in 5.5 s and ruff reports 9 findings (6 of them undefined names in two notebooks).
+        The LV section calibrator and the PDE pricer now start from the same time, interpolation no longer returns NaN on its end nodes,
+        flat local vols no longer inherit an integer dtype, and <code>requires-python</code> matches the syntax in use.
+        The grade moves up from C+ to B- rather than to B for two reasons, both reproduced:
+        (1) <code>CubicVolSection.value</code> passes the raw wing parameters to a formula that expects the derived epsilons, so the CubicVol local vol is not the function it claims to be;
+        (2) a yield curve built on discount or log-discount returns NaN past its last pillar without any error, and the Monte Carlo pricer multiplies that NaN into the PV.
+        Four findings from the 22nd review are still open: the linear matrix LV reload, the FX forward mismatch, the test-fixture default data root, and the broken demos.
       </p>
     </div>
   </div>
 
   <div class="progress-banner">
-    <strong>Fixed since the 21st review (verified):</strong>
-    MC timers only print when <code>print_timers=True</code>, otherwise they go to <code>log.debug</code> (<code>mcpricer.py:57–59</code>) &nbsp;·&nbsp;
-    calibration reads no longer create directories: <code>CalibrationDataFileSource._read</code> only checks <code>exists()</code>, and a test covers this (<code>test_calibrationdata.py:204</code>) &nbsp;·&nbsp;
-    <code>examples/gpt/raschka/ch4_gpt_model.py</code> and <code>examples/stovol/stovoltrain.py</code> imports now resolve &nbsp;·&nbsp;
-    <code>fx_calib_batch</code> and the vol examples ported to the new repositories &nbsp;·&nbsp; 30 new calibration-data tests.<br/>
-    <strong>Still open:</strong> LV calibrator start time (#1), NaN at extrapolation nodes (#2), <code>full_like</code> integer dtype (#6), USD holiday calendar on equity payoffs (#7), stovol notebooks (#8), <code>fx_calib_batch</code> logs failures without a traceback.<br/>
-    <strong>Not reported, per CLAUDE.md:</strong> MC grid/event-date interpolation, snapshot-style regression tests, absence of CI, <code>get_local_vols</code> lookup scope.
+    <strong>Fixed since the 22nd review (4 of 10, verified in the current files):</strong>
+    the LV section calibrator starts the first expiry at <code>FWD_PDE_START_TIME</code>, like the pricer (<code>lvsection_calib.py:189, 280</code>) &nbsp;·&nbsp;
+    <code>Interpolation.value</code> only extrapolates strictly outside the grid, so node values are no longer NaN (<code>interpolation.py:298–299</code>) &nbsp;·&nbsp;
+    flat local vols use <code>np.full(np.shape(logm), vol, dtype=float)</code> (<code>localvol.py:271, 332</code>) &nbsp;·&nbsp;
+    <code>requires-python = "&gt;=3.12"</code> (<code>pyproject.toml:13</code>).
+    <br/>
+    <strong>Still open from the 22nd review:</strong> issues #3, #6, #7 and #10 below, the US federal holiday default calendar on equity payoffs (<code>basic.py:235, 465</code>, <code>exotics.py:15, 74</code>), and part of the annotation list (see Type Safety).
   </div>
 
   <div class="scorecard">
     <table>
       <thead>
         <tr>
-          <th>Category</th><th>Score</th><th style="width:38%">Rating</th><th>Notes</th>
+          <th>Category</th><th>Score</th><th style="width:30%">Rating</th><th>Notes</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Architecture</td><td>7 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Consistent source/dataset/repository layering for market and calibration data, a payoff algebra, and pluggable path builders. But the library's default data root is its own test-fixture folder, and <code>utilities/book.py</code> depends on <code>montecarlo.payoffs</code>.</td>
+          <td>Architecture</td><td>8 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:80%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Source → dataset → repository layering is consistent for market and calibration data, and <code>test_architecture.py</code> enforces package dependencies. Weak points: core modules import matplotlib and pyperclip at module level (<code>optionsurface.py:6</code>, <code>mczabr.py:6, 11</code>), and <code>Book.set_valuation_date</code> writes indexes into the payoff objects, so a trade cannot belong to two books.</td>
         </tr>
         <tr>
-          <td>Correctness</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Black, the PDE schemes, Dupire, the forward PDE and the MC engine all look sound (MC matches Black to within 0.01). But the LV calibration and repricing use different start times, discount curves return NaN at their nodes, a linear LV changes after a save/load round trip, and a flat vol returns 0 for integer input.</td>
+          <td>Correctness</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">CubicVol section evaluates the wrong function (#1); linear matrix LV changes on reload (#3); FX vol stack and <code>FxForwardCurve</code> disagree on the forward (#6); TsSvi constraint check compares against the wrong value (#8). Equity payoffs still default to the US federal holiday calendar, which changes the variance swap return count.</td>
         </tr>
         <tr>
           <td>Error Handling</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Explicit <code>ValueError</code>s with context in most places, and <code>get_localvol_or_new</code> gives clear messages. Some failures are silent (NaN, 0 vol), <code>fx_calib_batch</code> logs <code>log.error</code> without a traceback, and <code>compute_mean_reversion_params</code> uses <code>print</code> as a warning.</td>
+          <td style="color:var(--muted);font-size:.83rem">FX strike solving reports validity well. Against that: forbidden extrapolation returns NaN (#2), LV calibration never looks at <code>result.success</code> (#4), yield curve date validation runs before sorting (#5), and tree probabilities outside [0, 1] are clipped with only a <code>log.debug</code> (<code>trees.py:85–87</code>).</td>
         </tr>
         <tr>
-          <td>Testing</td><td>6 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">663 tests pass, and the new calibration-data tests are good (they use tmp_path and cover the caching and invalidation contract). No test covers <code>discount(valdate)</code> on DF curves, linear LV round trips, integer inputs to flat vols, or calibrate-then-reprice consistency.</td>
-        </tr>
-        <tr>
-          <td>Code Quality</td><td>7 / 10</td>
+          <td>Testing</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">ruff reports 5 findings (1 unused variable, 1 unused import, 1 long line, 2 in a notebook). Some leftovers: the old <code>MarketDataRepository</code> is still there as 50 commented-out lines (<code>market/repository.py:31–80</code>), <code>tests/conftest.py</code> is mostly commented out, and <code>pdeschemes.py:79</code> assigns an unused <code>n_x</code>.</td>
+          <td style="color:var(--muted);font-size:.83rem">665 fast tests. Gaps that let this review's bugs through: no test compares <code>CubicVolSection.value</code> with <code>cubicvol()</code>; no reload test for a linear matrix LV; no test queries a discount curve past its last pillar. In <code>test_mc.py:28, 62</code> the basket option has weights 0.5/0.1 against strike 100, so its PV is 0.0 and the <code>Basket</code> payoff is not exercised. <code>conftest.py</code> holds one unused import and commented-out code.</td>
         </tr>
         <tr>
-          <td>Maintainability</td><td>6 / 10</td>
+          <td>Code Quality</td><td>6 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Readable modules with consistent naming. But 1 example, 4 stovol notebooks and 3 <code>__main__</code> demos still fail on imports or call signatures, and the declared Python version does not match the syntax the code uses.</td>
+          <td style="color:var(--muted);font-size:.83rem">Ruff's ERA001 counts 980 commented-out code lines (e.g. <code>market/repository.py:31–80</code> keeps the whole previous class). The MC loop is copied four times across <code>mcsabr.py</code>, <code>mcheston.py</code>, <code>mczabr.py</code> and <code>fbsabr.py</code>. Library functions print instead of logging (<code>meanreversion.py:104</code>, <code>llmfactory.py:63</code>), and <code>compute_mean_reversion_params</code> renames the caller's Series (<code>meanreversion.py:72</code>).</td>
         </tr>
         <tr>
-          <td>Type Safety</td><td>4 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:40%;background:#f0883e"></div></div><span class="score-lbl">Weak</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Annotations in the pricing core are wrong in ways that mislead readers: <code>mkt_state: dict</code> for a <code>MarketState</code>, <code>eventdates: list</code> that is then called with <code>.max()</code>, <code>model_time(date1: ArrayLike)</code> for datetimes, <code>file: str</code> passed a <code>Path</code>, and implicit <code>Optional</code> in the new modules.</td>
+          <td>Maintainability</td><td>7 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Small modules, clear names. Two functions resolve <code>SDEVPY_DATA</code> with different fallbacks (<code>datapaths.py:11</code> vs <code>tools.py:17</code>). <code>llama_cpp</code> is imported by <code>llms/llama_model.py:2</code> but is in neither the dependencies nor the <code>ml</code> extra, so <code>llmfactory</code> fails to import on a clean install.</td>
         </tr>
         <tr>
-          <td>Documentation</td><td>5 / 10</td>
-          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:50%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">The new classes have good docstrings. Some docstrings contradict the code: <code>TimeInterpolatedLocalVol.section</code> says upper_bound but uses <code>lower_bound</code>, and <code>MatrixLocalVol</code> says (t<sub>i</sub>, t<sub>i+1</sub>]. The README has stale notebook paths and does not mention <code>SDEVPY_DATA</code>, the data layout or the pricing context.</td>
+          <td>Type Safety</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">Wrong annotations, each read in place: <code>LvObjectiveBuilder(lv: TimeInterpolatedLocalVol)</code> calls <code>update_params</code>/<code>check_params</code>, which only <code>InterpolatedParamLocalVol</code> has (<code>lvsection_calib.py:162, 230–231</code>); <code>calculate_pde_prices -&gt; npt.ArrayLike</code> returns nothing (<code>:204</code>); <code>fetch_response -&gt; dict</code> returns a <code>Response</code> (<code>restapi.py:5, 27</code>); <code>list_model_info -&gt; list[dict]</code> returns a DataFrame (<code>llmfactory.py:31, 68</code>); <code>build_sparse_timegrid -&gt; list[float]</code> returns an ndarray (<code>timegrids.py:13, 39</code>); <code>add_grid(times: npt.ArrayLike)</code> calls <code>.reshape</code> (<code>timegrids.py:69, 73</code>); <code>to_oadate -&gt; int</code> returns a float or a list (<code>dates.py:30–36</code>); <code>jsonmanager</code> takes <code>file: str</code> but receives <code>Path</code>.</td>
+        </tr>
+        <tr>
+          <td>Documentation</td><td>6 / 10</td>
+          <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:60%;background:#d29922"></div></div><span class="score-lbl">Adequate</span></div></td>
+          <td style="color:var(--muted);font-size:.83rem">FX modules are well explained. Stale docstrings: <code>TimeInterpolatedLocalVol.section</code> says "upper_bound" but uses <code>lower_bound</code> (<code>localvol.py:124–126</code>); <code>MatrixLocalVol</code> says a section covers (t_i, t_{i+1}] when it covers [t_i, t_{i+1}) (<code>:240</code>); <code>ivol_guess</code> says ±6 stdevs, code uses 3 (<code>:75, 83</code>); <code>strike_from_delta</code> documents a <code>spot_delta_cutoff</code> parameter that does not exist (<code>fxdeltastrike.py:194</code>); <code>create_interpolator</code> says it creates a learning rate scheduler (<code>interpolation.py:21</code>). README does not mention <code>SDEVPY_DATA</code>.</td>
         </tr>
       </tbody>
     </table>
@@ -277,332 +275,291 @@
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#1</span>
-      <span class="issue-title">The LV section calibrator runs the first expiry's PDE from t = 0, while the pricer runs it from t = 1/365, so calibration and repricing disagree</span>
+      <span class="issue-title"><code>CubicVolSection.value</code> feeds the wing vols <code>vl</code>, <code>vr</code> to a formula that expects the epsilons, so the CubicVol local vol is the wrong function</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/lvsection_calib.py · lines 194, 284–286, 301</span>
+    <span class="loc">sdevpy/volatility/impliedvol/models/cubicvol.py · lines 31, 35–36, 44–47 &nbsp;·&nbsp; sdevpy/volatility/localvol/localvol.py · lines 162–164</span>
     <p>
-      <strong>What happens:</strong> <code>LvObjectiveBuilder.__init__</code> sets <code>self.start_time = 0.0</code> (line 194).
-      The calibration loop calls <code>set_expiry(0, …)</code> first, and that builds the step grid from <code>self.start_time</code>:
+      <strong>Why it's bad:</strong> The section is built on <code>cubicvoleps_formula</code>, whose last two arguments are <code>epsl</code> and <code>epsr</code>.
+      <code>update_params</code> computes them into <code>self.eff_params</code>, but the override that used them is commented out (lines 35–36),
+      so the base class runs <code>self.formula(self.time, x, self.params)</code> with <code>vl</code> and <code>vr</code> in the epsilon slots.
+      Reproduced with the sample parameters at t = 1 and log-moneyness −0.2, 0, 0.2:
+      <code>section.value</code> gives 0.2776, 0.2500, 0.2378 and <code>cubicvol()</code> gives 0.2760, 0.2500, 0.2390.
+      A CubicVol calibration therefore fits a shape in which <code>vl</code> and <code>vr</code> are cubic coefficients, not the wing levels that
+      <code>cubicvol_check_params</code> validates and the bounds assume. The tests only call <code>cubicvol.cubicvol()</code> directly, so nothing catches it.
     </p>
-    <pre>ts = self.start_time <span class="kw">if</span> self.exp_idx == <span class="fn">0</span> <span class="kw">else</span> self.expiry_grid[self.exp_idx - <span class="fn">1</span>]   <span class="c"># line 284 → ts = 0.0</span>
-self.step_grid = timegrids.build_timegrid(ts, te, self.pde_config)                     <span class="c"># line 286: linspace(0, T1)</span></pre>
-    <p>
-      Only later, on the first objective call, does <code>initialize()</code> set <code>self.start_time = fpde.FWD_PDE_START_TIME</code> (line 301).
-      By then the grid already exists. The mollifier density it builds already represents time 1/365, and slice 0 then diffuses it
-      for another full <code>[0, T1]</code>, which is one extra day of variance.
-      <code>forwardpde.calculate_densities</code> (used by <code>price_vanilla_surface</code>) correctly starts at <code>FWD_PDE_START_TIME</code>.
-    </p>
-    <p>
-      <strong>Why it's bad:</strong> The optimiser fits parameters to a density that has 1/365 too much variance. When the calibrated LV is repriced with the library's own PDE,
-      the result does not match the calibration targets. Under a flat 20% LV, the first-expiry vol comes out as <code>0.20·√(31/30) ≈ 20.33%</code> at 30 days, an error of about 33 bp
-      that sits entirely in the section every later expiry builds on.
-    </p>
-    <p><strong>Fix:</strong> initialise the start time before any grid is built, and drop the late assignment:</p>
-    <pre><span class="c"># lvsection_calib.py, __init__ (line 194)</span>
-<span class="rm">-        self.start_time = 0.0</span>
-<span class="ok">+        self.start_time = fpde.FWD_PDE_START_TIME  # must match forwardpde.calculate_densities</span>
-
-<span class="c"># lvsection_calib.py, initialize() (line 301)</span>
-<span class="rm">-        self.start_time = fpde.FWD_PDE_START_TIME</span></pre>
-    <p>
-      Then add a test in <code>test_localvol_calib.py</code> that calibrates, reprices with <code>fpde.price_vanilla_surface</code>, and checks that the first-expiry vol RMSE stays below the calibration tolerance.
-    </p>
+    <p><strong>Fix:</strong> restore the override in <code>CubicVolSection</code> (after line 33), with the base-class signature:</p>
+    <pre><span class="rm">    # def value(self, t, x):
+    #     return self.formula(t, x, self.eff_params)</span>
+<span class="ok">    def value(self, x: npt.ArrayLike) -&gt; npt.ArrayLike:
+        """ The formula takes the epsilons, not vl/vr """
+        if self.eff_params is None:
+            raise ValueError("Invalid CubicVol parameters")
+        return self.formula(self.time, x, self.eff_params)</span></pre>
+    <p>Add a test in <code>test_impliedvol.py</code>, and recalibrate any stored CubicVol local vols:</p>
+    <pre><span class="ok">def test_cubicvol_section_matches_formula():
+    section = create_section(1.0)
+    x = np.array([-0.2, 0.0, 0.2])
+    assert np.allclose(section.value(x), cubicvol.cubicvol(1.0, x, *section.params))</span></pre>
   </div>
 
   <!-- 2 -->
   <div class="issue high">
     <div class="issue-header">
       <span class="issue-num">#2</span>
-      <span class="issue-title">With 'none' extrapolation, interpolation returns NaN on the first and last nodes, so discount-factor curves give NaN at the valuation date</span>
+      <span class="issue-title">"No extrapolation" returns NaN instead of raising, so a discount curve past its last pillar puts NaN into PVs silently</span>
       <span class="badge high">High</span>
     </div>
-    <span class="loc">sdevpy/maths/interpolation.py · lines 294–298 &nbsp;·&nbsp; sdevpy/market/yieldcurve.py · lines 121, 123</span>
+    <span class="loc">sdevpy/maths/interpolation.py · lines 224–237, 294–305 &nbsp;·&nbsp; sdevpy/calibration/rates/yieldcurve.py · lines 138, 145 &nbsp;·&nbsp; sdevpy/montecarlo/mcpricer.py · line 156</span>
     <p>
-      <strong>What happens:</strong> <code>Interpolation.value</code> sends a point to the extrapolator when it is within <code>eps</code> of the grid's ends:
+      <strong>Why it's bad:</strong> <code>NoneExtrapolator</code>'s docstring says "Error returned if used", but the <code>raise</code> is commented out and it returns <code>np.nan</code>.
+      Discount and log-discount curves default to <code>r_extrap='none'</code>. Reproduced: a log-discount curve with pillars in Dec-2026 and Dec-2027
+      returns 0.97985 for Jun-2026 and <code>nan</code> for Jun-2028. <code>MonteCarloPricer.build</code> then computes <code>df * mean_fwd_flow</code> and the trade PV is NaN with no message.
+      <code>FixingHandler</code> with <code>interpolate=True</code> uses the same extrapolator (<code>fixings.py:25</code>), so a missing fixing outside the series also becomes NaN.
     </p>
-    <pre>below = (x &lt; self.x_grid[<span class="fn">0</span>] + self.eps)     <span class="c"># True exactly on the first node</span>
-above = (x &gt; self.x_grid[-<span class="fn">1</span>] - self.eps)    <span class="c"># True exactly on the last node</span></pre>
-    <p>
-      For <code>interp_var='discount'</code> or <code>'log_discount'</code>, <code>InterpolatedYieldCurve</code> uses <code>l_extrap='none', r_extrap='none'</code>, and <code>NoneExtrapolator.value</code> returns NaN.
-      Reproduced in the current code: <code>curve.discount(valdate)</code> returns <code>nan</code> for both variables, and so does <code>discount(last pillar)</code>. The mid-curve values (0.98) are fine.
-      <code>FixingHandler(interpolate=True)</code> uses the same 'none' mode, and returns NaN silently outside the fixing range.
-    </p>
-    <p>
-      <strong>Why it's bad:</strong> Both options are supported and documented, and they fail on the most common query of all: the DF at t=0, or a cashflow on a curve pillar.
-      NaN spreads silently through PVs. The stored test curves use <code>zerorate</code>, which is why no test catches this.
-    </p>
-    <p><strong>Fix:</strong> hand off to the extrapolator only strictly outside the grid. The interpolators return the node value exactly on the nodes, so flat and linear extrapolation results do not change.</p>
-    <pre><span class="c"># interpolation.py, Interpolation.value</span>
-<span class="rm">-        below = (x &lt; self.x_grid[0] + self.eps)</span>
-<span class="rm">-        above = (x &gt; self.x_grid[-1] - self.eps)</span>
-<span class="ok">+        below = (x &lt; self.x_grid[0] - self.eps)</span>
-<span class="ok">+        above = (x &gt; self.x_grid[-1] + self.eps)</span></pre>
-    <p>Add <code>assert curve.discount(valdate) == 1.0</code> and a last-pillar check for all three <code>interp_var</code> values in <code>test_yieldcurves.py</code>.</p>
+    <p><strong>Fix:</strong> raise in <code>Interpolation.value</code>, where the offending point is known (replace lines 303–304):</p>
+    <pre><span class="ok">        if np.any(below) and isinstance(self.l_extrap, NoneExtrapolator):
+            raise ValueError(f"Extrapolation not allowed below {self.x_grid[0]}: requested {np.min(x)}")
+        if np.any(above) and isinstance(self.r_extrap, NoneExtrapolator):
+            raise ValueError(f"Extrapolation not allowed above {self.x_grid[-1]}: requested {np.max(x)}")</span>
+        v = np.where(below, self.l_extrap.value(x), v)
+        v = np.where(above, self.r_extrap.value(x), v)</pre>
+    <p>Then update the class docstring of <code>NoneExtrapolator</code> and add a test that <code>curve.discount(date_after_last_pillar)</code> raises.</p>
   </div>
 
   <!-- 3 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#3</span>
-      <span class="issue-title">Linear matrix local vols silently reload as cubic splines, which changes the vols after a save/load round trip</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">A linear matrix local vol reloads as a cubic spline, and constant local vols cannot be reloaded at all (open since the 22nd review)</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol.py · lines 225–234 &nbsp;·&nbsp; sdevpy/volatility/localvol/localvol_factory.py · lines 74–95, 124</span>
+    <span class="loc">sdevpy/volatility/localvol/localvol.py · lines 225, 230–234 &nbsp;·&nbsp; sdevpy/volatility/localvol/localvol_factory.py · lines 37–38, 70–72, 124</span>
     <p>
-      <strong>What happens:</strong> <code>InterpolatedLocalVolSection.dump</code> writes <code>'model': self.interp_type</code> ('linear' or 'cubicspline').
-      <code>create_interpolated_section</code> reads it back but ignores it:
+      <strong>Why it's bad:</strong> <code>InterpolatedLocalVolSection.dump</code> writes the interpolation type under <code>'model'</code>, and the factory dispatches on it,
+      but <code>create_interpolated_section</code> ignores it and takes the default <code>'cubicspline'</code>.
+      Reproduced: a linear <code>MatrixLocalVol</code> gives 0.3100, 0.2250, 0.3000 at three log-moneyness points; after <code>get_localvol_from_data(lv.dump_data())</code>
+      the same points give 0.2971, 0.2056, 0.2966. Any pricing that reads a stored Dupire LV uses different vols from the ones calibrated.
+      Separately, <code>ConstantLocalVol.dump_data()</code> has no <code>'sections'</code> key, so reloading it raises <code>KeyError</code>.
     </p>
-    <pre>logm_list, vol_list = config[<span class="st">'logm'</span>], config[<span class="st">'vol'</span>]
-section = InterpolatedLocalVolSection(time, logm_list, vol_list)   <span class="c"># interpolation defaults to 'cubicspline'</span></pre>
-    <p>
-      Reproduced: <code>MatrixLocalVol(..., interpolation='linear')</code> gives 0.2000 at (t=0.5, x=0.5). After <code>dump_data()</code> and then <code>get_localvol_from_data()</code>, the same query gives 0.1625.
-      The reloaded object is also an <code>InterpolatedParamLocalVol</code> instead of a <code>MatrixLocalVol</code>, and calling <code>get_localvol_from_data(data, new_t_grid)</code> on matrix data fails with <code>KeyError: 'params'</code> (line 85).
-    </p>
-    <p>
-      <strong>Why it's bad:</strong> Anything saved through <code>CalibrationDataSet.save_localvol</code> and read back later is a different model, and nothing reports it. The existing round-trip test (<code>test_localvol.py:233</code>) only uses the cubic-spline fixture, so it cannot catch this.
-    </p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="c"># localvol.py, create_interpolated_section</span>
-<span class="rm">-    section = InterpolatedLocalVolSection(time, logm_list, vol_list)</span>
-<span class="ok">+    section = InterpolatedLocalVolSection(time, logm_list, vol_list,</span>
-<span class="ok">+                                          interpolation=config.get('model', 'cubicspline'))</span>
-
-<span class="c"># localvol_factory.py, get_localvol_from_data, before "if new_t_grid is None"</span>
-<span class="ok">+    if all(s.get('model', '').lower() in ('cubicspline', 'linear') for s in sections):</span>
-<span class="ok">+        if new_t_grid is not None:</span>
-<span class="ok">+            raise ValueError("Re-gridding is not supported for matrix local vols")</span>
-<span class="ok">+        secs = [create_section(s) for s in sections]</span>
-<span class="ok">+        return localvol.MatrixLocalVol.from_sections(secs, **_localvol_metadata(data))</span>
-
-<span class="c"># localvol.py, class MatrixLocalVol</span>
-<span class="ok">+    @classmethod</span>
-<span class="ok">+    def from_sections(cls, sections: list[InterpolatedLocalVolSection], **kwargs) -&gt; "MatrixLocalVol":</span>
-<span class="ok">+        obj = cls.__new__(cls)</span>
-<span class="ok">+        TimeInterpolatedLocalVol.__init__(obj, sections, **kwargs)</span>
-<span class="ok">+        return obj</span></pre>
-    <p>
-      Then parametrise the round-trip test (<code>test_localvol.py:233</code>) over <code>interpolation in ('linear', 'cubicspline')</code>, and assert <code>isinstance(reloaded, MatrixLocalVol)</code>.
-      The stored <code>Matrix</code> fixtures are cubic-spline, so <code>test_lv_matrix_read</code> keeps passing.
-    </p>
+    <p><strong>Fix:</strong> <code>localvol.py</code> line 233:</p>
+    <pre><span class="rm">    section = InterpolatedLocalVolSection(time, logm_list, vol_list)</span>
+<span class="ok">    section = InterpolatedLocalVolSection(time, logm_list, vol_list,
+                                          interpolation=config.get('model', 'cubicspline'))</span></pre>
+    <p><code>localvol_factory.py</code>, before the <code>sections</code> lookup at line 70:</p>
+    <pre><span class="ok">    if 'sections' not in data and 'vol' in data:
+        return localvol.ConstantLocalVol(data['vol'], **_localvol_metadata(data))</span></pre>
   </div>
 
   <!-- 4 -->
-  <div class="issue high">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#4</span>
-      <span class="issue-title">The package declares <code>requires-python &gt;= 3.10</code>, but <code>DatedRepository[T]</code> uses 3.12-only syntax, so the whole pricing stack fails to import on 3.10 and 3.11</span>
-      <span class="badge high">High</span>
+      <span class="issue-title">The LV section calibrator never checks whether the optimizer converged</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/utilities/datedrepository.py · line 7 &nbsp;·&nbsp; pyproject.toml · line 13</span>
+    <span class="loc">sdevpy/volatility/localvol/lvsection_calib.py · lines 119–133, 152</span>
     <p>
-      <strong>What happens:</strong> <code>class DatedRepository[T]:</code> is PEP 695 generic syntax, and it is a <code>SyntaxError</code> before Python 3.12.
-      <code>market/repository.py</code> and <code>calibration/repository.py</code> import it, and so, transitively, do <code>pricingcontext</code>,
-      <code>montecarlo.payoffs.basic</code>, <code>utilities.book</code>, <code>mcpricer</code>, <code>lvsection_calib</code> and <code>fx_volcalib</code>.
-      pip will install the package on 3.10 or 3.11 because the metadata allows it, and every one of those imports will then fail.
+      <strong>Why it's bad:</strong> After <code>optimizer.minimize</code> or <code>least_squares</code>, the code takes <code>result.x</code>, writes it into the local vol and moves to the next expiry.
+      <code>result.success</code> and <code>result.message</code> are never read. The defaults are COBYLA with <code>maxiter=100</code>, which often stops on the iteration limit,
+      and each expiry starts from the previous density, so one unconverged section degrades all later ones. The returned dict carries no convergence flag,
+      so <code>ex_lv_section_calib.py:39</code> saves the result either way. <code>TsIvCalibrator</code> already warns in this situation (<code>impliedvol_calib.py:93–94</code>).
     </p>
-    <p><strong>Why it's bad:</strong> The declared contract is broken for two of the four supported Python versions, and ruff's <code>target-version = "py313"</code> hides the problem.</p>
-    <p><strong>Fix:</strong> pick one of these options, and don't leave the two out of step.</p>
-    <pre><span class="c"># Option A: pyproject.toml line 13 (the code already targets 3.13 via ruff)</span>
-<span class="rm">-requires-python = "&gt;=3.10"</span>
-<span class="ok">+requires-python = "&gt;=3.12"</span>
-
-<span class="c"># Option B: datedrepository.py, keep 3.10 support</span>
-<span class="ok">+from typing import Generic, TypeVar</span>
-<span class="ok">+T = TypeVar("T")</span>
-<span class="rm">-class DatedRepository[T]:</span>
-<span class="ok">+class DatedRepository(Generic[T]):</span></pre>
+    <p><strong>Fix:</strong> after line 130 (<code>sol = result.x</code>):</p>
+    <pre><span class="ok">        if not result.success:
+            log.warning(f"{name}: LV calibration did not converge at expiry {exp_idx}: {result.message}")
+        converged.append(bool(result.success))</span></pre>
+    <p>with <code>converged = []</code> before the loop, and at line 152:</p>
+    <pre><span class="rm">    return {'lv': lv, 'iv_data': surface_data, 'pde_vols': pde_vols, 'history': obj_builder.get_history()}</span>
+<span class="ok">    return {'lv': lv, 'iv_data': surface_data, 'pde_vols': pde_vols, 'history': obj_builder.get_history(),
+            'converged': converged}</span></pre>
   </div>
 
   <!-- 5 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#5</span>
-      <span class="issue-title">The default data root is the test-fixture folder, so the examples overwrite the stored calibrations that the tests read</span>
+      <span class="issue-title"><code>InterpolatedYieldCurve.set_data</code> checks for past dates before sorting, so an unsorted input with a past pillar is accepted</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/datapaths.py · line 11 &nbsp;·&nbsp; examples/volatility/ex_lv_section_calib.py · line 38 &nbsp;·&nbsp; ex_lv_dupire_calib.py · line 78 &nbsp;·&nbsp; ex_iv_calib.py · line 81 &nbsp;·&nbsp; fx_volcalib.py · line 268 &nbsp;·&nbsp; pyproject.toml · line 38</span>
+    <span class="loc">sdevpy/calibration/rates/yieldcurve.py · lines 79–84</span>
     <p>
-      <strong>What happens:</strong> <code>root_path()</code> falls back to <code>Path(__file__).parent / "tests" / "data"</code> when <code>SDEVPY_DATA</code> is unset.
-      <code>default_calibration_repository()</code> writes through to that folder. <code>ex_lv_section_calib.py</code> runs with <code>force_restart=True</code> and then
-      <code>calib.save_localvol('ABC', 'BiExp', lv)</code>, which replaces <code>tests/data/calibdata/localvol/ABC/20251215-000000.BiExp.json</code>.
-      That is the file <code>test_localvol.py</code>, <code>test_calibrationdata.REF_CALIB</code> and the LV calibration tests read.
-      The same holds for the Dupire and IV examples, their three notebooks, and the <code>fx_volcalib</code> demo.
-      Commit <code>332ac74</code> shows this already happening: a fixture (<code>ABC/…Matrix.json</code>) was rewritten by an example run.
-      <code>package-data</code> also ships all of <code>tests/data</code> (26 MB, including GPT weights) in the wheel, and in an installed package those writes go into <code>site-packages</code>.
+      <strong>Why it's bad:</strong> Line 79 tests <code>dates[0] &lt;= self.valdate</code> with the comment "Assuming the dates are sorted", and the sort happens on lines 83–84.
+      Reproduced: pillars <code>[2026-12-15, 2025-06-15]</code> with valuation date 2025-12-15 are accepted, while the same pillars in sorted order raise.
+      The accepted curve has a pillar at negative time, so zero rates are computed as <code>-log(df) / t</code> with t &lt; 0 and the curve interpolates through it.
+      The function supports unsorted input by design (there is a test for it), so the check has to run after the sort.
     </p>
-    <p><strong>Why it's bad:</strong> Running a demo silently changes the regression baseline, and a real deployment writes its calibrations into the installed test data.</p>
-    <p><strong>Fix:</strong> point the tests at the fixtures explicitly, and make the library default a user folder:</p>
-    <pre><span class="c"># datapaths.py</span>
-<span class="rm">-    return Path(__file__).parent / "tests" / "data"</span>
-<span class="ok">+    return Path.home() / ".sdevpy" / "data"</span>
+    <p><strong>Fix:</strong> remove lines 79–80 and check after sorting:</p>
+    <pre><span class="rm">        if dates[0] &lt;= self.valdate: # Assuming the dates are sorted
+            raise RuntimeError("Incorrect input contains dates &lt;= valdate")</span>
 
-<span class="c"># sdevpy/tests/conftest.py (top of file, before any test module builds a repository)</span>
-<span class="ok">+import os</span>
-<span class="ok">+from pathlib import Path</span>
-<span class="ok">+os.environ.setdefault("SDEVPY_DATA", str(Path(__file__).parent / "data"))</span>
-
-<span class="c"># pyproject.toml line 38</span>
-<span class="rm">-"sdevpy.tests" = ["data/**/*"]</span></pre>
-    <p>
-      If you regenerate fixtures deliberately, do it through a flag in the examples, for example <code>REGENERATE_FIXTURES = False</code> guarding the <code>save_*</code> call, so it can't happen by accident.
-    </p>
+        sorted_pillars = [{'expiry': d, 'df': df} for d, df in zip(dates, dfs, strict=True)]
+        sorted_pillars.sort(key=lambda x: x['expiry'])
+<span class="ok">        if sorted_pillars[0]['expiry'] &lt;= self.valdate:
+            raise RuntimeError("Incorrect input contains dates &lt;= valdate")</span></pre>
   </div>
 
   <!-- 6 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#6</span>
-      <span class="issue-title">Flat local vols return 0 when log-moneyness is passed as integers (<code>np.full_like</code> keeps the int dtype)</span>
+      <span class="issue-title">The FX vol stack builds forwards without the spot-date adjustment that <code>FxForwardCurve</code> applies (open since the 22nd review)</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/localvol/localvol.py · line 271 (FlatLocalVolSection.value) &nbsp;·&nbsp; line 332 (ConstantLocalVol.value)</span>
+    <span class="loc">sdevpy/volatility/fx/fxvolcalib.py · lines 76–77 &nbsp;·&nbsp; sdevpy/volatility/fx/fxvolinterpolation.py · line 241 &nbsp;·&nbsp; sdevpy/volatility/fx/fxdeltastrike.py · line 226 &nbsp;·&nbsp; sdevpy/calibration/fx/fxforward.py · lines 20, 23</span>
     <p>
-      <strong>What happens:</strong> <code>np.full_like(logm, self.vol)</code> copies the input's dtype. Reproduced: <code>ConstantLocalVol(0.2).value(1.0, np.array([0, 1]))</code> returns <code>[0 0]</code>,
-      and <code>.value(1.0, 0)</code> returns <code>0</code>.
+      <strong>Why it's bad:</strong> <code>FxForwardCurve</code> first converts the quoted spot to its t = 0 equivalent,
+      <code>spot0 = spot / df_f(spot_date) * df_d(spot_date)</code>, and returns <code>spot0 * df_f(T) / df_d(T)</code>.
+      The calibrator, the surface interpolation and <code>strike_from_delta</code> all use <code>spot * df_f(T) / df_d(T)</code>.
+      The two differ by the factor <code>df_d(spot_date) / df_f(spot_date)</code>, that is the rate differential over the two-day spot lag.
+      The stored <code>'fwd'</code> in each tenor report defines the moneyness axis of the surface, so a pricer that takes its forward from
+      <code>CalibrationDataSet.get_fxforwardcurve</code> reads every smile slightly off-centre.
     </p>
-    <p><strong>Why it's bad:</strong> An ATM query written as <code>lv.value(t, 0)</code> gives zero vol with no error, and a zero vol turns every downstream price into intrinsic value.</p>
-    <p><strong>Fix (both lines):</strong></p>
-    <pre><span class="rm">-        return np.full_like(logm, self.vol)</span>
-<span class="ok">+        return np.full(np.shape(logm), self.vol, dtype=float)</span></pre>
+    <p><strong>Fix:</strong> convert the spot once, in <code>FxVolCalibrator._fetch_market_data</code> (after line 234; add <code>fx_spot_date</code> to the <code>fxdates</code> import on line 12), and do the same where <code>FxVolInterpolation</code> receives its spot (<code>fxvolinterpolation.py:357</code>):</p>
+    <pre><span class="ok">        # t = 0 equivalent of the quoted spot, as in FxForwardCurve.load_calibrated
+        sdate = fx_spot_date(self.date, self.forccy, self.domccy)
+        self.spot = self.spot * self.domcurve.discount(sdate) / self.forcurve.discount(sdate)</span></pre>
+    <p>Add a test that <code>report['fwd']</code> equals <code>calib.get_fxforwardcurve(pair, mkt).value(settlement)</code> for each tenor.</p>
   </div>
 
   <!-- 7 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#7</span>
-      <span class="issue-title">Equity path-dependent payoffs default to the US federal holiday calendar instead of an exchange calendar</span>
+      <span class="issue-title">The default data root is the test-fixture folder, so examples and <code>__main__</code> blocks overwrite the calibrations the tests read (open since the 22nd review)</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 234, 464 &nbsp;·&nbsp; exotics.py · lines 14, 73 &nbsp;·&nbsp; sdevpy/utilities/scalendar.py · line 412</span>
+    <span class="loc">sdevpy/datapaths.py · line 11 &nbsp;·&nbsp; examples/volatility/ex_lv_section_calib.py · line 39 &nbsp;·&nbsp; ex_iv_calib.py · line 82 &nbsp;·&nbsp; ex_lv_dupire_calib.py · line 78 &nbsp;·&nbsp; sdevpy/volatility/fx/fxvolcalib.py · line 268</span>
     <p>
-      <strong>What happens:</strong> <code>Average</code>, <code>Variance</code>, <code>WorstOfBarrier</code> and <code>make_asian_option</code> all default to <code>cdr="USD"</code>, which maps to <code>holidays.US</code> (federal holidays).
-      Checked against <code>make_calendar("NYSE")</code>: Good Friday (2026-04-03) is a USD business day but an NYSE holiday, while Columbus Day (2026-10-12) and Veterans Day (2026-11-11) are USD holidays but NYSE trading days.
+      <strong>Why it's bad:</strong> Without <code>SDEVPY_DATA</code>, <code>root_path()</code> returns <code>sdevpy/tests/data</code>.
+      The three examples and the calibrator's <code>__main__</code> take <code>default_calibration_repository()</code> and call <code>save_localvol</code>, <code>save_impliedvol</code> or <code>save_fxvoldata</code>.
+      Running one of them rewrites JSON files that regression tests compare against stored values, so a test can start failing, or keep passing against changed data, with no code change.
+      In an installed package the same default points inside site-packages.
     </p>
-    <p>
-      <strong>Why it's bad:</strong> Averaging and variance schedules include a day with no fixing and skip two days that do have fixings. This changes <code>n_returns</code> and the variance annualisation.
-      For a trade struck in the past, <code>md.get_fixings</code> raises "Fixing not found" on Good Friday.
-    </p>
-    <p><strong>Fix:</strong> default to the exchange calendar, and cache calendars, because building an mcal calendar takes about 0.15 s:</p>
-    <pre><span class="c"># basic.py:234, basic.py:464, exotics.py:14, exotics.py:73</span>
-<span class="rm">-    ..., freq="1D", cdr="USD"):</span>
-<span class="ok">+    ..., freq="1D", cdr="NYSE"):</span>
+    <p><strong>Fix:</strong> make the library default a user folder (the same fallback <code>tools.workpath()</code> already uses), and let the tests opt in to the fixtures. <code>datapaths.py</code> line 11:</p>
+    <pre><span class="rm">    return Path(__file__).parent / "tests" / "data"</span>
+<span class="ok">    return Path.home() / "sdevpy"</span></pre>
+    <p><code>sdevpy/tests/conftest.py</code>, replacing its current content:</p>
+    <pre><span class="ok">import os
+from pathlib import Path
 
-<span class="c"># scalendar.py, make_calendar</span>
-<span class="ok">+@functools.lru_cache(maxsize=None)</span>
- <span class="kw">def</span> <span class="fn">make_calendar</span>(name: str, start_year: int=<span class="fn">2000</span>, end_year: int=<span class="fn">2100</span>):</pre>
-    <p>A better long-term fix is to take the calendar from the underlying's static data rather than from a keyword default.</p>
+os.environ.setdefault("SDEVPY_DATA", str(Path(__file__).parent / "data"))</span></pre>
+    <p>In the examples, read from the fixtures explicitly and write elsewhere, for instance <code>CalibrationDataRepository(CalibrationDataFileSource(root=tools.workpath() / "calibdata"))</code> for the save calls.</p>
   </div>
 
   <!-- 8 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#8</span>
-      <span class="issue-title">One example, four stovol notebooks and three <code>__main__</code> demos still reference modules, functions or arguments that don't exist</span>
+      <span class="issue-title">TsSvi1 and TsSvi2 call <code>isequal(chi, tol)</code>, which compares <code>chi</code> with 1e-6 instead of testing it against zero; invalid parameters with integer strikes return vols of 0</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">examples/stovol/stovolinvtrain.py · lines 14, 140 &nbsp;·&nbsp; notebooks/stovol/ (4) &nbsp;·&nbsp; sdevpy/models/assetmodels.py · line 69 &nbsp;·&nbsp; sdevpy/market/fixings.py · line 127 &nbsp;·&nbsp; sdevpy/market/correlations.py · line 63</span>
-    <p><strong>What happens</strong> (each checked by resolving the imports and reading the call targets):</p>
+    <span class="loc">sdevpy/volatility/impliedvol/models/tssvi1.py · lines 39, 142 &nbsp;·&nbsp; tssvi2.py · lines 34, 130 &nbsp;·&nbsp; sdevpy/utilities/tools.py · line 21</span>
     <p>
-      · <code>stovolinvtrain.py:14</code> imports <code>load_learning_model</code> from <code>sdevpy.machinelearning.learningmodel</code>, but it lives in <code>…machinelearning.keras.learningmodel</code>.<br/>
-      · <em>Deep Learning StoVol-Colab / -MB</em> import <code>sdevpy.machinelearning.topology</code>, <code>…learningschedules</code> and <code>…callbacks</code>, all of which moved under <code>keras/</code>. They also import <code>sdevpy.projects.stovol.stovolplot</code>, which no longer exists anywhere in the repo.<br/>
-      · <em>Deep Learning SABR Calibration</em> imports <code>sdevpy.machinelearning.callbacks</code>. <em>StoVol Training.keras</em> imports <code>tf_bps_rmse</code> from <code>sdevpy.maths.metrics</code>, but it lives in <code>sdevpy.tensorflow.tf_metrics</code>.<br/>
-      · <code>assetmodels.py:69</code> calls <code>lvf.load_param_lv</code>, which does not exist. <code>fixings.py:127</code> and <code>correlations.py:63</code> call <code>fixinghandler</code> / <code>get_correlations</code> without the required <code>folder</code> argument, which raises <code>TypeError</code>.
+      <strong>Why it's bad:</strong> The signature is <code>isequal(a, b, tol=EPS)</code>, so <code>isequal(chi, tol)</code> asks whether <code>chi == 1e-6</code> to within 1e-11.
+      The intent is to skip the extremum check when <code>chi</code> is zero. As written, <code>chi = 0</code> enters the block and the model is rejected whenever <code>tau &lt; 1e-6</code>.
+      Reproduced: <code>chi = 0</code>, <code>tau = 1e-8</code> gives <code>(False, inf)</code>. The optimizer sees an infinite objective in a region that is valid.
+      Second point, same functions: on invalid global parameters <code>calculate</code> returns <code>np.full_like(k, np.nan)</code>.
+      With an integer strike array that is an integer array, and the result is <code>[0 0]</code> rather than NaN (reproduced).
     </p>
-    <p><strong>Why it's bad:</strong> These are the entry points the README sends new users to, and they fail on their first cell.</p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="c"># stovolinvtrain.py:14</span>
-<span class="rm">-from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model</span>
-<span class="ok">+from sdevpy.machinelearning.learningmodel import LearningModel</span>
-<span class="ok">+from sdevpy.machinelearning.keras.learningmodel import load_learning_model</span>
-
-<span class="c"># notebooks: sdevpy.machinelearning.{topology,learningschedules,callbacks} → sdevpy.machinelearning.keras.{…}</span>
-<span class="c">#            remove the stovolplot cells or restore the module;  tf_bps_rmse → sdevpy.tensorflow.tf_metrics</span>
-
-<span class="c"># fixings.py:127 / correlations.py:63</span>
-<span class="rm">-    data = fixinghandler(name, interpolate=False)</span>
-<span class="ok">+    data = fixinghandler(name, interpolate=False, folder=datapaths.marketdata_path() / "fixings")</span>
-<span class="rm">-    corr = get_correlations(['ABC', 'KLM', 'XYZ'], date)</span>
-<span class="ok">+    corr = get_correlations(['ABC', 'KLM', 'XYZ'], date, folder=datapaths.marketdata_path() / "correlations")</span>
-
-<span class="c"># assetmodels.py:65-69</span>
-<span class="rm">-    lv = lvf.load_param_lv(name, store_date, folder=folder)</span>
-<span class="ok">+    lv = default_calibration_repository()[valdate].get_localvol(name, 'BiExp')</span></pre>
+    <p><strong>Fix:</strong> <code>tssvi1.py:142</code> and <code>tssvi2.py:130</code>:</p>
+    <pre><span class="rm">        if is_ok and not isequal(chi, tol):</span>
+<span class="ok">        if is_ok and not isequal(chi, 0.0, tol):</span></pre>
+    <p><code>tssvi1.py:39</code> and <code>tssvi2.py:34</code>:</p>
+    <pre><span class="rm">            return np.full_like(k, np.nan)</span>
+<span class="ok">            return np.full(np.shape(k), np.nan)</span></pre>
   </div>
 
   <!-- 9 -->
   <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#9</span>
-      <span class="issue-title">Type annotations in the pricing core misstate what is actually passed</span>
+      <span class="issue-title">Four library functions crash or hang on inputs they are meant to accept</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/mcpricer.py · lines 19, 150 &nbsp;·&nbsp; payoffs/basic.py · line 110 (+ every <code>evaluate</code>) &nbsp;·&nbsp; exotics.py · line 26 &nbsp;·&nbsp; timegrids.py · line 165 &nbsp;·&nbsp; jsonmanager.py · lines 5, 11 &nbsp;·&nbsp; calibration/filesource.py · line 15 &nbsp;·&nbsp; calibration/dataset.py · lines 90, 94</span>
+    <span class="loc">sdevpy/maths/interpolation.py · lines 93–94 &nbsp;·&nbsp; sdevpy/utilities/timegrids.py · lines 21, 25–26 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/optionsurface.py · lines 196–206 &nbsp;·&nbsp; sdevpy/utilities/scalendar.py · lines 67–74</span>
     <p>
-      <strong>What happens:</strong><br/>
-      · <code>Payoff.evaluate(self, mkt_state: dict)</code> and <code>MonteCarloPricer.build(self, mkt_state: dict, book) -&gt; dict</code>: the argument is a <code>MarketState</code> (every body reads <code>mkt_state.event_paths</code>), and <code>build</code> returns a <code>list[dict]</code>.<br/>
-      · <code>build_timegrid(valdate, eventdates: list[dt.datetime], …) -&gt; npt.ArrayLike</code> calls <code>eventdates.max()</code>, which needs an <code>ndarray</code> (that is what <code>Book</code> passes), and it returns an <code>NDArray</code>.<br/>
-      · <code>model_time(date1: npt.ArrayLike, date2: npt.ArrayLike) -&gt; npt.ArrayLike</code> takes datetimes and returns either a <code>float</code> or an <code>NDArray</code>.<br/>
-      · <code>jsonmanager.serialize/deserialize(file: str)</code> receives a <code>Path</code> from every file source.<br/>
-      · The new modules use implicit <code>Optional</code>: <code>root: str|Path=None</code>, <code>t_grid: list[float]=None</code>.
+      <strong>Why it's bad:</strong>
+      (a) <code>CubicSplineInterpolator.__init__</code> calls <code>super().__init__(**kwargs)</code>, which builds the spline when <code>x_grid</code>/<code>y_grid</code> are passed, and then sets <code>self.interp = None</code>.
+      Reproduced: <code>CubicSplineInterpolator(x_grid=..., y_grid=...).value(1.5)</code> raises <code>TypeError: 'NoneType' object is not callable</code>. It works through <code>create_interpolation</code> only because <code>Interpolation</code> sets the data a second time.
+      (b) <code>build_sparse_timegrid(0.25)</code> raises <code>IndexError</code> (reproduced): 0.25 is not below the first coarse point, and no coarse point is below 0.25, so <code>step_grid[-1]</code> indexes an empty list.
+      (c) <code>plot_transform_surface</code> rounds the row count up and then indexes <code>strikes[k]</code> for every cell, so an odd number of expiries raises <code>IndexError</code>, and one or two expiries fail because <code>plt.subplots</code> returns a 1-D array.
+      (d) <code>business_days_between</code> loops <code>while current != end</code> in whole-day steps, so it never terminates if <code>end</code> carries a time of day and <code>start</code> does not.
     </p>
-    <p><strong>Why it's bad:</strong> A reader looking at the signatures would pass a dict, a list or a str, and the code would break. These errors also bury the useful mypy signals.</p>
-    <p><strong>Fix:</strong></p>
-    <pre><span class="c"># basic.py (and every evaluate override); use TYPE_CHECKING to avoid the import cycle</span>
-<span class="ok">+from typing import TYPE_CHECKING</span>
-<span class="ok">+if TYPE_CHECKING:</span>
-<span class="ok">+    from sdevpy.montecarlo.mcpricer import MarketState</span>
-<span class="rm">-    def evaluate(self, mkt_state: dict):</span>
-<span class="ok">+    def evaluate(self, mkt_state: "MarketState") -&gt; npt.NDArray[np.float64]:</span>
-
-<span class="c"># mcpricer.py</span>
-<span class="rm">-def build_timegrid(valdate: dt.datetime, eventdates: list[dt.datetime], config) -&gt; npt.ArrayLike:</span>
-<span class="ok">+def build_timegrid(valdate: dt.datetime, eventdates: npt.NDArray, config: "McConfig") -&gt; npt.NDArray[np.float64]:</span>
-<span class="rm">-    def build(self, mkt_state: dict, book) -&gt; dict:</span>
-<span class="ok">+    def build(self, mkt_state: MarketState, book: Book) -&gt; list[dict]:</span>
-
-<span class="c"># jsonmanager.py</span>
-<span class="rm">-def serialize(dic: dict, file: str, indent: int=2) -&gt; None:</span>
-<span class="ok">+def serialize(dic: dict, file: str | Path, indent: int=2) -&gt; None:</span>
-
-<span class="c"># calibration/filesource.py:15, market/filesource.py:24, calibration/dataset.py:90,94</span>
-<span class="rm">-    def __init__(self, root: str|Path=None):</span>
-<span class="ok">+    def __init__(self, root: str | Path | None = None):</span></pre>
+    <p><strong>Fix:</strong> (a) <code>interpolation.py:92–94</code>:</p>
+    <pre>        self.bc_type = kwargs.get('bc_type', 'natural')
+<span class="ok">        self.interp = None</span>
+        super().__init__(**kwargs)
+<span class="rm">        self.interp = None</span></pre>
+    <p>(b) <code>timegrids.py:21</code>:</p>
+    <pre><span class="rm">    if t &lt; coarse_grid[0]:</span>
+<span class="ok">    if t &lt;= coarse_grid[0]:</span></pre>
+    <p>(c) <code>optionsurface.py:199</code> and inside the loop at line 204:</p>
+    <pre><span class="ok">    fig, axs = plt.subplots(num_rows, num_cols, layout="constrained", squeeze=False)</span>
+    ...
+            k = num_cols * i + j
+<span class="ok">            if k &gt;= num_charts:
+                axs[i, j].axis('off')
+                continue</span></pre>
+    <p>(d) <code>scalendar.py:68–70</code>:</p>
+    <pre><span class="ok">        start, end = self.to_date(start), self.to_date(end)</span>
+        step = 1 if end &gt;= start else -1
+        current, count = start, 0
+        while current != end:</pre>
   </div>
 
   <!-- 10 -->
-  <div class="issue low">
+  <div class="issue medium">
     <div class="issue-header">
       <span class="issue-num">#10</span>
-      <span class="issue-title">The FX vol calibrator builds its forward without the spot-date adjustment, so it disagrees with <code>FxForwardCurve</code></span>
-      <span class="badge low">Low</span>
+      <span class="issue-title">Examples, docs scripts, notebooks and <code>__main__</code> demos call functions and arguments that do not exist (partly open since the 22nd review)</span>
+      <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/volatility/fx/fx_volcalib.py · lines 76–77 &nbsp;·&nbsp; sdevpy/market/fx/fxforward.py · line 40</span>
+    <span class="loc">examples/aad/aad_mc.py · lines 160, 196, 234 &nbsp;·&nbsp; aad_mc_nd.py · lines 239, 241, 266, 268 &nbsp;·&nbsp; examples/stovol/stovoltrain.py · line 132 &nbsp;·&nbsp; stovolinvtrain.py · line 160 &nbsp;·&nbsp; examples/gpt/raschka/ch5_loadgpt2.py · line 9 &nbsp;·&nbsp; docs/stovol/products.py · lines 25, 31 &nbsp;·&nbsp; sdevpy/models/assetmodels.py · line 69 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/numerical_impliedvol.py · lines 96, 102 &nbsp;·&nbsp; sdevpy/volatility/fx/fxvannavolga.py · line 255 &nbsp;·&nbsp; sdevpy/market/fixings.py · line 127 &nbsp;·&nbsp; sdevpy/market/correlations.py · line 62 &nbsp;·&nbsp; notebooks/volatility/fxvol-market.ipynb · cell 6 &nbsp;·&nbsp; notebooks/llms/chat-gpt2.ipynb · cells 6, 9</span>
     <p>
-      <strong>What happens:</strong> The calibrator computes <code>fwd = self.spot * df_f / df_d</code>, where <code>self.spot</code> is the quoted spot (which settles at T+2) and the DFs run from valdate to settlement.
-      <code>FxForwardCurve.load_calibrated</code> handles this correctly: it first moves spot back to t=0 with <code>spot0 = spot / P_f(spot_date) · P_d(spot_date)</code>.
-      Reproduced on the USDJPY test data at 1M: the calibrator's forward is 150.18737 and <code>CalibrationDataSet.get_fx_forward_curve</code> gives 150.17750, a difference of about 1 pip.
+      <strong>Why it's bad:</strong> These are the first files a new user runs, and each fails on its first relevant line. Found with mypy and ruff, then read in place:
     </p>
-    <p>
-      <strong>Why it's bad:</strong> The ATM and delta strikes are solved against a forward that the pricing curve does not reproduce. The error is small but systematic, and it grows with the rate differential.
-      The logic is also duplicated even though <code>CalibrationDataSet</code> already provides the forward curve.
-    </p>
-    <p><strong>Fix:</strong> use the dataset's forward curve, and quote the DFs from spot to settlement:</p>
-    <pre><span class="c"># _fetch_market_data</span>
-<span class="ok">+        self.fwd_curve = calib.get_fx_forward_curve(self.pair, mkt)</span>
-<span class="ok">+        self.spot_date = self.fwd_curve.spot_date()</span>
+    <pre><span class="c"># examples/aad/aad_mc.py:160, aad_mc_nd.py:239...  function lives in sdevpy.tensorflow.tf_analytics</span>
+<span class="rm">payoff = df * smoothers.tf_smooth_max_diff(future_spot, STRIKE)</span>
+<span class="ok">from sdevpy.tensorflow import tf_analytics, tf_black
+payoff = df * tf_analytics.tf_smooth_max_diff(future_spot, STRIKE)</span>
 
-<span class="c"># calibrate_tenor, lines 76-77</span>
-<span class="rm">-        df_f, df_d = self.forcurve.discount(settlement), self.domcurve.discount(settlement)</span>
-<span class="rm">-        fwd = self.spot * df_f / df_d</span>
-<span class="ok">+        df_f = self.forcurve.discount(settlement) / self.forcurve.discount(self.spot_date)</span>
-<span class="ok">+        df_d = self.domcurve.discount(settlement) / self.domcurve.discount(self.spot_date)</span>
-<span class="ok">+        fwd = self.fwd_curve.value(settlement)   # == self.spot * df_f / df_d</span></pre>
-    <p>This moves the calibrated strikes by a fraction of a basis point. No test in <code>sdevpy/tests</code> currently exercises <code>FxVolCalibrator</code>, so add one that checks <code>fwd</code> equals <code>calib.get_fx_forward_curve(pair, mkt).value(settlement)</code>.</p>
+<span class="c"># examples/aad/aad_mc.py:196, 234  function lives in sdevpy.tensorflow.tf_black</span>
+<span class="rm">values = black.price_and_greeks(EXPIRY, STRIKE, SPOT, VOL, RATE, DIV)</span>
+<span class="ok">values = tf_black.price_and_greeks(EXPIRY, STRIKE, SPOT, VOL, RATE, DIV)</span>
+
+<span class="c"># examples/stovol/stovoltrain.py:132, stovolinvtrain.py:160  attribute is 'topology' (learningmodel.py:57)</span>
+<span class="rm">    model.topology_ = topology</span>
+<span class="ok">    model.topology = topology</span>
+
+<span class="c"># examples/gpt/raschka/ch5_loadgpt2.py:9  parameter is model_dir (app_download_convert.py:19)</span>
+<span class="rm">settings, params = download_and_load_gpt2(model_size='124M', models_dir="gpt2")</span>
+<span class="ok">settings, params = download_and_load_gpt2(model_size='124M', model_dir="gpt2")</span>
+
+<span class="c"># docs/stovol/products.py:25, 31  lambda parameter is S, body uses s -> NameError when called</span>
+<span class="rm">        terminal = lambda S, v: np.maximum(s - k, 0.0)</span>
+<span class="ok">        terminal = lambda s, v: np.maximum(s - k, 0.0)</span>
+
+<span class="c"># sdevpy/volatility/impliedvol/numerical_impliedvol.py:96, 102  missing 'calib', wrong config key</span>
+<span class="rm">    config = {'model': section_model, ...}
+    calib_result = calibrate_lv_bysections(name, config, mkt, verbose=True, calc_pde_vols=True)</span>
+<span class="ok">    config = {'model_name': section_model, ...}
+    calib_result = calibrate_lv_bysections(name, config, mkt, calib, calc_pde_vols=True)</span>
+
+<span class="c"># sdevpy/market/fixings.py:127 and correlations.py:62  'folder' is required by data_file()</span>
+<span class="rm">    data = fixinghandler(name, interpolate=False)</span>
+<span class="ok">    data = fixinghandler(name, interpolate=False, folder=datapaths.marketdata_path() / 'fixings')</span></pre>
+    <p>
+      Remaining ones: <code>assetmodels.py:69</code> calls <code>lvf.load_param_lv</code>, which no longer exists (use <code>default_calibration_repository()[valdate].get_localvol(name, 'BiExp')</code>);
+      <code>fxvannavolga.py:255</code> calls <code>smile_from_quotes</code> without <code>valdate</code>, <code>delta</code> and <code>prem_adjusted</code> and passes a float as <code>expiry</code>;
+      <code>fxvol-market.ipynb</code> cell 6 uses <code>impliedvol_factory</code>, <code>TsIvCalibrator</code>, <code>timegrids</code> and <code>rmse</code> without importing them;
+      <code>chat-gpt2.ipynb</code> cells 6 and 9 use <code>model</code> before it is defined.
+      28 modules also end in <code>if __name__ == "__main__": print("Hello")</code>; deleting those and moving the real demos to <code>examples/</code> would leave one place to keep working.
+    </p>
   </div>
 
   <footer>
-    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #22 &nbsp;·&nbsp; 2026-09-27 (full scan, commit f0ae20e) &nbsp;·&nbsp; 663 tests passing &nbsp;·&nbsp; ruff: 5 findings &nbsp;·&nbsp; mypy: 1,826 errors in 76 files (not scored as a count, per CLAUDE.md)
+    Generated by Claude Code &nbsp;·&nbsp; sdevpy code review #23 &nbsp;·&nbsp; 2026-10-04 (full scan at d89e704) &nbsp;·&nbsp; pytest: 665 passed &nbsp;·&nbsp; coverage not measured (pytest-cov is not installed in .venv314)
   </footer>
 </div>
 </body>
