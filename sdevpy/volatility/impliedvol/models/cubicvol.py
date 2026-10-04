@@ -32,8 +32,11 @@ class CubicVolSection(ParamLocalVolSection):
         self.model = 'CubicVol'
         self.eff_params = None
 
-    # def value(self, t, x):
-    #     return self.formula(t, x, self.eff_params)
+    def value(self, x: npt.ArrayLike) -> npt.ArrayLike:
+        """ The formula takes the epsilons, not vl/vr """
+        if self.eff_params is None:
+            raise ValueError("Invalid CubicVol parameters")
+        return self.formula(self.time, x, self.eff_params)
 
     def update_params(self, new_params: npt.ArrayLike) -> None:
         """ We optimize on the original parameters which have a more intuitive meaning, but it is
