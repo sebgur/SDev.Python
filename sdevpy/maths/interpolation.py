@@ -300,6 +300,12 @@ class Interpolation:
         # below = (x < self.x_grid[0] + self.eps)
         # above = (x > self.x_grid[-1] - self.eps)
 
+        if np.any(below) and isinstance(self.l_extrap, NoneExtrapolator):
+            raise ValueError(f"Extrapolation not allowed below {self.x_grid[0]}: requested {np.min(x)}")
+
+        if np.any(above) and isinstance(self.r_extrap, NoneExtrapolator):
+            raise ValueError(f"Extrapolation not allowed above {self.x_grid[-1]}: requested {np.max(x)}")
+
         v = np.where(below, self.l_extrap.value(x), v)
         v = np.where(above, self.r_extrap.value(x), v)
         return v
