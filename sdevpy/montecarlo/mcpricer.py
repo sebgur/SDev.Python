@@ -12,6 +12,7 @@ from sdevpy.pricingcontext import PricingContext
 from sdevpy.montecarlo.payoffs import cashflows as cfl
 from sdevpy.montecarlo.payoffs.basic import Trade, Instrument
 from sdevpy.montecarlo.payoffs.vanillas import make_vanilla_option
+from sdevpy.montecarlo.marketstate import MarketState
 from sdevpy.utilities.book import Book
 log = logging.getLogger(__name__)
 
@@ -95,15 +96,6 @@ def interp_paths(paths, idx, w0, w1):
     return w0 * s_left + w1 * s_right
 
 
-class MarketState:
-    def __init__(self, disc_paths, event_paths, discount_curve):
-        self.disc_paths = disc_paths
-        self.event_paths = event_paths
-        # self.terminal_spots = paths[:, -1, :]
-        self.discount_curve = discount_curve
-        self.n_paths = disc_paths.shape[0]
-
-
 class MonteCarloPricer:
     def __init__(self, path_generator, n_paths, event_times, disc_curve):
         self.path_generator = path_generator
@@ -147,7 +139,7 @@ class MonteCarloPricer:
         self.timers = [timer_path, timer_interp, timer_payoff]
         return pvs
 
-    def build(self, mkt_state: dict, book) -> dict:
+    def build(self, mkt_state: MarketState, book) -> list[dict]:
         """ Build paths and calculate trade PVs """
         # paths = mkt_state.event_paths
         reports = []

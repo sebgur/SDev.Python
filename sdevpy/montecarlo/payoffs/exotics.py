@@ -4,6 +4,7 @@ from sdevpy.montecarlo.payoffs.basic import Payoff, Average, Terminal, Basket
 from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_option, make_vanilla_option_payoff
 from sdevpy.market.repository import MarketDataRepository
 from sdevpy.utilities.scalendar import make_schedule
+from sdevpy.montecarlo.marketstate import MarketState
 
 
 class WorstOfBarrier(Payoff):
@@ -23,7 +24,7 @@ class WorstOfBarrier(Payoff):
         self.expiry_idx = None
         self.monitor_idxs = None
 
-    def evaluate(self, mkt_state: dict):
+    def evaluate(self, mkt_state: MarketState):
         paths = mkt_state.event_paths
         spot_all = self.paths_for_all(paths)
         monitored = spot_all[:, self.monitor_idxs, :] # This trade's own dates only

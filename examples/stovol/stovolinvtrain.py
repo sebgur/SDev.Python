@@ -10,8 +10,9 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import pandas as pd
+from sdevpy.machinelearning.learningmodel import LearningModel
 from sdevpy.machinelearning.keras.topology import compose_model
-from sdevpy.machinelearning.learningmodel import LearningModel, load_learning_model
+from sdevpy.machinelearning.keras.learningmodel import load_learning_model
 from sdevpy.machinelearning.keras.learningschedules import FlooredExponentialDecay
 from sdevpy.machinelearning.keras.callbacks import RefCallback
 from sdevpy.machinelearning import datasets
