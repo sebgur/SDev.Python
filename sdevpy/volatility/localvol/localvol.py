@@ -268,7 +268,7 @@ class FlatLocalVolSection(LocalVolSection):
 
     def value(self, logm: npt.ArrayLike) -> npt.ArrayLike:
         """ Return flat vol """
-        return np.full_like(logm, self.vol)
+        return np.full(np.shape(logm), self.vol, dtype=float)
 
     def dump(self) -> dict:
         """ Dump to dictionary """
@@ -329,7 +329,7 @@ class ConstantLocalVol(LocalVol):
 
     def value(self, t: float, logm: npt.ArrayLike) -> npt.ArrayLike:
         """ Single flat number for all expiries and strikes """
-        return np.full_like(logm, self.vol)
+        return np.full(np.shape(logm), self.vol, dtype=float)
 
     def section(self, t: float) -> LocalVolSection:
         """ Retrieve flat LV section at max time 100y """
