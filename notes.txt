@@ -11,6 +11,9 @@
 ########## Strange pip installs ####################################################################
 pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 
+To avoid tqdm warning in notebooks:
+pip install ipywidgets
+
 ########## Claude's recommendations on Architecture ###############################################
 1. Use the existing MC framework consistently
 
