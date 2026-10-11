@@ -1,4 +1,39 @@
 {
+    "qwen3.6-35B": {
+        "type": "llama",
+        "repo_id": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+        "filename": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf"
+    },
+    "gemma-4-31B":{
+        "type": "llama",
+        "repo_id": "unsloth/gemma-4-31B-it-qat-GGUF",
+        "filename": "gemma-4-31B-it-qat-UD-Q4_K_XL.gguf"
+    },
+    "qwen3.6-27B": {
+        "type": "llama",
+        "repo_id": "unsloth/Qwen3.6-27B-GGUF",
+        "filename": "Qwen3.6-27B-Q4_K_M.gguf"
+    },
+    "qwen3.5-27B": {
+        "type": "llama",
+        "repo_id": "unsloth/Qwen3.5-27B-GGUF",
+        "filename": "Qwen3.5-27B-Q4_K_M.gguf"
+    },
+    "gemma-4-26B": {
+        "type": "llama",
+        "repo_id": "unsloth/gemma-4-26B-A4B-it-qat-GGUF",
+        "filename": "gemma-4-26B-A4B-it-qat-UD-Q4_K_XL.gguf"
+    },
+    "gemma-4-12B": {
+        "type": "llama",
+        "repo_id": "bartowski/gemma-4-12B-it-GGUF",
+        "filename": "gemma-4-12B-it-Q4_K_M.gguf"
+    },
+    "qwen3.5-9B": {
+        "type": "llama",
+        "repo_id": "unsloth/Qwen3.5-9B-GGUF",
+        "filename": "Qwen3.5-9B-Q4_K_M.gguf"
+    },
     "qwen3.5-4B": {
         "type": "llama",
         "repo_id": "unsloth/Qwen3.5-4B-GGUF",

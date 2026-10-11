@@ -63,7 +63,8 @@ class LlamaModel(LocalModel):
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="The `local_dir_use_symlinks` argument is deprecated")
-            self.model = Llama.from_pretrained(repo_id=hf_repo_id, filename=filename, n_ctx=n_ctx, verbose=False)
+            self.model = Llama.from_pretrained(repo_id=hf_repo_id, filename=filename, n_ctx=n_ctx, n_gpu_layers=-1,
+                                               verbose=False)
 
     def unload(self) -> None:
         """ Unload Llama model from memory """

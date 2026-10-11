@@ -276,7 +276,7 @@ class TestLlamaModelLoad:
         m = LlamaModel({"repo_id": "org/repo", "filename": "m.gguf"})
         m.load()
         mock_llama_cls.from_pretrained.assert_called_once_with(
-            repo_id="org/repo", filename="m.gguf", n_ctx=0, verbose=False
+            repo_id="org/repo", filename="m.gguf", n_ctx=0, n_gpu_layers=-1, verbose=False
         )
 
 
