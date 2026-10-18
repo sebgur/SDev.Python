@@ -1,3 +1,5 @@
+########## Setting up OpenCode ####################################################################
+
 ########## xlwings ################################################################################
 > pip install xlwings
 
@@ -8,11 +10,15 @@
 
 >pytest --cov=sdevpy --cov-report=html
 
-########## Strange pip installs ####################################################################
+########## Other pip installs ####################################################################
+* For llama-cpp on Windows CPU:
 pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 
-To avoid tqdm warning in notebooks:
-pip install ipywidgets
+* Needed by pytest but not coming with pip install -e
+torch, huggingface_hub, tiktoken, transformers
+
+* To avoid tqdm warning in notebooks:
+ipywidgets
 
 ########## Claude's recommendations on Architecture ###############################################
 1. Use the existing MC framework consistently

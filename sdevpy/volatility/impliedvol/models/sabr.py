@@ -3,6 +3,7 @@
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
+from scipy.stats import norm
 
 
 def implied_vol(t: float, k: npt.ArrayLike, f: float, alpha: float, beta: float, nu: float,
@@ -54,6 +55,21 @@ def calculate_alpha(ln_vol: float, fwd: float, beta: float) -> float:
     """ Calculate original parameter alpha with our definition in terms of ln_vol, i.e.
         alpha = ln_vol * fwd ^ (1.0 - beta) """
     return ln_vol * fwd ** (1.0 - beta)
+
+
+def alpha_from_atm_nvol(t: float, f: float, nvol: float, beta: float, nu: float, rho: float) -> float:
+    """ Closed-form alpha such that the shifted SABR (Hagan lognormal) ATM vol reproduces
+        the given ATM normal vol at forward f """
+    # Exact ATM Bachelier -> shifted Black conversion
+    bs_vol = 2.0 / np.sqrt(t) * norm.ppf(0.5 * (1.0 + nvol * np.sqrt(t / (2.0 * np.pi)) / f))
+    # Hagan ATM formula as a cubic in alpha
+    c = f ** (1.0 - beta)
+    a3 = t * (1.0 - beta)**2 / (24.0 * c**2)
+    a2 = t * rho * beta * nu / (4.0 * c)
+    a1 = 1.0 + t * (2.0 - 3.0 * rho**2) * nu**2 / 24.0
+    roots = np.roots([a3, a2, a1, -bs_vol * c])
+    real_roots = roots[np.abs(roots.imag) < 1e-12].real
+    return real_roots[real_roots > 0].min()
 
 
 if __name__ == "__main__":
