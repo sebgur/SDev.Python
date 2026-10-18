@@ -1,47 +1,19 @@
-########## Setting up OpenCode ####################################################################
-
 ########## xlwings ################################################################################
 > pip install xlwings
 
 > xlwings addin install
 
 ########## Run pytest coverage ####################################################################
->pip install pytest-cov
+> pip install pytest-cov
 
->pytest --cov=sdevpy --cov-report=html
+> pytest --cov=sdevpy --cov-report=html
 
 ########## Other pip installs ####################################################################
 * For llama-cpp on Windows CPU:
-pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
+> pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 
-* Needed by pytest but not coming with pip install -e
+* Needed by pytest but not coming with pip install
 torch, huggingface_hub, tiktoken, transformers
 
 * To avoid tqdm warning in notebooks:
 ipywidgets
-
-########## Claude's recommendations on Architecture ###############################################
-1. Use the existing MC framework consistently
-
-fbsabr.py, mcheston.py, and mczabr.py each hand-roll their own Monte Carlo loop
-(draw gaussians → evolve → collect payoff), duplicating the logic that already lives in
-PathGenerator. The architecture has the right abstractions — Payoff, PathGenerator, MarketState —
-but the analytics modules bypass them entirely. Unifying them would eliminate the duplication and
-make the analytics modules benefit from improvements to the MC engine.
-
-2. Extract price_straddles() out of bachelier.py
-
-It is a matrix-level utility, not an atomic pricing function. It breaks the module's single
-responsibility and has a completely different interface from everything else in the file. It belongs
-in a higher-level utility module (e.g., sdevpy/analytics/utils.py or alongside the straddle-specific
-project code).
-
-3. Introduce a shared protocol for analytics modules
-
-black.py and bachelier.py expose the same logical interface — price, implied_vol — but there's no
-formal contract. A Protocol class would let calibration code, zerosurface.py, and tests reference a
-model type rather than a concrete module:
-
-class AnalyticsModel(Protocol):
-    def price(self, expiry, strike, is_call, fwd, vol): ...
-    def implied_vol(self, expiry, strike, is_call, fwd, fwd_price): ...
