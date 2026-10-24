@@ -3,20 +3,28 @@
 ## Python Code — Read-Only
 
 **Never modify any Python files in this project.**
+You may read, analyze, and explain Python code, but all edits are made exclusively by the user. When asked to fix a bug, add a feature, or refactor code, respond with suggestions only — describe what to change and why, but do not use the Edit or Write tools on any `.py` and `.ipynb` files (except in claude/scratch/, see below).
 
-You may read, analyze, and explain Python code, but all edits are made exclusively by the user. When asked to fix a bug, add a feature, or refactor code, respond with suggestions only — describe what to change and why, but do not use the Edit or Write tools on any `.py` and `.ipynb` files.
+## About the user
+- Quant finance developer; author of the sdevpy library (pricing, calibration, rates, vol, MC/PDE).
+  Assume strong quant and Python background: skip basics, focus on the substance.
+- Works on Windows in VS Code, across several machines.
+- Prefers concise responses.
+
+## Scratchpad
+Put all scratch/temporary files (draft code, test scripts, outputs) in `claude/scratch/` under the
+project root, not in the system temp scratchpad. This folder is the one exception to the read-only rule
+above: Claude may create and edit `.py` files there. Refer to them with project-relative links.
 
 ## Memory
-Do not read, write, or update any files in the memory directory. Do not use the auto-memory system.
+Auto memory is not used. Durable preferences live in this file; when asked to remember something, add it here.
 
 ## Code Review Rules
-
 - Before reporting any issue, read the exact file and line number directly with the Read tool.
 - Discard any finding that cannot be confirmed in the current file. Do not trust subagent summaries.
 - Do not carry over findings from previous reviews without re-verifying them in the current working copy.
 
 ## Known and accepted — do not report
-
 - Regression-style tests (sdevpy/tests/, e.g. test_mc.py, test_localvol_calib.py): pricing and
   calibration tests deliberately assert against stored reference values to detect changes, not
   against analytical or external benchmarks. Do not report the lack of benchmark/analytical

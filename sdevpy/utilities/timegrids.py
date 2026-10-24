@@ -163,8 +163,13 @@ class BucketTimeGridBuilder(TimeGridBuilder):
 
 
 def model_time(date1: dt.datetime|npt.NDArray, date2: dt.datetime|npt.NDArray) -> float|npt.NDArray[np.float64]:
-    """ Yearfraction (time) between two dates for models, using simply (date2 - date1) / 365."""
-    spans = np.asarray(date2) - np.asarray(date1)
+    """ Yearfraction (time) between two dates for models, using simply (date2 - date1) / 365. """
+    d1, d2 = np.asarray(date1), np.asarray(date2)
+    if d1.dtype.kind == 'M' or d2.dtype.kind == 'M': # numpy datetime64: vectorized
+        t = (d2.astype('datetime64[D]') - d1.astype('datetime64[D]')).astype(np.float64) / 365.0
+        return float(t) if t.ndim == 0 else t
+
+    spans = d2 - d1
     if tools.isiterable(spans):
         span = [s.days / 365.0 for s in spans]
         return np.asarray(span)

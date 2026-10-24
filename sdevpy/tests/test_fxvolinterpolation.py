@@ -158,11 +158,11 @@ class TestForward:
             s.forward(np.asarray(EXPIRIES, dtype=object))
         assert len(s._settle_cache) == len(EXPIRIES)
 
-    def test_year_fraction_without_forward_raises(self):
+    def test_yearfraction_without_forward_raises(self):
         with pytest.raises(TypeError):
             _surface().vol_at_strike(1.0, 150.0)
 
-    def test_year_fraction_with_explicit_forward_works(self):
+    def test_yearfraction_with_explicit_forward_works(self):
         v = _surface().vol_at_strike(TIMES[1], FWDS[1], fwd=FWDS[1])
         assert float(v) == pytest.approx(PILLAR_VOLS[1][2])
 

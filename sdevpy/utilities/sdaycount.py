@@ -2,7 +2,7 @@ import datetime as dt
 from enum import Enum
 import numpy as np
 import numpy.typing as npt
-from sdevpy.utilities.scalendar import Period
+# from sdevpy.utilities.scalendar import Period
 
 
 class DayCount(Enum):
@@ -12,12 +12,7 @@ class DayCount(Enum):
     D30E_360 = "30E/360"
 
 
-# ACT/360 and ACT/365F are defined on the realized (adjusted) period
-# 30/360 and 30E/360 are defined on the unadjusted schedule dates
-_USES_UNADJUSTED = {DayCount.D30_360, DayCount.D30E_360}
-
-
-def year_fraction(start: dt.date, end: dt.date, convention: DayCount) -> float|npt.NDArray[np.float64]:
+def yearfraction(start: dt.date, end: dt.date, convention: DayCount) -> float|npt.NDArray[np.float64]:
     """ Year fraction between two dates, or two broadcastable arrays/lists of dates, under the given
         day-count convention.
         ACT360 and ACT365F: fully vectorized via numpy datetime64 arithmetic.
@@ -56,9 +51,6 @@ def _30e_360(start: dt.date, end: dt.date) -> float:
     return ((end.year - start.year) * 360 + (end.month - start.month) * 30 + (d2 - d1)) / 360
 
 
-def period_year_fraction(period: Period, convention: DayCount) -> float:
-    """ Year fraction for one accrual period, picking the correct date pair for the convention """
-    if convention in _USES_UNADJUSTED:
-        return year_fraction(period.unadj_start, period.unadj_end, convention)
-
-    return year_fraction(period.adj_start, period.adj_end, convention)
+# def period_yearfraction(period: Period, convention: DayCount) -> float:
+#     """ Year fraction for one accrual period, picking the correct date pair for the convention """
+#     return yearfraction(period.adj_start, period.adj_end, convention)

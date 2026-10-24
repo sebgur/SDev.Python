@@ -85,39 +85,35 @@ class Calendar:
             if total_months <= 0 or total_months % 3 != 0 or period.days != 0:
                 raise ValueError(f"IMM roll convention requires a term in whole 3-month steps, got '{term}'")
             n_quarters = total_months // 3
-            def step(d):
-                return _step_imm(d, n_quarters, forward=True)
 
-            def step_back(d):
-                return _step_imm(d, n_quarters, forward=False)
-        else:
-            def step(d):
-                return d + period
-
-            def step_back(d):
-                return d - period
+        def nth_roll(k: int) -> dt.date:
+            """ k-th roll date from the anchor (k < 0: backward). Always computed from the anchor, never from the
+                previous roll date, so that day-of-month clipping in short months does not carry over. """
+            if roll_convention == "IMM":
+                return _step_imm(anchor, n_quarters * abs(k), forward=k > 0)
+            d = anchor + period * k
+            return to_eom(d) if use_eom else d
 
         if stub in ("short_back", "long_back"):
-            roll_dates, d = [start], start
+            roll_dates, k = [start], 0
             while True:
-                d = step(d)
+                k += 1
+                d = nth_roll(k)
                 roll_dates.append(min(d, end))
                 if d >= end:
                     break
             if stub == "long_back" and len(roll_dates) > 2:
                 roll_dates.pop(-2)
         else:
-            roll_dates, d = [end], end
+            roll_dates, k = [end], 0
             while True:
-                d = step_back(d)
+                k -= 1
+                d = nth_roll(k)
                 roll_dates.insert(0, max(d, start))
                 if d <= start:
                     break
             if stub == "long_front" and len(roll_dates) > 2:
                 roll_dates.pop(1)
-
-        if use_eom:
-            roll_dates = [to_eom(d) for d in roll_dates]
 
         seen = set()
         deduped = []
@@ -149,62 +145,6 @@ class Calendar:
             roll_dates = roll_dates + [end]
 
         return roll_dates
-
-    # def _unadjusted_roll_dates(self, start: dt.date, end: dt.date, term: str, stub: str="short_front",
-    #                            eom: bool=False, roll_convention: str=None) -> list[dt.date]:
-    #     """ Generate deduplicated unadjusted roll dates from start to end (no BDC applied) """
-    #     period = dts.period(term)
-    #     anchor = start if stub in ("short_back", "long_back") else end
-    #     use_eom = eom and is_eom(anchor)
-
-    #     if roll_convention == "IMM":
-    #         total_months = period.years * 12 + period.months
-    #         if total_months <= 0 or total_months % 3 != 0 or period.days != 0:
-    #             raise ValueError(f"IMM roll convention requires a term in whole 3-month steps, got '{term}'")
-    #         n_quarters = total_months // 3
-    #         def step(d):
-    #             return _step_imm(d, n_quarters, forward=True)
-
-    #         def step_back(d):
-    #             return _step_imm(d, n_quarters, forward=False)
-    #     else:
-    #         def step(d):
-    #             return d + period
-
-    #         def step_back(d):
-    #             return d - period
-
-    #     if stub in ("short_back", "long_back"):
-    #         roll_dates, d = [start], start
-    #         while True:
-    #             d = step(d)
-    #             # d += period
-    #             roll_dates.append(min(d, end))
-    #             if d >= end:
-    #                 break
-    #         if stub == "long_back" and len(roll_dates) > 2:
-    #             roll_dates.pop(-2)
-    #     else:
-    #         roll_dates, d = [end], end
-    #         while True:
-    #             d = step_back(d)
-    #             # d -= period
-    #             roll_dates.insert(0, max(d, start))
-    #             if d <= start:
-    #                 break
-    #         if stub == "long_front" and len(roll_dates) > 2:
-    #             roll_dates.pop(1)
-
-    #     if use_eom:
-    #         roll_dates = [to_eom(d) for d in roll_dates]
-
-    #     seen = set()
-    #     deduped = []
-    #     for d in roll_dates:
-    #         if d not in seen:
-    #             deduped.append(d)
-    #             seen.add(d)
-    #     return deduped
 
     def make_schedule(self, start: dt.date, end: dt.date, term: str, convention: BDC=BDC.MF,
                       stub: str="short_front", eom: bool=False, convert_to_datetime: bool=False,

@@ -157,20 +157,23 @@ def test_make_periods_imm_rejects_non_quarterly_term():
 def test_eom_uses_direction_correct_anchor():
     cal = cdr.make_calendar("USD")
     start = dt.date(2024, 1, 10) # not EOM
-    end = dt.date(2024, 4, 30) # EOM (April has 30 days)
+    end = dt.date(2025, 4, 30) # EOM -> anchor for default short_front
 
-    # default stub "short_front" rolls backward from `end` -> EOM check must use `end`, not `start`
-    roll_dates = cal._unadjusted_roll_dates(start, end, '6M', eom=True)
-    assert roll_dates == [dt.date(2024, 1, 31), dt.date(2024, 4, 30)]
+    roll_dates = cal._unadjusted_roll_dates(start, end, '3M', eom=True)
+    ref = [dt.date(2024, 1, 10), dt.date(2024, 1, 31), dt.date(2024, 4, 30), dt.date(2024, 7, 31),
+           dt.date(2024, 10, 31), dt.date(2025, 1, 31), dt.date(2025, 4, 30)]
+    assert roll_dates == ref # rolls on month-ends, start date not moved
 
 
 def test_eom_short_back_anchor_unaffected():
     cal = cdr.make_calendar("USD")
-    start = dt.date(2024, 1, 31) # EOM
-    end = dt.date(2024, 4, 10) # not EOM
+    start = dt.date(2024, 4, 30) # EOM -> anchor for short_back
+    end = dt.date(2025, 3, 10) # not EOM
 
-    roll_dates = cal._unadjusted_roll_dates(start, end, '6M', stub="short_back", eom=True)
-    assert roll_dates == [dt.date(2024, 1, 31), dt.date(2024, 4, 30)] # end also snaps to month-end
+    roll_dates = cal._unadjusted_roll_dates(start, end, '3M', stub="short_back", eom=True)
+    ref = [dt.date(2024, 4, 30), dt.date(2024, 7, 31), dt.date(2024, 10, 31), dt.date(2025, 1, 31),
+           dt.date(2025, 3, 10)]
+    assert roll_dates == ref # rolls on month-ends, end date not moved
 
 
 def test_first_date_override_forces_irregular_front_stub():
@@ -292,6 +295,32 @@ class TestTenorLeq:
         assert dts.tenor_leq('TN', 'SN') is True
         assert dts.tenor_leq('SN', 'TN') is False
         assert dts.tenor_leq('ON', 'SN') is True
+
+
+def test_roll_day_does_not_drift_after_short_month():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2025, 11, 30)
+    end = dt.date(2027, 5, 30) # anchor for default short_front, roll day 30
+
+    # Each roll date is computed from the anchor: February clips to the 28th, but later dates return to the 30th
+    roll_dates = cal._unadjusted_roll_dates(start, end, '3M')
+    ref = [dt.date(2025, 11, 30), dt.date(2026, 2, 28), dt.date(2026, 5, 30), dt.date(2026, 8, 30),
+           dt.date(2026, 11, 30), dt.date(2027, 2, 28), dt.date(2027, 5, 30)]
+    assert roll_dates == ref
+
+
+def test_roll_day_does_not_drift_forward_monthly():
+    cal = cdr.make_calendar("USD")
+    start = dt.date(2026, 1, 31) # anchor for short_back, roll day 31
+    end = dt.date(2027, 1, 31)
+
+    # Exactly 12 regular periods: no drift to the 28th and no spurious 3-day stub at the end
+    roll_dates = cal._unadjusted_roll_dates(start, end, '1M', stub="short_back")
+    ref = [dt.date(2026, 1, 31), dt.date(2026, 2, 28), dt.date(2026, 3, 31), dt.date(2026, 4, 30),
+           dt.date(2026, 5, 31), dt.date(2026, 6, 30), dt.date(2026, 7, 31), dt.date(2026, 8, 31),
+           dt.date(2026, 9, 30), dt.date(2026, 10, 31), dt.date(2026, 11, 30), dt.date(2026, 12, 31),
+           dt.date(2027, 1, 31)]
+    assert roll_dates == ref
 
 
 if __name__ == "__main__":

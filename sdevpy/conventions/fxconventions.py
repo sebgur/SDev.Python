@@ -1,7 +1,7 @@
 """ Conventions and utilities for the FX market """
 import datetime as dt
 from sdevpy.utilities import dates as dts
-from sdevpy.utilities.sdaycount import year_fraction, DayCount
+from sdevpy.utilities.sdaycount import yearfraction, DayCount
 
 
 USD_IS_QUOTE = {'EUR', 'GBP', 'AUD', 'NZD', 'XAU', 'XAG', 'XPT', 'XPD'} # ZZZ/USD convention
@@ -40,7 +40,7 @@ def fx_market_yearfraction(valdate: dt.datetime, expiry: dt.datetime) -> float:
         Act/365 Fixed (i.e. actual days divided by 365, leap years ignored).
         WARNING: this is not meant to be used anywhere else. For instance the calculation of rates and/or
         discount factors have no reasons to follow this same convention. """
-    return year_fraction(valdate, expiry, DayCount.ACT365F)
+    return yearfraction(valdate, expiry, DayCount.ACT365F)
 
 
 def is_spot_delta_tenor(tenor_str: str, cutoff: str='1Y') -> bool:

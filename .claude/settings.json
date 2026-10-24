@@ -7,11 +7,13 @@
       "Bash(sed -i*)",
       "Bash(git checkout*)",
       "Bash(git clean*)",
-      "Edit(**/*.py)",
-      "Edit(**/*.ipynb)",
+      "Edit(/sdevpy/**/*.py)",
+      "Edit(/scripts/**/*.py)",
+      "Edit(/sdevpy/**/*.ipynb)",
       "NotebookEdit(**)",
-      "Write(**/*.py)",
-      "Write(**/*.ipynb)"
+      "Write(/sdevpy/**/*.py)",
+      "Write(/scripts/**/*.py)",
+      "Write(/sdevpy/**/*.ipynb)"
     ],
     "allow": [
       "Agent(**)",
