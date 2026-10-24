@@ -10,7 +10,7 @@ from sdevpy.rates import bonds
 
 UST = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
 GILT = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False)
-BOND = sch.make_bond(dt.date(2026, 2, 15), dt.date(2036, 2, 15), UST)
+BOND = sch.make_bond_scheduler(dt.date(2026, 2, 15), dt.date(2036, 2, 15), UST)
 COUPON = 0.04
 
 
@@ -56,7 +56,7 @@ def test_yield_round_trip():
 
 def test_stub_accrued():
     # Issued 10-Jan-2026, short first coupon 15-Feb-2026, regular half-year 15-Aug-25 -> 15-Feb-26 (184 days)
-    stub_bond = sch.make_bond(dt.date(2026, 1, 10), dt.date(2031, 2, 15), GILT)
+    stub_bond = sch.make_bond_scheduler(dt.date(2026, 1, 10), dt.date(2031, 2, 15), GILT)
     bf = bonds.bond_flows(stub_bond, dt.date(2026, 1, 20))
     assert abs(bf.accrued_fraction - 10 / 368) < 1e-12
     assert abs(bf.periods[0] - 26 / 184) < 1e-12

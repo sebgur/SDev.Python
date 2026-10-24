@@ -4,7 +4,7 @@ from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.schedules import SwapSchedule
+from sdevpy.utilities.schedules import SwapScheduler
 
 DiscountFunction = Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
 
@@ -19,7 +19,7 @@ class SwapTimes:
     float_pay: npt.NDArray[np.float64]
 
 
-def swap_times(swap: SwapSchedule, valdate: dt.datetime) -> SwapTimes:
+def swap_times(swap: SwapScheduler, valdate: dt.datetime) -> SwapTimes:
     fx, fl = swap.fixed, swap.floating
     return SwapTimes(timegrids.model_time(valdate, fx.payment), fx.accrual_fraction,
                      timegrids.model_time(valdate, fl.adj_start), timegrids.model_time(valdate, fl.adj_end),

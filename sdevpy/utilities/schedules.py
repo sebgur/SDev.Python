@@ -2,6 +2,7 @@ import datetime as dt
 from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
+# import pandas as pd
 from sdevpy.utilities.scalendar import BDC, Period, make_calendar, is_eom, to_eom
 from sdevpy.utilities.sdaycount import DayCount, yearfraction, icma_yearfraction
 from sdevpy.utilities import timegrids
@@ -130,7 +131,7 @@ def leg_from_periods(periods: list[Period], conv: LegConvention, anchor: dt.date
                        np.array(alpha, dtype=np.float64), fixing)
 
 
-def make_leg(start: dt.date, end: dt.date, conv: LegConvention, **kwargs) -> LegSchedule:
+def make_leg_schedule(start: dt.date, end: dt.date, conv: LegConvention, **kwargs) -> LegSchedule:
     """ kwargs go to Calendar.make_periods: stub, roll_convention, first_date, next_to_last_date,
         termination_convention """
     periods = make_calendar(conv.calendar).make_periods(start, end, conv.frequency, convention=conv.bdc,
@@ -148,7 +149,7 @@ class SwapConvention:
 
 
 @dataclass(frozen=True)
-class SwapSchedule:
+class SwapScheduler:
     fixed: LegSchedule
     floating: LegSchedule
     conv: SwapConvention
@@ -162,14 +163,14 @@ class SwapSchedule:
         return self.fixed.adj_end[-1]
 
 
-def make_swap(start: dt.date, end: dt.date, conv: SwapConvention, **kwargs) -> SwapSchedule:
-    """ Swap between explicit (unadjusted) start and end dates. kwargs go to both legs (see make_leg) """
-    return SwapSchedule(make_leg(start, end, conv.fixed, **kwargs),
-                        make_leg(start, end, conv.floating, **kwargs), conv)
+def make_swap_scheduler(start: dt.date, end: dt.date, conv: SwapConvention, **kwargs) -> SwapScheduler:
+    """ Swap between explicit (unadjusted) start and end dates. kwargs go to both legs (see make_leg_scheduler) """
+    return SwapScheduler(make_leg_schedule(start, end, conv.fixed, **kwargs),
+                        make_leg_schedule(start, end, conv.floating, **kwargs), conv)
 
 
-def make_spot_swap(trade_date: dt.date, tenor: str, conv: SwapConvention, forward: str | None = None,
-                   **kwargs) -> SwapSchedule:
+def make_spot_swap_scheduler(trade_date: dt.date, tenor: str, conv: SwapConvention, forward: str | None = None,
+                             **kwargs) -> SwapScheduler:
     """ Market-quoted swap: starts spot_lag business days after trade_date, or forward after spot
         (e.g. forward='5Y', tenor='5Y' for a 5Y5Y), and runs for tenor from its unadjusted start """
     cal = make_calendar(conv.spot_calendar or conv.fixed.calendar)
@@ -177,20 +178,20 @@ def make_spot_swap(trade_date: dt.date, tenor: str, conv: SwapConvention, forwar
     if forward is not None:
         start = dts.advance(start, forward)
     end = dts.advance(start, tenor)
-    return make_swap(start, end, conv, **kwargs)
+    return make_swap_scheduler(start, end, conv, **kwargs)
 
 
 ################## BOND ###########################################################################
 @dataclass(frozen=True)
-class BondSchedule:
-    coupons: LegSchedule
+class BondScheduler:
+    schedule: LegSchedule
     conv: LegConvention
     anchor: dt.date # date the regular coupon dates are rolled from (ACT/ACT ICMA)
 
     @property
     def maturity(self) -> np.datetime64:
         """ Redemption payment date, paid together with the last coupon """
-        return self.coupons.payment[-1]
+        return self.schedule.payment[-1]
 
     @property
     def coupons_per_year(self) -> int:
@@ -198,22 +199,30 @@ class BondSchedule:
 
     def accrual_dates(self) -> tuple[npt.NDArray[np.datetime64], npt.NDArray[np.datetime64]]:
         """ (start, end) dates the coupons accrue on: unadjusted for bond-style accrual """
-        c = self.coupons
+        c = self.schedule
         return (c.adj_start, c.adj_end) if self.conv.adjust_accrual else (c.unadj_start, c.unadj_end)
 
     def accrual_fraction(self, start: dt.date, end: dt.date) -> float:
         """ Accrual fraction between two dates inside the coupon schedule (e.g. last coupon to settlement) """
         return accrual_fractions([start], [end], self.conv, self.anchor)[0]
 
+    def coupon_schedule(self, coupon) -> dict:
+        """ Schedule as dataframe """
+        c = self.schedule
+        cpn_sch = {'Accrual start': c.unadj_start, 'Accrual end': c.unadj_end, 'Payment': c.payment,
+                   'Days': (c.unadj_end - c.unadj_start).astype(int), 'Accrual fraction': c.accrual_fraction,
+                   'Coupon': 100 * coupon * c.accrual_fraction}
+        return cpn_sch
 
-def make_bond(issue: dt.date, maturity: dt.date, conv: LegConvention, first_coupon: dt.date | None = None,
-              **kwargs) -> BondSchedule:
+
+def make_bond_scheduler(issue: dt.date, maturity: dt.date, conv: LegConvention, first_coupon: dt.date | None = None,
+                        **kwargs) -> BondScheduler:
     """ Coupon schedule rolled backward from maturity. Irregular first coupon either from issue
         (short_front by default, or stub='long_front') or from an explicit first_coupon date """
     kwargs['first_date'] = first_coupon
-    coupons = make_leg(issue, maturity, conv, **kwargs)
+    coupons = make_leg_schedule(issue, maturity, conv, **kwargs)
     anchor = to_date(regular_anchor(issue, maturity, **kwargs))
-    return BondSchedule(coupons, conv, anchor)
+    return BondScheduler(coupons, conv, anchor)
 
 
 def to_date(d: dt.date | dt.datetime | np.datetime64) -> dt.date:

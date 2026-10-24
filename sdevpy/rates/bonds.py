@@ -4,7 +4,7 @@ from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.schedules import BondSchedule, to_date
+from sdevpy.utilities.schedules import BondScheduler, to_date
 
 DiscountFunction = Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
 
@@ -22,7 +22,7 @@ class BondFlows:
     settle_time: float | None = None
 
 
-def bond_flows(bond: BondSchedule, settlement: dt.date, valdate: dt.datetime | None = None) -> BondFlows:
+def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | None = None) -> BondFlows:
     """ Remaining cash flows at settlement. valdate (the curve's valuation date) is only needed for curve pricing """
     settle = to_date(settlement)
     starts, ends = bond.accrual_dates()
@@ -32,11 +32,11 @@ def bond_flows(bond: BondSchedule, settlement: dt.date, valdate: dt.datetime | N
 
     last_coupon = to_date(starts[i])
     accrued = bond.accrual_fraction(last_coupon, settle) if settle > last_coupon else 0.0
-    alpha = bond.coupons.accrual_fraction[i:]
+    alpha = bond.schedule.accrual_fraction[i:]
     remaining = np.concatenate(([alpha[0] - accrued], alpha[1:]))  # accrual left in each period
     periods = bond.coupons_per_year * np.cumsum(remaining)
 
-    payment = bond.coupons.payment[i:]
+    payment = bond.schedule.payment[i:]
     pay_times = settle_time = None
     if valdate is not None:
         pay_times = timegrids.model_time(valdate, payment)
@@ -91,15 +91,64 @@ def par_coupon(bf: BondFlows, df: DiscountFunction, redemption: float = 100.0) -
     return float((100.0 - redemption * disc[-1]) / (100.0 * (np.sum(bf.alpha * disc) - bf.accrued_fraction)))
 
 
+def macaulay_duration(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> float:
+    """ PV-weighted average time to the cash flows, in years (street-convention yield discounting) """
+    pv = cashflows(bf, coupon, redemption) * (1.0 + y / bf.frequency) ** -bf.periods
+    return float(np.sum(pv * bf.periods) / np.sum(pv) / bf.frequency)
+
+
+def modified_duration(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> float:
+    """ -(1/P) dP/dy: relative price change per unit change in yield """
+    return macaulay_duration(bf, coupon, y, redemption) / (1.0 + y / bf.frequency)
+
+
+def convexity(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> float:
+    """ (1/P) d2P/dy2 """
+    f = bf.frequency
+    pv = cashflows(bf, coupon, redemption) * (1.0 + y / f) ** -bf.periods
+    return float(np.sum(pv * bf.periods * (bf.periods + 1.0)) / (f * f * (1.0 + y / f) ** 2) / np.sum(pv))
+
+
+def dv01(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> float:
+    """ Dirty price gain (per 100 notional) for a 1bp fall in yield """
+    return modified_duration(bf, coupon, y, redemption) * dirty_from_yield(bf, coupon, y, redemption) * 1e-4
+
+
+def dirty_from_zspread(bf: BondFlows, coupon: float, df: DiscountFunction, z: float, redemption: float = 100.0) -> float:
+    """ Curve price with a constant continuously-compounded spread z over the curve's zero rates """
+    if bf.pay_times is None:
+        raise ValueError("BondFlows built without valdate: no times for curve pricing")
+    disc = df(bf.pay_times) / df(np.array([bf.settle_time]))[0] * np.exp(-z * (bf.pay_times - bf.settle_time))
+    return float(np.sum(cashflows(bf, coupon, redemption) * disc))
+
+
+def z_spread(bf: BondFlows, coupon: float, dirty: float, df: DiscountFunction, redemption: float = 100.0,
+             tol: float = 1e-12, max_iter: int = 50) -> float:
+    """ Constant spread over the curve that reprices the bond to its market dirty price (Newton) """
+    if bf.pay_times is None:
+        raise ValueError("BondFlows built without valdate: no times for curve pricing")
+    amounts = cashflows(bf, coupon, redemption)
+    tau = bf.pay_times - bf.settle_time
+    base = amounts * df(bf.pay_times) / df(np.array([bf.settle_time]))[0]
+    z = 0.0
+    for _ in range(max_iter):
+        pv = base * np.exp(-z * tau)
+        step = (np.sum(pv) - dirty) / -np.sum(pv * tau)
+        z -= step
+        if abs(step) < tol:
+            return float(z)
+    raise RuntimeError("Z-spread did not converge")
+
+
 if __name__ == "__main__":
     from sdevpy.calibration.rates import yieldcurve as ycrv
     from sdevpy.utilities.scalendar import BDC
     from sdevpy.utilities.sdaycount import DayCount
-    from sdevpy.utilities.schedules import LegConvention, make_bond
+    from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
 
     # US Treasury-style bond: 4% semi-annual, ACT/ACT ICMA, unadjusted accrual, end-of-month rule
     ust = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
-    bond = make_bond(dt.date(2026, 2, 15), dt.date(2036, 2, 15), ust)
+    bond = make_bond_scheduler(dt.date(2026, 2, 15), dt.date(2036, 2, 15), ust)
     coupon = 0.04
 
     # Remaining cash flows when settling on 15-May-2026
