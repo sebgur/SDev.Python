@@ -185,6 +185,7 @@ def make_spot_swap(trade_date: dt.date, tenor: str, conv: SwapConvention, forwar
 class BondSchedule:
     coupons: LegSchedule
     conv: LegConvention
+    anchor: dt.date # date the regular coupon dates are rolled from (ACT/ACT ICMA)
 
     @property
     def maturity(self) -> np.datetime64:
@@ -195,9 +196,30 @@ class BondSchedule:
     def coupons_per_year(self) -> int:
         return coupons_per_year(self.conv.frequency)
 
+    def accrual_dates(self) -> tuple[npt.NDArray[np.datetime64], npt.NDArray[np.datetime64]]:
+        """ (start, end) dates the coupons accrue on: unadjusted for bond-style accrual """
+        c = self.coupons
+        return (c.adj_start, c.adj_end) if self.conv.adjust_accrual else (c.unadj_start, c.unadj_end)
+
+    def accrual_fraction(self, start: dt.date, end: dt.date) -> float:
+        """ Accrual fraction between two dates inside the coupon schedule (e.g. last coupon to settlement) """
+        return accrual_fractions([start], [end], self.conv, self.anchor)[0]
+
 
 def make_bond(issue: dt.date, maturity: dt.date, conv: LegConvention, first_coupon: dt.date | None = None,
               **kwargs) -> BondSchedule:
     """ Coupon schedule rolled backward from maturity. Irregular first coupon either from issue
         (short_front by default, or stub='long_front') or from an explicit first_coupon date """
-    return BondSchedule(make_leg(issue, maturity, conv, first_date=first_coupon, **kwargs), conv)
+    kwargs['first_date'] = first_coupon
+    coupons = make_leg(issue, maturity, conv, **kwargs)
+    anchor = to_date(regular_anchor(issue, maturity, **kwargs))
+    return BondSchedule(coupons, conv, anchor)
+
+
+def to_date(d: dt.date | dt.datetime | np.datetime64) -> dt.date:
+    """ Plain dt.date from date, datetime or datetime64 """
+    if isinstance(d, np.datetime64):
+        return d.astype('datetime64[D]').astype(dt.date)
+    if isinstance(d, dt.datetime):
+        return d.date()
+    return d
