@@ -10,6 +10,7 @@ class DayCount(Enum):
     ACT365F = "ACT/365F"
     D30_360 = "30/360"
     D30E_360 = "30E/360"
+    ACTACT_ICMA = "ACT/ACT ICMA"
 
 
 def yearfraction(start: dt.date, end: dt.date, convention: DayCount) -> float|npt.NDArray[np.float64]:
@@ -31,7 +32,22 @@ def yearfraction(start: dt.date, end: dt.date, convention: DayCount) -> float|np
     if convention == DayCount.D30E_360:
         return _30e_360(start, end)
 
+    if convention == DayCount.ACTACT_ICMA:
+        raise ValueError("ACT/ACT ICMA needs a coupon schedule: use icma_yearfraction()")
+
     raise ValueError(f"Unsupported day count: {convention}")
+
+
+def icma_yearfraction(start: dt.date, end: dt.date, quasi_dates: list[dt.date], frequency: int) -> float:
+    """ ACT/ACT ICMA (ICMA Rule 251). quasi_dates are the regular (quasi-)coupon dates covering [start, end].
+        Sum over quasi-coupon periods (q0, q1) of the days of [start, end] inside (q0, q1), divided by
+        frequency * days in (q0, q1). A full regular period gives exactly 1/frequency. """
+    total = 0.0
+    for q0, q1 in zip(quasi_dates[:-1], quasi_dates[1:], strict=True):
+        overlap = (min(end, q1) - max(start, q0)).days
+        if overlap > 0:
+            total += overlap / (frequency * (q1 - q0).days)
+    return total
 
 
 def _30_360(start: dt.date, end: dt.date) -> float:

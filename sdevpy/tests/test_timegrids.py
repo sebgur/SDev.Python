@@ -56,6 +56,27 @@ def test_model_time():
     ref = np.asarray([-1.0, -1.0, 2.0027397260273974])
     assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
 
+
+def test_model_time_datetime64():
+    dates = np.array(['2022-01-24', '2025-01-24'], dtype='datetime64[D]')
+    ref = np.asarray([-1.0, 2.0027397260273974])
+
+    # datetime, date and datetime64 valuation dates against a datetime64 array
+    for base in (dt.datetime(2023, 1, 24), dt.date(2023, 1, 24), np.datetime64('2023-01-24')):
+        test = tmg.model_time(base, dates)
+        assert isinstance(test, np.ndarray)
+        assert np.allclose(test, ref, rtol=0.0, atol=1e-8)
+
+    # Scalar datetime64 pair returns a float
+    test = tmg.model_time(np.datetime64('2023-01-24'), np.datetime64('2025-01-24'))
+    assert isinstance(test, float)
+    assert abs(test - ref[1]) < 1e-12
+
+    # Element-wise on two arrays
+    bases = np.array(['2023-01-24', '2023-02-24'], dtype='datetime64[D]')
+    test = tmg.model_time(bases, dates)
+    assert np.allclose(test, [-1.0, 700.0 / 365.0], rtol=0.0, atol=1e-8)
+
 ################ build_sparse_timegrid ############################################################
 
 def test_build_sparse_timegrid_short_term():

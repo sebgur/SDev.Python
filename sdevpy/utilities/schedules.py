@@ -2,13 +2,16 @@ import datetime as dt
 from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
-from sdevpy.utilities.scalendar import BDC, Period, make_calendar
-from sdevpy.utilities.sdaycount import DayCount, yearfraction
+from sdevpy.utilities.scalendar import BDC, Period, make_calendar, is_eom, to_eom
+from sdevpy.utilities.sdaycount import DayCount, yearfraction, icma_yearfraction
 from sdevpy.utilities import timegrids
+from sdevpy.utilities import dates as dts
+
 
 D = 'datetime64[D]'
 
 
+################### LEG ###########################################################################
 @dataclass(frozen=True)
 class LegConvention:
     frequency: str
@@ -41,8 +44,66 @@ class LegSchedule:
         return self.payment.shape[-1]
 
 
-def leg_from_periods(periods: list[Period], conv: LegConvention) -> LegSchedule:
-    """ Create LegSchedule from list of periods """
+def coupons_per_year(frequency: str) -> int:
+    p = dts.period(frequency)
+    months = 12 * p.years + p.months
+    if p.days != 0 or months <= 0 or 12 % months != 0:
+        raise ValueError(f"Frequency '{frequency}' is not a whole number of periods per year")
+    return 12 // months
+
+
+def quasi_coupon_dates(anchor: dt.date, start: dt.date, end: dt.date, frequency: str,
+                       eom: bool = False) -> list[dt.date]:
+    """ Regular coupon dates anchor + k * frequency (k of either sign) covering [start, end], i.e. from the last
+        one on or before start to the first one on or after end. Computed from the anchor (no roll-day drift). """
+    period = dts.period(frequency)
+    use_eom = eom and is_eom(anchor)
+
+    def nth(k: int) -> dt.date:
+        d = anchor + period * k
+        return to_eom(d) if use_eom else d
+
+    k = 0
+    while nth(k) > start:  # step back to the last date on or before start
+        k -= 1
+    while nth(k + 1) <= start:  # or forward, if the anchor is before start
+        k += 1
+    dates = [nth(k)]
+    while dates[-1] < end:
+        k += 1
+        dates.append(nth(k))
+    return dates
+
+
+def regular_anchor(start: dt.date, end: dt.date, stub: str = "short_front", first_date: dt.date | None = None,
+                   next_to_last_date: dt.date | None = None, **kwargs) -> dt.date:
+    """ Date the regular part of the schedule is rolled from (same logic as Calendar._unadjusted_roll_dates) """
+    if stub in ("short_back", "long_back"):
+        return first_date or start
+    return next_to_last_date or end
+
+
+def accrual_fractions(starts: list[dt.date], ends: list[dt.date], conv: LegConvention,
+                      anchor: dt.date) -> list[float]:
+    """ Accrual fraction per period. For ACT/ACT ICMA, only the first and last periods can be irregular: they are
+        measured against quasi-coupon periods rolled from the schedule's regular anchor. """
+    if conv.daycount != DayCount.ACTACT_ICMA:
+        return [yearfraction(s, e, conv.daycount) for s, e in zip(starts, ends, strict=True)]
+
+    freq = coupons_per_year(conv.frequency)
+    alpha = []
+    for i, (s, e) in enumerate(zip(starts, ends, strict=True)):
+        if 0 < i < len(starts) - 1:
+            quasi = [s, e]  # regular by construction
+        else:
+            quasi = quasi_coupon_dates(anchor, s, e, conv.frequency, conv.eom)
+        alpha.append(icma_yearfraction(s, e, quasi, freq))
+    return alpha
+
+
+def leg_from_periods(periods: list[Period], conv: LegConvention, anchor: dt.date|None=None) -> LegSchedule:
+    """ Create LegSchedule from list of periods. anchor: date the regular periods are rolled from, only used by
+        ACT/ACT ICMA (None: end of the last period, i.e. backward-generated schedule) """
     cal = make_calendar(conv.calendar)
     unadj_start = np.array([p.unadj_start for p in periods], dtype=D)
     unadj_end = np.array([p.unadj_end for p in periods], dtype=D)
@@ -59,9 +120,11 @@ def leg_from_periods(periods: list[Period], conv: LegConvention) -> LegSchedule:
         fixing = np.array([fix_cal.add_business_days(p.adj_start, -conv.fixing_lag) for p in periods], dtype=D)
 
     if conv.adjust_accrual:
-        alpha = [yearfraction(p.adj_start, p.adj_end, conv.daycount) for p in periods]
+        starts, ends = [p.adj_start for p in periods], [p.adj_end for p in periods]
     else:
-        alpha = [yearfraction(p.unadj_start, p.unadj_end, conv.daycount) for p in periods]
+        starts, ends = [p.unadj_start for p in periods], [p.unadj_end for p in periods]
+    anchor = anchor or periods[-1].unadj_end
+    alpha = accrual_fractions(starts, ends, conv, anchor)
 
     return LegSchedule(unadj_start, unadj_end, adj_start, adj_end, payment,
                        np.array(alpha, dtype=np.float64), fixing)
@@ -72,4 +135,69 @@ def make_leg(start: dt.date, end: dt.date, conv: LegConvention, **kwargs) -> Leg
         termination_convention """
     periods = make_calendar(conv.calendar).make_periods(start, end, conv.frequency, convention=conv.bdc,
                                                          eom=conv.eom, **kwargs)
-    return leg_from_periods(periods, conv)
+    return leg_from_periods(periods, conv, regular_anchor(start, end, **kwargs))
+
+
+################## SWAP ###########################################################################
+@dataclass(frozen=True)
+class SwapConvention:
+    fixed: LegConvention
+    floating: LegConvention
+    spot_lag: int = 2  # business days from trade date to start
+    spot_calendar: str | None = None  # None: fixed leg calendar
+
+
+@dataclass(frozen=True)
+class SwapSchedule:
+    fixed: LegSchedule
+    floating: LegSchedule
+    conv: SwapConvention
+
+    @property
+    def start(self) -> np.datetime64:
+        return self.fixed.adj_start[0]
+
+    @property
+    def maturity(self) -> np.datetime64:
+        return self.fixed.adj_end[-1]
+
+
+def make_swap(start: dt.date, end: dt.date, conv: SwapConvention, **kwargs) -> SwapSchedule:
+    """ Swap between explicit (unadjusted) start and end dates. kwargs go to both legs (see make_leg) """
+    return SwapSchedule(make_leg(start, end, conv.fixed, **kwargs),
+                        make_leg(start, end, conv.floating, **kwargs), conv)
+
+
+def make_spot_swap(trade_date: dt.date, tenor: str, conv: SwapConvention, forward: str | None = None,
+                   **kwargs) -> SwapSchedule:
+    """ Market-quoted swap: starts spot_lag business days after trade_date, or forward after spot
+        (e.g. forward='5Y', tenor='5Y' for a 5Y5Y), and runs for tenor from its unadjusted start """
+    cal = make_calendar(conv.spot_calendar or conv.fixed.calendar)
+    start = cal.add_business_days(trade_date, conv.spot_lag)
+    if forward is not None:
+        start = dts.advance(start, forward)
+    end = dts.advance(start, tenor)
+    return make_swap(start, end, conv, **kwargs)
+
+
+################## BOND ###########################################################################
+@dataclass(frozen=True)
+class BondSchedule:
+    coupons: LegSchedule
+    conv: LegConvention
+
+    @property
+    def maturity(self) -> np.datetime64:
+        """ Redemption payment date, paid together with the last coupon """
+        return self.coupons.payment[-1]
+
+    @property
+    def coupons_per_year(self) -> int:
+        return coupons_per_year(self.conv.frequency)
+
+
+def make_bond(issue: dt.date, maturity: dt.date, conv: LegConvention, first_coupon: dt.date | None = None,
+              **kwargs) -> BondSchedule:
+    """ Coupon schedule rolled backward from maturity. Irregular first coupon either from issue
+        (short_front by default, or stub='long_front') or from an explicit first_coupon date """
+    return BondSchedule(make_leg(issue, maturity, conv, first_date=first_coupon, **kwargs), conv)

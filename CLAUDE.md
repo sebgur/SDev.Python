@@ -19,6 +19,9 @@ above: Claude may create and edit `.py` files there. Refer to them with project-
 ## Memory
 Auto memory is not used. Durable preferences live in this file; when asked to remember something, add it here.
 
+## Coding Habits and Guidelines
+- When using the zip() method, whenever correct to do so, specify the argument 'strict=True' as recommended by Ruff.
+
 ## Code Review Rules
 - Before reporting any issue, read the exact file and line number directly with the Read tool.
 - Discard any finding that cannot be confirmed in the current file. Do not trust subagent summaries.
