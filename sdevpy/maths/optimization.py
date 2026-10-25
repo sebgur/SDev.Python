@@ -78,14 +78,14 @@ class SciPyOptimizer(Optimizer):
         if self.method_ not in self.std_minimizers and self.method_ not in self.other_minimizers:
             raise ValueError(f"Method {self.method_} not found in SciPy")
 
-    def minimize(self, func, x0=None, args=(), bounds=None):
+    def minimize(self, func, x0=None, args=(), bounds=None, jac=None, constraints=()):
         result = None
         if self.method_ in self.std_minimizers:
             tol = self.kwargs.get('tol', None)
             ftol = self.kwargs.get('ftol', None)
             effective_tol = ftol if ftol is not None else tol # ftol takes priority
-            result = opt.minimize(func, x0, args, method=self.method_, bounds=bounds,
-                                  tol=effective_tol, options=self.options)
+            result = opt.minimize(func, x0, args, method=self.method_, jac=jac, bounds=bounds,
+                                  constraints=constraints, tol=effective_tol, options=self.options)
         elif self.method_== 'DE':
             atol = self.kwargs.get('atol', 0)
             popsize = self.kwargs.get('popsize', 15)
@@ -99,7 +99,7 @@ class SciPyOptimizer(Optimizer):
             result = opt.differential_evolution(func, x0=x0, args=args, bounds=bounds,
                                                 tol=tol, maxiter=maxiter, atol=atol,
                                                 popsize=popsize, strategy=strategy,
-                                                recombination=recombination)
+                                                recombination=recombination, constraints=constraints)
         else:
             raise ValueError(f"Method {self.method_} not recognized")
 
@@ -117,12 +117,12 @@ class MultiOptimizer(Optimizer):
         for method in self.methods_:
             self.optimizers_.append(create_optimizer(method, **kwargs))
 
-    def minimize(self, f, x0=None, args=(), bounds=None):
+    def minimize(self, f, x0=None, args=(), bounds=None, jac=None, constraints=()):
         result = None
         self.total_nfev = 0
         for i, optimizer in enumerate(self.optimizers_):
             log.info(f"Trying optimization using {self.methods_[i]}")
-            result = optimizer.minimize(f, x0, args, bounds)
+            result = optimizer.minimize(f, x0, args, bounds, jac=jac, constraints=constraints)
             self.total_nfev += result.nfev
             if result.fun < self.mtol_:
                 log.info("Good enough!")
