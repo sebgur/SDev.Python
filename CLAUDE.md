@@ -23,6 +23,7 @@ Auto memory is not used. Durable preferences live in this file; when asked to re
 - When using the zip() method, whenever correct to do so, specify the argument 'strict=True'
 - Always use lower case variables in functions (N806)
 - Make sure you respect the line lengths (E501) given the line-length in pyproject.toml
+- Step-by-step: propose code, user types it into the library. When proposing library changes, say precisely what goes where (file, line, replacement).
 
 ## Code Review Rules
 - Before reporting any issue, read the exact file and line number directly with the Read tool.

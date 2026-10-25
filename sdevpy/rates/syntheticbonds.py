@@ -1,7 +1,7 @@
 import datetime as dt
 import numpy as np
 from sdevpy.utilities.scalendar import BDC, make_calendar
-from sdevpy.utilities.sdaycount import DayCount
+from sdevpy.conventions.bondconventions import UST
 from sdevpy.utilities import schedules as sch
 from sdevpy.rates import bonds
 from sdevpy.rates import bondquotes as bq
@@ -12,11 +12,11 @@ def sample_bond_universe(valdate: dt.datetime, ns_b0: float=0.052, ns_b1: float=
                          ns_tau: float=2.0, seed: int=42) -> dict:
     """ Generate a synthetic bond universe to test bond curve construction """
     # Fixed values
-    calendar = 'USGOV'
-    cal = make_calendar(calendar)
-    settle = bq.settlement_date(valdate, calendar)
-    conv = sch.LegConvention(frequency='6M', daycount=DayCount.ACTACT_ICMA, calendar=calendar, bdc=BDC.F,
-                             adjust_accrual=False, eom=True)
+    # calendar = 'USGOV'
+    conv = UST #sch.LegConvention(frequency='6M', daycount=DayCount.ACTACT_ICMA, calendar=calendar, bdc=BDC.F,
+                #             adjust_accrual=False, eom=True)
+    cal = make_calendar(conv.leg.calendar)
+    settle = bq.settlement_date(valdate, conv)
     base_year = valdate.year
     rng = np.random.default_rng(seed)
 

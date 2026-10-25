@@ -1,23 +1,39 @@
 import datetime as dt
 import numpy as np
 import pytest
-from sdevpy.utilities.scalendar import BDC
-from sdevpy.utilities.sdaycount import DayCount
 from sdevpy.utilities import schedules as sch
 from sdevpy.utilities import timegrids
+from sdevpy.utilities.scalendar import BDC
+from sdevpy.utilities.sdaycount import DayCount
 from sdevpy.rates import bonds
-from sdevpy.utilities.schedules import make_bond_scheduler
+from sdevpy.utilities.schedules import make_bond_scheduler, LegConvention, BondConvention
 from sdevpy.rates.bonds import (bond_flows, dirty_from_curve, flatten, dirty_prices,
-    yields_from_dirty, dirty_from_yields, dv01s)
+    yields_from_dirty, dirty_from_yields, dv01s, dirty_from_yield, par_coupon, convert_yield,
+    par_yield, g_spread)
 from sdevpy.rates.bondquotes import bill_flows
 from sdevpy.calibration.rates import yieldcurve as ycrv
+from sdevpy.conventions.bondconventions import UST, GILT
 
+
+VALDATEOLD = dt.datetime(2025, 12, 15)
+SETTLE = dt.date(2025, 12, 16)
+CORP = BondConvention(LegConvention('1Y', DayCount.D30_360, 'USD', bdc=BDC.F, adjust_accrual=False))
 
 VALDATE = dt.datetime(2026, 10, 26)
-UST = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
-GILT = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False)
+# UST = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
+# GILT = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False)
 BOND = sch.make_bond_scheduler(dt.date(2026, 2, 15), dt.date(2036, 2, 15), UST)
 COUPON = 0.04
+
+
+def gov_df(t):
+    return np.exp(-(0.036 + 0.012 * (1 - np.exp(-t / 4))) * t)
+
+
+def test_convert_yield():
+    assert convert_yield(0.04, 1, 2) == pytest.approx(2 * (np.sqrt(1.04) - 1), abs=1e-15)
+    assert convert_yield(convert_yield(0.05, 2, 12), 12, 2) == pytest.approx(0.05, abs=1e-15)
+    assert convert_yield(0.05, 2, 2) == 0.05
 
 
 def test_flows_on_coupon_date():
@@ -164,3 +180,34 @@ def test_vectorized_yields_and_dv01():
     np.testing.assert_allclose(dirty_from_yields(ff, y), dirty, rtol=0, atol=1e-10)
     np.testing.assert_allclose(dv01s(ff, y), [bonds.dv01(bf, c, yi) for bf, c, yi in zip(flows, coupons, y, strict=True)],
                                rtol=1e-13)
+
+
+@pytest.mark.parametrize("maturity", [dt.date(2026, 5, 15), dt.date(2030, 11, 15), dt.date(2036, 2, 15),
+                                      dt.date(2055, 8, 15)])
+def test_par_yield(maturity):
+    """ The hypothetical bond issued at settlement prices at par at that yield, close to its coupon """
+    y = par_yield(maturity, SETTLE, UST, gov_df, VALDATEOLD)
+    bf = bond_flows(make_bond_scheduler(SETTLE, maturity, UST), SETTLE, VALDATEOLD)
+    c = par_coupon(bf, gov_df)
+    assert dirty_from_yield(bf, c, y) == pytest.approx(100.0, abs=1e-10)
+    assert dirty_from_curve(bf, c, gov_df) == pytest.approx(100.0, abs=1e-10)
+    assert abs(y - c) < 1e-4  # street yield != coupon over the short first period
+
+
+def test_g_spread_of_par_government_bond_is_zero():
+    maturity = dt.date(2036, 2, 15)
+    bf = bond_flows(make_bond_scheduler(SETTLE, maturity, UST), SETTLE, VALDATEOLD)
+    c = par_coupon(bf, gov_df)
+    assert g_spread(bf, c, 100.0, gov_df, maturity, UST, VALDATEOLD) == pytest.approx(0.0, abs=1e-12)
+
+
+def test_g_spread_of_corporate():
+    """ Annual 30/360 bond: ~0 when priced on the government curve, ~ the spread when priced above it """
+    maturity = dt.date(2035, 11, 15)
+    bf = bond_flows(make_bond_scheduler(dt.date(2025, 11, 15), maturity, CORP), SETTLE, VALDATEOLD)
+    on_curve = dirty_from_curve(bf, 0.05, gov_df)
+    assert abs(g_spread(bf, 0.05, on_curve, gov_df, maturity, UST, VALDATEOLD)) < 1e-4  # coupon effect only
+    gs = [g_spread(bf, 0.05, dirty_from_curve(bf, 0.05, lambda t, z=z: gov_df(t) * np.exp(-z * t)), gov_df,
+                   maturity, UST, VALDATEOLD) for z in (0.005, 0.01, 0.02)]
+    assert gs[0] < gs[1] < gs[2]
+    assert gs[1] == pytest.approx(0.01, abs=5e-4)  # cc spread vs semi-annual yield spread

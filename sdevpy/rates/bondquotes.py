@@ -4,7 +4,7 @@ from enum import Enum
 import numpy as np
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.scalendar import make_calendar
-from sdevpy.utilities.schedules import to_date
+from sdevpy.utilities.schedules import BondConvention, to_date
 from sdevpy.rates.bonds import BondFlows, accrued_interest, dirty_from_yield, yield_from_dirty, dv01
 
 
@@ -17,9 +17,9 @@ class QuoteType(Enum):
     DISCOUNT = "discount"  # bill discount rate
 
 
-def settlement_date(trade_date: dt.date, calendar: str, lag: int = 1) -> dt.date:
+def settlement_date(trade_date: dt.date, conv: BondConvention) -> dt.date:
     """ Settlement lag business days after trade date (UST: T+1) """
-    return make_calendar(calendar).add_business_days(to_date(trade_date), lag)
+    return make_calendar(conv.leg.calendar).add_business_days(to_date(trade_date), conv.settlement_lag)
 
 
 def bill_flows(maturity: dt.date, settlement: dt.date, valdate: dt.datetime | None = None) -> BondFlows:
@@ -106,14 +106,15 @@ def to_32nds(price: float) -> str:
 
 
 if __name__ == "__main__":
-    from sdevpy.utilities.scalendar import BDC
-    from sdevpy.utilities.sdaycount import DayCount
-    from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
+    # from sdevpy.utilities.scalendar import BDC
+    # from sdevpy.utilities.sdaycount import DayCount
+    from sdevpy.utilities.schedules import make_bond_scheduler
+    from sdevpy.conventions.bondconventions import UST
     from sdevpy.rates.bonds import bond_flows, dirty_from_curve
     from sdevpy.calibration.rates import yieldcurve as ycrv
 
     valdate = dt.datetime(2026, 10, 26)
-    settle = settlement_date(valdate, 'USD')
+    settle = settlement_date(valdate, UST)
     print(f"Trade {valdate:%a %d-%b-%Y} -> settle {settle:%a %d-%b-%Y}")
 
     # Bill: 91 days, 4.00% discount rate
@@ -126,7 +127,7 @@ if __name__ == "__main__":
         print(f"  {s:>7} = {parse_32nds(s):.6f}")
 
     # Note quoted in each style: all should give the same target dirty price
-    ust = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
+    ust = UST # LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
     note = bond_flows(make_bond_scheduler(dt.date(2026, 8, 15), dt.date(2036, 8, 15), ust), settle, valdate)
     cpn, clean = 0.04125, parse_32nds('99-16+')
     dirty = clean + accrued_interest(note, cpn)

@@ -4,9 +4,11 @@ import pytest
 from sdevpy.utilities.scalendar import BDC
 from sdevpy.utilities.sdaycount import DayCount, icma_yearfraction, yearfraction
 from sdevpy.utilities import schedules as sch
+from sdevpy.conventions.bondconventions import UST, GILT
 
-GILT = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False)
-UST = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
+
+# GILT = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False)
+# UST = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
 SOFR = sch.LegConvention('1Y', DayCount.ACT360, 'USD', pay_lag=2)
 USD_OIS = sch.SwapConvention(SOFR, SOFR)
 

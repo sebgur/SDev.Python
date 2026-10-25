@@ -1,18 +1,17 @@
 import datetime as dt
 import numpy as np
 import pytest
-from sdevpy.utilities.scalendar import BDC
-from sdevpy.utilities.sdaycount import DayCount
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
+from sdevpy.utilities.schedules import make_bond_scheduler
 from sdevpy.rates.bonds import bond_flows, flatten, dirty_prices, prices_from_discounts, prices_jac
 from sdevpy.rates.bondquotes import bill_flows
 from sdevpy.calibration.rates.yieldcurve import InterpolatedYieldCurve
 from sdevpy.calibration.rates.curvebasis import CurveBasis
+from sdevpy.conventions.bondconventions import UST
 
 
 VALDATE = dt.datetime(2026, 10, 26)
-UST = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
+# UST = LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
 TENORS = [0.25, 0.5, 1, 2, 3, 5, 7, 10, 15, 20, 30.5]
 NODE_DATES = [VALDATE + dt.timedelta(days=round(365 * x)) for x in TENORS]
 NODE_TIMES = timegrids.model_time(VALDATE, NODE_DATES)

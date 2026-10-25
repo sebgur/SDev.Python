@@ -1,22 +1,23 @@
 import datetime as dt
 import numpy as np
+import dataclasses
 import pytest
-from sdevpy.utilities.scalendar import BDC
-from sdevpy.utilities.sdaycount import DayCount
-from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
+from sdevpy.utilities.schedules import make_bond_scheduler, BondConvention
 from sdevpy.rates.bonds import bond_flows, accrued_interest, dirty_from_curve
 from sdevpy.calibration.rates import yieldcurve as ycrv
 from sdevpy.rates.bondquotes import (settlement_date, bill_flows, bill_days, price_from_discount_rate, discount_rate_from_price,
                                      QuoteType, BondQuote, target_dirty, fit_weight, parse_32nds)
+from sdevpy.conventions.bondconventions import UST, GILT
+
 
 VALDATE = dt.datetime(2026, 10, 26)
-UST = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
+# UST = LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
 
 
 def test_settlement_skips_holiday():
     # Wed 25-Nov-2026 + 1 skips Thanksgiving (Thu 26-Nov)
-    assert settlement_date(dt.date(2026, 11, 25), 'USD') == dt.date(2026, 11, 27)
-    assert settlement_date(dt.datetime(2026, 10, 23), 'USD') == dt.date(2026, 10, 26)
+    assert settlement_date(dt.date(2026, 11, 25), UST) == dt.date(2026, 11, 27)
+    assert settlement_date(dt.datetime(2026, 10, 23), UST) == dt.date(2026, 10, 26)
 
 
 def test_bill_discount_rate():
@@ -46,7 +47,7 @@ def test_parse_32nds(s, expected):
 
 
 def test_quote_types_consistent():
-    settle = settlement_date(VALDATE, 'USD')
+    settle = settlement_date(VALDATE, UST)
     note = bond_flows(make_bond_scheduler(dt.date(2026, 8, 15), dt.date(2036, 8, 15), UST), settle, VALDATE)
     cpn, clean = 0.04125, 99.515625
     dirty = clean + accrued_interest(note, cpn)
@@ -62,9 +63,22 @@ def test_quote_types_consistent():
 
 def test_weight_is_inverse_dv01():
     # 1bp move in yield moves the dirty price by ~1/weight
-    settle = settlement_date(VALDATE, 'USD')
+    settle = settlement_date(VALDATE, UST)
     note = bond_flows(make_bond_scheduler(dt.date(2026, 8, 15), dt.date(2036, 8, 15), UST), settle, VALDATE)
     q = BondQuote(note, 0.04, QuoteType.YIELD, 0.042)
     q_up = BondQuote(note, 0.04, QuoteType.YIELD, 0.042 + 1e-4)
     dp = target_dirty(q) - target_dirty(q_up)
     assert dp * fit_weight(q, target_dirty(q)) == pytest.approx(1.0, abs=5e-3)
+
+
+def test_settlement_usgov_good_friday():
+    # Thu 17-Apr-2025 + 1: Good Friday is a SIFMA holiday but not a federal one
+    assert settlement_date(dt.date(2025, 4, 17), UST) == dt.date(2025, 4, 21)
+    federal = BondConvention(dataclasses.replace(UST.leg, calendar='USD'))
+    assert settlement_date(dt.date(2025, 4, 17), federal) == dt.date(2025, 4, 18)
+
+
+def test_gilt_settlement_london_holidays():
+    # Thu 2-Apr-2026 + 1: Good Friday 3-Apr and Easter Monday 6-Apr closed; Fri 28-Aug-2026 + 1: bank holiday 31-Aug
+    assert settlement_date(dt.date(2026, 4, 2), GILT) == dt.date(2026, 4, 7)
+    assert settlement_date(dt.date(2026, 8, 28), GILT) == dt.date(2026, 9, 1)

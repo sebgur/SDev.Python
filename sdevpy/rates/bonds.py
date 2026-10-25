@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sps
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.schedules import BondScheduler, to_date, LegConvention, coupons_per_year, make_bond_scheduler
+from sdevpy.utilities.schedules import BondScheduler, to_date, BondConvention, coupons_per_year, make_bond_scheduler
 
 
 DiscountFunction = Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
@@ -150,7 +150,7 @@ def convert_yield(y: float, from_frequency: int, to_frequency: int) -> float:
     return to_frequency * ((1.0 + y / from_frequency) ** (from_frequency / to_frequency) - 1.0)
 
 
-def par_yield(maturity: dt.date, settlement: dt.date, conv: LegConvention, df: DiscountFunction,
+def par_yield(maturity: dt.date, settlement: dt.date, conv: BondConvention, df: DiscountFunction,
               valdate: dt.datetime) -> float:
     """ Yield of a hypothetical bond with conventions conv, issued at settlement and maturing on maturity
         (short first coupon), whose coupon prices it at par on the curve """
@@ -161,33 +161,15 @@ def par_yield(maturity: dt.date, settlement: dt.date, conv: LegConvention, df: D
 
 
 def g_spread(bf: BondFlows, coupon: float, dirty: float, df: DiscountFunction, maturity: dt.date,
-             gov_conv: LegConvention, valdate: dt.datetime, redemption: float = 100.0) -> float:
+             gov_conv: BondConvention, valdate: dt.datetime, redemption: float = 100.0) -> float:
     """ Bond yield minus the government par yield at the bond's maturity, both in the government's compounding
         (e.g. semi-annual for UST). df: the government curve """
     gov_par = par_yield(maturity, bf.settlement, gov_conv, df, valdate)
     y = yield_from_dirty(bf, coupon, dirty, redemption)
-    return convert_yield(y, bf.frequency, coupons_per_year(gov_conv.frequency)) - gov_par
+    return convert_yield(y, bf.frequency, coupons_per_year(gov_conv.leg.frequency)) - gov_par
 
 
 ###################### FOR CURVE CONSTRUCTION #########################################################################
-# @dataclass(frozen=True)
-# class FlatFlows:
-#     """ Cash flows of n bonds concatenated, bond i owning flows starts[i]:starts[i+1].
-#         times = pay times of all flows (N), then settlement times of all bonds (n): one curve call per pricing """
-#     times: npt.NDArray[np.float64]  # (N + n,)
-#     amounts: npt.NDArray[np.float64]  # (N,) per 100 notional, coupon and redemption included
-#     starts: npt.NDArray[np.intp]  # (n,) index of each bond's first flow
-#     owner: npt.NDArray[np.intp]  # (N,) bond index of each flow
-
-#     @property
-#     def n_bonds(self) -> int:
-#         return len(self.starts)
-
-#     @property
-#     def n_flows(self) -> int:
-#         return len(self.amounts)
-
-
 @dataclass(frozen=True)
 class FlatFlows:
     """ Cash flows of n bonds concatenated, bond i owning flows starts[i]:starts[i+1]. The curve is needed only
@@ -209,22 +191,6 @@ class FlatFlows:
     @property
     def n_flows(self) -> int:
         return len(self.amounts)
-
-
-# def flatten(flows: list[BondFlows], coupons: npt.ArrayLike, redemptions: npt.ArrayLike = 100.0) -> FlatFlows:
-#     """ Concatenate the flows of several bonds/bills (all built with the same valdate) """
-#     if any(bf.pay_times is None for bf in flows):
-#         raise ValueError("BondFlows built without valdate: no times for curve pricing")
-#     coupons = np.broadcast_to(np.asarray(coupons, dtype=float), (len(flows),))
-#     redemptions = np.broadcast_to(np.asarray(redemptions, dtype=float), (len(flows),))
-
-#     sizes = np.array([len(bf.alpha) for bf in flows])
-#     starts = np.concatenate(([0], np.cumsum(sizes)[:-1]))
-#     owner = np.repeat(np.arange(len(flows)), sizes)
-#     amounts = 100.0 * np.repeat(coupons, sizes) * np.concatenate([bf.alpha for bf in flows])
-#     amounts[starts + sizes - 1] += redemptions
-#     times = np.concatenate([bf.pay_times for bf in flows] + [np.array([bf.settle_time for bf in flows])])
-#     return FlatFlows(times, amounts, starts, owner)
 
 
 def flatten(flows: list[BondFlows], coupons: npt.ArrayLike, redemptions: npt.ArrayLike = 100.0) -> FlatFlows:
@@ -280,28 +246,6 @@ def dv01s(ff: FlatFlows, y: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
 def dirty_prices(ff: FlatFlows, df: DiscountFunction) -> npt.NDArray[np.float64]:
     """ Dirty prices at each bond's settlement date """
     return prices_from_discounts(ff, df(ff.times))
-    # d = df(ff.times)
-    # n_flows = ff.n_flows
-    # return np.add.reduceat(ff.amounts * d[:n_flows], ff.starts) / d[n_flows:]
-
-
-# def prices_from_discounts(ff: FlatFlows, d: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-#     """ Dirty prices given the discount factors at ff.times (dirty_prices(ff, df) = this with d = df(ff.times)) """
-#     n = ff.n_flows
-#     return np.add.reduceat(ff.amounts * d[:n], ff.starts) / d[n:]
-
-
-# def prices_jac(ff: FlatFlows, d: npt.NDArray[np.float64], g: npt.NDArray[np.float64],
-#                dv: npt.NDArray[np.float64]) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
-#     """ Dirty prices (n_bonds,) and their Jacobian (n_bonds, n_params), given the discount factors d at
-#         ff.times and their derivatives in factored form dDF/dparams = g[:, None] * dv.
-#         P = S / D_settle, S = sum a DF; the flow sums dS = A diag(a g) dv go through a sparse matrix """
-#     n = ff.n_flows
-#     p = prices_from_discounts(ff, d)
-#     agg = sps.csr_matrix((ff.amounts * g[:n], np.arange(n), np.append(ff.starts, n)), shape=(ff.n_bonds, n))
-#     ds = agg @ dv[:n]
-#     dd_settle = g[n:, None] * dv[n:]
-#     return p, (ds - p[:, None] * dd_settle) / d[n:, None]
 
 
 def prices_from_discounts(ff: FlatFlows, d: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
@@ -325,12 +269,13 @@ def prices_jac(ff: FlatFlows, d: npt.NDArray[np.float64], g: npt.NDArray[np.floa
 
 if __name__ == "__main__":
     from sdevpy.calibration.rates import yieldcurve as ycrv
-    from sdevpy.utilities.scalendar import BDC
-    from sdevpy.utilities.sdaycount import DayCount
-    from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
+    # from sdevpy.utilities.scalendar import BDC
+    # from sdevpy.utilities.sdaycount import DayCount
+    from sdevpy.utilities.schedules import make_bond_scheduler
+    from sdevpy.conventions.bondconventions import UST
 
     # US Treasury-style bond: 4% semi-annual, ACT/ACT ICMA, unadjusted accrual, end-of-month rule
-    ust = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
+    ust = UST # LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
     bond = make_bond_scheduler(dt.date(2026, 2, 15), dt.date(2036, 2, 15), ust)
     coupon = 0.04
 

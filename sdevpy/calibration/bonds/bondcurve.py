@@ -134,22 +134,21 @@ def default_nodes(valdate: dt.datetime, quotes: Sequence[BondQuote],
 
 
 if __name__ == "__main__":
-    from sdevpy.utilities.scalendar import BDC
-    from sdevpy.utilities.sdaycount import DayCount
-    from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
+    from sdevpy.conventions.bondconventions import UST
+    from sdevpy.utilities.schedules import make_bond_scheduler
     from sdevpy.rates.bonds import bond_flows, dirty_from_curve, accrued_interest, yield_from_dirty
     from sdevpy.rates.bondquotes import (QuoteType, bill_flows, settlement_date, discount_rate_from_price)
 
     # Known curve: Nelson-Siegel zero rates, 3.8% short end, dip to ~3.6% at 2Y, 4.6% at 30Y
     valdate = dt.datetime(2026, 10, 26)
-    settle = settlement_date(valdate, 'USD')
+    settle = settlement_date(valdate, UST)
     def true_df(t):
         x = np.maximum(t, 1e-8) / 2.0
         f = (1.0 - np.exp(-x)) / x
         return np.exp(-(0.048 - 0.010 * f - 0.020 * (f - np.exp(-x))) * t)
 
     # UST-like universe: bills quoted on discount rate, notes/bonds on clean price or yield
-    ust = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
+    ust = UST # LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
     rng = np.random.default_rng(42)
     quotes = []
     for k in range(26):

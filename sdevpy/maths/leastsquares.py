@@ -158,19 +158,18 @@ def create_lsq_solver(method: str, **kwargs) -> LeastSquaresSolver:
 
 if __name__ == "__main__":
     import datetime as dt
-    from sdevpy.utilities.scalendar import BDC
-    from sdevpy.utilities.sdaycount import DayCount
     from sdevpy.utilities import timegrids
-    from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
+    from sdevpy.utilities.schedules import make_bond_scheduler
     from sdevpy.rates.bonds import bond_flows, flatten, prices_jac, prices_from_discounts
     from sdevpy.rates.bondquotes import bill_flows, settlement_date
     from sdevpy.calibration.rates.yieldcurve import InterpolatedYieldCurve
     from sdevpy.calibration.rates.curvebasis import CurveBasis
+    from sdevpy.conventions.bondconventions import UST
 
     # Synthetic set: 380 bills/notes/bonds priced on a known curve, fit from a flat 4% start
     valdate = dt.datetime(2026, 10, 26)
-    settle = settlement_date(valdate, 'USD')
-    ust = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
+    settle = settlement_date(valdate, UST)
+    ust = UST # LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
     rng = np.random.default_rng(42)
     flows, coupons = [], []
     for k in range(26):

@@ -182,9 +182,18 @@ def make_spot_swap_scheduler(trade_date: dt.date, tenor: str, conv: SwapConventi
 
 ################## BOND ###########################################################################
 @dataclass(frozen=True)
+class BondConvention:
+    """ Bond market rules on top of the coupon leg """
+    leg: LegConvention  # coupon schedule and accrual
+    settlement_lag: int = 1  # business days from trade date, on leg.calendar
+    ex_coupon_days: int = 0  # business days before a coupon date from which a buyer no longer gets it (0: none)
+    simple_final_period: bool = False  # simple-interest yield in the last coupon period
+
+
+@dataclass(frozen=True)
 class BondScheduler:
     schedule: LegSchedule
-    conv: LegConvention
+    conv: BondConvention
     anchor: dt.date # date the regular coupon dates are rolled from (ACT/ACT ICMA)
 
     @property
@@ -194,16 +203,16 @@ class BondScheduler:
 
     @property
     def coupons_per_year(self) -> int:
-        return coupons_per_year(self.conv.frequency)
+        return coupons_per_year(self.conv.leg.frequency)
 
     def accrual_dates(self) -> tuple[npt.NDArray[np.datetime64], npt.NDArray[np.datetime64]]:
         """ (start, end) dates the coupons accrue on: unadjusted for bond-style accrual """
         c = self.schedule
-        return (c.adj_start, c.adj_end) if self.conv.adjust_accrual else (c.unadj_start, c.unadj_end)
+        return (c.adj_start, c.adj_end) if self.conv.leg.adjust_accrual else (c.unadj_start, c.unadj_end)
 
     def accrual_fraction(self, start: dt.date, end: dt.date) -> float:
         """ Accrual fraction between two dates inside the coupon schedule (e.g. last coupon to settlement) """
-        return accrual_fractions([start], [end], self.conv, self.anchor)[0]
+        return accrual_fractions([start], [end], self.conv.leg, self.anchor)[0]
 
     def coupon_schedule(self, coupon) -> dict:
         """ Schedule as dataframe """
@@ -214,12 +223,12 @@ class BondScheduler:
         return cpn_sch
 
 
-def make_bond_scheduler(issue: dt.date, maturity: dt.date, conv: LegConvention, first_coupon: dt.date | None = None,
+def make_bond_scheduler(issue: dt.date, maturity: dt.date, conv: BondConvention, first_coupon: dt.date | None = None,
                         **kwargs) -> BondScheduler:
     """ Coupon schedule rolled backward from maturity. Irregular first coupon either from issue
         (short_front by default, or stub='long_front') or from an explicit first_coupon date """
     kwargs['first_date'] = first_coupon
-    coupons = make_leg_schedule(issue, maturity, conv, **kwargs)
+    coupons = make_leg_schedule(issue, maturity, conv.leg, **kwargs)
     anchor = to_date(regular_anchor(issue, maturity, **kwargs))
     return BondScheduler(coupons, conv, anchor)
 

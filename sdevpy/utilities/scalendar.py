@@ -330,7 +330,8 @@ CCY_CALENDARS = {
         "DKK": lambda y: holidays.DK(years=y),
         "EGP": lambda y: holidays.EG(years=y),
         "EUR": lambda y: holidays.ECB(years=y), # TARGET calendar
-        "GBP": lambda y: holidays.UK(years=y),
+        # "GBP": lambda y: holidays.UK(years=y),
+        "GBP": lambda y: holidays.UK(years=y, subdiv='ENG'), # London: England and Wales bank holidays
         "HKD": lambda y: holidays.HK(years=y),
         "HUF": lambda y: holidays.HU(years=y),
         "IDR": lambda y: holidays.ID(years=y),
