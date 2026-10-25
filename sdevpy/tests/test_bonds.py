@@ -6,8 +6,13 @@ from sdevpy.utilities.sdaycount import DayCount
 from sdevpy.utilities import schedules as sch
 from sdevpy.utilities import timegrids
 from sdevpy.rates import bonds
+from sdevpy.utilities.schedules import make_bond_scheduler
+from sdevpy.rates.bonds import bond_flows, dirty_from_curve, flatten, dirty_prices
+from sdevpy.rates.bondquotes import bill_flows
+from sdevpy.calibration.rates import yieldcurve as ycrv
 
 
+VALDATE = dt.datetime(2026, 10, 26)
 UST = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
 GILT = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False)
 BOND = sch.make_bond_scheduler(dt.date(2026, 2, 15), dt.date(2036, 2, 15), UST)
@@ -92,3 +97,55 @@ def test_curve_price_and_par_coupon():
     par = bonds.par_coupon(bf, df)
     clean = bonds.dirty_from_curve(bf, par, df) - bonds.accrued_interest(bf, par)
     assert abs(clean - 100.0) < 1e-10
+
+
+################ FOR CURVE CONSTRUCTION ###############################################################################
+
+def make_curve():
+    dates = [dt.datetime(2027, 10, 26), dt.datetime(2031, 10, 26), dt.datetime(2036, 10, 26)]
+    zrs = np.array([0.035, 0.037, 0.040])
+    curve = ycrv.InterpolatedYieldCurve(valdate=VALDATE, interp_var='zerorate', interp_type='cubicspline')
+    curve.set_data(dates, np.exp(-zrs * timegrids.model_time(VALDATE, dates)))
+    return curve
+
+
+def make_instruments():
+    """ Bill, note and bond, with different settlement dates """
+    s1, s2 = dt.date(2026, 10, 27), dt.date(2026, 10, 28)
+    flows = [bill_flows(dt.date(2027, 1, 26), s1, VALDATE),
+             bond_flows(make_bond_scheduler(dt.date(2026, 8, 15), dt.date(2036, 8, 15), UST), s2, VALDATE),
+             bond_flows(make_bond_scheduler(dt.date(2025, 2, 28), dt.date(2030, 2, 28), UST), s1, VALDATE)]
+    return flows, [0.0, 0.04125, 0.0375]
+
+
+def test_flatten_layout():
+    flows, coupons = make_instruments()
+    ff = flatten(flows, coupons)
+    sizes = [len(bf.alpha) for bf in flows]
+    assert ff.n_bonds == 3 and ff.n_flows == sum(sizes)
+    np.testing.assert_array_equal(ff.starts, [0, sizes[0], sizes[0] + sizes[1]])
+    np.testing.assert_array_equal(np.bincount(ff.owner), sizes)
+    assert len(ff.times) == ff.n_flows + ff.n_bonds
+    assert ff.amounts[0] == 100.0  # bill: redemption only
+    assert ff.amounts[ff.starts[2] - 1] == pytest.approx(100.0 + 100.0 * 0.04125 * flows[1].alpha[-1])
+
+
+def test_flat_prices_match_per_bond():
+    flows, coupons = make_instruments()
+    curve = make_curve()
+    flat = dirty_prices(flatten(flows, coupons), curve.discount_float)
+    loop = [dirty_from_curve(bf, c, curve.discount_float) for bf, c in zip(flows, coupons, strict=True)]
+    np.testing.assert_allclose(flat, loop, rtol=0, atol=1e-12)
+
+
+def test_redemptions():
+    flows, coupons = make_instruments()
+    curve = make_curve()
+    flat = dirty_prices(flatten(flows, coupons, [100.0, 101.0, 100.0]), curve.discount_float)
+    assert flat[1] == pytest.approx(dirty_from_curve(flows[1], coupons[1], curve.discount_float, 101.0), abs=1e-12)
+
+
+def test_flatten_needs_valdate():
+    bf = bill_flows(dt.date(2027, 1, 26), dt.date(2026, 10, 27))
+    with pytest.raises(ValueError):
+        flatten([bf], [0.0])

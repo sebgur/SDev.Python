@@ -140,6 +140,48 @@ def z_spread(bf: BondFlows, coupon: float, dirty: float, df: DiscountFunction, r
     raise RuntimeError("Z-spread did not converge")
 
 
+###################### FOR CURVE CONSTRUCTION #########################################################################
+@dataclass(frozen=True)
+class FlatFlows:
+    """ Cash flows of n bonds concatenated, bond i owning flows starts[i]:starts[i+1].
+        times = pay times of all flows (N), then settlement times of all bonds (n): one curve call per pricing """
+    times: npt.NDArray[np.float64]  # (N + n,)
+    amounts: npt.NDArray[np.float64]  # (N,) per 100 notional, coupon and redemption included
+    starts: npt.NDArray[np.intp]  # (n,) index of each bond's first flow
+    owner: npt.NDArray[np.intp]  # (N,) bond index of each flow
+
+    @property
+    def n_bonds(self) -> int:
+        return len(self.starts)
+
+    @property
+    def n_flows(self) -> int:
+        return len(self.amounts)
+
+
+def flatten(flows: list[BondFlows], coupons: npt.ArrayLike, redemptions: npt.ArrayLike = 100.0) -> FlatFlows:
+    """ Concatenate the flows of several bonds/bills (all built with the same valdate) """
+    if any(bf.pay_times is None for bf in flows):
+        raise ValueError("BondFlows built without valdate: no times for curve pricing")
+    coupons = np.broadcast_to(np.asarray(coupons, dtype=float), (len(flows),))
+    redemptions = np.broadcast_to(np.asarray(redemptions, dtype=float), (len(flows),))
+
+    sizes = np.array([len(bf.alpha) for bf in flows])
+    starts = np.concatenate(([0], np.cumsum(sizes)[:-1]))
+    owner = np.repeat(np.arange(len(flows)), sizes)
+    amounts = 100.0 * np.repeat(coupons, sizes) * np.concatenate([bf.alpha for bf in flows])
+    amounts[starts + sizes - 1] += redemptions
+    times = np.concatenate([bf.pay_times for bf in flows] + [np.array([bf.settle_time for bf in flows])])
+    return FlatFlows(times, amounts, starts, owner)
+
+
+def dirty_prices(ff: FlatFlows, df: DiscountFunction) -> npt.NDArray[np.float64]:
+    """ Dirty prices at each bond's settlement date """
+    d = df(ff.times)
+    n_flows = ff.n_flows
+    return np.add.reduceat(ff.amounts * d[:n_flows], ff.starts) / d[n_flows:]
+
+
 if __name__ == "__main__":
     from sdevpy.calibration.rates import yieldcurve as ycrv
     from sdevpy.utilities.scalendar import BDC
