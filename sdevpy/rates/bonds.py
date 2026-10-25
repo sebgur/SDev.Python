@@ -5,7 +5,8 @@ import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sps
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.schedules import BondScheduler, to_date, BondConvention, coupons_per_year, make_bond_scheduler
+from sdevpy.utilities.schedules import (BondScheduler, to_date, BondConvention, coupons_per_year, make_bond_scheduler,
+    LegConvention, make_leg_schedule)
 
 
 DiscountFunction = Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
@@ -181,6 +182,21 @@ def z_spread(bf: BondFlows, coupon: float, dirty: float, df: DiscountFunction, r
     raise RuntimeError("Z-spread did not converge")
 
 
+def spread_duration(bf: BondFlows, coupon: float, df: DiscountFunction, z: float, redemption: float = 100.0) -> float:
+    """ -(1/P) dP/dz at Z-spread z, curve fixed: PV-weighted curve time from settlement to the cash flows """
+    if bf.pay_times is None:
+        raise ValueError("BondFlows built without valdate: no times for curve pricing")
+    tau = bf.pay_times - bf.settle_time
+    pv = cashflows(bf, coupon, redemption) * df(bf.pay_times) * np.exp(-z * tau)
+    return float(np.sum(pv * tau) / np.sum(pv))
+
+
+def spread_dv01(bf: BondFlows, coupon: float, df: DiscountFunction, z: float, redemption: float = 100.0) -> float:
+    """ Dirty price gain (per 100 notional) for a 1bp fall in the Z-spread """
+    return (spread_duration(bf, coupon, df, z, redemption) * dirty_from_zspread(bf, coupon, df, z, redemption)
+            * 1e-4)
+
+
 def convert_yield(y: float, from_frequency: int, to_frequency: int) -> float:
     """ Same yield under another compounding frequency: (1 + y1/f1)^f1 = (1 + y2/f2)^f2 """
     if from_frequency == to_frequency:
@@ -205,6 +221,40 @@ def g_spread(bf: BondFlows, coupon: float, dirty: float, df: DiscountFunction, m
     gov_par = par_yield(maturity, bf.settlement, gov_conv, df, valdate)
     y = yield_from_dirty(bf, coupon, dirty, redemption)
     return convert_yield(y, bf.frequency, coupons_per_year(gov_conv.leg.frequency)) - gov_par
+
+
+def asset_swap_spread(bf: BondFlows, coupon: float, dirty: float, df_disc: DiscountFunction, maturity: dt.date,
+                      float_conv: LegConvention, valdate: dt.datetime, df_proj: DiscountFunction | None = None,
+                      proceeds: bool = False) -> float:
+    """ Par-par asset swap spread: the investor pays 100 for the bond plus a swap paying the bond's coupons and
+        receiving the floating rate + s on 100, from settlement to maturity (100 - dirty paid upfront to the swap).
+        s = (100 - dirty + C - 100 F) / (100 A) on the swap curve, at settlement: C = PV of the bond's coupons,
+        F = PV of the floating leg per unit notional, A = its annuity. Forwards on df_proj (default df_disc).
+        proceeds: market-value spread, notional = dirty price, s * 100 / dirty """
+    annuity, float_pv, d_settle = _asw_float_leg(bf, df_disc, maturity, float_conv, valdate, df_proj)
+    coupons_pv = float(np.sum(100.0 * coupon * bf.alpha * df_disc(bf.pay_times))) / d_settle
+    s = (100.0 - dirty + coupons_pv - 100.0 * float_pv) / (100.0 * annuity)
+    return s * 100.0 / dirty if proceeds else s
+
+
+def asset_swap_dv01(bf: BondFlows, df_disc: DiscountFunction, maturity: dt.date, float_conv: LegConvention,
+                    valdate: dt.datetime) -> float:
+    """ Par-par asset swap: price change (per 100 notional) for a 1bp change in the spread, 100 A 1e-4 """
+    return 100.0 * _asw_float_leg(bf, df_disc, maturity, float_conv, valdate)[0] * 1e-4
+
+
+def _asw_float_leg(bf: BondFlows, df_disc: DiscountFunction, maturity: dt.date, float_conv: LegConvention,
+                   valdate: dt.datetime, df_proj: DiscountFunction | None = None) -> tuple[float, float, float]:
+    """ Asset swap floating leg from settlement to maturity, at settlement: annuity, PV per unit notional, and
+        the discount factor to settlement """
+    if bf.pay_times is None:
+        raise ValueError("BondFlows built without valdate: no times for curve pricing")
+    df_proj = df_disc if df_proj is None else df_proj
+    leg = make_leg_schedule(bf.settlement, to_date(maturity), float_conv)
+    d_settle = df_disc(np.array([bf.settle_time]))[0]
+    disc = df_disc(timegrids.model_time(valdate, leg.payment)) / d_settle
+    fwd = df_proj(timegrids.model_time(valdate, leg.adj_start)) / df_proj(timegrids.model_time(valdate, leg.adj_end))
+    return float(np.sum(leg.accrual_fraction * disc)), float(np.sum((fwd - 1.0) * disc)), d_settle
 
 
 ###################### FOR CURVE CONSTRUCTION #########################################################################

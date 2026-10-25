@@ -17,3 +17,12 @@ torch, huggingface_hub, tiktoken, transformers
 
 * To avoid tqdm warning in notebooks:
 ipywidgets
+
+########## To build ####################################################################
+* Needs packages
+> pip install build twine
+
+* Then
+> python -m build
+
+> python -m twine upload dist/*
