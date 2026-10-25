@@ -359,6 +359,9 @@ CCY_CALENDARS = {
         "ZAR": lambda y: holidays.ZA(years=y),
     }
 
+# SIFMA calendar source. The 'USGOV' holidays come from pandas_market_calendars' rules, so far-off years are
+# a projection. SIFMA publishes its recommendations each year, for example whether Good Friday on a payrolls
+# day is a full or an early close. This is a caveat to watch rather than work to do.
 MCAL_ALIASES = {'USGOV': 'SIFMAUS' # US government securities: SIFMA recommended bond market holidays
     }
 

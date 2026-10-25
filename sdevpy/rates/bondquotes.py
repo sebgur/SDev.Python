@@ -8,7 +8,7 @@ from sdevpy.utilities.schedules import BondConvention, to_date
 from sdevpy.rates.bonds import BondFlows, accrued_interest, dirty_from_yield, yield_from_dirty, dv01
 
 
-BILL_FREQUENCY = 2  # yield exponents of bills measured in half-years, for duration weights only
+BILL_FREQUENCY = 2  # yield exponents of bills measured in half-years
 
 class QuoteType(Enum):
     CLEAN = "clean"
@@ -34,7 +34,7 @@ def bill_flows(maturity: dt.date, settlement: dt.date, valdate: dt.datetime | No
     if valdate is not None:
         pay_times = timegrids.model_time(valdate, pay)
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
-    return BondFlows(settle, pay, np.zeros(1), periods, 0.0, BILL_FREQUENCY, pay_times, settle_time)
+    return BondFlows(settle, pay, np.zeros(1), periods, 0.0, BILL_FREQUENCY, pay_times, settle_time, days <= 182)
 
 
 def bill_days(bf: BondFlows) -> int:

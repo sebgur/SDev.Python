@@ -3,10 +3,11 @@ import numpy as np
 import dataclasses
 import pytest
 from sdevpy.utilities.schedules import make_bond_scheduler, BondConvention
-from sdevpy.rates.bonds import bond_flows, accrued_interest, dirty_from_curve
+from sdevpy.rates.bonds import bond_flows, accrued_interest, dirty_from_curve, yield_from_dirty
 from sdevpy.calibration.rates import yieldcurve as ycrv
-from sdevpy.rates.bondquotes import (settlement_date, bill_flows, bill_days, price_from_discount_rate, discount_rate_from_price,
-                                     QuoteType, BondQuote, target_dirty, fit_weight, parse_32nds)
+from sdevpy.rates.bondquotes import (settlement_date, bill_flows, bill_days, price_from_discount_rate,
+                                     discount_rate_from_price, QuoteType, BondQuote, target_dirty, fit_weight,
+                                     parse_32nds)
 from sdevpy.conventions.bondconventions import UST, GILT
 
 
@@ -82,3 +83,10 @@ def test_gilt_settlement_london_holidays():
     # Thu 2-Apr-2026 + 1: Good Friday 3-Apr and Easter Monday 6-Apr closed; Fri 28-Aug-2026 + 1: bank holiday 31-Aug
     assert settlement_date(dt.date(2026, 4, 2), GILT) == dt.date(2026, 4, 7)
     assert settlement_date(dt.date(2026, 8, 28), GILT) == dt.date(2026, 9, 1)
+
+
+def test_bill_bond_equivalent_yield():
+    """ Bills up to 182 days: yield = Treasury bond-equivalent (investment) rate (100/P - 1) 365/days """
+    bill = bill_flows(dt.date(2026, 3, 17), dt.date(2025, 12, 16))  # 13 weeks, 91 days
+    p = price_from_discount_rate(bill, 0.04)
+    assert yield_from_dirty(bill, 0.0, p) == pytest.approx((100 / p - 1) * 365 / 91, abs=1e-13)
