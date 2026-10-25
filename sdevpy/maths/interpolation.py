@@ -227,14 +227,14 @@ class NoneExtrapolator(Interpolator):
         pass
 
     def value(self, x):
-        # raise ValueError("Extrapolation not allowed")
-        xlen = safe_len(x)
-        if xlen == 0:
-            v = np.nan
-        else:
-            v = np.asarray([np.nan] * xlen)
+        return np.full(np.shape(x), np.nan)
+        # xlen = safe_len(x)
+        # if xlen == 0:
+        #     v = np.nan
+        # else:
+        #     v = np.asarray([np.nan] * xlen)
 
-        return v
+        # return v
 
 
 class FlatExtrapolator(Interpolator):
@@ -249,18 +249,19 @@ class FlatExtrapolator(Interpolator):
         self.yr = self.y_grid[-1]
 
     def value(self, x):
-        xlen = safe_len(x)
-        if xlen == 0:
-            v = np.nan
-        else:
-            v = np.asarray([np.nan] * xlen)
-        below = (x < self.xl + self.eps)
-        above = (x > self.xr - self.eps)
+        return np.where(x < self.xl + self.eps, self.yl, np.where(x > self.xr - self.eps, self.yr, np.nan))
+        # xlen = safe_len(x)
+        # if xlen == 0:
+        #     v = np.nan
+        # else:
+        #     v = np.asarray([np.nan] * xlen)
+        # below = (x < self.xl + self.eps)
+        # above = (x > self.xr - self.eps)
 
-        v = np.where(below, self.yl, v)
-        v = np.where(above, self.yr, v)
+        # v = np.where(below, self.yl, v)
+        # v = np.where(above, self.yr, v)
 
-        return v
+        # return v
 
 
 def safe_len(x):
