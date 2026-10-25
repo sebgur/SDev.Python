@@ -178,9 +178,10 @@ def flatten(flows: list[BondFlows], coupons: npt.ArrayLike, redemptions: npt.Arr
 
 def dirty_prices(ff: FlatFlows, df: DiscountFunction) -> npt.NDArray[np.float64]:
     """ Dirty prices at each bond's settlement date """
-    d = df(ff.times)
-    n_flows = ff.n_flows
-    return np.add.reduceat(ff.amounts * d[:n_flows], ff.starts) / d[n_flows:]
+    return prices_from_discounts(ff, df(ff.times))
+    # d = df(ff.times)
+    # n_flows = ff.n_flows
+    # return np.add.reduceat(ff.amounts * d[:n_flows], ff.starts) / d[n_flows:]
 
 
 def prices_from_discounts(ff: FlatFlows, d: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:

@@ -5,10 +5,11 @@ from sdevpy.utilities.scalendar import BDC
 from sdevpy.utilities.sdaycount import DayCount
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
-from sdevpy.rates.bonds import bond_flows, flatten, dirty_prices
+from sdevpy.rates.bonds import bond_flows, flatten, dirty_prices, prices_from_discounts, prices_jac
 from sdevpy.rates.bondquotes import bill_flows
 from sdevpy.calibration.rates.yieldcurve import InterpolatedYieldCurve
-from curvebasis import CurveBasis, set_nodes, node_values, prices_from_discounts, prices_jac
+from sdevpy.calibration.rates.curvebasis import CurveBasis
+
 
 VALDATE = dt.datetime(2026, 10, 26)
 UST = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
@@ -34,7 +35,7 @@ def make_flat_flows():
 @pytest.mark.parametrize("var, itype", LINEAR + NONLINEAR)
 def test_set_nodes_roundtrip(var, itype):
     curve = InterpolatedYieldCurve(valdate=VALDATE, interp_var=var, interp_type=itype)
-    set_nodes(curve, NODE_TIMES, node_values(curve, NODE_TIMES, NODE_DFS))
+    curve.set_nodes(NODE_TIMES, curve.node_values(NODE_TIMES, NODE_DFS))
     np.testing.assert_allclose(curve.discount_float(NODE_TIMES), NODE_DFS, rtol=0, atol=1e-14)
 
 
@@ -50,7 +51,7 @@ def test_basis_prices_match_curve(var, itype):
     ff = make_flat_flows()
     curve = InterpolatedYieldCurve(valdate=VALDATE, interp_var=var, interp_type=itype)
     cb = CurveBasis(curve, NODE_TIMES, ff.times)
-    p = prices_from_discounts(ff, cb.discount(node_values(curve, NODE_TIMES, NODE_DFS)))
+    p = prices_from_discounts(ff, cb.discount(curve.node_values(NODE_TIMES, NODE_DFS)))
     curve.set_data(NODE_DATES, NODE_DFS)
     np.testing.assert_allclose(p, dirty_prices(ff, curve.discount_float), rtol=0, atol=1e-12)
 
@@ -61,7 +62,7 @@ def test_jacobian_vs_finite_differences(var, itype, h, tol):
     ff = make_flat_flows()
     curve = InterpolatedYieldCurve(valdate=VALDATE, interp_var=var, interp_type=itype)
     cb = CurveBasis(curve, NODE_TIMES, ff.times)
-    y = node_values(curve, NODE_TIMES, NODE_DFS)
+    y = curve.node_values(NODE_TIMES, NODE_DFS)
     p, jac = prices_jac(ff, *cb.discount_jac(y))
     np.testing.assert_allclose(p, prices_from_discounts(ff, cb.discount(y)), rtol=0, atol=1e-13)
     fd = np.column_stack([(prices_from_discounts(ff, cb.discount(y + h * e))
