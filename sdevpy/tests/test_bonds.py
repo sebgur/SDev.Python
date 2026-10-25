@@ -272,3 +272,83 @@ def test_vectorized_matches_single_bond():
     np.testing.assert_allclose(bonds.yields_from_dirty(ff, dirty), y, rtol=0, atol=1e-13)
     np.testing.assert_allclose(bonds.dv01s(ff, y), [bonds.dv01(bf, c, yi) for bf, c, yi in zip(flows, coupons, y, strict=True)],
                                rtol=1e-13)
+
+
+###################### EX-COUPON ######################################################################################
+VALDATEEXCPN = dt.datetime(2026, 1, 9)
+CPN = 0.04125
+# UKT 4.125% 22-Jul-2029: coupons 22 Jan / 22 Jul. The 22-Jan-2026 coupon goes ex on 13-Jan-2026 (7 London
+# business days before); the coupon period 22-Jul-2025 to 22-Jan-2026 has 184 days
+GILT_2029 = sch.make_bond_scheduler(dt.date(2019, 1, 22), dt.date(2029, 7, 22), GILT)
+
+
+def flows(settle):
+    return bonds.bond_flows(GILT_2029, settle, VALDATEEXCPN)
+
+
+def flat_curve(t):
+    return np.exp(-0.04 * t)
+
+
+def test_ex_coupon_date():
+    i = int(np.searchsorted(GILT_2029.schedule.payment, np.datetime64('2026-01-22')))
+    assert GILT_2029.ex_coupon_date(i) == dt.date(2026, 1, 13)
+    ust = sch.make_bond_scheduler(dt.date(2026, 2, 15), dt.date(2036, 2, 15), UST)
+    assert ust.ex_coupon_date(0) is None
+
+
+@pytest.mark.parametrize("settle, ex, first_pay, n_flows, accrued", [
+    (dt.date(2026, 1, 12), False, '2026-01-22', 8, 2.0625 * 174 / 184),  # day before the ex date: cum
+    (dt.date(2026, 1, 13), True, '2026-07-22', 7, -2.0625 * 9 / 184),    # ex date: coupon gone, 9 days short
+    (dt.date(2026, 1, 15), True, '2026-07-22', 7, -2.0625 * 7 / 184),
+    (dt.date(2026, 1, 22), False, '2026-07-22', 7, 0.0),                  # coupon date: new period
+])
+def test_flows_around_ex_date(settle, ex, first_pay, n_flows, accrued):
+    bf = flows(settle)
+    assert bf.ex_coupon == ex
+    assert bf.payment[0] == np.datetime64(first_pay)
+    assert len(bf.payment) == n_flows
+    assert bonds.accrued_interest(bf, CPN) == pytest.approx(accrued, abs=1e-12)
+
+
+def test_dmo_ex_dividend_price():
+    """ UK DMO price/yield formula for an ex-dividend gilt: no next coupon, first flow r/s + 1 periods away """
+    bf, y = flows(dt.date(2026, 1, 15)), 0.045
+    v = 1.0 / (1.0 + y / 2)
+    n = 7  # coupons left after the ex one
+    dmo = v ** (7 / 184) * (2.0625 * v * (1 - v ** n) / (1 - v) + 100.0 * v ** n)
+    assert bonds.dirty_from_yield(bf, CPN, y) == pytest.approx(dmo, abs=1e-10)
+    assert bonds.yield_from_dirty(bf, CPN, dmo) == pytest.approx(y, abs=1e-13)
+
+
+def test_clean_price_continuous_across_ex_date():
+    """ Dirty price drops by ~ the coupon at the ex date, clean price only moves by a day of carry """
+    cum, ex = flows(dt.date(2026, 1, 12)), flows(dt.date(2026, 1, 13))
+    dirty_cum, dirty_ex = bonds.dirty_from_curve(cum, CPN, flat_curve), bonds.dirty_from_curve(ex, CPN, flat_curve)
+    assert dirty_cum - dirty_ex == pytest.approx(2.0625, abs=0.02)
+    clean_cum = dirty_cum - bonds.accrued_interest(cum, CPN)
+    clean_ex = dirty_ex - bonds.accrued_interest(ex, CPN)
+    assert abs(clean_ex - clean_cum) < 0.01
+
+
+def test_par_coupon_ex():
+    bf = flows(dt.date(2026, 1, 15))
+    c = bonds.par_coupon(bf, flat_curve)
+    assert bonds.dirty_from_curve(bf, c, flat_curve) - bonds.accrued_interest(bf, c) == pytest.approx(100.0, abs=1e-10)
+
+
+def test_flattened_ex_bond():
+    bfs = [flows(dt.date(2026, 1, 12)), flows(dt.date(2026, 1, 15))]
+    ff = bonds.flatten(bfs, [CPN, CPN])
+    np.testing.assert_allclose(bonds.dirty_prices(ff, flat_curve),
+                               [bonds.dirty_from_curve(bf, CPN, flat_curve) for bf in bfs], rtol=0, atol=1e-12)
+
+
+def test_final_coupon_ex_period():
+    """ In the ex period of its last coupon a gilt no longer trades: nothing left to buy """
+    short = sch.make_bond_scheduler(dt.date(2016, 7, 22), dt.date(2026, 7, 22), GILT)
+    ex_date = short.ex_coupon_date(len(short.schedule.payment) - 1)
+    bonds.bond_flows(short, ex_date - dt.timedelta(days=1), VALDATEEXCPN)  # still cum
+    with pytest.raises(ValueError):
+        bonds.bond_flows(short, ex_date, VALDATEEXCPN)
+

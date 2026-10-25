@@ -210,6 +210,14 @@ class BondScheduler:
         c = self.schedule
         return (c.adj_start, c.adj_end) if self.conv.leg.adjust_accrual else (c.unadj_start, c.unadj_end)
 
+    def ex_coupon_date(self, k: int) -> dt.date | None:
+        """ First settlement date on which a buyer no longer receives coupon k: conv.ex_coupon_days business days
+            before its payment date. None when the market has no ex-coupon period """
+        if self.conv.ex_coupon_days == 0:
+            return None
+        cal = make_calendar(self.conv.leg.calendar)
+        return cal.add_business_days(to_date(self.schedule.payment[k]), -self.conv.ex_coupon_days)
+
     def accrual_fraction(self, start: dt.date, end: dt.date) -> float:
         """ Accrual fraction between two dates inside the coupon schedule (e.g. last coupon to settlement) """
         return accrual_fractions([start], [end], self.conv.leg, self.anchor)[0]

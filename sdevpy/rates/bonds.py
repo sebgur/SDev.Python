@@ -23,6 +23,7 @@ class BondFlows:
     pay_times: npt.NDArray[np.float64] | None = None  # model times from valdate (curve pricing only)
     settle_time: float | None = None
     simple_final_period: bool = False  # simple-interest yield when only the last coupon is left
+    ex_coupon: bool = False  # settlement in the ex-coupon period: next coupon excluded, accrued negative
 
     @property
     def simple_flows(self) -> npt.NDArray[np.bool_]:
@@ -45,12 +46,22 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
     periods = bond.coupons_per_year * np.cumsum(remaining)
 
     payment = bond.schedule.payment[i:]
+
+    # Ex-coupon period: the coupon goes to the holder at the ex date, the buyer is short its accrual to the coupon date
+    ex_date = bond.ex_coupon_date(i)
+    ex_coupon = ex_date is not None and settle >= ex_date
+    if ex_coupon:
+        if len(alpha) == 1:
+            raise ValueError(f"Bond no longer trades on {settle}: ex-coupon period of the final coupon")
+        accrued -= alpha[0]
+        alpha, periods, payment = alpha[1:], periods[1:], payment[1:]
+
     pay_times = settle_time = None
     if valdate is not None:
         pay_times = timegrids.model_time(valdate, payment)
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
     return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time,
-                     bond.conv.simple_final_period)
+                     bond.conv.simple_final_period, ex_coupon)
 
 
 def cashflows(bf: BondFlows, coupon: float, redemption: float = 100.0) -> npt.NDArray[np.float64]:
