@@ -1,4 +1,3 @@
-""" Step 4 draft: least-squares problem/solver layer over SciPy least_squares and scalar minimizers """
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
@@ -157,84 +156,53 @@ def create_lsq_solver(method: str, **kwargs) -> LeastSquaresSolver:
     raise ValueError(f"Least-squares solver not supported: {method}")
 
 
-################## Proposed SciPyOptimizer.minimize (optimization.py) #############################
-# def _patched_minimize(self, func, x0=None, args=(), bounds=None, jac=None, constraints=()):
-#     result = None
-#     if self.method_ in self.std_minimizers:
-#         tol = self.kwargs.get('tol', None)
-#         ftol = self.kwargs.get('ftol', None)
-#         effective_tol = ftol if ftol is not None else tol # ftol takes priority
-#         result = opt.minimize(func, x0, args, method=self.method_, jac=jac, bounds=bounds,
-#                               constraints=constraints, tol=effective_tol, options=self.options)
-#     elif self.method_== 'DE':
-#         atol = self.kwargs.get('atol', 0)
-#         popsize = self.kwargs.get('popsize', 15)
-#         strategy = self.kwargs.get('strategy', 'best1bin')
-#         recombination = self.kwargs.get('recombination', 0.7)
-#         tol = self.kwargs.get('tol', None)
-#         if tol is None:
-#             tol = 0.0
-#         maxiter = self.kwargs.get('maxiter', 1000)
-#         result = opt.differential_evolution(func, x0=x0, args=args, bounds=bounds,
-#                                             tol=tol, maxiter=maxiter, atol=atol,
-#                                             popsize=popsize, strategy=strategy,
-#                                             recombination=recombination, constraints=constraints)
-#     else:
-#         raise ValueError(f"Method {self.method_} not recognized")
+if __name__ == "__main__":
+    import datetime as dt
+    from sdevpy.utilities.scalendar import BDC
+    from sdevpy.utilities.sdaycount import DayCount
+    from sdevpy.utilities import timegrids
+    from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
+    from sdevpy.rates.bonds import bond_flows, flatten, prices_jac, prices_from_discounts
+    from sdevpy.rates.bondquotes import bill_flows, settlement_date
+    from sdevpy.calibration.rates.yieldcurve import InterpolatedYieldCurve
+    from sdevpy.calibration.rates.curvebasis import CurveBasis
 
-#     return result
+    # Synthetic set: 380 bills/notes/bonds priced on a known curve, fit from a flat 4% start
+    valdate = dt.datetime(2026, 10, 26)
+    settle = settlement_date(valdate, 'USD')
+    ust = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
+    rng = np.random.default_rng(42)
+    flows, coupons = [], []
+    for k in range(26):
+        flows.append(bill_flows(settle + dt.timedelta(days=7 * (k + 1)), settle, valdate))
+        coupons.append(0.0)
+    for m in range(6, 360):
+        mat = dt.date(2027 + (m - 6) // 12, 1 + (m - 6) % 12, 15)
+        issue = dt.date(mat.year - 30 if m > 120 else mat.year - 10, mat.month, mat.day)
+        flows.append(bond_flows(make_bond_scheduler(issue, mat, ust), settle, valdate))
+        coupons.append(round(rng.uniform(0.01, 0.05) * 800) / 800)
+    ff = flatten(flows, coupons)
+    tenors = [0.25, 0.5, 1, 2, 3, 5, 7, 10, 15, 20, 25, 30.5]
+    node_times = timegrids.model_time(valdate, [valdate + dt.timedelta(days=round(365 * x)) for x in tenors])
+    true_dfs = np.exp(-(0.035 + 0.01 * (1 - np.exp(-node_times / 5))) * node_times)
+    w = 1.0 / (np.array([1e-4 * max(t, 0.1) for t in ff.times[ff.starts + np.diff(np.append(ff.starts, ff.n_flows)) - 1]]))
+    print(f"{ff.n_bonds} instruments, {len(tenors)} nodes")
 
+    for var, itype in [('zerorate', 'cubicspline'), ('logdiscount', 'cubicspline-linear')]:
+        curve = InterpolatedYieldCurve(valdate=valdate, interp_var=var, interp_type=itype)
+        cb = CurveBasis(curve, node_times, ff.times)
+        y_true = curve.node_values(node_times, true_dfs)
+        target = prices_from_discounts(ff, cb.discount(y_true))
+        y0 = curve.node_values(node_times, np.exp(-0.04 * node_times))
 
-# SciPyOptimizer.minimize = _patched_minimize  # scratch only: stands in for the library change
+        def fun(y):
+            p, jac = prices_jac(ff, *cb.discount_jac(y))
+            return w * (p - target), w[:, None] * jac
 
-
-# if __name__ == "__main__":
-#     import datetime as dt
-#     from sdevpy.utilities.scalendar import BDC
-#     from sdevpy.utilities.sdaycount import DayCount
-#     from sdevpy.utilities import timegrids
-#     from sdevpy.utilities.schedules import LegConvention, make_bond_scheduler
-#     from sdevpy.rates.bonds import bond_flows, flatten, prices_jac, prices_from_discounts
-#     from sdevpy.rates.bondquotes import bill_flows, settlement_date
-#     from sdevpy.calibration.rates.yieldcurve import InterpolatedYieldCurve
-#     from sdevpy.calibration.rates.curvebasis import CurveBasis
-
-#     # Synthetic set: 380 bills/notes/bonds priced on a known curve, fit from a flat 4% start
-#     valdate = dt.datetime(2026, 10, 26)
-#     settle = settlement_date(valdate, 'USD')
-#     ust = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True)
-#     rng = np.random.default_rng(42)
-#     flows, coupons = [], []
-#     for k in range(26):
-#         flows.append(bill_flows(settle + dt.timedelta(days=7 * (k + 1)), settle, valdate))
-#         coupons.append(0.0)
-#     for m in range(6, 360):
-#         mat = dt.date(2027 + (m - 6) // 12, 1 + (m - 6) % 12, 15)
-#         issue = dt.date(mat.year - 30 if m > 120 else mat.year - 10, mat.month, mat.day)
-#         flows.append(bond_flows(make_bond_scheduler(issue, mat, ust), settle, valdate))
-#         coupons.append(round(rng.uniform(0.01, 0.05) * 800) / 800)
-#     ff = flatten(flows, coupons)
-#     tenors = [0.25, 0.5, 1, 2, 3, 5, 7, 10, 15, 20, 25, 30.5]
-#     node_times = timegrids.model_time(valdate, [valdate + dt.timedelta(days=round(365 * x)) for x in tenors])
-#     true_dfs = np.exp(-(0.035 + 0.01 * (1 - np.exp(-node_times / 5))) * node_times)
-#     w = 1.0 / (np.array([1e-4 * max(t, 0.1) for t in ff.times[ff.starts + np.diff(np.append(ff.starts, ff.n_flows)) - 1]]))
-#     print(f"{ff.n_bonds} instruments, {len(tenors)} nodes")
-
-#     for var, itype in [('zerorate', 'cubicspline'), ('logdiscount', 'cubicspline-linear')]:
-#         curve = InterpolatedYieldCurve(valdate=valdate, interp_var=var, interp_type=itype)
-#         cb = CurveBasis(curve, node_times, ff.times)
-#         y_true = curve.node_values(node_times, true_dfs)
-#         target = prices_from_discounts(ff, cb.discount(y_true))
-#         y0 = curve.node_values(node_times, np.exp(-0.04 * node_times))
-
-#         def fun(y):
-#             p, jac = prices_jac(ff, *cb.discount_jac(y))
-#             return w * (p - target), w[:, None] * jac
-
-#         print(f"--- {var} {itype}")
-#         for method, kw in [('trf', {}), ('trf', dict(xtol=1e-14, ftol=1e-14, gtol=1e-14)), ('dogbox', {}),
-#                            ('lm', {}), ('SLSQP', dict(ftol=1e-14)), ('trust-constr', dict(gtol=1e-12)),
-#                            ('L-BFGS-B', dict(ftol=1e-15, gtol=1e-12)), ('BFGS', dict(gtol=1e-12))]:
-#             res = create_lsq_solver(method, **kw).solve(LeastSquaresProblem(fun, y0))
-#             print(f"  {method:<12} {str(kw)[:40]:<42} {1e3 * res.elapsed:7.1f} ms  nfev {res.nfev:4d}  "
-#                   f"max resid {np.max(np.abs(res.residuals)):.1e} bp  max node err {np.max(np.abs(res.x - y_true)):.1e}")
+        print(f"--- {var} {itype}")
+        for method, kw in [('trf', {}), ('trf', dict(xtol=1e-14, ftol=1e-14, gtol=1e-14)), ('dogbox', {}),
+                           ('lm', {}), ('SLSQP', dict(ftol=1e-14)), ('trust-constr', dict(gtol=1e-12)),
+                           ('L-BFGS-B', dict(ftol=1e-15, gtol=1e-12)), ('BFGS', dict(gtol=1e-12))]:
+            res = create_lsq_solver(method, **kw).solve(LeastSquaresProblem(fun, y0))
+            print(f"  {method:<12} {str(kw)[:40]:<42} {1e3 * res.elapsed:7.1f} ms  nfev {res.nfev:4d}  "
+                  f"max resid {np.max(np.abs(res.residuals)):.1e} bp  max node err {np.max(np.abs(res.x - y_true)):.1e}")

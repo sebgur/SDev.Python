@@ -40,7 +40,7 @@ def create_bounds(lw_bounds: list[float], up_bounds: list[float]):
 
 class Optimizer(ABC):
     @abstractmethod
-    def minimize(self, f, x0, args=(), bounds=None):
+    def minimize(self, f, x0, args=(), bounds=None, jac=None, constraints=()):
         """ Minimization """
         pass
 

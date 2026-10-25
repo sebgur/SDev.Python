@@ -24,7 +24,8 @@ def rosenbrock(x):
 
 
 ALL_METHODS = ['trf', 'dogbox', 'lm', 'SLSQP', 'trust-constr', 'L-BFGS-B', 'BFGS']
-TIGHT = {'SLSQP': dict(ftol=1e-14), 'BFGS': dict(gtol=1e-10), 'trust-constr': dict(gtol=1e-12, xtol=1e-12, options={'initial_barrier_parameter': 1e-4}),
+TIGHT = {'SLSQP': dict(ftol=1e-14), 'BFGS': dict(gtol=1e-10),
+         'trust-constr': dict(gtol=1e-12, xtol=1e-12, options={'initial_barrier_parameter': 1e-4}),
          'L-BFGS-B': dict(ftol=1e-15, gtol=1e-12)}  # SciPy default stopping criteria are loose
 
 
