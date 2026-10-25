@@ -88,11 +88,11 @@ def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates
 
     def residuals_jac(y):
         p, jac = prices_jac(ff, *cb.discount_jac(y))
-        r, J = w * (targets - p), -w[:, None] * jac
+        r, r_jac = w * (targets - p), -w[:, None] * jac
         if penalty_rows is None:
-            return r, J
-        r_pen, J_pen = penalty_rows(y)
-        return np.concatenate((r, r_pen)), np.vstack((J, J_pen))
+            return r, r_jac
+        r_pen, pen_jac = penalty_rows(y)
+        return np.concatenate((r, r_pen)), np.vstack((r_jac, pen_jac))
 
     if isinstance(solver, str):
         solver = create_lsq_solver(solver)
