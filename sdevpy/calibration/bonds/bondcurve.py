@@ -39,7 +39,7 @@ class BondCurveFit:
         return 1e4 * (yields_from_dirty(ff, self.model_prices) - yields_from_dirty(ff, self.target_prices))
 
 
-def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates: Sequence[dt.datetime],
+def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates: Sequence[dt.datetime]|None=None,
                    interp_var: str = 'logdiscount', interp_type: str = 'cubicspline-linear',
                    bc_type: str|tuple|None='auto',
                    solver: LeastSquaresSolver | str = 'trf', weights: str | npt.ArrayLike | None = 'dv01',
@@ -47,6 +47,7 @@ def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates
                    constraints: Sequence[Constraint | ForwardFloor] = (), penalty: SmoothnessPenalty | None = None,
                    name: str = '') -> BondCurveFit:
     """ Fit the curve's node values (in its interpolation variable, at node_dates) to the quotes' dirty prices.
+        node_dates: default to default_nodes(valdate, quotes), i.e. the dates behind the quotes
         quotes: flows built with this valdate. weights: 'dv01' (1/DV01: residuals ~ yield errors in bp),
         None (price errors) or one weight per quote. y0: initial node values, default a flat initial_rate
         zero curve. bounds/constraints: on the node values, passed to the solver; curve constraints such as
@@ -56,6 +57,9 @@ def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates
     quotes = list(quotes)
     if any(q.flows.pay_times is None for q in quotes):
         raise ValueError("Quotes with flows built without valdate: no times for curve pricing")
+
+    if node_dates is None:
+        node_dates = default_nodes(valdate, quotes)
 
     # Market targets and weights
     ff = flatten([q.flows for q in quotes], [q.coupon for q in quotes], [q.redemption for q in quotes])

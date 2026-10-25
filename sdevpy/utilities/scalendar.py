@@ -267,7 +267,10 @@ def make_calendar(name: str, start_year: int=2000, end_year: int=2100):
     y = range(start_year, end_year + 1)
 
     if name not in CCY_CALENDARS:
-        return make_calendar_from_mcal(name, y)
+        cdr = make_calendar_from_mcal(MCAL_ALIASES.get(name, name), y)
+        cdr.name = name
+        return cdr
+        # return make_calendar_from_mcal(name, y)
     else:
         hols = set()
         for year in y:
@@ -353,6 +356,9 @@ CCY_CALENDARS = {
         "VND": lambda y: holidays.VN(years=y),
         "WE": lambda y: {},
         "ZAR": lambda y: holidays.ZA(years=y),
+    }
+
+MCAL_ALIASES = {'USGOV': 'SIFMAUS' # US government securities: SIFMA recommended bond market holidays
     }
 
 if __name__ == "__main__":

@@ -12,10 +12,10 @@ def sample_bond_universe(valdate: dt.datetime, ns_b0: float=0.052, ns_b1: float=
                          ns_tau: float=2.0, seed: int=42) -> dict:
     """ Generate a synthetic bond universe to test bond curve construction """
     # Fixed values
-    ccy = 'USD'
-    cal = make_calendar(ccy)
-    settle = bq.settlement_date(valdate, ccy)
-    conv = sch.LegConvention(frequency='6M', daycount=DayCount.ACTACT_ICMA, calendar=ccy, bdc=BDC.F,
+    calendar = 'USGOV'
+    cal = make_calendar(calendar)
+    settle = bq.settlement_date(valdate, calendar)
+    conv = sch.LegConvention(frequency='6M', daycount=DayCount.ACTACT_ICMA, calendar=calendar, bdc=BDC.F,
                              adjust_accrual=False, eom=True)
     base_year = valdate.year
     rng = np.random.default_rng(seed)
