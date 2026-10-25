@@ -7,7 +7,8 @@ from sdevpy.utilities import schedules as sch
 from sdevpy.utilities import timegrids
 from sdevpy.rates import bonds
 from sdevpy.utilities.schedules import make_bond_scheduler
-from sdevpy.rates.bonds import bond_flows, dirty_from_curve, flatten, dirty_prices
+from sdevpy.rates.bonds import (bond_flows, dirty_from_curve, flatten, dirty_prices,
+    yields_from_dirty, dirty_from_yields, dv01s)
 from sdevpy.rates.bondquotes import bill_flows
 from sdevpy.calibration.rates import yieldcurve as ycrv
 
@@ -125,7 +126,9 @@ def test_flatten_layout():
     assert ff.n_bonds == 3 and ff.n_flows == sum(sizes)
     np.testing.assert_array_equal(ff.starts, [0, sizes[0], sizes[0] + sizes[1]])
     np.testing.assert_array_equal(np.bincount(ff.owner), sizes)
-    assert len(ff.times) == ff.n_flows + ff.n_bonds
+    assert np.all(np.diff(ff.times) > 0)  # distinct, increasing
+    np.testing.assert_array_equal(ff.times[ff.flow_index], np.concatenate([bf.pay_times for bf in flows]))
+    np.testing.assert_array_equal(ff.times[ff.settle_index], [bf.settle_time for bf in flows])
     assert ff.amounts[0] == 100.0  # bill: redemption only
     assert ff.amounts[ff.starts[2] - 1] == pytest.approx(100.0 + 100.0 * 0.04125 * flows[1].alpha[-1])
 
@@ -149,3 +152,15 @@ def test_flatten_needs_valdate():
     bf = bill_flows(dt.date(2027, 1, 26), dt.date(2026, 10, 27))
     with pytest.raises(ValueError):
         flatten([bf], [0.0])
+
+
+def test_vectorized_yields_and_dv01():
+    flows, coupons = make_instruments()
+    ff = flatten(flows, coupons)
+    dirty = dirty_prices(ff, make_curve().discount_float)
+    y = yields_from_dirty(ff, dirty)
+    expected = [bonds.yield_from_dirty(bf, c, p) for bf, c, p in zip(flows, coupons, dirty, strict=True)]
+    np.testing.assert_allclose(y, expected, rtol=0, atol=1e-13)
+    np.testing.assert_allclose(dirty_from_yields(ff, y), dirty, rtol=0, atol=1e-10)
+    np.testing.assert_allclose(dv01s(ff, y), [bonds.dv01(bf, c, yi) for bf, c, yi in zip(flows, coupons, y, strict=True)],
+                               rtol=1e-13)

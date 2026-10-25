@@ -142,14 +142,37 @@ def z_spread(bf: BondFlows, coupon: float, dirty: float, df: DiscountFunction, r
 
 
 ###################### FOR CURVE CONSTRUCTION #########################################################################
+# @dataclass(frozen=True)
+# class FlatFlows:
+#     """ Cash flows of n bonds concatenated, bond i owning flows starts[i]:starts[i+1].
+#         times = pay times of all flows (N), then settlement times of all bonds (n): one curve call per pricing """
+#     times: npt.NDArray[np.float64]  # (N + n,)
+#     amounts: npt.NDArray[np.float64]  # (N,) per 100 notional, coupon and redemption included
+#     starts: npt.NDArray[np.intp]  # (n,) index of each bond's first flow
+#     owner: npt.NDArray[np.intp]  # (N,) bond index of each flow
+
+#     @property
+#     def n_bonds(self) -> int:
+#         return len(self.starts)
+
+#     @property
+#     def n_flows(self) -> int:
+#         return len(self.amounts)
+
+
 @dataclass(frozen=True)
 class FlatFlows:
-    """ Cash flows of n bonds concatenated, bond i owning flows starts[i]:starts[i+1].
-        times = pay times of all flows (N), then settlement times of all bonds (n): one curve call per pricing """
-    times: npt.NDArray[np.float64]  # (N + n,)
+    """ Cash flows of n bonds concatenated, bond i owning flows starts[i]:starts[i+1]. The curve is needed only
+        at the distinct pay/settlement times: flow j pays at times[flow_index[j]], bond i settles at
+        times[settle_index[i]] """
+    times: npt.NDArray[np.float64]  # (U,) distinct pay and settlement times, increasing
     amounts: npt.NDArray[np.float64]  # (N,) per 100 notional, coupon and redemption included
     starts: npt.NDArray[np.intp]  # (n,) index of each bond's first flow
     owner: npt.NDArray[np.intp]  # (N,) bond index of each flow
+    flow_index: npt.NDArray[np.intp]  # (N,) index in times of each flow's pay time
+    settle_index: npt.NDArray[np.intp]  # (n,) index in times of each bond's settlement time
+    periods: npt.NDArray[np.float64]  # (N,) coupon periods from settlement (street-yield exponents)
+    frequency: npt.NDArray[np.float64]  # (n,) coupons per year
 
     @property
     def n_bonds(self) -> int:
@@ -158,6 +181,22 @@ class FlatFlows:
     @property
     def n_flows(self) -> int:
         return len(self.amounts)
+
+
+# def flatten(flows: list[BondFlows], coupons: npt.ArrayLike, redemptions: npt.ArrayLike = 100.0) -> FlatFlows:
+#     """ Concatenate the flows of several bonds/bills (all built with the same valdate) """
+#     if any(bf.pay_times is None for bf in flows):
+#         raise ValueError("BondFlows built without valdate: no times for curve pricing")
+#     coupons = np.broadcast_to(np.asarray(coupons, dtype=float), (len(flows),))
+#     redemptions = np.broadcast_to(np.asarray(redemptions, dtype=float), (len(flows),))
+
+#     sizes = np.array([len(bf.alpha) for bf in flows])
+#     starts = np.concatenate(([0], np.cumsum(sizes)[:-1]))
+#     owner = np.repeat(np.arange(len(flows)), sizes)
+#     amounts = 100.0 * np.repeat(coupons, sizes) * np.concatenate([bf.alpha for bf in flows])
+#     amounts[starts + sizes - 1] += redemptions
+#     times = np.concatenate([bf.pay_times for bf in flows] + [np.array([bf.settle_time for bf in flows])])
+#     return FlatFlows(times, amounts, starts, owner)
 
 
 def flatten(flows: list[BondFlows], coupons: npt.ArrayLike, redemptions: npt.ArrayLike = 100.0) -> FlatFlows:
@@ -172,8 +211,42 @@ def flatten(flows: list[BondFlows], coupons: npt.ArrayLike, redemptions: npt.Arr
     owner = np.repeat(np.arange(len(flows)), sizes)
     amounts = 100.0 * np.repeat(coupons, sizes) * np.concatenate([bf.alpha for bf in flows])
     amounts[starts + sizes - 1] += redemptions
-    times = np.concatenate([bf.pay_times for bf in flows] + [np.array([bf.settle_time for bf in flows])])
-    return FlatFlows(times, amounts, starts, owner)
+    all_times = np.concatenate([bf.pay_times for bf in flows] + [np.array([bf.settle_time for bf in flows])])
+    times, index = np.unique(all_times, return_inverse=True)
+    n = len(amounts)
+    periods = np.concatenate([bf.periods for bf in flows])
+    frequency = np.array([bf.frequency for bf in flows], dtype=float)
+    return FlatFlows(times, amounts, starts, owner, index[:n], index[n:], periods, frequency)
+
+
+def dirty_from_yields(ff: FlatFlows, y: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """ Street-convention dirty prices of all bonds from their yields """
+    f = ff.frequency[ff.owner]
+    return np.add.reduceat(ff.amounts * (1.0 + y[ff.owner] / f) ** -ff.periods, ff.starts)
+
+
+def yields_from_dirty(ff: FlatFlows, dirty: npt.NDArray[np.float64], guess: float = 0.05, tol: float = 1e-12,
+                      max_iter: int = 50) -> npt.NDArray[np.float64]:
+    """ Street-convention yields of all bonds from their dirty prices (Newton, all bonds at once) """
+    f, tau = ff.frequency[ff.owner], ff.periods
+    y = np.full(ff.n_bonds, guess)
+    for _ in range(max_iter):
+        base = 1.0 + y[ff.owner] / f
+        v = ff.amounts * base ** -tau
+        err = np.add.reduceat(v, ff.starts) - dirty
+        deriv = -np.add.reduceat(v * tau / (f * base), ff.starts)
+        step = err / deriv
+        y -= step
+        if np.max(np.abs(step)) < tol:
+            return y
+    raise RuntimeError("Yields did not converge")
+
+
+def dv01s(ff: FlatFlows, y: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """ Dirty price gain (per 100 notional) for a 1bp fall in yield, all bonds """
+    f = ff.frequency[ff.owner]
+    base = 1.0 + y[ff.owner] / f
+    return 1e-4 * np.add.reduceat(ff.amounts * base ** -ff.periods * ff.periods / (f * base), ff.starts)
 
 
 def dirty_prices(ff: FlatFlows, df: DiscountFunction) -> npt.NDArray[np.float64]:
@@ -184,23 +257,42 @@ def dirty_prices(ff: FlatFlows, df: DiscountFunction) -> npt.NDArray[np.float64]
     # return np.add.reduceat(ff.amounts * d[:n_flows], ff.starts) / d[n_flows:]
 
 
+# def prices_from_discounts(ff: FlatFlows, d: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+#     """ Dirty prices given the discount factors at ff.times (dirty_prices(ff, df) = this with d = df(ff.times)) """
+#     n = ff.n_flows
+#     return np.add.reduceat(ff.amounts * d[:n], ff.starts) / d[n:]
+
+
+# def prices_jac(ff: FlatFlows, d: npt.NDArray[np.float64], g: npt.NDArray[np.float64],
+#                dv: npt.NDArray[np.float64]) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+#     """ Dirty prices (n_bonds,) and their Jacobian (n_bonds, n_params), given the discount factors d at
+#         ff.times and their derivatives in factored form dDF/dparams = g[:, None] * dv.
+#         P = S / D_settle, S = sum a DF; the flow sums dS = A diag(a g) dv go through a sparse matrix """
+#     n = ff.n_flows
+#     p = prices_from_discounts(ff, d)
+#     agg = sps.csr_matrix((ff.amounts * g[:n], np.arange(n), np.append(ff.starts, n)), shape=(ff.n_bonds, n))
+#     ds = agg @ dv[:n]
+#     dd_settle = g[n:, None] * dv[n:]
+#     return p, (ds - p[:, None] * dd_settle) / d[n:, None]
+
+
 def prices_from_discounts(ff: FlatFlows, d: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
-    """ Dirty prices given the discount factors at ff.times (dirty_prices(ff, df) = this with d = df(ff.times)) """
-    n = ff.n_flows
-    return np.add.reduceat(ff.amounts * d[:n], ff.starts) / d[n:]
+    """ Dirty prices given the discount factors at ff.times """
+    return np.add.reduceat(ff.amounts * d[ff.flow_index], ff.starts) / d[ff.settle_index]
 
 
 def prices_jac(ff: FlatFlows, d: npt.NDArray[np.float64], g: npt.NDArray[np.float64],
                dv: npt.NDArray[np.float64]) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """ Dirty prices (n_bonds,) and their Jacobian (n_bonds, n_params), given the discount factors d at
         ff.times and their derivatives in factored form dDF/dparams = g[:, None] * dv.
-        P = S / D_settle, S = sum a DF; the flow sums dS = A diag(a g) dv go through a sparse matrix """
-    n = ff.n_flows
+        P = S / D_settle, S = sum a DF; dS = A dv with A[i, u] = sum of a g over bond i's flows paid at times[u]
+        (sparse; repeated (i, u) entries are summed) """
     p = prices_from_discounts(ff, d)
-    agg = sps.csr_matrix((ff.amounts * g[:n], np.arange(n), np.append(ff.starts, n)), shape=(ff.n_bonds, n))
-    ds = agg @ dv[:n]
-    dd_settle = g[n:, None] * dv[n:]
-    return p, (ds - p[:, None] * dd_settle) / d[n:, None]
+    agg = sps.csr_matrix((ff.amounts * g[ff.flow_index], ff.flow_index, np.append(ff.starts, ff.n_flows)),
+                         shape=(ff.n_bonds, len(ff.times)))
+    ds = agg @ dv
+    s = ff.settle_index
+    return p, (ds - (p * g[s])[:, None] * dv[s]) / d[s, None]
 
 
 if __name__ == "__main__":
