@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
+import scipy.sparse as sps
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.schedules import BondScheduler, to_date
 
@@ -180,6 +181,25 @@ def dirty_prices(ff: FlatFlows, df: DiscountFunction) -> npt.NDArray[np.float64]
     d = df(ff.times)
     n_flows = ff.n_flows
     return np.add.reduceat(ff.amounts * d[:n_flows], ff.starts) / d[n_flows:]
+
+
+def prices_from_discounts(ff: FlatFlows, d: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+    """ Dirty prices given the discount factors at ff.times (dirty_prices(ff, df) = this with d = df(ff.times)) """
+    n = ff.n_flows
+    return np.add.reduceat(ff.amounts * d[:n], ff.starts) / d[n:]
+
+
+def prices_jac(ff: FlatFlows, d: npt.NDArray[np.float64], g: npt.NDArray[np.float64],
+               dv: npt.NDArray[np.float64]) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """ Dirty prices (n_bonds,) and their Jacobian (n_bonds, n_params), given the discount factors d at
+        ff.times and their derivatives in factored form dDF/dparams = g[:, None] * dv.
+        P = S / D_settle, S = sum a DF; the flow sums dS = A diag(a g) dv go through a sparse matrix """
+    n = ff.n_flows
+    p = prices_from_discounts(ff, d)
+    agg = sps.csr_matrix((ff.amounts * g[:n], np.arange(n), np.append(ff.starts, n)), shape=(ff.n_bonds, n))
+    ds = agg @ dv[:n]
+    dd_settle = g[n:, None] * dv[n:]
+    return p, (ds - p[:, None] * dd_settle) / d[n:, None]
 
 
 if __name__ == "__main__":

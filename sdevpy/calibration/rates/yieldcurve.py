@@ -16,6 +16,7 @@
 from pathlib import Path
 import datetime as dt
 import numpy as np
+import numpy.typing as npt
 from abc import ABC, abstractmethod
 from enum import Enum
 from sdevpy.utilities import dates as dts
@@ -150,6 +151,26 @@ class InterpolatedYieldCurve(YieldCurve):
 
         if self.interp is None:
             raise RuntimeError("Failure to set curve interpolation")
+
+    def set_nodes(self, times: npt.NDArray[np.float64], values: npt.NDArray[np.float64]) -> None:
+        """ Fast path for fitters: node values in the interpolation variable at fixed model times """
+        match self.interp_var:
+            case YieldCurveVariable.ZERORATE:
+                self.interp.set_data(times, values)
+            case YieldCurveVariable.DISCOUNT:
+                self.interp.set_data(np.concatenate(([0.0], times)), np.concatenate(([1.0], values)))
+            case YieldCurveVariable.LOGDISCOUNT:
+                self.interp.set_data(np.concatenate(([0.0], times)), np.concatenate(([0.0], values)))
+
+    def node_values(self, times: npt.NDArray[np.float64], dfs: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
+        """ Discount factors at node times -> node values in the curve's interpolation variable """
+        match self.interp_var:
+            case YieldCurveVariable.ZERORATE:
+                return -np.log(dfs) / times
+            case YieldCurveVariable.DISCOUNT:
+                return np.asarray(dfs, dtype=float)
+            case YieldCurveVariable.LOGDISCOUNT:
+                return np.log(dfs)
 
     def dump_data(self):
         data = {'name': self.name, 'valdate': self.valdate.strftime(dts.DATETIME_FORMAT),
