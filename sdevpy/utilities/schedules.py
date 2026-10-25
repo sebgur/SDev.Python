@@ -2,7 +2,6 @@ import datetime as dt
 from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
-# import pandas as pd
 from sdevpy.utilities.scalendar import BDC, Period, make_calendar, is_eom, to_eom
 from sdevpy.utilities.sdaycount import DayCount, yearfraction, icma_yearfraction
 from sdevpy.utilities import timegrids
@@ -164,9 +163,9 @@ class SwapScheduler:
 
 
 def make_swap_scheduler(start: dt.date, end: dt.date, conv: SwapConvention, **kwargs) -> SwapScheduler:
-    """ Swap between explicit (unadjusted) start and end dates. kwargs go to both legs (see make_leg_scheduler) """
+    """ Swap between explicit (unadjusted) start and end dates. kwargs go to both legs (see make_leg_schedule) """
     return SwapScheduler(make_leg_schedule(start, end, conv.fixed, **kwargs),
-                        make_leg_schedule(start, end, conv.floating, **kwargs), conv)
+                         make_leg_schedule(start, end, conv.floating, **kwargs), conv)
 
 
 def make_spot_swap_scheduler(trade_date: dt.date, tenor: str, conv: SwapConvention, forward: str | None = None,
