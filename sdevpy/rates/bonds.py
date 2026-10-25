@@ -5,7 +5,8 @@ import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sps
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.schedules import BondScheduler, to_date
+from sdevpy.utilities.schedules import BondScheduler, to_date, LegConvention, coupons_per_year, make_bond_scheduler
+
 
 DiscountFunction = Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
 
@@ -115,7 +116,8 @@ def dv01(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> f
     return modified_duration(bf, coupon, y, redemption) * dirty_from_yield(bf, coupon, y, redemption) * 1e-4
 
 
-def dirty_from_zspread(bf: BondFlows, coupon: float, df: DiscountFunction, z: float, redemption: float = 100.0) -> float:
+def dirty_from_zspread(bf: BondFlows, coupon: float, df: DiscountFunction, z: float,
+                       redemption: float = 100.0) -> float:
     """ Curve price with a constant continuously-compounded spread z over the curve's zero rates """
     if bf.pay_times is None:
         raise ValueError("BondFlows built without valdate: no times for curve pricing")
@@ -139,6 +141,32 @@ def z_spread(bf: BondFlows, coupon: float, dirty: float, df: DiscountFunction, r
         if abs(step) < tol:
             return float(z)
     raise RuntimeError("Z-spread did not converge")
+
+
+def convert_yield(y: float, from_frequency: int, to_frequency: int) -> float:
+    """ Same yield under another compounding frequency: (1 + y1/f1)^f1 = (1 + y2/f2)^f2 """
+    if from_frequency == to_frequency:
+        return y
+    return to_frequency * ((1.0 + y / from_frequency) ** (from_frequency / to_frequency) - 1.0)
+
+
+def par_yield(maturity: dt.date, settlement: dt.date, conv: LegConvention, df: DiscountFunction,
+              valdate: dt.datetime) -> float:
+    """ Yield of a hypothetical bond with conventions conv, issued at settlement and maturing on maturity
+        (short first coupon), whose coupon prices it at par on the curve """
+    bond = make_bond_scheduler(to_date(settlement), to_date(maturity), conv)
+    bf = bond_flows(bond, settlement, valdate)
+    c = par_coupon(bf, df)
+    return yield_from_dirty(bf, c, 100.0, guess=c)
+
+
+def g_spread(bf: BondFlows, coupon: float, dirty: float, df: DiscountFunction, maturity: dt.date,
+             gov_conv: LegConvention, valdate: dt.datetime, redemption: float = 100.0) -> float:
+    """ Bond yield minus the government par yield at the bond's maturity, both in the government's compounding
+        (e.g. semi-annual for UST). df: the government curve """
+    gov_par = par_yield(maturity, bf.settlement, gov_conv, df, valdate)
+    y = yield_from_dirty(bf, coupon, dirty, redemption)
+    return convert_yield(y, bf.frequency, coupons_per_year(gov_conv.frequency)) - gov_par
 
 
 ###################### FOR CURVE CONSTRUCTION #########################################################################

@@ -11,7 +11,8 @@ from sdevpy.rates.bondquotes import QuoteType, BondQuote, bill_flows, discount_r
 from sdevpy.calibration.rates.yieldcurve import InterpolatedYieldCurve
 from sdevpy.maths.leastsquares import create_lsq_solver
 from sdevpy.rates.bonds import dirty_prices
-from sdevpy.calibration.bonds.bondcurve import fit_bond_curve
+from sdevpy.calibration.bonds.bondcurve import fit_bond_curve, default_nodes
+from sdevpy.rates.syntheticbonds import sample_bond_universe
 
 
 VALDATE = dt.datetime(2026, 10, 26)
@@ -20,6 +21,7 @@ UST = LegConvention('6M', DayCount.ACTACT_ICMA, 'USD', bdc=BDC.F, adjust_accrual
 TENORS = [0.25, 0.5, 1, 2, 3, 5, 7, 10, 20, 30.5]
 NODE_DATES = [VALDATE + dt.timedelta(days=round(365 * x)) for x in TENORS]
 NODE_TIMES = timegrids.model_time(VALDATE, NODE_DATES)
+PER_END = ('not-a-knot', 'natural')
 
 
 def true_curve(interp_var='zerorate', interp_type='cubicspline'):
@@ -58,7 +60,7 @@ def make_quotes(df, noise=0.0, seed=1):
 def test_exact_recovery(var, itype):
     """ Quotes generated on a curve of the fitted family: the fit recovers its node discount factors """
     truth = true_curve(var, itype)
-    fit = fit_bond_curve(make_quotes(truth.discount_float), VALDATE, NODE_DATES, var, itype)
+    fit = fit_bond_curve(make_quotes(truth.discount_float), VALDATE, NODE_DATES, var, itype, bc_type=None)
     assert fit.result.success
     np.testing.assert_allclose(fit.curve.dfs, truth.dfs, rtol=0, atol=1e-10)
     assert np.max(np.abs(fit.residuals)) < 1e-6
@@ -103,7 +105,8 @@ def test_bounds():
     """ Cap all zero rates at 4%: the binding nodes sit on the bound """
     quotes = make_quotes(true_curve().discount_float)
     n = len(NODE_DATES)
-    fit = fit_bond_curve(quotes, VALDATE, NODE_DATES, bounds=opt.Bounds(np.zeros(n), np.full(n, 0.04)))
+    fit = fit_bond_curve(quotes, VALDATE, NODE_DATES, interp_var='zerorate',
+                         bounds=opt.Bounds(np.zeros(n), np.full(n, 0.04)))
     zr = -np.log(fit.curve.dfs) / NODE_TIMES
     assert np.all(zr <= 0.04 + 1e-12)
     assert np.max(zr) == pytest.approx(0.04, abs=1e-10)
@@ -116,3 +119,26 @@ def test_invalid_inputs():
     no_valdate = [BondQuote(bill_flows(dt.date(2027, 1, 26), SETTLE), 0.0, QuoteType.DISCOUNT, 0.04)]
     with pytest.raises(ValueError):
         fit_bond_curve(no_valdate, VALDATE, NODE_DATES)
+
+
+def test_fit_default_long_end():
+    """ Default fit (log-DF, per-end spline): forwards within 1bp of the truth, flat at the last node """
+    u = sample_bond_universe(VALDATE, seed=42)
+    nodes = default_nodes(VALDATE, u['quotes'])
+    fit = fit_bond_curve(u['quotes'], VALDATE, nodes)
+    assert fit.curve.bc_type == PER_END
+    h, T = 1 / 12, fit.node_times[-1]
+    t = np.linspace(h, T - h / 2, 300)
+    fwd = -np.log(fit.curve.discount_float(t + h / 2) / fit.curve.discount_float(t - h / 2)) / h
+    true = -np.log(u['target_curve'](t + h / 2) / u['target_curve'](t - h / 2)) / h
+    assert 1e4 * np.max(np.abs(fwd - true)) < 1.5
+    assert 1e4 * np.max(np.abs(fwd - true)[t > 20]) < 1.0
+
+
+@pytest.mark.parametrize("interp_var, interp_type", [('zerorate', 'cubicspline-linear'), ('logdiscount', 'pchip-linear'),
+                                                     ('logdiscount', 'linear-linear')])
+def test_fit_auto_bc_elsewhere(interp_var, interp_type):
+    u = sample_bond_universe(VALDATE, seed=42)
+    fit = fit_bond_curve(u['quotes'], VALDATE, default_nodes(VALDATE, u['quotes']), interp_var, interp_type)
+    assert fit.curve.bc_type is None
+    assert fit.result.success

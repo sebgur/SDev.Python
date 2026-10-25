@@ -5,6 +5,25 @@ from sdevpy.utilities import timegrids as tg
 from sdevpy.pricingcontext import default_calibration_repository
 from sdevpy.calibration.rates import yieldcurve as ycrv
 from sdevpy.calibration.rates.yieldcurve import InterpolatedYieldCurve
+from sdevpy.calibration.rates.curvebasis import CurveBasis
+
+
+VALDATE = dt.datetime(2025, 12, 15)
+DATES = [VALDATE + dt.timedelta(days=round(365 * x)) for x in [0.5, 1, 2, 5, 10, 20, 30]]
+TIMES = tg.model_time(VALDATE, DATES)
+DFS = np.exp(-(0.036 + 0.012 * (1 - np.exp(-TIMES / 4))) * TIMES)
+PER_END = ('not-a-knot', 'natural')
+
+
+def make_curve(**kwargs):
+    curve = InterpolatedYieldCurve(valdate=VALDATE, **kwargs)
+    curve.set_data(DATES, DFS)
+    return curve
+
+
+def log_df_second_derivative(curve, t, e=1e-4):
+    return (np.log(curve.discount_float(t + e)) - 2 * np.log(curve.discount_float(t))
+            + np.log(curve.discount_float(t - e))) / e ** 2
 
 
 def _make_curve(interp_var='zerorate', interp_type='linear'):
@@ -123,6 +142,47 @@ def test_yieldcurve_unsorted():
                   dt.datetime(2046, 2, 15)]
 
     assert np.allclose(curve_direct.discount(test_dates), curve_reverse.discount(test_dates), rtol=0.0, atol=1e-8)
+
+
+def test_per_end_conditions_applied():
+    """ Natural end: log-DF'' = 0 at the last node (flat forward); not-a-knot start: log-DF'' free at t = 0 """
+    per_end = make_curve(interp_var='logdiscount', interp_type='cubicspline-linear', bc_type=PER_END)
+    natural = make_curve(interp_var='logdiscount', interp_type='cubicspline-linear')
+    assert abs(log_df_second_derivative(per_end, TIMES[-1] - 1e-3)) < 1e-5
+    assert abs(log_df_second_derivative(natural, 1e-4)) < 1e-5
+    assert abs(log_df_second_derivative(per_end, 1e-4)) > 1e-4
+    np.testing.assert_allclose(per_end.discount_float(TIMES), DFS, rtol=0, atol=1e-14)  # still through the nodes
+
+
+def test_default_unchanged():
+    """ No bc_type: zero-rate cubic spline with flat extrapolation stays clamped (z' = 0 at the ends) """
+    curve = make_curve(interp_var='zerorate', interp_type='cubicspline')
+    assert curve.bc_type is None
+    z = lambda t: -np.log(curve.discount_float(t)) / t
+    assert abs((z(TIMES[-1]) - z(TIMES[-1] - 1e-4)) / 1e-4) < 1e-6
+
+
+def test_bc_type_only_for_cubic_spline():
+    with pytest.raises(ValueError):
+        InterpolatedYieldCurve(valdate=VALDATE, interp_var='logdiscount', interp_type='pchip-linear', bc_type=PER_END)
+
+
+@pytest.mark.parametrize("bc_type", [None, PER_END, ((1, 0.0), 'natural')])
+def test_dump_and_reload(tmp_path, bc_type):
+    curve = make_curve(interp_var='logdiscount', interp_type='cubicspline-linear', bc_type=bc_type)
+    file = tmp_path / 'curve.json'
+    curve.dump(str(file))
+    loaded = ycrv.yieldcurve_from_file(file)
+    assert loaded.bc_type == curve.bc_type
+    t = np.linspace(0.01, 35.0, 200)
+    np.testing.assert_allclose(loaded.discount_float(t), curve.discount_float(t), rtol=0, atol=1e-15)
+    assert ('bc_type' in curve.dump_data()) == (bc_type is not None)  # files without bc_type unchanged
+
+
+def test_basis_stays_linear():
+    curve = InterpolatedYieldCurve(valdate=VALDATE, interp_var='logdiscount', interp_type='cubicspline-linear',
+                                   bc_type=PER_END)
+    assert CurveBasis(curve, TIMES, np.linspace(0.0, 30.0, 50)).linear
 
 
 if __name__ == "__main__":

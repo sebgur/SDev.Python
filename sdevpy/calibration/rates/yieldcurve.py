@@ -25,6 +25,11 @@ from sdevpy.utilities import jsonmanager as jsm
 from sdevpy.maths import interpolation as itp
 
 
+def _as_bc_type(bc):
+    """ JSON turns tuples into lists: back to (nested) tuples """
+    return tuple(_as_bc_type(b) for b in bc) if isinstance(bc, (list, tuple)) else bc
+
+
 class YieldCurve(ABC):
     def __init__(self, **kwargs):
         self.valdate = kwargs.get('valdate', None)
@@ -54,6 +59,7 @@ class InterpolatedYieldCurve(YieldCurve):
         self.dates, self.dfs = None, None
         self.interp_var_str = kwargs.get('interp_var', 'zerorate')
         self.interp_type = kwargs.get('interp_type', 'cubicspline')
+        self.bc_type = _as_bc_type(kwargs.get('bc_type', None)) # Cubicspline end conditions, None=scheme default
         self.interp_var, self.interp = None, None
         self.set_interpolation()
 
@@ -121,18 +127,24 @@ class InterpolatedYieldCurve(YieldCurve):
         # Set interpolation
         interp, _, extrap = self.interp_type.lower().partition('-')
         interp, extrap = interp.strip(), extrap.strip()
+        if self.bc_type is not None and interp != 'cubicspline':
+            raise ValueError(f"bc_type only applies to cubicspline, not {interp}")
+
+        bc_kwargs = {} if self.bc_type is None else {'bc_type': self.bc_type}
+
         if self.interp_var == YieldCurveVariable.ZERORATE:
             extrap = extrap or 'flat'
             match interp:
                 case 'linear' | 'bspline' | 'pchip' | 'akima':
                     self.interp = itp.create_interpolation(interp=interp, l_extrap=extrap, r_extrap=extrap)
                 case 'cubicspline':
-                    if extrap == 'flat':
+                    if extrap == 'flat' and self.bc_type is None:
                         # Use clamped spline to arrive smoothly at flat junctions
                         self.interp = itp.create_interpolation(interp=interp, l_extrap='flat', r_extrap='flat',
                                                                bc_type='clamped')
                     else:
-                        self.interp = itp.create_interpolation(interp=interp, l_extrap=extrap, r_extrap=extrap)
+                        self.interp = itp.create_interpolation(interp=interp, l_extrap=extrap, r_extrap=extrap,
+                                                               **bc_kwargs)
                 case _:
                     raise RuntimeError(f"Unsupported scheme: {self.interp_type}")
         elif self.interp_var in [YieldCurveVariable.DISCOUNT, YieldCurveVariable.LOGDISCOUNT]:
@@ -143,7 +155,8 @@ class InterpolatedYieldCurve(YieldCurve):
 
             match interp:
                 case 'linear' | 'bspline' | 'pchip' | 'akima' | 'cubicspline':
-                    self.interp = itp.create_interpolation(interp=interp, l_extrap='none', r_extrap=extrap)
+                    self.interp = itp.create_interpolation(interp=interp, l_extrap='none', r_extrap=extrap,
+                                                           **bc_kwargs)
                 case _:
                     raise RuntimeError(f"Unsupported scheme: {self.interp_type}")
         else:
@@ -176,6 +189,8 @@ class InterpolatedYieldCurve(YieldCurve):
         data = {'name': self.name, 'valdate': self.valdate.strftime(dts.DATETIME_FORMAT),
                 'snapdate': self.snapdate.strftime(dts.DATETIME_FORMAT),
                 'interp_var': self.interp_var_str, 'interp_type': self.interp_type}
+        if self.bc_type is not None:
+            data['bc_type'] = self.bc_type
 
         pillars = []
         for expiry, df in zip(self.dates, self.dfs, strict=True):
@@ -201,11 +216,12 @@ def yieldcurve_from_file(file: str|Path) -> InterpolatedYieldCurve:
     snapdate = dt.datetime.strptime(data.get('snapdate'), dts.DATETIME_FORMAT)
     interp_var = data.get('interp_var')
     interp_type = data.get('interp_type')
+    bc_type = data.get('bc_type')
     pillars = data.get('pillars')
 
     valdate = dt.datetime.strptime(valdate, dts.DATETIME_FORMAT)
     curve = InterpolatedYieldCurve(valdate=valdate, interp_var=interp_var, interp_type=interp_type,
-                                   name=name, snapdate=snapdate)
+                                   name=name, snapdate=snapdate, bc_type=bc_type)
 
     # Read pillar data
     pillar_dates, pillar_dfs = [], []

@@ -9,3 +9,11 @@ def rebonato(v: npt.ArrayLike) -> npt.ArrayLike:
     b = -0.01
     tau = 5.0
     return ainf + (b * v + a0 - ainf) * np.exp(-v / tau)
+
+
+def nelson_siegel(t: npt.ArrayLike, b0: npt.ArrayLike, b1: npt.ArrayLike, b2: npt.ArrayLike,
+                  tau: npt.ArrayLike) -> npt.ArrayLike:
+    """ Nelson-Siegel zero-rate """
+    x = np.maximum(t, 1e-8) / tau
+    f = (1.0 - np.exp(-x)) / x
+    return b0 + b1 * f + b2 * (f - np.exp(-x))

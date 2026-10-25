@@ -97,6 +97,14 @@ def parse_32nds(quote: str) -> float:
     return int(handle) + frac / 32.0
 
 
+def to_32nds(price: float) -> str:
+    """ Price to the nearest 1/4 of a 32nd, Treasury style: 99-16+ = 99 + 16.5/32, 99-162 = 99 + 16.25/32 """
+    q = round(price * 128)  # quarters of 32nds
+    handle, ticks = divmod(q, 128)
+    whole, frac = divmod(ticks, 4)
+    return f"{handle}-{whole:02d}" + {0: '', 1: '2', 2: '+', 3: '6'}[frac]
+
+
 if __name__ == "__main__":
     from sdevpy.utilities.scalendar import BDC
     from sdevpy.utilities.sdaycount import DayCount

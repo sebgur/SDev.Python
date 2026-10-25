@@ -20,7 +20,9 @@ above: Claude may create and edit `.py` files there. Refer to them with project-
 Auto memory is not used. Durable preferences live in this file; when asked to remember something, add it here.
 
 ## Coding Habits and Guidelines
-- When using the zip() method, whenever correct to do so, specify the argument 'strict=True' as recommended by Ruff.
+- When using the zip() method, whenever correct to do so, specify the argument 'strict=True'
+- Always use lower case variables in functions (N806)
+- Make sure you respect the line lengths (E501) given the line-length in pyproject.toml
 
 ## Code Review Rules
 - Before reporting any issue, read the exact file and line number directly with the Read tool.

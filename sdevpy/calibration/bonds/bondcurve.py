@@ -40,7 +40,8 @@ class BondCurveFit:
 
 
 def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates: Sequence[dt.datetime],
-                   interp_var: str = 'zerorate', interp_type: str = 'cubicspline-linear',
+                   interp_var: str = 'logdiscount', interp_type: str = 'cubicspline-linear',
+                   bc_type: str|tuple|None='auto',
                    solver: LeastSquaresSolver | str = 'trf', weights: str | npt.ArrayLike | None = 'dv01',
                    y0: npt.ArrayLike | None = None, initial_rate: float = 0.03, bounds: opt.Bounds | None = None,
                    constraints: Sequence[Constraint | ForwardFloor] = (), penalty: SmoothnessPenalty | None = None,
@@ -49,7 +50,9 @@ def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates
         quotes: flows built with this valdate. weights: 'dv01' (1/DV01: residuals ~ yield errors in bp),
         None (price errors) or one weight per quote. y0: initial node values, default a flat initial_rate
         zero curve. bounds/constraints: on the node values, passed to the solver; curve constraints such as
-        ForwardFloor are built on the fitted curve. penalty: smoothness rows appended to the residuals """
+        ForwardFloor are built on the fitted curve. penalty: smoothness rows appended to the residuals.
+        bc_type: cubic spline end conditions (start, end). 'auto': ('not-a-knot', 'natural') for a log-discount
+        cube spline, i.e. a flat forward at the long end and no condition at t = 0, scheme default otherwise. """
     quotes = list(quotes)
     if any(q.flows.pay_times is None for q in quotes):
         raise ValueError("Quotes with flows built without valdate: no times for curve pricing")
@@ -67,7 +70,12 @@ def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates
         w = np.broadcast_to(np.asarray(weights, dtype=float), (len(quotes),))
 
     # Curve and its basis at the distinct flow and settlement times
-    curve = InterpolatedYieldCurve(valdate=valdate, interp_var=interp_var, interp_type=interp_type, name=name)
+    if bc_type == 'auto':
+        spline_logdf = interp_var == 'logdiscount' and interp_type.startswith('cubicspline')
+        bc_type = ('not-a-knot', 'natural') if spline_logdf else None
+
+    curve = InterpolatedYieldCurve(valdate=valdate, interp_var=interp_var, interp_type=interp_type, bc_type=bc_type,
+                                   name=name)
     node_times = np.asarray(timegrids.model_time(valdate, list(node_dates)), dtype=float)
     if np.any(np.diff(node_times) <= 0) or node_times[0] <= 0:
         raise ValueError("Node dates must be increasing and after valdate")
