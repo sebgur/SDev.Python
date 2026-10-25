@@ -1,5 +1,6 @@
 import datetime as dt
 import numpy as np
+import dataclasses
 import pytest
 from sdevpy.utilities import schedules as sch
 from sdevpy.utilities import timegrids
@@ -15,6 +16,7 @@ from sdevpy.calibration.rates import yieldcurve as ycrv
 from sdevpy.conventions.bondconventions import UST, GILT
 
 
+COMPOUND = dataclasses.replace(UST, simple_final_period=False)
 VALDATEOLD = dt.datetime(2025, 12, 15)
 SETTLE = dt.date(2025, 12, 16)
 CORP = BondConvention(LegConvention('1Y', DayCount.D30_360, 'USD', bdc=BDC.F, adjust_accrual=False))
@@ -24,6 +26,21 @@ VALDATE = dt.datetime(2026, 10, 26)
 # GILT = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False)
 BOND = sch.make_bond_scheduler(dt.date(2026, 2, 15), dt.date(2036, 2, 15), UST)
 COUPON = 0.04
+
+
+def final_period_note(conv=UST):
+    """ 4.25% 15-Feb-2026 on 16-Dec-2025: only the last coupon left, 61 of the 184 days of the period to run """
+    return bonds.bond_flows(sch.make_bond_scheduler(dt.date(2023, 2, 15), dt.date(2026, 2, 15), conv), SETTLE, VALDATE)
+
+
+def test_treasury_formula():
+    """ Dirty price = (100 + C/2) / (1 + (r/s) y/2), r = days to maturity, s = days in the period """
+    bf = final_period_note()
+    assert bf.simple_flows.tolist() == [True]
+    assert bonds.dirty_from_yield(bf, 0.0425, 0.04) == pytest.approx(102.125 / (1 + 0.02 * 61 / 184), abs=1e-12)
+    compound = final_period_note(COMPOUND)
+    assert not compound.simple_flows.any()
+    assert bonds.dirty_from_yield(compound, 0.0425, 0.04) == pytest.approx(102.125 * 1.02 ** (-61 / 184), abs=1e-12)
 
 
 def gov_df(t):
@@ -211,3 +228,47 @@ def test_g_spread_of_corporate():
                    maturity, UST, VALDATEOLD) for z in (0.005, 0.01, 0.02)]
     assert gs[0] < gs[1] < gs[2]
     assert gs[1] == pytest.approx(0.01, abs=5e-4)  # cc spread vs semi-annual yield spread
+
+
+@pytest.mark.parametrize("conv", [UST, COMPOUND])
+def test_yield_round_trip(conv):
+    bf = final_period_note(conv)
+    dirty = bonds.dirty_from_yield(bf, 0.0425, 0.04)
+    assert bonds.yield_from_dirty(bf, 0.0425, dirty) == pytest.approx(0.04, abs=1e-13)
+
+
+def test_more_than_one_coupon_left_is_compound():
+    """ Same note one period earlier (two coupons left): the convention changes nothing """
+    for conv in (UST, COMPOUND):
+        bf = bonds.bond_flows(sch.make_bond_scheduler(dt.date(2023, 2, 15), dt.date(2026, 2, 15), conv),
+                              dt.date(2025, 6, 16), dt.datetime(2025, 6, 13))
+        assert not bf.simple_flows.any()
+        assert bonds.dirty_from_yield(bf, 0.0425, 0.04) == pytest.approx(
+            float(np.sum(bonds.cashflows(bf, 0.0425) * 1.02 ** -bf.periods)), abs=1e-12)
+
+
+@pytest.mark.parametrize("conv", [UST, COMPOUND])
+def test_risk_matches_finite_differences(conv):
+    bf, c, y, h = final_period_note(conv), 0.0425, 0.04, 1e-5
+    p = lambda yy: bonds.dirty_from_yield(bf, c, yy)
+    assert bonds.modified_duration(bf, c, y) == pytest.approx(-(p(y + h) - p(y - h)) / (2 * h) / p(y), rel=1e-8)
+    h2 = 1e-3  # second difference: larger step, rounding dominates at 1e-5
+    assert bonds.convexity(bf, c, y) == pytest.approx((p(y + h2) - 2 * p(y) + p(y - h2)) / h2 ** 2 / p(y), rel=1e-6)
+    assert bonds.dv01(bf, c, y) == pytest.approx(bonds.modified_duration(bf, c, y) * p(y) * 1e-4, rel=1e-14)
+    assert bonds.macaulay_duration(bf, c, y) == pytest.approx(61 / 184 / 2, abs=1e-14)  # one flow: time to it
+
+
+def test_vectorized_matches_single_bond():
+    """ Mix of final-period (simple), compound final-period and long bonds """
+    long_bond = bonds.bond_flows(sch.make_bond_scheduler(dt.date(2025, 11, 15), dt.date(2035, 11, 15), UST),
+                                 SETTLE, VALDATEOLD)
+    flows, coupons = [final_period_note(), final_period_note(COMPOUND), long_bond], [0.0425, 0.0425, 0.04]
+    ff = bonds.flatten(flows, coupons)
+    assert ff.simple.tolist() == [True, False] + [False] * len(long_bond.periods)
+    y = np.array([0.04, 0.041, 0.043])
+    dirty = bonds.dirty_from_yields(ff, y)
+    np.testing.assert_allclose(dirty, [bonds.dirty_from_yield(bf, c, yi) for bf, c, yi in zip(flows, coupons, y, strict=True)],
+                               rtol=0, atol=1e-12)
+    np.testing.assert_allclose(bonds.yields_from_dirty(ff, dirty), y, rtol=0, atol=1e-13)
+    np.testing.assert_allclose(bonds.dv01s(ff, y), [bonds.dv01(bf, c, yi) for bf, c, yi in zip(flows, coupons, y, strict=True)],
+                               rtol=1e-13)

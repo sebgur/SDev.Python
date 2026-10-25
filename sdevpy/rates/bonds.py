@@ -22,6 +22,12 @@ class BondFlows:
     frequency: int  # coupons per year
     pay_times: npt.NDArray[np.float64] | None = None  # model times from valdate (curve pricing only)
     settle_time: float | None = None
+    simple_final_period: bool = False  # simple-interest yield when only the last coupon is left
+
+    @property
+    def simple_flows(self) -> npt.NDArray[np.bool_]:
+        """ Flows discounted at simple interest in the yield formulas: the last one, in the final period """
+        return np.full(len(self.periods), self.simple_final_period and len(self.periods) == 1)
 
 
 def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | None = None) -> BondFlows:
@@ -43,7 +49,8 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
     if valdate is not None:
         pay_times = timegrids.model_time(valdate, payment)
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
-    return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time)
+    return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time,
+                     bond.conv.simple_final_period)
 
 
 def cashflows(bf: BondFlows, coupon: float, redemption: float = 100.0) -> npt.NDArray[np.float64]:
@@ -57,20 +64,38 @@ def accrued_interest(bf: BondFlows, coupon: float) -> float:
     return 100.0 * coupon * bf.accrued_fraction
 
 
+def _yield_discount(tau, f, y, simple):
+    """ Street-convention discount factor of each flow at yield y and its first two derivatives in y:
+        (1 + y/f)^-tau, or 1 / (1 + y tau/f) where simple. Scalars or arrays (one entry per flow) """
+    base = 1.0 + y / f
+    v = base ** -tau
+    dv = -tau / f * v / base
+    d2v = tau * (tau + 1.0) / (f * f) * v / (base * base)
+    if np.any(simple):
+        a = tau / f
+        vs = 1.0 / (1.0 + a * y)
+        v = np.where(simple, vs, v)
+        dv = np.where(simple, -a * vs ** 2, dv)
+        d2v = np.where(simple, 2.0 * a * a * vs ** 3, d2v)
+    return v, dv, d2v
+
+
 def dirty_from_yield(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> float:
-    """ Street convention: each cash flow discounted at (1 + y/f) per coupon period """
-    return float(np.sum(cashflows(bf, coupon, redemption) * (1.0 + y / bf.frequency) ** -bf.periods))
+    """ Street convention: each cash flow discounted at (1 + y/f) per coupon period, at simple interest
+        in the final coupon period when the bond's convention says so """
+    v = _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)[0]
+    return float(np.sum(cashflows(bf, coupon, redemption) * v))
 
 
 def yield_from_dirty(bf: BondFlows, coupon: float, dirty: float, redemption: float = 100.0,
                      guess: float = 0.05, tol: float = 1e-12, max_iter: int = 50) -> float:
     """ Yield to maturity from dirty price (Newton) """
-    amounts, f, tau = cashflows(bf, coupon, redemption), bf.frequency, bf.periods
+    amounts, simple = cashflows(bf, coupon, redemption), bf.simple_flows
     y = guess
     for _ in range(max_iter):
-        v = (1.0 + y / f) ** -tau
+        v, dv, _ = _yield_discount(bf.periods, bf.frequency, y, simple)
         err = np.sum(amounts * v) - dirty
-        deriv = -np.sum(amounts * tau / f * v / (1.0 + y / f))
+        deriv = np.sum(amounts * dv)
         step = err / deriv
         y -= step
         if abs(step) < tol:
@@ -95,20 +120,22 @@ def par_coupon(bf: BondFlows, df: DiscountFunction, redemption: float = 100.0) -
 
 def macaulay_duration(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> float:
     """ PV-weighted average time to the cash flows, in years (street-convention yield discounting) """
-    pv = cashflows(bf, coupon, redemption) * (1.0 + y / bf.frequency) ** -bf.periods
+    pv = cashflows(bf, coupon, redemption) * _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)[0]
     return float(np.sum(pv * bf.periods) / np.sum(pv) / bf.frequency)
 
 
 def modified_duration(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> float:
     """ -(1/P) dP/dy: relative price change per unit change in yield """
-    return macaulay_duration(bf, coupon, y, redemption) / (1.0 + y / bf.frequency)
+    amounts = cashflows(bf, coupon, redemption)
+    v, dv, _ = _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)
+    return float(-np.sum(amounts * dv) / np.sum(amounts * v))
 
 
 def convexity(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> float:
     """ (1/P) d2P/dy2 """
-    f = bf.frequency
-    pv = cashflows(bf, coupon, redemption) * (1.0 + y / f) ** -bf.periods
-    return float(np.sum(pv * bf.periods * (bf.periods + 1.0)) / (f * f * (1.0 + y / f) ** 2) / np.sum(pv))
+    amounts = cashflows(bf, coupon, redemption)
+    v, _, d2v = _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)
+    return float(np.sum(amounts * d2v) / np.sum(amounts * v))
 
 
 def dv01(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0) -> float:
@@ -183,6 +210,7 @@ class FlatFlows:
     settle_index: npt.NDArray[np.intp]  # (n,) index in times of each bond's settlement time
     periods: npt.NDArray[np.float64]  # (N,) coupon periods from settlement (street-yield exponents)
     frequency: npt.NDArray[np.float64]  # (n,) coupons per year
+    simple: npt.NDArray[np.bool_]  # (N,) flows discounted at simple interest in the yield formulas
 
     @property
     def n_bonds(self) -> int:
@@ -210,25 +238,25 @@ def flatten(flows: list[BondFlows], coupons: npt.ArrayLike, redemptions: npt.Arr
     n = len(amounts)
     periods = np.concatenate([bf.periods for bf in flows])
     frequency = np.array([bf.frequency for bf in flows], dtype=float)
-    return FlatFlows(times, amounts, starts, owner, index[:n], index[n:], periods, frequency)
+    simple = np.concatenate([bf.simple_flows for bf in flows])
+    return FlatFlows(times, amounts, starts, owner, index[:n], index[n:], periods, frequency, simple)
 
 
 def dirty_from_yields(ff: FlatFlows, y: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """ Street-convention dirty prices of all bonds from their yields """
-    f = ff.frequency[ff.owner]
-    return np.add.reduceat(ff.amounts * (1.0 + y[ff.owner] / f) ** -ff.periods, ff.starts)
+    v = _yield_discount(ff.periods, ff.frequency[ff.owner], y[ff.owner], ff.simple)[0]
+    return np.add.reduceat(ff.amounts * v, ff.starts)
 
 
 def yields_from_dirty(ff: FlatFlows, dirty: npt.NDArray[np.float64], guess: float = 0.05, tol: float = 1e-12,
                       max_iter: int = 50) -> npt.NDArray[np.float64]:
     """ Street-convention yields of all bonds from their dirty prices (Newton, all bonds at once) """
-    f, tau = ff.frequency[ff.owner], ff.periods
+    f = ff.frequency[ff.owner]
     y = np.full(ff.n_bonds, guess)
     for _ in range(max_iter):
-        base = 1.0 + y[ff.owner] / f
-        v = ff.amounts * base ** -tau
-        err = np.add.reduceat(v, ff.starts) - dirty
-        deriv = -np.add.reduceat(v * tau / (f * base), ff.starts)
+        v, dv, _ = _yield_discount(ff.periods, f, y[ff.owner], ff.simple)
+        err = np.add.reduceat(ff.amounts * v, ff.starts) - dirty
+        deriv = np.add.reduceat(ff.amounts * dv, ff.starts)
         step = err / deriv
         y -= step
         if np.max(np.abs(step)) < tol:
@@ -238,9 +266,8 @@ def yields_from_dirty(ff: FlatFlows, dirty: npt.NDArray[np.float64], guess: floa
 
 def dv01s(ff: FlatFlows, y: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """ Dirty price gain (per 100 notional) for a 1bp fall in yield, all bonds """
-    f = ff.frequency[ff.owner]
-    base = 1.0 + y[ff.owner] / f
-    return 1e-4 * np.add.reduceat(ff.amounts * base ** -ff.periods * ff.periods / (f * base), ff.starts)
+    dv = _yield_discount(ff.periods, ff.frequency[ff.owner], y[ff.owner], ff.simple)[1]
+    return -1e-4 * np.add.reduceat(ff.amounts * dv, ff.starts)
 
 
 def dirty_prices(ff: FlatFlows, df: DiscountFunction) -> npt.NDArray[np.float64]:
