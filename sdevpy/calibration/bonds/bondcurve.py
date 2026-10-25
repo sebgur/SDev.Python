@@ -10,6 +10,7 @@ from sdevpy.utilities import timegrids
 from sdevpy.maths.leastsquares import LeastSquaresProblem, LeastSquaresSolver, FitResult, Constraint, create_lsq_solver
 from sdevpy.calibration.rates.yieldcurve import InterpolatedYieldCurve
 from sdevpy.calibration.rates.curvebasis import CurveBasis
+from sdevpy.calibration.rates.curveterms import SmoothnessPenalty, ForwardFloor
 from sdevpy.rates.bondquotes import BondQuote, target_dirty
 from sdevpy.rates.bonds import FlatFlows, flatten, prices_jac, yields_from_dirty, dv01s
 log = logging.getLogger(__name__)
@@ -39,14 +40,16 @@ class BondCurveFit:
 
 
 def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates: Sequence[dt.datetime],
-                   interp_var: str = 'zerorate', interp_type: str = 'cubicspline',
+                   interp_var: str = 'zerorate', interp_type: str = 'cubicspline-linear',
                    solver: LeastSquaresSolver | str = 'trf', weights: str | npt.ArrayLike | None = 'dv01',
                    y0: npt.ArrayLike | None = None, initial_rate: float = 0.03, bounds: opt.Bounds | None = None,
-                   constraints: Sequence[Constraint] = (), name: str = '') -> BondCurveFit:
+                   constraints: Sequence[Constraint | ForwardFloor] = (), penalty: SmoothnessPenalty | None = None,
+                   name: str = '') -> BondCurveFit:
     """ Fit the curve's node values (in its interpolation variable, at node_dates) to the quotes' dirty prices.
         quotes: flows built with this valdate. weights: 'dv01' (1/DV01: residuals ~ yield errors in bp),
         None (price errors) or one weight per quote. y0: initial node values, default a flat initial_rate
-        zero curve. bounds/constraints: on the node values, passed to the solver """
+        zero curve. bounds/constraints: on the node values, passed to the solver; curve constraints such as
+        ForwardFloor are built on the fitted curve. penalty: smoothness rows appended to the residuals """
     quotes = list(quotes)
     if any(q.flows.pay_times is None for q in quotes):
         raise ValueError("Quotes with flows built without valdate: no times for curve pricing")
@@ -72,9 +75,16 @@ def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates
     if y0 is None:
         y0 = curve.node_values(node_times, np.exp(-initial_rate * node_times))
 
+    penalty_rows = penalty.build(curve, node_times) if penalty is not None else None
+    constraints = [c.build(curve, node_times) if isinstance(c, ForwardFloor) else c for c in constraints]
+
     def residuals_jac(y):
         p, jac = prices_jac(ff, *cb.discount_jac(y))
-        return w * (targets - p), -w[:, None] * jac
+        r, J = w * (targets - p), -w[:, None] * jac
+        if penalty_rows is None:
+            return r, J
+        r_pen, J_pen = penalty_rows(y)
+        return np.concatenate((r, r_pen)), np.vstack((J, J_pen))
 
     if isinstance(solver, str):
         solver = create_lsq_solver(solver)
@@ -86,8 +96,29 @@ def fit_bond_curve(quotes: Sequence[BondQuote], valdate: dt.datetime, node_dates
     # Final curve through the standard path: node DFs from the fitted node values
     curve.set_nodes(node_times, result.x)
     curve.set_data(list(node_dates), curve.discount_float(node_times))
-    model = targets - result.residuals / w
+    model = targets - result.residuals[:len(quotes)] / w
     return BondCurveFit(curve, result, quotes, targets, model, w, node_times, ff)
+
+
+def default_nodes(valdate: dt.datetime, quotes: Sequence[BondQuote],
+                  tenors: Sequence[float] = (0.25, 0.5, 1, 2, 3, 5, 7, 10, 15, 20, 30),
+                  min_maturities: int = 1) -> list[dt.datetime]:
+    """ Nodes at the given tenors (years, ACT/365 from valdate) up to the last maturity, plus the last maturity.
+        A node is dropped when fewer than min_maturities quotes mature in the interval since the previous kept
+        node: no quote would determine it (singular Jacobian). Merging goes into the next node """
+    mats = np.sort([(q.flows.payment[-1] - np.datetime64(valdate.date(), 'D')).astype(int) / 365.0 for q in quotes])
+    candidates = [t for t in tenors if t < mats[-1]] + [mats[-1]]
+    kept, prev = [], 0.0
+    for t in candidates:
+        if np.count_nonzero((mats > prev) & (mats <= t)) >= min_maturities:
+            kept.append(t)
+            prev = t
+    if not kept:
+        kept = [mats[-1]]
+    elif kept[-1] != mats[-1]:  # last interval too thin: move the last kept node to the last maturity
+        kept[-1] = mats[-1]
+    days = sorted({round(365 * t) for t in kept})
+    return [valdate + dt.timedelta(days=d) for d in days]
 
 
 if __name__ == "__main__":
