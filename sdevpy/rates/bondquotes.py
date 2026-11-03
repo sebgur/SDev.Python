@@ -13,7 +13,7 @@ BILL_FREQUENCY = 2  # yield exponents of bills measured in half-years
 class QuoteType(Enum):
     CLEAN = "clean"
     DIRTY = "dirty"
-    YIELD = "yield"  # street-convention yield to maturity
+    YIELD = "yield"  # market-convention yield to maturity
     DISCOUNT = "discount"  # bill discount rate
 
 

@@ -1,5 +1,6 @@
 import datetime as dt
 from dataclasses import dataclass
+from enum import Enum
 from functools import cached_property
 import numpy as np
 import numpy.typing as npt
@@ -182,6 +183,11 @@ def make_spot_swap_scheduler(trade_date: dt.date, tenor: str, conv: SwapConventi
 
 
 ################## BOND ###########################################################################
+class YieldType(Enum):
+    STREET = "street"  # compounded at the coupon frequency per coupon period
+    SIMPLE = "simple"  # Japanese simple yield: (c + (R - clean) / T) / clean, T in NL/365 years to maturity
+
+
 @dataclass(frozen=True)
 class BondConvention:
     """ Bond market rules on top of the coupon leg """
@@ -191,6 +197,7 @@ class BondConvention:
     simple_final_period: bool = False  # simple-interest yield in the last coupon period
     accrued_daycount: DayCount | None = None  # accrued interest day count when it differs from the coupon's
     stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
+    yield_type: YieldType = YieldType.STREET  # the market's quoted yield
 
 
 @dataclass(frozen=True)

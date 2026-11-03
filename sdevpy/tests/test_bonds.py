@@ -7,7 +7,7 @@ from sdevpy.utilities import timegrids
 from sdevpy.utilities.scalendar import BDC
 from sdevpy.utilities.sdaycount import DayCount
 from sdevpy.rates import bonds
-from sdevpy.utilities.schedules import make_bond_scheduler, LegConvention, BondConvention
+from sdevpy.utilities.schedules import make_bond_scheduler, LegConvention, BondConvention, YieldType
 from sdevpy.rates.bonds import (bond_flows, dirty_from_curve, flatten, dirty_prices,
     yields_from_dirty, dirty_from_yields, dv01s, dirty_from_yield, par_coupon, convert_yield,
     par_yield, g_spread)
@@ -361,3 +361,35 @@ def test_jgb_accrued_vs_coupon_basis():
     bf = bond_flows(bond, dt.date(2028, 9, 19))  # NL accrued above c/2: 183/365 > 0.5
     assert abs(bf.accrued_fraction - 183 / 365) < 1e-12
     assert bf.periods[0] > 0.0
+
+
+def test_jgb_simple_yield():
+    bond = make_bond_scheduler(dt.date(2026, 10, 1), dt.date(2036, 9, 20), JGB)
+    bf = bond_flows(bond, dt.date(2027, 6, 1))
+    cpn, clean = 0.02, 99.5
+    assert bf.maturity_years == pytest.approx(3396 / 365, abs=1e-14)
+    assert bonds.accrued_interest(bf, cpn) == pytest.approx(0.4, abs=1e-12)  # 73 days
+    dirty = clean + 0.4
+    y = bonds.yield_from_dirty(bf, cpn, dirty)
+    assert y == pytest.approx((2.0 + 0.5 / (3396 / 365)) / 99.5, abs=1e-14)
+    assert dirty_from_yield(bf, cpn, y) == pytest.approx(dirty, abs=1e-12)
+    assert bonds.yield_from_dirty(bf, cpn, 100.4) == pytest.approx(cpn, abs=1e-14)  # par: simple yield = coupon
+    h = 1e-6
+    fd = (dirty_from_yield(bf, cpn, y - h) - dirty_from_yield(bf, cpn, y + h)) / (2 * h) * 1e-4
+    assert bonds.dv01(bf, cpn, y) == pytest.approx(fd, rel=1e-8)
+    ys = bonds.yield_from_dirty(bf, cpn, dirty, kind=YieldType.STREET)  # compound yield still available
+    assert dirty_from_yield(bf, cpn, ys, kind=YieldType.STREET) == pytest.approx(dirty, abs=1e-10)
+    assert ys != pytest.approx(y, abs=1e-6)
+
+
+def test_flat_yields_mixed_conventions():
+    valdate, settle = dt.datetime(2027, 5, 31), dt.date(2027, 6, 1)
+    flows = [bond_flows(make_bond_scheduler(dt.date(2026, 8, 15), dt.date(2036, 8, 15), UST), settle, valdate),
+             bond_flows(make_bond_scheduler(dt.date(2026, 10, 1), dt.date(2036, 9, 20), JGB), settle, valdate)]
+    cpns, dirty = np.array([0.04125, 0.02]), np.array([101.3, 99.9])
+    ff = flatten(flows, cpns)
+    y = yields_from_dirty(ff, dirty)
+    for i, bf in enumerate(flows):
+        assert y[i] == pytest.approx(bonds.yield_from_dirty(bf, cpns[i], dirty[i]), abs=1e-12)
+        assert dv01s(ff, y)[i] == pytest.approx(bonds.dv01(bf, cpns[i], y[i]), rel=1e-12)
+    np.testing.assert_allclose(dirty_from_yields(ff, y), dirty, atol=1e-10)
