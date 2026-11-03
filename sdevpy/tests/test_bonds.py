@@ -13,7 +13,7 @@ from sdevpy.rates.bonds import (bond_flows, dirty_from_curve, flatten, dirty_pri
     par_yield, g_spread)
 from sdevpy.rates.bondquotes import bill_flows
 from sdevpy.calibration.rates import yieldcurve as ycrv
-from sdevpy.conventions.bondconventions import UST, GILT
+from sdevpy.conventions.bondconventions import UST, GILT, JGB
 
 
 COMPOUND = dataclasses.replace(UST, simple_final_period=False)
@@ -352,3 +352,12 @@ def test_final_coupon_ex_period():
     with pytest.raises(ValueError):
         bonds.bond_flows(short, ex_date, VALDATEEXCPN)
 
+
+def test_jgb_accrued_vs_coupon_basis():
+    bond = make_bond_scheduler(dt.date(2026, 10, 1), dt.date(2036, 9, 20), JGB)
+    bf = bond_flows(bond, dt.date(2028, 3, 19))  # 181 days into a 182-day period, 29-Feb-2028 not counted
+    assert abs(bf.accrued_fraction - 180 / 365) < 1e-12
+    assert abs(bf.periods[0] - 1 / 182) < 1e-12  # yield exponent stays on the coupon basis
+    bf = bond_flows(bond, dt.date(2028, 9, 19))  # NL accrued above c/2: 183/365 > 0.5
+    assert abs(bf.accrued_fraction - 183 / 365) < 1e-12
+    assert bf.periods[0] > 0.0

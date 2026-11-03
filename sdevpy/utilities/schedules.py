@@ -1,5 +1,6 @@
 import datetime as dt
 from dataclasses import dataclass
+from functools import cached_property
 import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities.scalendar import BDC, Period, make_calendar, is_eom, to_eom
@@ -188,6 +189,8 @@ class BondConvention:
     settlement_lag: int = 1  # business days from trade date, on leg.calendar
     ex_coupon_days: int = 0  # business days before a coupon date from which a buyer no longer gets it (0: none)
     simple_final_period: bool = False  # simple-interest yield in the last coupon period
+    accrued_daycount: DayCount | None = None  # accrued interest day count when it differs from the coupon's
+    stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
 
 
 @dataclass(frozen=True)
@@ -204,6 +207,18 @@ class BondScheduler:
     @property
     def coupons_per_year(self) -> int:
         return coupons_per_year(self.conv.leg.frequency)
+
+    @cached_property
+    def coupon_fraction(self) -> npt.NDArray[np.float64]:
+        """ Coupon amount per unit coupon rate, per period: the leg's accrual fractions, except for the irregular
+            first/last periods under conv.stub_daycount """
+        if self.conv.stub_daycount is None:
+            return self.schedule.accrual_fraction
+        starts, ends = self.accrual_dates()
+        alpha = self.schedule.accrual_fraction.copy()
+        for i in {0, len(alpha) - 1}:
+            alpha[i] = stub_coupon_fraction(to_date(starts[i]), to_date(ends[i]), self.anchor, self.conv)
+        return alpha
 
     def accrual_dates(self) -> tuple[npt.NDArray[np.datetime64], npt.NDArray[np.datetime64]]:
         """ (start, end) dates the coupons accrue on: unadjusted for bond-style accrual """
@@ -222,12 +237,19 @@ class BondScheduler:
         """ Accrual fraction between two dates inside the coupon schedule (e.g. last coupon to settlement) """
         return accrual_fractions([start], [end], self.conv.leg, self.anchor)[0]
 
+    def accrued_fraction(self, start: dt.date, end: dt.date) -> float:
+        """ Year fraction for accrued interest from start (last coupon date) to end (settlement): the leg's
+            accrual unless the convention has a separate accrued day count (e.g. JGB NL/365) """
+        if self.conv.accrued_daycount is None:
+            return self.accrual_fraction(start, end)
+        return float(yearfraction(start, end, self.conv.accrued_daycount))
+
     def coupon_schedule(self, coupon) -> dict:
         """ Schedule as dataframe """
         c = self.schedule
         cpn_sch = {'Accrual start': c.unadj_start, 'Accrual end': c.unadj_end, 'Payment': c.payment,
                    'Days': (c.unadj_end - c.unadj_start).astype(int), 'Accrual fraction': c.accrual_fraction,
-                   'Coupon': 100 * coupon * c.accrual_fraction}
+                   'Coupon': 100 * coupon * c.coupon_fraction}
         return cpn_sch
 
 
@@ -239,6 +261,22 @@ def make_bond_scheduler(issue: dt.date, maturity: dt.date, conv: BondConvention,
     coupons = make_leg_schedule(issue, maturity, conv.leg, **kwargs)
     anchor = to_date(regular_anchor(issue, maturity, **kwargs))
     return BondScheduler(coupons, conv, anchor)
+
+
+def stub_coupon_fraction(start: dt.date, end: dt.date, anchor: dt.date, conv: BondConvention) -> float:
+    """ Coupon per unit rate of a possibly irregular period: 1/f for each full quasi-coupon period inside
+        [start, end], conv.stub_daycount for the broken parts (JGB: c/2 per half-year, c * NL days / 365 otherwise) """
+    leg = conv.leg
+    f = coupons_per_year(leg.frequency)
+    quasi = quasi_coupon_dates(anchor, start, end, leg.frequency, leg.eom)
+    total = 0.0
+    for q0, q1 in zip(quasi[:-1], quasi[1:], strict=True):
+        s, e = max(start, q0), min(end, q1)
+        if (s, e) == (q0, q1):
+            total += 1.0 / f
+        elif e > s:
+            total += float(yearfraction(s, e, conv.stub_daycount))
+    return total
 
 
 def to_date(d: dt.date | dt.datetime | np.datetime64) -> dt.date:

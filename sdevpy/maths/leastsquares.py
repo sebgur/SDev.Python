@@ -201,7 +201,7 @@ if __name__ == "__main__":
         print(f"--- {var} {itype}")
         for method, kw in [('trf', {}), ('trf', dict(xtol=1e-14, ftol=1e-14, gtol=1e-14)), ('dogbox', {}),
                            ('lm', {}), ('SLSQP', dict(ftol=1e-14)), ('trust-constr', dict(gtol=1e-12)),
-                           ('L-BFGS-B', dict(ftol=1e-15, gtol=1e-12)), ('BFGS', dict(gtol=1e-12))]:
+                           ('L-BFGS-B', dict(ftol=1e-15, gtol=1e-12)), ('BFGS', dict(gtol=1e-8))]:
             res = create_lsq_solver(method, **kw).solve(LeastSquaresProblem(fun, y0))
             print(f"  {method:<12} {str(kw)[:40]:<42} {1e3 * res.elapsed:7.1f} ms  nfev {res.nfev:4d}  "
                   f"max resid {np.max(np.abs(res.residuals)):.1e} bp  max node err {np.max(np.abs(res.x - y_true)):.1e}")

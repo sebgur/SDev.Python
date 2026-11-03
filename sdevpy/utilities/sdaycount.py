@@ -11,12 +11,13 @@ class DayCount(Enum):
     D30_360 = "30/360"
     D30E_360 = "30E/360"
     ACTACT_ICMA = "ACT/ACT ICMA"
+    ACT365_NL = "NL/365" # actual days with Feb 29 not counted / 365 (JGB accrued and simple yield)
 
 
 def yearfraction(start: dt.date, end: dt.date, convention: DayCount) -> float|npt.NDArray[np.float64]:
     """ Year fraction between two dates, or two broadcastable arrays/lists of dates, under the given
         day-count convention.
-        ACT360 and ACT365F: fully vectorized via numpy datetime64 arithmetic.
+        ACT360, ACT365F, ACT365_NL: fully vectorized via numpy datetime64 arithmetic.
         D30_360 and D30E_360: scalar-only. These index day/month/year components per date rather than
                               a single elapsed day count, so vectorizing them is separate work. """
     if convention in (DayCount.ACT360, DayCount.ACT365F):
@@ -24,6 +25,10 @@ def yearfraction(start: dt.date, end: dt.date, convention: DayCount) -> float|np
                 - np.asarray(start, dtype='datetime64[D]')).astype(np.float64)
         denom = 360.0 if convention == DayCount.ACT360 else 365.0
         result = days / denom
+        return float(result) if result.ndim == 0 else result
+
+    if convention == DayCount.ACT365_NL:
+        result = _nl_days(start, end) / 365.0
         return float(result) if result.ndim == 0 else result
 
     if convention == DayCount.D30_360:
@@ -50,6 +55,21 @@ def icma_yearfraction(start: dt.date, end: dt.date, quasi_dates: list[dt.date], 
     return total
 
 
+def _nl_days(start, end) -> npt.NDArray[np.float64]:
+    """ Actual days in (start, end], Feb 29 not counted """
+    s, e = np.asarray(start, dtype='datetime64[D]'), np.asarray(end, dtype='datetime64[D]')
+    return (e - s).astype(np.float64) - (_leap_days_through(e) - _leap_days_through(s))
+
+
+def _leap_days_through(d: npt.NDArray[np.datetime64]) -> npt.NDArray[np.int64]:
+    """ Number of Feb 29 on or before each date, counted from year 1 """
+    y = d.astype('datetime64[Y]').astype(np.int64) + 1970
+    p = y - 1
+    leap = (y % 4 == 0) & ((y % 100 != 0) | (y % 400 == 0))
+    doy = (d - d.astype('datetime64[Y]')).astype(np.int64)  # 0-based day of year, Feb 29 = 59
+    return p // 4 - p // 100 + p // 400 + (leap & (doy >= 59))
+
+
 def _30_360(start: dt.date, end: dt.date) -> float:
     """ US (NASD) 30/360 """
     d1, d2 = start.day, end.day
@@ -65,8 +85,3 @@ def _30e_360(start: dt.date, end: dt.date) -> float:
     d1 = min(start.day, 30)
     d2 = min(end.day, 30)
     return ((end.year - start.year) * 360 + (end.month - start.month) * 30 + (d2 - d1)) / 360
-
-
-# def period_yearfraction(period: Period, convention: DayCount) -> float:
-#     """ Year fraction for one accrual period, picking the correct date pair for the convention """
-#     return yearfraction(period.adj_start, period.adj_end, convention)

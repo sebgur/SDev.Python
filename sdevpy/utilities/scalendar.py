@@ -362,7 +362,8 @@ CCY_CALENDARS = {
 # SIFMA calendar source. The 'USGOV' holidays come from pandas_market_calendars' rules, so far-off years are
 # a projection. SIFMA publishes its recommendations each year, for example whether Good Friday on a payrolls
 # day is a full or an early close. This is a caveat to watch rather than work to do.
-MCAL_ALIASES = {'USGOV': 'SIFMAUS' # US government securities: SIFMA recommended bond market holidays
+MCAL_ALIASES = {'USGOV': 'SIFMAUS', # US government securities: SIFMA recommended bond market holidays
+                'JPGOV': 'JPX' # JGBs: Tokyo market holidays, national holidays plus Dec 31 - Jan 3
     }
 
 if __name__ == "__main__":

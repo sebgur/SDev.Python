@@ -41,10 +41,11 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
         raise ValueError(f"Bond matured before settlement {settle}")
 
     last_coupon = to_date(starts[i])
-    accrued = bond.accrual_fraction(last_coupon, settle) if settle > last_coupon else 0.0
-    alpha = bond.schedule.accrual_fraction[i:]
-    remaining = np.concatenate(([alpha[0] - accrued], alpha[1:]))  # accrual left in each period
-    periods = bond.coupons_per_year * np.cumsum(remaining)
+    elapsed = bond.accrual_fraction(last_coupon, settle) if settle > last_coupon else 0.0  # leg day count
+    accrued = bond.accrued_fraction(last_coupon, settle) if settle > last_coupon else 0.0
+    tau = bond.schedule.accrual_fraction[i:]  # coupon periods in the leg's day count: yield exponents
+    alpha = bond.coupon_fraction[i:]  # coupon amounts
+    periods = bond.coupons_per_year * np.cumsum(np.concatenate(([tau[0] - elapsed], tau[1:])))
 
     payment = bond.schedule.payment[i:]
 
@@ -54,7 +55,7 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
     if ex_coupon:
         if len(alpha) == 1:
             raise ValueError(f"Bond no longer trades on {settle}: ex-coupon period of the final coupon")
-        accrued -= alpha[0]
+        accrued = -bond.accrued_fraction(settle, to_date(ends[i]))
         alpha, periods, payment = alpha[1:], periods[1:], payment[1:]
 
     pay_times = settle_time = None

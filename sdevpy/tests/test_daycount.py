@@ -23,3 +23,11 @@ def test_yearfraction_30_360():
     test = dc.yearfraction(start, end, dc.DayCount.D30_360)
     ref = 29 / 360  # d1 clamped 31->30, d2=29 (not 31, no clamp) -> 0*360 + 1*30 + (29-30)
     assert abs(test - ref) < 1e-12
+
+
+def test_yearfraction_act365_nl():
+    start, end = dt.date(2027, 12, 20), dt.date(2028, 6, 20)  # crosses 29-Feb-2028
+    test = dc.yearfraction(start, end, dc.DayCount.ACT365_NL)
+    ref = 182 / 365
+    assert abs(test - ref) < 1e-12
+    assert dc.yearfraction(dt.date(2028, 2, 28), dt.date(2028, 2, 29), dc.DayCount.ACT365_NL) == 0.0

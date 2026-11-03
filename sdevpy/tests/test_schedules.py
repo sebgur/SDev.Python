@@ -4,11 +4,9 @@ import pytest
 from sdevpy.utilities.scalendar import BDC
 from sdevpy.utilities.sdaycount import DayCount, icma_yearfraction, yearfraction
 from sdevpy.utilities import schedules as sch
-from sdevpy.conventions.bondconventions import UST, GILT
+from sdevpy.conventions.bondconventions import UST, GILT, JGB
 
 
-# GILT = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False)
-# UST = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
 SOFR = sch.LegConvention('1Y', DayCount.ACT360, 'USD', pay_lag=2)
 USD_OIS = sch.SwapConvention(SOFR, SOFR)
 
@@ -177,3 +175,13 @@ def test_to_date():
     assert sch.to_date(dt.datetime(2026, 5, 15, 10, 30)) == d
     assert sch.to_date(np.datetime64('2026-05-15')) == d
     assert type(sch.to_date(np.datetime64('2026-05-15'))) is dt.date
+
+
+def test_jgb_first_coupon():
+    d = dt.date
+    short = sch.make_bond_scheduler(d(2026, 10, 1), d(2036, 9, 20), JGB)
+    assert abs(short.coupon_fraction[0] - 170 / 365) < 1e-12  # ICMA would give 0.46961
+    assert np.allclose(short.coupon_fraction[1:], 0.5, rtol=0, atol=1e-15)
+    assert short.schedule.payment[0] == np.datetime64('2027-03-23')  # 20th Sat, 21-22 holidays
+    long = sch.make_bond_scheduler(d(2026, 8, 1), d(2036, 9, 20), JGB, stub='long_front')
+    assert abs(long.coupon_fraction[0] - (0.5 + 50 / 365)) < 1e-12
