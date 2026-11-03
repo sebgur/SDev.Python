@@ -4,8 +4,9 @@ from enum import Enum
 import numpy as np
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.scalendar import make_calendar
-from sdevpy.utilities.schedules import BondConvention, to_date
+from sdevpy.utilities.schedules import BondConvention, to_date, YieldType
 from sdevpy.rates.bonds import BondFlows, accrued_interest, dirty_from_yield, yield_from_dirty, dv01
+from sdevpy.utilities.sdaycount import DayCount, yearfraction
 
 
 BILL_FREQUENCY = 2  # yield exponents of bills measured in half-years
@@ -14,7 +15,7 @@ class QuoteType(Enum):
     CLEAN = "clean"
     DIRTY = "dirty"
     YIELD = "yield"  # market-convention yield to maturity
-    DISCOUNT = "discount"  # bill discount rate
+    DISCOUNT = "discount"  # US bill discount rate (ACT/360)
 
 
 def settlement_date(trade_date: dt.date, conv: BondConvention) -> dt.date:
@@ -22,8 +23,11 @@ def settlement_date(trade_date: dt.date, conv: BondConvention) -> dt.date:
     return make_calendar(conv.leg.calendar).add_business_days(to_date(trade_date), conv.settlement_lag)
 
 
-def bill_flows(maturity: dt.date, settlement: dt.date, valdate: dt.datetime | None = None) -> BondFlows:
-    """ Zero-coupon bill as a single flow of 100 at maturity (alpha = 0: no coupon) """
+def bill_flows(maturity: dt.date, settlement: dt.date, valdate: dt.datetime | None = None,
+               yield_type: YieldType = YieldType.STREET) -> BondFlows:
+    """ Zero-coupon bill as a single flow of 100 at maturity (alpha = 0: no coupon). Market yield:
+        STREET: US bond-equivalent, semi-annual exponents, simple within a half-year
+        SIMPLE: JGB T-Bill, (100 - P) / (P T), T in NL/365 years to maturity """
     settle, pay = to_date(settlement), np.array([np.datetime64(to_date(maturity), 'D')])
     days = float((pay[0] - np.datetime64(settle, 'D')).astype(int))
     if days <= 0:
@@ -34,7 +38,9 @@ def bill_flows(maturity: dt.date, settlement: dt.date, valdate: dt.datetime | No
     if valdate is not None:
         pay_times = timegrids.model_time(valdate, pay)
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
-    return BondFlows(settle, pay, np.zeros(1), periods, 0.0, BILL_FREQUENCY, pay_times, settle_time, days <= 182)
+    maturity_years = float(yearfraction(settle, to_date(maturity), DayCount.ACT365_NL))
+    return BondFlows(settle, pay, np.zeros(1), periods, 0.0, BILL_FREQUENCY, pay_times, settle_time, days <= 182,
+                     yield_type=yield_type, maturity_years=maturity_years)
 
 
 def bill_days(bf: BondFlows) -> int:
@@ -43,6 +49,9 @@ def bill_days(bf: BondFlows) -> int:
 
 def price_from_discount_rate(bf: BondFlows, d: float) -> float:
     """ Bill price per 100 from its discount rate (ACT/360) """
+    if bf.yield_type != YieldType.STREET:
+        raise ValueError("Discount rates are US bill quotes (ACT/360): quote this bill on its yield")
+
     return 100.0 * (1.0 - d * bill_days(bf) / 360.0)
 
 

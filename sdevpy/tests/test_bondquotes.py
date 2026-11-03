@@ -2,7 +2,7 @@ import datetime as dt
 import numpy as np
 import dataclasses
 import pytest
-from sdevpy.utilities.schedules import make_bond_scheduler, BondConvention
+from sdevpy.utilities.schedules import make_bond_scheduler, BondConvention, YieldType
 from sdevpy.rates.bonds import bond_flows, accrued_interest, dirty_from_curve, yield_from_dirty
 from sdevpy.calibration.rates import yieldcurve as ycrv
 from sdevpy.rates.bondquotes import (settlement_date, bill_flows, bill_days, price_from_discount_rate,
@@ -90,3 +90,15 @@ def test_bill_bond_equivalent_yield():
     bill = bill_flows(dt.date(2026, 3, 17), dt.date(2025, 12, 16))  # 13 weeks, 91 days
     p = price_from_discount_rate(bill, 0.04)
     assert yield_from_dirty(bill, 0.0, p) == pytest.approx((100 / p - 1) * 365 / 91, abs=1e-13)
+
+
+def test_jgb_bill_simple_yield():
+    bill = bill_flows(dt.date(2028, 3, 21), dt.date(2027, 6, 1), yield_type=YieldType.SIMPLE)
+    assert bill.maturity_years == pytest.approx(293 / 365, abs=1e-14)  # 294 days, 29-Feb-2028 not counted
+    y = (100.0 - 98.8) / (98.8 * 293 / 365)
+    assert yield_from_dirty(bill, 0.0, 98.8) == pytest.approx(y, abs=1e-14)
+    q = BondQuote(bill, 0.0, QuoteType.YIELD, y)
+    assert target_dirty(q) == pytest.approx(98.8, abs=1e-12)
+    assert 1.0 / fit_weight(q, 98.8) == pytest.approx(98.8 * (293 / 365) / (1 + y * 293 / 365) * 1e-4, rel=1e-12)
+    with pytest.raises(ValueError):
+        price_from_discount_rate(bill, 0.01)
