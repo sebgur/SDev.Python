@@ -185,7 +185,7 @@ def make_spot_swap_scheduler(trade_date: dt.date, tenor: str, conv: SwapConventi
 ################## BOND ###########################################################################
 class YieldType(Enum):
     STREET = "street"  # compounded at the coupon frequency per coupon period
-    SIMPLE = "simple"  # Japanese simple yield: (c + (R - clean) / T) / clean, T in NL/365 years to maturity
+    SIMPLE = "simple"  # Japanese simple yield: (c + (R - clean) / T) / clean, T as in bonds.simple_yield_time
 
 
 @dataclass(frozen=True)
@@ -196,6 +196,7 @@ class BondConvention:
     ex_coupon_days: int = 0  # business days before a coupon date from which a buyer no longer gets it (0: none)
     simple_final_period: bool = False  # simple-interest yield in the last coupon period
     accrued_daycount: DayCount | None = None  # accrued interest day count when it differs from the coupon's
+    accrued_cap: bool = False  # accrued interest capped at the current period's coupon (JGB: c d / 365, at most c/2)
     stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
 

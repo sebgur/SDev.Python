@@ -27,7 +27,7 @@ class BondFlows:
     simple_final_period: bool = False  # simple-interest yield when only the last coupon is left
     ex_coupon: bool = False  # settlement in the ex-coupon period: next coupon excluded, accrued negative
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
-    maturity_years: float = 0.0  # NL/365 years from settlement to the (unadjusted) maturity: simple-yield time
+    maturity_years: float = 0.0  # simple-yield time from settlement to the (unadjusted) maturity: simple_yield_time
 
     @property
     def simple_flows(self) -> npt.NDArray[np.bool_]:
@@ -48,8 +48,10 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
     accrued = bond.accrued_fraction(last_coupon, settle) if settle > last_coupon else 0.0
     tau = bond.schedule.accrual_fraction[i:]  # coupon periods in the leg's day count: yield exponents
     alpha = bond.coupon_fraction[i:]  # coupon amounts
-    periods = bond.coupons_per_year * np.cumsum(np.concatenate(([tau[0] - elapsed], tau[1:])))
+    if bond.conv.accrued_cap:
+        accrued = min(accrued, alpha[0])
 
+    periods = bond.coupons_per_year * np.cumsum(np.concatenate(([tau[0] - elapsed], tau[1:])))
     payment = bond.schedule.payment[i:]
 
     # Ex-coupon period: the coupon goes to the holder at the ex date, the buyer is short its accrual to the coupon date
@@ -67,7 +69,10 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
     # return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time,
     #                  bond.conv.simple_final_period, ex_coupon)
-    maturity_years = float(yearfraction(settle, to_date(bond.schedule.unadj_end[-1]), DayCount.ACT365_NL))
+
+    # maturity_years = float(yearfraction(settle, to_date(bond.schedule.unadj_end[-1]), DayCount.ACT365_NL))
+
+    maturity_years = simple_yield_time(settle, to_date(bond.schedule.unadj_end[-1]))
     return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time,
                      bond.conv.simple_final_period, ex_coupon, bond.conv.yield_type, maturity_years)
 
@@ -81,6 +86,17 @@ def cashflows(bf: BondFlows, coupon: float, redemption: float = 100.0) -> npt.ND
 
 def accrued_interest(bf: BondFlows, coupon: float) -> float:
     return 100.0 * coupon * bf.accrued_fraction
+
+
+def simple_yield_time(settlement: dt.date, maturity: dt.date) -> float:
+    """ Years to maturity in the simple-yield formula (JNX trading rules, Appendix 1): ACT/365F when maturity is
+        before the first anniversary of settlement (29-Feb settlement: 28-Feb), NL/365 otherwise """
+    try:
+        anniversary = settlement.replace(year=settlement.year + 1)
+    except ValueError:  # 29-Feb
+        anniversary = dt.date(settlement.year + 1, 2, 28)
+    daycount = DayCount.ACT365F if maturity < anniversary else DayCount.ACT365_NL
+    return float(yearfraction(settlement, maturity, daycount))
 
 
 def _yield_discount(tau, f, y, simple):

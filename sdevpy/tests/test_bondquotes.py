@@ -94,11 +94,11 @@ def test_bill_bond_equivalent_yield():
 
 def test_jgb_bill_simple_yield():
     bill = bill_flows(dt.date(2028, 3, 21), dt.date(2027, 6, 1), yield_type=YieldType.SIMPLE)
-    assert bill.maturity_years == pytest.approx(293 / 365, abs=1e-14)  # 294 days, 29-Feb-2028 not counted
-    y = (100.0 - 98.8) / (98.8 * 293 / 365)
+    assert bill.maturity_years == pytest.approx(294 / 365, abs=1e-14)  # 294 days, under a year: ACT/365F
+    y = (100.0 - 98.8) / (98.8 * 294 / 365)
     assert yield_from_dirty(bill, 0.0, 98.8) == pytest.approx(y, abs=1e-14)
     q = BondQuote(bill, 0.0, QuoteType.YIELD, y)
     assert target_dirty(q) == pytest.approx(98.8, abs=1e-12)
-    assert 1.0 / fit_weight(q, 98.8) == pytest.approx(98.8 * (293 / 365) / (1 + y * 293 / 365) * 1e-4, rel=1e-12)
+    assert 1.0 / fit_weight(q, 98.8) == pytest.approx(98.8 * (294 / 365) / (1 + y * 294 / 365) * 1e-4, rel=1e-12)
     with pytest.raises(ValueError):
         price_from_discount_rate(bill, 0.01)

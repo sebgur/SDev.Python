@@ -13,5 +13,5 @@ GILT = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F
 
 # JGBs: semi-annual (coupons on the 20th, c/2 each), Tokyo market calendar, T+1, accrued NL/365
 JGB = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'JPGOV', bdc=BDC.F, adjust_accrual=False),
-                     settlement_lag=1, accrued_daycount=DayCount.ACT365_NL, stub_daycount=DayCount.ACT365_NL,
-                     yield_type=YieldType.SIMPLE)
+                     settlement_lag=1, accrued_daycount=DayCount.ACT365F, accrued_cap=True,
+                     stub_daycount=DayCount.ACT365F, yield_type=YieldType.SIMPLE)

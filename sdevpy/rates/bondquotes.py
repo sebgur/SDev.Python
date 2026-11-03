@@ -5,8 +5,8 @@ import numpy as np
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.scalendar import make_calendar
 from sdevpy.utilities.schedules import BondConvention, to_date, YieldType
-from sdevpy.rates.bonds import BondFlows, accrued_interest, dirty_from_yield, yield_from_dirty, dv01
-from sdevpy.utilities.sdaycount import DayCount, yearfraction
+from sdevpy.rates.bonds import BondFlows, accrued_interest, dirty_from_yield, yield_from_dirty, dv01, simple_yield_time
+# from sdevpy.utilities.sdaycount import DayCount, yearfraction
 
 
 BILL_FREQUENCY = 2  # yield exponents of bills measured in half-years
@@ -27,7 +27,7 @@ def bill_flows(maturity: dt.date, settlement: dt.date, valdate: dt.datetime | No
                yield_type: YieldType = YieldType.STREET) -> BondFlows:
     """ Zero-coupon bill as a single flow of 100 at maturity (alpha = 0: no coupon). Market yield:
         STREET: US bond-equivalent, semi-annual exponents, simple within a half-year
-        SIMPLE: JGB T-Bill, (100 - P) / (P T), T in NL/365 years to maturity """
+        SIMPLE: JGB T-Bill, (100 - P) / (P T), T as in simple_yield_time """
     settle, pay = to_date(settlement), np.array([np.datetime64(to_date(maturity), 'D')])
     days = float((pay[0] - np.datetime64(settle, 'D')).astype(int))
     if days <= 0:
@@ -38,7 +38,9 @@ def bill_flows(maturity: dt.date, settlement: dt.date, valdate: dt.datetime | No
     if valdate is not None:
         pay_times = timegrids.model_time(valdate, pay)
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
-    maturity_years = float(yearfraction(settle, to_date(maturity), DayCount.ACT365_NL))
+
+    # maturity_years = float(yearfraction(settle, to_date(maturity), DayCount.ACT365_NL))
+    maturity_years = simple_yield_time(settle, to_date(maturity))
     return BondFlows(settle, pay, np.zeros(1), periods, 0.0, BILL_FREQUENCY, pay_times, settle_time, days <= 182,
                      yield_type=yield_type, maturity_years=maturity_years)
 

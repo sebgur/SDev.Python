@@ -355,12 +355,20 @@ def test_final_coupon_ex_period():
 
 def test_jgb_accrued_vs_coupon_basis():
     bond = make_bond_scheduler(dt.date(2026, 10, 1), dt.date(2036, 9, 20), JGB)
-    bf = bond_flows(bond, dt.date(2028, 3, 19))  # 181 days into a 182-day period, 29-Feb-2028 not counted
-    assert abs(bf.accrued_fraction - 180 / 365) < 1e-12
+    bf = bond_flows(bond, dt.date(2028, 3, 19))  # 181 days into a 182-day period (29-Feb-2028 counted)
+    assert abs(bf.accrued_fraction - 181 / 365) < 1e-12
     assert abs(bf.periods[0] - 1 / 182) < 1e-12  # yield exponent stays on the coupon basis
-    bf = bond_flows(bond, dt.date(2028, 9, 19))  # NL accrued above c/2: 183/365 > 0.5
-    assert abs(bf.accrued_fraction - 183 / 365) < 1e-12
+    bf = bond_flows(bond, dt.date(2028, 9, 19))  # 183 days into a 184-day period: capped at c/2
+    assert bf.accrued_fraction == 0.5
     assert bf.periods[0] > 0.0
+
+
+def test_simple_yield_time():
+    d = dt.date
+    assert bonds.simple_yield_time(d(2027, 6, 1), d(2028, 3, 21)) == pytest.approx(294 / 365, abs=1e-15)  # ACT
+    assert bonds.simple_yield_time(d(2027, 6, 1), d(2028, 6, 1)) == pytest.approx(1.0, abs=1e-15)  # NL: 366 - 1
+    assert bonds.simple_yield_time(d(2028, 2, 29), d(2029, 2, 27)) == pytest.approx(364 / 365, abs=1e-15)
+    assert bonds.simple_yield_time(d(2028, 2, 29), d(2029, 2, 28)) == pytest.approx(1.0, abs=1e-15)
 
 
 def test_jgb_simple_yield():
