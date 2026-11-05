@@ -4,7 +4,7 @@ import pytest
 from sdevpy.utilities.scalendar import BDC
 from sdevpy.utilities.sdaycount import DayCount, icma_yearfraction, yearfraction
 from sdevpy.utilities import schedules as sch
-from sdevpy.conventions.bondconventions import UST, GILT, JGB
+from sdevpy.conventions.bondconventions import UST, GILT, JGB, CAN
 
 
 SOFR = sch.LegConvention('1Y', DayCount.ACT360, 'USD', pay_lag=2)
@@ -179,9 +179,17 @@ def test_to_date():
 
 def test_jgb_first_coupon():
     d = dt.date
-    short = sch.make_bond_scheduler(d(2026, 10, 1), d(2036, 9, 20), JGB)
-    assert abs(short.coupon_fraction[0] - 170 / 365) < 1e-12  # ICMA would give 0.46961
-    assert np.allclose(short.coupon_fraction[1:], 0.5, rtol=0, atol=1e-15)
-    assert short.schedule.payment[0] == np.datetime64('2027-03-23')  # 20th Sat, 21-22 holidays
-    long = sch.make_bond_scheduler(d(2026, 8, 1), d(2036, 9, 20), JGB, stub='long_front')
-    assert abs(long.coupon_fraction[0] - (0.5 + 50 / 365)) < 1e-12
+    jgb = sch.make_bond_scheduler(d(2026, 10, 1), d(2036, 9, 20), JGB)  # issued 1-Oct, first coupon 20-Mar
+    assert jgb.schedule.unadj_start[0] == np.datetime64('2026-09-20')  # accrues from the previous 20th
+    assert np.allclose(jgb.coupon_fraction, 0.5, rtol=0, atol=1e-15)  # full first coupon
+    assert jgb.schedule.payment[0] == np.datetime64('2027-03-23')  # 20th Sat, 21-22 holidays
+    assert abs(jgb.accrued_fraction(d(2026, 9, 20), d(2026, 10, 2)) - 12 / 365) < 1e-12
+
+
+def test_can_first_coupon():
+    d = dt.date
+    assert abs(sch.make_bond_scheduler(d(2026, 6, 10), d(2036, 12, 1), CAN).coupon_fraction[0] - 174 / 365) < 1e-12
+    assert abs(sch.make_bond_scheduler(d(2026, 8, 2), d(2036, 2, 1), CAN).coupon_fraction[0]
+               - (0.5 - 1 / 365)) < 1e-12  # 183 days into a 184-day quasi-period: counts back
+    long = sch.make_bond_scheduler(d(2026, 3, 10), d(2036, 12, 1), CAN, stub='long_front')
+    assert abs(long.coupon_fraction[0] - (0.5 + 83 / 365)) < 1e-12

@@ -56,13 +56,23 @@ def icma_yearfraction(start: dt.date, end: dt.date, quasi_dates: list[dt.date], 
     return total
 
 
-def act365_canadian(start: dt.date, end: dt.date, period_end: dt.date, frequency: int) -> float:
-    """ Actual/365 (Canadian bond), accrued interest on Government of Canada bonds: days/365 for fewer than 365/f
-        days (182 semi-annual) into the period, then 1/f - (days left to period_end)/365, reaching 1/f exactly """
-    days = (end - start).days
-    if days < 365 // frequency:
-        return days / 365.0
-    return 1.0 / frequency - (period_end - end).days / 365.0
+def act365_canadian(start: dt.date, end: dt.date, quasi_dates: list[dt.date], frequency: int) -> float:
+    """ Actual/365 (Canadian bond) fraction of [start, end] (IIAC, Canadian Conventions in Fixed Income Markets,
+        2.2.2, 4.5, 6). Per quasi-coupon period (q0, q1) overlapping it by d days: d/365 while d < 365/f, else
+        1/f - (days in (q0, q1) - d)/365. A full quasi-coupon period counts exactly 1/f """
+    total = 0.0
+    for q0, q1 in zip(quasi_dates[:-1], quasi_dates[1:], strict=True):
+        s, e = max(start, q0), min(end, q1)
+        days = (e - s).days
+        if days <= 0:
+            continue
+        if (s, e) == (q0, q1):
+            total += 1.0 / frequency
+        elif days * frequency < 365:
+            total += days / 365.0
+        else:
+            total += 1.0 / frequency - ((q1 - q0).days - days) / 365.0
+    return total
 
 
 def _nl_days(start, end) -> npt.NDArray[np.float64]:

@@ -12,27 +12,28 @@ UST = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.
 GILT = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False),
                       settlement_lag=1, ex_coupon_days=7)
 
-# JGBs: semi-annual (coupons on the 20th, c/2 each), Tokyo market calendar, T+1, accrued NL/365
+# JGBs: semi-annual (first coupon a full c/2, accrual from the previous 20th (MOF)), Tokyo market calendar,
+# T+1, accrued ACT/365F capped at c/2 (JNX), simple yield
 JGB = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'JPGOV', bdc=BDC.F, adjust_accrual=False),
                      settlement_lag=1, accrued_daycount=DayCount.ACT365F, accrued_cap=True,
-                     stub_daycount=DayCount.ACT365F, yield_type=YieldType.SIMPLE)
+                     full_first_coupon=True, yield_type=YieldType.SIMPLE)
 
 # German Bunds/Bobls/Schatz: annual ACT/ACT ICMA, TARGET, T+2, street yield
 BUND = BondConvention(LegConvention('1Y', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F, adjust_accrual=False),
                       settlement_lag=2)
 
-# Italian BTPs: semi-annual ACT/ACT ICMA, TARGET, T+2. Yield quoted annual-compounded: step 3
+# Italian BTPs: semi-annual ACT/ACT ICMA, TARGET, T+2. Yield quoted annual-compounded:
 BTP = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F, adjust_accrual=False),
                      settlement_lag=2, yield_frequency=1)
 
-# Government of Canada: semi-annual, Canadian bond market calendar, T+1. Canadian accrued and final-period
-# yield: step 5
+# Government of Canada: semi-annual, Canadian bond market calendar, T+1. Canadian accrued and odd coupons
+# Act/365 (Canadian bond), money-market yield in the final coupon period (IIAC)
 CAN = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'CAGOV', bdc=BDC.F, adjust_accrual=False),
                      settlement_lag=1, accrued_daycount=DayCount.ACT365_CANADIAN, simple_final_period=True,
-                     final_period_daycount=DayCount.ACT365F)
+                     final_period_daycount=DayCount.ACT365F, stub_daycount=DayCount.ACT365_CANADIAN)
 
 # Australian Commonwealth Government Bonds: semi-annual ACT/ACT ICMA, Sydney, T+2. Ex-interest 7 calendar days
-# before each coupon: step 4
+# before each coupon
 ACGB = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'AUGOV', bdc=BDC.F, adjust_accrual=False),
                       settlement_lag=2, ex_coupon_days=7, ex_coupon_calendar_days=True)
 

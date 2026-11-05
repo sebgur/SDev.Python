@@ -450,10 +450,11 @@ def test_acgb_ex_interest():
 
 
 def test_can_accrued_and_final_period():
+    iiac = make_bond_scheduler(dt.date(2004, 8, 1), dt.date(2008, 2, 1), CAN)  # IIAC 6.1: 5% maturing 1-Feb-2008
+    assert 100 * 0.05 * bond_flows(iiac, dt.date(2005, 12, 1)).accrued_fraction == pytest.approx(1.6712, abs=5e-5)
+    assert 100 * 0.05 * bond_flows(iiac, dt.date(2006, 1, 31)).accrued_fraction == pytest.approx(2.4863, abs=5e-5)
     bond = make_bond_scheduler(dt.date(2024, 6, 1), dt.date(2034, 12, 1), CAN)  # 1-Jun-27 to 1-Dec-27: 183 days
-    assert abs(bond_flows(bond, dt.date(2027, 8, 1)).accrued_fraction - 61 / 365) < 1e-12
-    assert abs(bond_flows(bond, dt.date(2027, 11, 29)).accrued_fraction - 181 / 365) < 1e-12  # 181 < 182
-    assert abs(bond_flows(bond, dt.date(2027, 11, 30)).accrued_fraction - (0.5 - 1 / 365)) < 1e-12  # counts back
+    assert abs(bond_flows(bond, dt.date(2027, 11, 30)).accrued_fraction - 182 / 365) < 1e-12  # 182 < 182.5
     short = make_bond_scheduler(dt.date(2024, 12, 1), dt.date(2027, 12, 1), CAN)
     bf = bond_flows(short, dt.date(2027, 8, 3))  # single coupon left, 120 days to maturity
     cpn, y = 0.0325, 0.031

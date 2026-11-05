@@ -79,7 +79,8 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
 
     if bond.conv.final_period_daycount is not None and len(periods) == 1:  # money-market time in the final period
-        t = float(yearfraction(settle, to_date(bond.schedule.unadj_end[-1]), bond.conv.final_period_daycount))
+        # t = float(yearfraction(settle, to_date(bond.schedule.unadj_end[-1]), bond.conv.final_period_daycount))
+        t = float(yearfraction(settle, to_date(bond.schedule.payment[-1]), bond.conv.final_period_daycount))
         periods = np.array([bond.coupons_per_year * t])
 
     maturity_years = simple_yield_time(settle, to_date(bond.schedule.unadj_end[-1]))

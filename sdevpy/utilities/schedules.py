@@ -200,6 +200,7 @@ class BondConvention:
     accrued_daycount: DayCount | None = None  # accrued interest day count when it differs from the coupon's
     accrued_cap: bool = False  # accrued interest capped at the current period's coupon (JGB: c d / 365, at most c/2)
     stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
+    full_first_coupon: bool = False  # first coupon a full regular one, accruing from the coupon date before issue
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
     yield_frequency: int | None = None  # street-yield compounding per year (None: coupon frequency; BTP: 1)
 
@@ -272,7 +273,7 @@ class BondScheduler:
         if dc == DayCount.ACT365_CANADIAN:
             leg = self.conv.leg
             quasi = quasi_coupon_dates(self.anchor, start, end, leg.frequency, leg.eom)
-            return act365_canadian(start, end, quasi[1], coupons_per_year(leg.frequency))
+            return act365_canadian(start, end, quasi, coupons_per_year(leg.frequency))
         return float(yearfraction(start, end, dc))
 
     def coupon_schedule(self, coupon) -> dict:
@@ -288,6 +289,10 @@ def make_bond_scheduler(issue: dt.date, maturity: dt.date, conv: BondConvention,
                         **kwargs) -> BondScheduler:
     """ Coupon schedule rolled backward from maturity. Irregular first coupon either from issue
         (short_front by default, or stub='long_front') or from an explicit first_coupon date """
+    if conv.full_first_coupon:  # accrual from the regular coupon date on or before issue (JGB)
+        issue = quasi_coupon_dates(to_date(maturity), to_date(issue), to_date(issue), conv.leg.frequency,
+                                   conv.leg.eom)[0]
+
     kwargs['first_date'] = first_coupon
     coupons = make_leg_schedule(issue, maturity, conv.leg, **kwargs)
     anchor = to_date(regular_anchor(issue, maturity, **kwargs))
@@ -296,10 +301,14 @@ def make_bond_scheduler(issue: dt.date, maturity: dt.date, conv: BondConvention,
 
 def stub_coupon_fraction(start: dt.date, end: dt.date, anchor: dt.date, conv: BondConvention) -> float:
     """ Coupon per unit rate of a possibly irregular period: 1/f for each full quasi-coupon period inside
-        [start, end], conv.stub_daycount for the broken parts (JGB: c/2 per half-year, c * NL days / 365 otherwise) """
+        [start, end], conv.stub_daycount for the broken parts (e.g. Canada: Act/365 Canadian bond per quasi-period) """
     leg = conv.leg
     f = coupons_per_year(leg.frequency)
     quasi = quasi_coupon_dates(anchor, start, end, leg.frequency, leg.eom)
+
+    if conv.stub_daycount == DayCount.ACT365_CANADIAN:
+        return act365_canadian(start, end, quasi, f)
+
     total = 0.0
     for q0, q1 in zip(quasi[:-1], quasi[1:], strict=True):
         s, e = max(start, q0), min(end, q1)
