@@ -13,17 +13,14 @@ from sdevpy.rates.bonds import (bond_flows, dirty_from_curve, flatten, dirty_pri
     par_yield, g_spread)
 from sdevpy.rates.bondquotes import bill_flows
 from sdevpy.calibration.rates import yieldcurve as ycrv
-from sdevpy.conventions.bondconventions import UST, GILT, JGB, BUND, BTP
+from sdevpy.conventions.bondconventions import UST, GILT, JGB, BUND, BTP, ACGB
 
 
 COMPOUND = dataclasses.replace(UST, simple_final_period=False)
 VALDATEOLD = dt.datetime(2025, 12, 15)
 SETTLE = dt.date(2025, 12, 16)
 CORP = BondConvention(LegConvention('1Y', DayCount.D30_360, 'USD', bdc=BDC.F, adjust_accrual=False))
-
 VALDATE = dt.datetime(2026, 10, 26)
-# UST = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.F, adjust_accrual=False, eom=True)
-# GILT = sch.LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False)
 BOND = sch.make_bond_scheduler(dt.date(2026, 2, 15), dt.date(2036, 2, 15), UST)
 COUPON = 0.04
 
@@ -439,3 +436,14 @@ def test_btp_annual_yield():
     for i, b in enumerate(flows):
         assert ys[i] == pytest.approx(bonds.yield_from_dirty(b, cpns[i], dirties[i]), abs=1e-12)
         assert dv01s(ff, ys)[i] == pytest.approx(bonds.dv01(b, cpns[i], ys[i]), rel=1e-12)
+
+
+def test_acgb_ex_interest():
+    bond = make_bond_scheduler(dt.date(2025, 5, 21), dt.date(2035, 11, 21), ACGB)
+    assert bond.ex_coupon_date(2) == dt.date(2026, 11, 14)  # coupon Sat 21-Nov-2026, record date Fri 13-Nov
+    cum = bond_flows(bond, dt.date(2026, 11, 13))  # settles on the record date: still gets the coupon
+    assert not cum.ex_coupon and abs(cum.accrued_fraction - 0.5 * 176 / 184) < 1e-12
+    assert cum.payment[0] == np.datetime64('2026-11-23')
+    ex = bond_flows(bond, dt.date(2026, 11, 16))  # first settlement after the record date
+    assert ex.ex_coupon and abs(ex.accrued_fraction + 0.5 * 5 / 184) < 1e-12
+    assert ex.payment[0] == np.datetime64('2027-05-21')

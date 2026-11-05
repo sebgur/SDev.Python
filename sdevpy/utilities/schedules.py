@@ -194,6 +194,7 @@ class BondConvention:
     leg: LegConvention  # coupon schedule and accrual
     settlement_lag: int = 1  # business days from trade date, on leg.calendar
     ex_coupon_days: int = 0  # business days before a coupon date from which a buyer no longer gets it (0: none)
+    ex_coupon_calendar_days: bool = False  # ex_coupon_days in calendar days before the coupon date (ACGB)
     simple_final_period: bool = False  # simple-interest yield in the last coupon period
     accrued_daycount: DayCount | None = None  # accrued interest day count when it differs from the coupon's
     accrued_cap: bool = False  # accrued interest capped at the current period's coupon (JGB: c d / 365, at most c/2)
@@ -248,9 +249,12 @@ class BondScheduler:
 
     def ex_coupon_date(self, k: int) -> dt.date | None:
         """ First settlement date on which a buyer no longer receives coupon k: conv.ex_coupon_days business days
-            before its payment date. None when the market has no ex-coupon period """
+            before its payment date (gilts), or calendar days before its coupon date (ACGB: 7, i.e. settlement after
+            the record date, 8 calendar days before rolled to the preceding business day). None: no ex-coupon period """
         if self.conv.ex_coupon_days == 0:
             return None
+        if self.conv.ex_coupon_calendar_days:
+            return to_date(self.schedule.unadj_end[k]) - dt.timedelta(days=self.conv.ex_coupon_days)
         cal = make_calendar(self.conv.leg.calendar)
         return cal.add_business_days(to_date(self.schedule.payment[k]), -self.conv.ex_coupon_days)
 
