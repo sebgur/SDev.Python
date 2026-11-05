@@ -8,7 +8,7 @@ from sdevpy.calibration.rates import yieldcurve as ycrv
 from sdevpy.rates.bondquotes import (settlement_date, bill_flows, bill_days, price_from_discount_rate,
                                      discount_rate_from_price, QuoteType, BondQuote, target_dirty, fit_weight,
                                      parse_32nds)
-from sdevpy.conventions.bondconventions import UST, GILT
+from sdevpy.conventions.bondconventions import UST, GILT, BUND, CAN, ACGB
 
 
 VALDATE = dt.datetime(2026, 10, 26)
@@ -102,3 +102,11 @@ def test_jgb_bill_simple_yield():
     assert 1.0 / fit_weight(q, 98.8) == pytest.approx(98.8 * (294 / 365) / (1 + y * 294 / 365) * 1e-4, rel=1e-12)
     with pytest.raises(ValueError):
         price_from_discount_rate(bill, 0.01)
+
+
+def test_settlement_bund_goc_acgb():
+    assert settlement_date(dt.date(2027, 3, 25), BUND) == dt.date(2027, 3, 31)  # Good Friday, Easter Monday
+    assert settlement_date(dt.date(2027, 11, 10), CAN) == dt.date(2027, 11, 12)  # Remembrance Day
+    assert settlement_date(dt.date(2027, 9, 29), CAN) == dt.date(2027, 10, 1)  # Truth and Reconciliation
+    assert settlement_date(dt.date(2027, 3, 26), CAN) == dt.date(2027, 3, 29)  # Easter Monday open
+    assert settlement_date(dt.date(2027, 7, 30), ACGB) == dt.date(2027, 8, 4)  # NSW Bank Holiday 2-Aug

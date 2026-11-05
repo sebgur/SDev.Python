@@ -317,11 +317,21 @@ def to_datetime(date) -> dt.datetime:
         return dt.datetime.combine(date, dt.time.min)
 
 
+def _ca_bond_market(y) -> dict:
+    """ Canadian bond market: Ontario statutory holidays plus Civic Holiday, Remembrance Day and the National Day
+        for Truth and Reconciliation (federal). Easter Monday is an Ontario 'optional' holiday the market trades on """
+    hols = dict(holidays.CA(years=y, subdiv='ON', categories=('public', 'optional')))
+    hols.update(holidays.CA(years=y, categories=('government',)))
+    return {d: n for d, n in hols.items() if n != 'Easter Monday'}
+
+
 CCY_CALENDARS = {
         "ARS": lambda y: holidays.AR(years=y),
         "AUD": lambda y: holidays.AU(years=y),
+        "AUGOV": lambda y: holidays.AU(years=y, subdiv='NSW', categories=('public', 'bank')),  # Sydney, Aug bank hol.
         "BRL": lambda y: holidays.BR(years=y),
         "CAD": lambda y: holidays.CA(years=y),
+        "CAGOV": _ca_bond_market,
         "CHF": lambda y: holidays.CH(years=y),
         "CLP": lambda y: holidays.CL(years=y),
         "CNY": lambda y: holidays.CN(years=y),
@@ -329,9 +339,8 @@ CCY_CALENDARS = {
         "CZK": lambda y: holidays.CZ(years=y),
         "DKK": lambda y: holidays.DK(years=y),
         "EGP": lambda y: holidays.EG(years=y),
-        "EUR": lambda y: holidays.ECB(years=y), # TARGET calendar
-        # "GBP": lambda y: holidays.UK(years=y),
-        "GBP": lambda y: holidays.UK(years=y, subdiv='ENG'), # London: England and Wales bank holidays
+        "EUR": lambda y: holidays.ECB(years=y),  # TARGET calendar
+        "GBP": lambda y: holidays.UK(years=y, subdiv='ENG'),  # London: England and Wales bank holidays
         "HKD": lambda y: holidays.HK(years=y),
         "HUF": lambda y: holidays.HU(years=y),
         "IDR": lambda y: holidays.ID(years=y),

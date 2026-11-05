@@ -13,7 +13,7 @@ from sdevpy.rates.bonds import (bond_flows, dirty_from_curve, flatten, dirty_pri
     par_yield, g_spread)
 from sdevpy.rates.bondquotes import bill_flows
 from sdevpy.calibration.rates import yieldcurve as ycrv
-from sdevpy.conventions.bondconventions import UST, GILT, JGB
+from sdevpy.conventions.bondconventions import UST, GILT, JGB, BUND, BTP
 
 
 COMPOUND = dataclasses.replace(UST, simple_final_period=False)
@@ -401,3 +401,14 @@ def test_flat_yields_mixed_conventions():
         assert y[i] == pytest.approx(bonds.yield_from_dirty(bf, cpns[i], dirty[i]), abs=1e-12)
         assert dv01s(ff, y)[i] == pytest.approx(bonds.dv01(bf, cpns[i], y[i]), rel=1e-12)
     np.testing.assert_allclose(dirty_from_yields(ff, y), dirty, atol=1e-10)
+
+
+def test_bund_btp_flows():
+    bund = make_bond_scheduler(dt.date(2025, 1, 10), dt.date(2035, 2, 15), BUND)
+    assert abs(bund.schedule.accrual_fraction[0] - 36 / 366) < 1e-12  # short first, quasi-period of 366 days
+    assert bund.schedule.payment[0] == np.datetime64('2025-02-17')  # 15th is a Saturday
+    bf = bond_flows(bund, dt.date(2027, 5, 17))
+    assert abs(bf.accrued_fraction - 91 / 365) < 1e-12 and bf.frequency == 1
+    btp = make_bond_scheduler(dt.date(2025, 2, 1), dt.date(2035, 8, 1), BTP)
+    bf = bond_flows(btp, dt.date(2027, 5, 17))
+    assert abs(bf.accrued_fraction - 0.5 * 105 / 181) < 1e-12 and bf.frequency == 2
