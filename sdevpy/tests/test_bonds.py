@@ -228,7 +228,7 @@ def test_g_spread_of_corporate():
 
 
 @pytest.mark.parametrize("conv", [UST, COMPOUND])
-def test_yield_round_trip(conv):
+def test_final_period_yield_round_trip(conv):
     bf = final_period_note(conv)
     dirty = bonds.dirty_from_yield(bf, 0.0425, 0.04)
     assert bonds.yield_from_dirty(bf, 0.0425, dirty) == pytest.approx(0.04, abs=1e-13)

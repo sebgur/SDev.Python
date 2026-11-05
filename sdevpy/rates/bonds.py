@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import scipy.sparse as sps
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.schedules import (BondScheduler, to_date, BondConvention, coupons_per_year, make_bond_scheduler,
+from sdevpy.utilities.schedules import (BondScheduler, to_date, BondConvention, make_bond_scheduler,
     LegConvention, make_leg_schedule, YieldType)
 from sdevpy.utilities.sdaycount import DayCount, yearfraction
 
