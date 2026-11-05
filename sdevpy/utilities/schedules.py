@@ -277,11 +277,11 @@ class BondScheduler:
         return float(yearfraction(start, end, dc))
 
     def coupon_schedule(self, coupon) -> dict:
-        """ Schedule as dataframe """
+        """ Schedule as dict of columns """
         c = self.schedule
         cpn_sch = {'Accrual start': c.unadj_start, 'Accrual end': c.unadj_end, 'Payment': c.payment,
                    'Days': (c.unadj_end - c.unadj_start).astype(int), 'Accrual fraction': c.accrual_fraction,
-                   'Coupon': 100 * coupon * c.coupon_fraction}
+                   'Coupon': 100 * coupon * self.coupon_fraction}
         return cpn_sch
 
 

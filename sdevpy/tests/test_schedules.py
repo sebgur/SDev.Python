@@ -193,3 +193,10 @@ def test_can_first_coupon():
                - (0.5 - 1 / 365)) < 1e-12  # 183 days into a 184-day quasi-period: counts back
     long = sch.make_bond_scheduler(d(2026, 3, 10), d(2036, 12, 1), CAN, stub='long_front')
     assert abs(long.coupon_fraction[0] - (0.5 + 83 / 365)) < 1e-12
+
+
+def test_coupon_schedule():
+    bond = sch.make_bond_scheduler(dt.date(2026, 10, 1), dt.date(2036, 12, 1), CAN)
+    table = bond.coupon_schedule(0.04)
+    np.testing.assert_allclose(table['Coupon'], 4.0 * bond.coupon_fraction)
+    assert table['Coupon'][0] != pytest.approx(4.0 * table['Accrual fraction'][0])  # Canadian stub, not ICMA
