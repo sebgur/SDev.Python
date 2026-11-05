@@ -12,11 +12,11 @@ UST = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.
 GILT = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False),
                       settlement_lag=1, ex_coupon_days=7)
 
-# JGBs: semi-annual (first coupon a full c/2, accrual from the previous 20th (MOF)), Tokyo market calendar,
-# T+1, accrued ACT/365F capped at c/2 (JNX), simple yield
+# JGBs: semi-annual on the 20th, Tokyo market calendar, T+1, accrued ACT/365F capped at c/2 (JNX), simple yield.
+# A full first coupon is a term of each bond: build it with accrual_start=previous_coupon_date(issue, ...)
 JGB = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'JPGOV', bdc=BDC.F, adjust_accrual=False),
                      settlement_lag=1, accrued_daycount=DayCount.ACT365F, accrued_cap=True,
-                     full_first_coupon=True, yield_type=YieldType.SIMPLE)
+                     stub_daycount=DayCount.ACT365F, stub_complement=True, yield_type=YieldType.SIMPLE)
 
 # German Bunds/Bobls/Schatz: annual ACT/ACT ICMA, TARGET, T+2, street yield
 BUND = BondConvention(LegConvention('1Y', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F, adjust_accrual=False),

@@ -200,7 +200,7 @@ class BondConvention:
     accrued_daycount: DayCount | None = None  # accrued interest day count when it differs from the coupon's
     accrued_cap: bool = False  # accrued interest capped at the current period's coupon (JGB: c d / 365, at most c/2)
     stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
-    full_first_coupon: bool = False  # first coupon a full regular one, accruing from the coupon date before issue
+    stub_complement: bool = False  # broken part as 1/f less stub_daycount over the days not accrued (BoJ, JGB)
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
     yield_frequency: int | None = None  # street-yield compounding per year (None: coupon frequency; BTP: 1)
 
@@ -208,6 +208,10 @@ class BondConvention:
     def compounding(self) -> int:
         """ Street-yield compounding frequency per year """
         return self.yield_frequency or coupons_per_year(self.leg.frequency)
+
+    def __post_init__(self):
+        if self.stub_complement and self.stub_daycount is None:
+            raise ValueError("stub_complement needs a stub_daycount")
 
 
 @dataclass(frozen=True)
@@ -285,17 +289,24 @@ class BondScheduler:
         return cpn_sch
 
 
-def make_bond_scheduler(issue: dt.date, maturity: dt.date, conv: BondConvention, first_coupon: dt.date | None = None,
-                        **kwargs) -> BondScheduler:
-    """ Coupon schedule rolled backward from maturity. Irregular first coupon either from issue
-        (short_front by default, or stub='long_front') or from an explicit first_coupon date """
-    if conv.full_first_coupon:  # accrual from the regular coupon date on or before issue (JGB)
-        issue = quasi_coupon_dates(to_date(maturity), to_date(issue), to_date(issue), conv.leg.frequency,
-                                   conv.leg.eom)[0]
+def previous_coupon_date(date: dt.date, maturity: dt.date, conv: BondConvention) -> dt.date:
+    """ Regular coupon date on or before date, rolled back from maturity. The accrual start of a bond whose first
+        coupon is a full period """
+    leg = conv.leg
+    return quasi_coupon_dates(to_date(maturity), to_date(date), to_date(date), leg.frequency, leg.eom)[0]
 
-    kwargs['first_date'] = first_coupon
-    coupons = make_leg_schedule(issue, maturity, conv.leg, **kwargs)
-    anchor = to_date(regular_anchor(issue, maturity, **kwargs))
+
+def make_bond_scheduler(issue: dt.date, maturity: dt.date, conv: BondConvention, first_coupon: dt.date | None = None,
+                        accrual_start: dt.date | None = None, **kwargs) -> BondScheduler:
+    """ Coupon schedule rolled backward from maturity. Interest accrues from accrual_start when the bond's terms
+        give one different from the issue date (e.g. a JGB paying a full first coupon accrues from the previous
+        coupon date: previous_coupon_date), else from issue. Irregular first coupon either from that start
+        (short_front by default, or stub='long_front') or from an explicit first_coupon date """
+    start = to_date(issue if accrual_start is None else accrual_start)
+    end = to_date(maturity)
+    kwargs['first_date'] = None if first_coupon is None else to_date(first_coupon)
+    coupons = make_leg_schedule(start, end, conv.leg, **kwargs)
+    anchor = to_date(regular_anchor(start, end, **kwargs))
     return BondScheduler(coupons, conv, anchor)
 
 
@@ -315,7 +326,11 @@ def stub_coupon_fraction(start: dt.date, end: dt.date, anchor: dt.date, conv: Bo
         if (s, e) == (q0, q1):
             total += 1.0 / f
         elif e > s:
-            total += float(yearfraction(s, e, conv.stub_daycount))
+            if conv.stub_complement:  # a full coupon less the days of the quasi-period not accrued
+                missing = yearfraction(q0, s, conv.stub_daycount) + yearfraction(e, q1, conv.stub_daycount)
+                total += 1.0 / f - float(missing)
+            else:
+                total += float(yearfraction(s, e, conv.stub_daycount))
     return total
 
 

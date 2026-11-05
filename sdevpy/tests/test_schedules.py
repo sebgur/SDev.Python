@@ -1,6 +1,7 @@
 import datetime as dt
 import numpy as np
 import pytest
+import dataclasses
 from sdevpy.utilities.scalendar import BDC
 from sdevpy.utilities.sdaycount import DayCount, icma_yearfraction, yearfraction
 from sdevpy.utilities import schedules as sch
@@ -179,11 +180,18 @@ def test_to_date():
 
 def test_jgb_first_coupon():
     d = dt.date
-    jgb = sch.make_bond_scheduler(d(2026, 10, 1), d(2036, 9, 20), JGB)  # issued 1-Oct, first coupon 20-Mar
-    assert jgb.schedule.unadj_start[0] == np.datetime64('2026-09-20')  # accrues from the previous 20th
-    assert np.allclose(jgb.coupon_fraction, 0.5, rtol=0, atol=1e-15)  # full first coupon
-    assert jgb.schedule.payment[0] == np.datetime64('2027-03-23')  # 20th Sat, 21-22 holidays
-    assert abs(jgb.accrued_fraction(d(2026, 9, 20), d(2026, 10, 2)) - 12 / 365) < 1e-12
+    issue, mat = d(2026, 10, 1), d(2036, 9, 20)
+    assert sch.previous_coupon_date(issue, mat, JGB) == d(2026, 9, 20)
+    full = sch.make_bond_scheduler(issue, mat, JGB, accrual_start=sch.previous_coupon_date(issue, mat, JGB))
+    assert full.schedule.unadj_start[0] == np.datetime64('2026-09-20')  # accrues from the previous 20th
+    assert np.allclose(full.coupon_fraction, 0.5, rtol=0, atol=1e-15)  # full first coupon
+    assert full.schedule.payment[0] == np.datetime64('2027-03-23')  # 20th Sat, 21-22 holidays
+    assert abs(full.accrued_fraction(d(2026, 9, 20), d(2026, 10, 2)) - 12 / 365) < 1e-12
+    short = sch.make_bond_scheduler(issue, mat, JGB)  # same bond without the term: accrues from issue
+    # short first period: 0.5 less 11 unissued days (20-Sep to 1-Oct) / 365; ICMA would give 0.5 * 170/181
+    assert abs(short.coupon_fraction[0] - (0.5 - 11 / 365)) < 1e-12
+    assert np.allclose(full.coupon_fraction, 0.5, rtol=0, atol=1e-15)  # unchanged with a full first coupon
+    assert short.schedule.unadj_start[0] == np.datetime64('2026-10-01')
 
 
 def test_can_first_coupon():
@@ -200,3 +208,8 @@ def test_coupon_schedule():
     table = bond.coupon_schedule(0.04)
     np.testing.assert_allclose(table['Coupon'], 4.0 * bond.coupon_fraction)
     assert table['Coupon'][0] != pytest.approx(4.0 * table['Accrual fraction'][0])  # Canadian stub, not ICMA
+
+
+def test_stub_complement_needs_daycount():
+    with pytest.raises(ValueError):
+        dataclasses.replace(JGB, stub_daycount=None)
