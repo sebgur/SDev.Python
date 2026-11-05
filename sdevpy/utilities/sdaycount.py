@@ -12,6 +12,7 @@ class DayCount(Enum):
     D30E_360 = "30E/360"
     ACTACT_ICMA = "ACT/ACT ICMA"
     ACT365_NL = "NL/365" # actual days with Feb 29 not counted / 365 (JGB accrued and simple yield)
+    ACT365_CANADIAN = "ACT/365 Canadian bond"  # needs the coupon period: act365_canadian()
 
 
 def yearfraction(start: dt.date, end: dt.date, convention: DayCount) -> float|npt.NDArray[np.float64]:
@@ -37,8 +38,8 @@ def yearfraction(start: dt.date, end: dt.date, convention: DayCount) -> float|np
     if convention == DayCount.D30E_360:
         return _30e_360(start, end)
 
-    if convention == DayCount.ACTACT_ICMA:
-        raise ValueError("ACT/ACT ICMA needs a coupon schedule: use icma_yearfraction()")
+    if convention in (DayCount.ACTACT_ICMA, DayCount.ACT365_CANADIAN):
+        raise ValueError(f"{convention.value} needs a coupon schedule")
 
     raise ValueError(f"Unsupported day count: {convention}")
 
@@ -53,6 +54,15 @@ def icma_yearfraction(start: dt.date, end: dt.date, quasi_dates: list[dt.date], 
         if overlap > 0:
             total += overlap / (frequency * (q1 - q0).days)
     return total
+
+
+def act365_canadian(start: dt.date, end: dt.date, period_end: dt.date, frequency: int) -> float:
+    """ Actual/365 (Canadian bond), accrued interest on Government of Canada bonds: days/365 for fewer than 365/f
+        days (182 semi-annual) into the period, then 1/f - (days left to period_end)/365, reaching 1/f exactly """
+    days = (end - start).days
+    if days < 365 // frequency:
+        return days / 365.0
+    return 1.0 / frequency - (period_end - end).days / 365.0
 
 
 def _nl_days(start, end) -> npt.NDArray[np.float64]:

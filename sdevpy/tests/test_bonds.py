@@ -13,7 +13,7 @@ from sdevpy.rates.bonds import (bond_flows, dirty_from_curve, flatten, dirty_pri
     par_yield, g_spread)
 from sdevpy.rates.bondquotes import bill_flows
 from sdevpy.calibration.rates import yieldcurve as ycrv
-from sdevpy.conventions.bondconventions import UST, GILT, JGB, BUND, BTP, ACGB
+from sdevpy.conventions.bondconventions import UST, GILT, JGB, BUND, BTP, ACGB, CAN
 
 
 COMPOUND = dataclasses.replace(UST, simple_final_period=False)
@@ -447,3 +447,15 @@ def test_acgb_ex_interest():
     ex = bond_flows(bond, dt.date(2026, 11, 16))  # first settlement after the record date
     assert ex.ex_coupon and abs(ex.accrued_fraction + 0.5 * 5 / 184) < 1e-12
     assert ex.payment[0] == np.datetime64('2027-05-21')
+
+
+def test_can_accrued_and_final_period():
+    bond = make_bond_scheduler(dt.date(2024, 6, 1), dt.date(2034, 12, 1), CAN)  # 1-Jun-27 to 1-Dec-27: 183 days
+    assert abs(bond_flows(bond, dt.date(2027, 8, 1)).accrued_fraction - 61 / 365) < 1e-12
+    assert abs(bond_flows(bond, dt.date(2027, 11, 29)).accrued_fraction - 181 / 365) < 1e-12  # 181 < 182
+    assert abs(bond_flows(bond, dt.date(2027, 11, 30)).accrued_fraction - (0.5 - 1 / 365)) < 1e-12  # counts back
+    short = make_bond_scheduler(dt.date(2024, 12, 1), dt.date(2027, 12, 1), CAN)
+    bf = bond_flows(short, dt.date(2027, 8, 3))  # single coupon left, 120 days to maturity
+    cpn, y = 0.0325, 0.031
+    assert dirty_from_yield(bf, cpn, y) == pytest.approx((100 + 100 * cpn / 2) / (1 + y * 120 / 365), abs=1e-10)
+    assert bonds.yield_from_dirty(bf, cpn, dirty_from_yield(bf, cpn, y)) == pytest.approx(y, abs=1e-12)

@@ -77,10 +77,10 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
     if valdate is not None:
         pay_times = timegrids.model_time(valdate, payment)
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
-    # return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time,
-    #                  bond.conv.simple_final_period, ex_coupon)
 
-    # maturity_years = float(yearfraction(settle, to_date(bond.schedule.unadj_end[-1]), DayCount.ACT365_NL))
+    if bond.conv.final_period_daycount is not None and len(periods) == 1:  # money-market time in the final period
+        t = float(yearfraction(settle, to_date(bond.schedule.unadj_end[-1]), bond.conv.final_period_daycount))
+        periods = np.array([bond.coupons_per_year * t])
 
     maturity_years = simple_yield_time(settle, to_date(bond.schedule.unadj_end[-1]))
     return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time,

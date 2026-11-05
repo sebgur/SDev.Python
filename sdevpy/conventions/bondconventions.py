@@ -28,7 +28,8 @@ BTP = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F,
 # Government of Canada: semi-annual, Canadian bond market calendar, T+1. Canadian accrued and final-period
 # yield: step 5
 CAN = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'CAGOV', bdc=BDC.F, adjust_accrual=False),
-                     settlement_lag=1)
+                     settlement_lag=1, accrued_daycount=DayCount.ACT365_CANADIAN, simple_final_period=True,
+                     final_period_daycount=DayCount.ACT365F)
 
 # Australian Commonwealth Government Bonds: semi-annual ACT/ACT ICMA, Sydney, T+2. Ex-interest 7 calendar days
 # before each coupon: step 4

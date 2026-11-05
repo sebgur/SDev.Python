@@ -5,7 +5,7 @@ from functools import cached_property
 import numpy as np
 import numpy.typing as npt
 from sdevpy.utilities.scalendar import BDC, Period, make_calendar, is_eom, to_eom
-from sdevpy.utilities.sdaycount import DayCount, yearfraction, icma_yearfraction
+from sdevpy.utilities.sdaycount import DayCount, yearfraction, icma_yearfraction, act365_canadian
 from sdevpy.utilities import timegrids
 from sdevpy.utilities import dates as dts
 
@@ -196,6 +196,7 @@ class BondConvention:
     ex_coupon_days: int = 0  # business days before a coupon date from which a buyer no longer gets it (0: none)
     ex_coupon_calendar_days: bool = False  # ex_coupon_days in calendar days before the coupon date (ACGB)
     simple_final_period: bool = False  # simple-interest yield in the last coupon period
+    final_period_daycount: DayCount | None = None  # simple_final_period on this day count (None: coupon time)
     accrued_daycount: DayCount | None = None  # accrued interest day count when it differs from the coupon's
     accrued_cap: bool = False  # accrued interest capped at the current period's coupon (JGB: c d / 365, at most c/2)
     stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
@@ -265,9 +266,14 @@ class BondScheduler:
     def accrued_fraction(self, start: dt.date, end: dt.date) -> float:
         """ Year fraction for accrued interest from start (last coupon date) to end (settlement): the leg's
             accrual unless the convention has a separate accrued day count (e.g. JGB NL/365) """
-        if self.conv.accrued_daycount is None:
+        dc = self.conv.accrued_daycount
+        if dc is None:
             return self.accrual_fraction(start, end)
-        return float(yearfraction(start, end, self.conv.accrued_daycount))
+        if dc == DayCount.ACT365_CANADIAN:
+            leg = self.conv.leg
+            quasi = quasi_coupon_dates(self.anchor, start, end, leg.frequency, leg.eom)
+            return act365_canadian(start, end, quasi[1], coupons_per_year(leg.frequency))
+        return float(yearfraction(start, end, dc))
 
     def coupon_schedule(self, coupon) -> dict:
         """ Schedule as dataframe """
