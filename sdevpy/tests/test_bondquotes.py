@@ -2,13 +2,14 @@ import datetime as dt
 import numpy as np
 import dataclasses
 import pytest
-from sdevpy.utilities.schedules import make_bond_scheduler, BondConvention, YieldType
-from sdevpy.rates.bonds import bond_flows, accrued_interest, dirty_from_curve, yield_from_dirty
+from sdevpy.utilities.schedules import make_bond_scheduler, BondConvention#, YieldType
+from sdevpy.rates.bonds import (bond_flows, accrued_interest, dirty_from_curve, yield_from_dirty, flatten,
+    yields_from_dirty)
 from sdevpy.calibration.rates import yieldcurve as ycrv
 from sdevpy.rates.bondquotes import (settlement_date, bill_flows, bill_days, price_from_discount_rate,
                                      discount_rate_from_price, QuoteType, BondQuote, target_dirty, fit_weight,
                                      parse_32nds)
-from sdevpy.conventions.bondconventions import UST, GILT, BUND, CAN, ACGB
+from sdevpy.conventions.bondconventions import UST, GILT, BUND, CAN, ACGB, JGB_BILL, BUBILL, CAN_BILL
 
 
 VALDATE = dt.datetime(2026, 10, 26)
@@ -93,7 +94,7 @@ def test_bill_bond_equivalent_yield():
 
 
 def test_jgb_bill_simple_yield():
-    bill = bill_flows(dt.date(2028, 3, 21), dt.date(2027, 6, 1), yield_type=YieldType.SIMPLE)
+    bill = bill_flows(dt.date(2028, 3, 21), dt.date(2027, 6, 1), conv=JGB_BILL)
     assert bill.maturity_years == pytest.approx(294 / 365, abs=1e-14)  # 294 days, under a year: ACT/365F
     y = (100.0 - 98.8) / (98.8 * 294 / 365)
     assert yield_from_dirty(bill, 0.0, 98.8) == pytest.approx(y, abs=1e-14)
@@ -110,3 +111,18 @@ def test_settlement_bund_goc_acgb():
     assert settlement_date(dt.date(2027, 9, 29), CAN) == dt.date(2027, 10, 1)  # Truth and Reconciliation
     assert settlement_date(dt.date(2027, 3, 26), CAN) == dt.date(2027, 3, 29)  # Easter Monday open
     assert settlement_date(dt.date(2027, 7, 30), ACGB) == dt.date(2027, 8, 4)  # NSW Bank Holiday 2-Aug
+
+
+def test_money_market_bills():
+    settle, mat = dt.date(2027, 6, 1), dt.date(2027, 12, 15)  # 197 days
+    bubill = bill_flows(mat, settle, VALDATE, conv=BUBILL)
+    canbill = bill_flows(mat, settle, VALDATE, conv=CAN_BILL)
+    assert yield_from_dirty(bubill, 0.0, 99.0) == pytest.approx((100 / 99 - 1) * 360 / 197, abs=1e-14)
+    assert yield_from_dirty(canbill, 0.0, 99.0) == pytest.approx((100 / 99 - 1) * 365 / 197, abs=1e-14)
+    q = BondQuote(bubill, 0.0, QuoteType.YIELD, 0.0184586986617445)
+    assert target_dirty(q) == pytest.approx(99.0, abs=1e-10)
+    # vectorised path: US street bill alongside money-market bills
+    flows = [bill_flows(mat, settle, VALDATE), bubill, canbill]
+    y = yields_from_dirty(flatten(flows, 0.0), np.full(3, 99.0))
+    for yi, bf in zip(y, flows, strict=True):
+        assert yi == pytest.approx(yield_from_dirty(bf, 0.0, 99.0), abs=1e-12)

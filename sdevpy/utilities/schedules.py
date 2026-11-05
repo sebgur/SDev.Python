@@ -185,7 +185,7 @@ def make_spot_swap_scheduler(trade_date: dt.date, tenor: str, conv: SwapConventi
 ################## BOND ###########################################################################
 class YieldType(Enum):
     STREET = "street"  # compounded at the coupon frequency per coupon period
-    SIMPLE = "simple"  # Japanese simple yield: (c + (R - clean) / T) / clean, T as in bonds.simple_yield_time
+    SIMPLE = "simple"  # (c + (R - clean) / T) / clean: JGB simple yield; money-market yield (R/P - 1) / T for bills
 
 
 @dataclass(frozen=True)
@@ -199,6 +199,13 @@ class BondConvention:
     accrued_cap: bool = False  # accrued interest capped at the current period's coupon (JGB: c d / 365, at most c/2)
     stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
+
+
+@dataclass(frozen=True)
+class BillConvention:
+    """ Zero-coupon bills: the market's quoted yield """
+    yield_type: YieldType = YieldType.STREET  # STREET: US bond-equivalent; SIMPLE: money-market, P = R / (1 + y T)
+    daycount: DayCount | None = None  # SIMPLE: T on this day count (None: bonds.simple_yield_time, JGB)
 
 
 @dataclass(frozen=True)

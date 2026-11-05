@@ -4,9 +4,10 @@ from enum import Enum
 import numpy as np
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.scalendar import make_calendar
-from sdevpy.utilities.schedules import BondConvention, to_date, YieldType
+from sdevpy.utilities.schedules import BondConvention, BillConvention, to_date, YieldType
+from sdevpy.utilities.sdaycount import yearfraction
+from sdevpy.conventions.bondconventions import UST_BILL
 from sdevpy.rates.bonds import BondFlows, accrued_interest, dirty_from_yield, yield_from_dirty, dv01, simple_yield_time
-# from sdevpy.utilities.sdaycount import DayCount, yearfraction
 
 
 BILL_FREQUENCY = 2  # yield exponents of bills measured in half-years
@@ -24,10 +25,10 @@ def settlement_date(trade_date: dt.date, conv: BondConvention) -> dt.date:
 
 
 def bill_flows(maturity: dt.date, settlement: dt.date, valdate: dt.datetime | None = None,
-               yield_type: YieldType = YieldType.STREET) -> BondFlows:
+               conv: BillConvention = UST_BILL) -> BondFlows:
     """ Zero-coupon bill as a single flow of 100 at maturity (alpha = 0: no coupon). Market yield:
         STREET: US bond-equivalent, semi-annual exponents, simple within a half-year
-        SIMPLE: JGB T-Bill, (100 - P) / (P T), T as in simple_yield_time """
+        SIMPLE: money-market, (100 - P) / (P T), T on conv.daycount (JGB: simple_yield_time) """
     settle, pay = to_date(settlement), np.array([np.datetime64(to_date(maturity), 'D')])
     days = float((pay[0] - np.datetime64(settle, 'D')).astype(int))
     if days <= 0:
@@ -39,10 +40,12 @@ def bill_flows(maturity: dt.date, settlement: dt.date, valdate: dt.datetime | No
         pay_times = timegrids.model_time(valdate, pay)
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
 
-    # maturity_years = float(yearfraction(settle, to_date(maturity), DayCount.ACT365_NL))
-    maturity_years = simple_yield_time(settle, to_date(maturity))
+    if conv.daycount is None:
+        maturity_years = simple_yield_time(settle, to_date(maturity))
+    else:
+        maturity_years = float(yearfraction(settle, to_date(maturity), conv.daycount))
     return BondFlows(settle, pay, np.zeros(1), periods, 0.0, BILL_FREQUENCY, pay_times, settle_time, days <= 182,
-                     yield_type=yield_type, maturity_years=maturity_years)
+                     yield_type=conv.yield_type, maturity_years=maturity_years)
 
 
 def bill_days(bf: BondFlows) -> int:
