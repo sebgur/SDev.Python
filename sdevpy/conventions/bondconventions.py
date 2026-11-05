@@ -35,7 +35,8 @@ CAN = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'CAGOV', bdc=BDC.
 # Australian Commonwealth Government Bonds: semi-annual ACT/ACT ICMA, Sydney, T+2. Ex-interest 7 calendar days
 # before each coupon
 ACGB = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'AUGOV', bdc=BDC.F, adjust_accrual=False),
-                      settlement_lag=2, ex_coupon_days=7, ex_coupon_calendar_days=True)
+                      settlement_lag=2, ex_coupon_days=7, ex_coupon_calendar_days=True,
+                      simple_final_period=True, final_period_daycount=DayCount.ACT365F)
 
 
 ################## BILLS ##############################################################################################
