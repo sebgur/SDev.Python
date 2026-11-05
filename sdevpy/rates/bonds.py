@@ -19,7 +19,7 @@ class BondFlows:
     settlement: dt.date
     payment: npt.NDArray[np.datetime64]  # payment dates of the remaining coupons (redemption with the last)
     alpha: npt.NDArray[np.float64]  # accrual fraction of each remaining coupon
-    periods: npt.NDArray[np.float64]  # coupon periods from settlement to each coupon date (yield exponents)
+    periods: npt.NDArray[np.float64]  # coupon periods from settlement to each coupon date
     accrued_fraction: float  # accrual fraction from the last coupon date to settlement
     frequency: int  # coupons per year
     pay_times: npt.NDArray[np.float64] | None = None  # model times from valdate (curve pricing only)
@@ -28,6 +28,16 @@ class BondFlows:
     ex_coupon: bool = False  # settlement in the ex-coupon period: next coupon excluded, accrued negative
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
     maturity_years: float = 0.0  # simple-yield time from settlement to the (unadjusted) maturity: simple_yield_time
+    yield_frequency: int | None = None  # street-yield compounding per year (None: coupon frequency)
+
+    @property
+    def compounding(self) -> int:
+        return self.frequency if self.yield_frequency is None else self.yield_frequency
+
+    @property
+    def yield_exponents(self) -> npt.NDArray[np.float64]:
+        """ Street-yield exponents: compounding periods from settlement to each flow """
+        return self.periods * (self.compounding / self.frequency)
 
     @property
     def simple_flows(self) -> npt.NDArray[np.bool_]:
@@ -74,7 +84,8 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
 
     maturity_years = simple_yield_time(settle, to_date(bond.schedule.unadj_end[-1]))
     return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time,
-                     bond.conv.simple_final_period, ex_coupon, bond.conv.yield_type, maturity_years)
+                     bond.conv.simple_final_period, ex_coupon, bond.conv.yield_type, maturity_years,
+                     bond.conv.compounding)
 
 
 def cashflows(bf: BondFlows, coupon: float, redemption: float = 100.0) -> npt.NDArray[np.float64]:
@@ -128,7 +139,8 @@ def _price_derivs(bf: BondFlows, coupon: float, y: float, redemption: float,
         clean = (100.0 * coupon * t + redemption) / base
         return clean + accrued_interest(bf, coupon), -t * clean / base, 2.0 * t * t * clean / base ** 2
     amounts = cashflows(bf, coupon, redemption)
-    v, dv, d2v = _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)
+    # v, dv, d2v = _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)
+    v, dv, d2v = _yield_discount(bf.yield_exponents, bf.compounding, y, bf.simple_flows)
     return float(np.sum(amounts * v)), float(np.sum(amounts * dv)), float(np.sum(amounts * d2v))
 
 
@@ -178,7 +190,9 @@ def macaulay_duration(bf: BondFlows, coupon: float, y: float, redemption: float 
     """ PV-weighted average time to the cash flows, in years (street-convention yield discounting) """
     if _kind(bf, kind) != YieldType.STREET:
         raise ValueError("Macaulay duration needs a street (compounded) yield: pass kind=YieldType.STREET")
-    pv = cashflows(bf, coupon, redemption) * _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)[0]
+    # pv = cashflows(bf, coupon, redemption) * _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)[0]
+    pv = cashflows(bf, coupon, redemption) * _yield_discount(bf.yield_exponents, bf.compounding, y,
+                                                             bf.simple_flows)[0]
     return float(np.sum(pv * bf.periods) / np.sum(pv) / bf.frequency)
 
 
@@ -264,13 +278,14 @@ def par_yield(maturity: dt.date, settlement: dt.date, conv: BondConvention, df: 
 def g_spread(bf: BondFlows, coupon: float, dirty: float, df: DiscountFunction, maturity: dt.date,
              gov_conv: BondConvention, valdate: dt.datetime, redemption: float = 100.0) -> float:
     """ Bond yield minus the government par yield at the bond's maturity, both in the government's yield
-        convention: street yields in the government's compounding (e.g. semi-annual for UST), or simple yields
-        (JGB). df: the government curve """
+        convention: street yields in the government's compounding (e.g. semi-annual for UST, annual for BTP),
+        or simple yields (JGB). df: the government curve """
     gov_par = par_yield(maturity, bf.settlement, gov_conv, df, valdate)
     y = yield_from_dirty(bf, coupon, dirty, redemption, kind=gov_conv.yield_type)
     if gov_conv.yield_type == YieldType.SIMPLE:
         return y - gov_par
-    return convert_yield(y, bf.frequency, coupons_per_year(gov_conv.leg.frequency)) - gov_par
+    # return convert_yield(y, bf.frequency, coupons_per_year(gov_conv.leg.frequency)) - gov_par
+    return convert_yield(y, bf.compounding, gov_conv.compounding) - gov_par
 
 
 def asset_swap_spread(bf: BondFlows, coupon: float, dirty: float, df_disc: DiscountFunction, maturity: dt.date,
@@ -319,8 +334,8 @@ class FlatFlows:
     owner: npt.NDArray[np.intp]  # (N,) bond index of each flow
     flow_index: npt.NDArray[np.intp]  # (N,) index in times of each flow's pay time
     settle_index: npt.NDArray[np.intp]  # (n,) index in times of each bond's settlement time
-    periods: npt.NDArray[np.float64]  # (N,) coupon periods from settlement (street-yield exponents)
-    frequency: npt.NDArray[np.float64]  # (n,) coupons per year
+    periods: npt.NDArray[np.float64]  # (N,) street-yield exponents: compounding periods from settlement
+    frequency: npt.NDArray[np.float64]  # (n,) street-yield compounding per year
     simple: npt.NDArray[np.bool_]  # (N,) flows discounted at simple interest in the yield formulas
     simple_yield: npt.NDArray[np.bool_]  # (n,) bonds quoted on the simple yield
     annual_coupon: npt.NDArray[np.float64]  # (n,) 100 c
@@ -352,8 +367,10 @@ def flatten(flows: list[BondFlows], coupons: npt.ArrayLike, redemptions: npt.Arr
     all_times = np.concatenate([bf.pay_times for bf in flows] + [np.array([bf.settle_time for bf in flows])])
     times, index = np.unique(all_times, return_inverse=True)
     n = len(amounts)
-    periods = np.concatenate([bf.periods for bf in flows])
-    frequency = np.array([bf.frequency for bf in flows], dtype=float)
+    # periods = np.concatenate([bf.periods for bf in flows])
+    # frequency = np.array([bf.frequency for bf in flows], dtype=float)
+    periods = np.concatenate([bf.yield_exponents for bf in flows])
+    frequency = np.array([bf.compounding for bf in flows], dtype=float)
     simple = np.concatenate([bf.simple_flows for bf in flows])
     # return FlatFlows(times, amounts, starts, owner, index[:n], index[n:], periods, frequency, simple)
     simple_yield = np.array([bf.yield_type == YieldType.SIMPLE for bf in flows])

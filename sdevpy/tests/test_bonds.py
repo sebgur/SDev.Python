@@ -412,3 +412,30 @@ def test_bund_btp_flows():
     btp = make_bond_scheduler(dt.date(2025, 2, 1), dt.date(2035, 8, 1), BTP)
     bf = bond_flows(btp, dt.date(2027, 5, 17))
     assert abs(bf.accrued_fraction - 0.5 * 105 / 181) < 1e-12 and bf.frequency == 2
+
+
+def test_btp_annual_yield():
+    btp = make_bond_scheduler(dt.date(2025, 2, 1), dt.date(2035, 8, 1), BTP)
+    btp_semi = make_bond_scheduler(dt.date(2025, 2, 1), dt.date(2035, 8, 1),
+                                   dataclasses.replace(BTP, yield_frequency=None))
+    settle, cpn, dirty = dt.date(2027, 5, 17), 0.0385, 102.4
+    bf, bf_semi = bond_flows(btp, settle, VALDATE), bond_flows(btp_semi, settle, VALDATE)
+    assert bf.compounding == 1 and bf_semi.compounding == 2
+    y = bonds.yield_from_dirty(bf, cpn, dirty)
+    y_semi = bonds.yield_from_dirty(bf_semi, cpn, dirty)
+    assert y == pytest.approx(convert_yield(y_semi, 2, 1), abs=1e-13)  # identity flow by flow
+    assert dirty_from_yield(bf, cpn, y) == pytest.approx(dirty, abs=1e-10)
+    assert bonds.macaulay_duration(bf, cpn, y) == pytest.approx(bonds.macaulay_duration(bf_semi, cpn, y_semi),
+                                                                abs=1e-12)  # same PV weights
+    h = 1e-6
+    fd = (dirty_from_yield(bf, cpn, y - h) - dirty_from_yield(bf, cpn, y + h)) / (2 * h) * 1e-4
+    assert bonds.dv01(bf, cpn, y) == pytest.approx(fd, rel=1e-8)
+    # vectorised path with a mix of compounding conventions
+    flows = [bf, bond_flows(make_bond_scheduler(dt.date(2025, 1, 10), dt.date(2035, 2, 15), BUND), settle, VALDATE),
+             bond_flows(make_bond_scheduler(dt.date(2026, 8, 15), dt.date(2036, 8, 15), UST), settle, VALDATE)]
+    cpns, dirties = np.array([cpn, 0.025, 0.04125]), np.array([dirty, 98.7, 101.3])
+    ff = flatten(flows, cpns)
+    ys = yields_from_dirty(ff, dirties)
+    for i, b in enumerate(flows):
+        assert ys[i] == pytest.approx(bonds.yield_from_dirty(b, cpns[i], dirties[i]), abs=1e-12)
+        assert dv01s(ff, ys)[i] == pytest.approx(bonds.dv01(b, cpns[i], ys[i]), rel=1e-12)

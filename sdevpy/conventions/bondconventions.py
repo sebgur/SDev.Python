@@ -23,7 +23,7 @@ BUND = BondConvention(LegConvention('1Y', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F
 
 # Italian BTPs: semi-annual ACT/ACT ICMA, TARGET, T+2. Yield quoted annual-compounded: step 3
 BTP = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F, adjust_accrual=False),
-                     settlement_lag=2)
+                     settlement_lag=2, yield_frequency=1)
 
 # Government of Canada: semi-annual, Canadian bond market calendar, T+1. Canadian accrued and final-period
 # yield: step 5

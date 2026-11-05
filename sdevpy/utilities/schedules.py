@@ -199,6 +199,12 @@ class BondConvention:
     accrued_cap: bool = False  # accrued interest capped at the current period's coupon (JGB: c d / 365, at most c/2)
     stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
+    yield_frequency: int | None = None  # street-yield compounding per year (None: coupon frequency; BTP: 1)
+
+    @property
+    def compounding(self) -> int:
+        """ Street-yield compounding frequency per year """
+        return self.yield_frequency or coupons_per_year(self.leg.frequency)
 
 
 @dataclass(frozen=True)
