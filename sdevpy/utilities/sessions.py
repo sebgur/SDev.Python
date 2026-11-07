@@ -1,8 +1,12 @@
 import datetime as dt
+import os
 from dataclasses import dataclass
 from functools import cache
 from zoneinfo import ZoneInfo
 from sdevpy.utilities import calendars as cdr
+
+
+_default_center_name: str | None = None
 
 
 def normalize(x: dt.date|dt.datetime) -> dt.date|dt.datetime:
@@ -57,6 +61,7 @@ class TradingCenter:
             now = dt.datetime.now(dt.UTC)
         return self.to_session_date(x) == self.session_date(now)
 
+
 @cache
 def make_center(name: str) -> TradingCenter:
     """ Trading center from the CENTER_SPECS registry """
@@ -67,8 +72,50 @@ def make_center(name: str) -> TradingCenter:
     return TradingCenter(name, ZoneInfo(tz), calendar, roll)
 
 
+def set_default_center(name: str | None) -> None:
+    """ Set the process-wide default center (None: fall back to the SDEVPY_CENTER environment variable) """
+    global _default_center_name
+    if name is not None:
+        make_center(name)  # Validate
+    _default_center_name = name
+
+
+def default_center() -> TradingCenter:
+    """ Default center: set_default_center() if called, else the SDEVPY_CENTER environment variable """
+    name = _default_center_name or os.environ.get("SDEVPY_CENTER")
+    if name is None:
+        raise ValueError("No default trading center: call set_default_center() or set SDEVPY_CENTER")
+    return make_center(name)
+
+
+def get_center(center: str | TradingCenter | None = None) -> TradingCenter:
+    """ Resolve a center given as a TradingCenter, a registry name, or None for the default center """
+    if center is None:
+        return default_center()
+    if isinstance(center, str):
+        return make_center(center)
+    return center
+
+
+def is_live(x: dt.date | dt.datetime, center: str | TradingCenter | None = None,
+            now: dt.datetime | None = None) -> bool:
+    """ True if x belongs to the current session of center (default center if None) """
+    return get_center(center).is_live(x, now)
+
+
 # name: (timezone, calendar name for cdr.make_calendar or None for weekends only, roll time)
+# Branch rolls are the company EOD times, local to each branch
 CENTER_SPECS = {
+    # Branches
+    "SYDNEY": ("Australia/Sydney", "AUD", dt.time(17)),
+    "TOKYO": ("Asia/Tokyo", "JPY", dt.time(17)),
+    "SINGAPORE": ("Asia/Singapore", "SGD", dt.time(17)),
+    "AUCKLAND": ("Pacific/Auckland", "NZD", dt.time(17)),
+    "MUMBAI": ("Asia/Kolkata", "INR", dt.time(17)),
+    "DUBAI": ("Asia/Dubai", "AED", dt.time(17)),
+    "LONDON": ("Europe/London", "GBP", dt.time(17)),
+    "NEWYORK": ("America/New_York", "USD", dt.time(17)),
+    # Exchanges
     "XNYS": ("America/New_York", "XNYS", dt.time(17)),
     "XLON": ("Europe/London", "XLON", dt.time(17)),
     "XTKS": ("Asia/Tokyo", "XTKS", dt.time(17)),

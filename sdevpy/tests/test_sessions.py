@@ -151,3 +151,45 @@ def test_make_center_unknown_raises():
 ])
 def test_registry_session_date(name, t, ref):
     assert ssn.make_center(name).session_date(t) == ref
+
+
+@pytest.fixture
+def no_default(monkeypatch):
+    monkeypatch.delenv("SDEVPY_CENTER", raising=False)
+    ssn.set_default_center(None)
+    yield
+    ssn.set_default_center(None)
+
+
+def test_default_center_unset_raises(no_default):
+    with pytest.raises(ValueError):
+        ssn.default_center()
+
+
+def test_default_center_from_env(no_default, monkeypatch):
+    monkeypatch.setenv("SDEVPY_CENTER", "TOKYO")
+    assert ssn.default_center().name == "TOKYO"
+
+
+def test_default_center_code_overrides_env(no_default, monkeypatch):
+    monkeypatch.setenv("SDEVPY_CENTER", "TOKYO")
+    ssn.set_default_center("LONDON")
+    assert ssn.default_center().name == "LONDON"
+
+
+def test_set_default_center_unknown_raises(no_default):
+    with pytest.raises(ValueError):
+        ssn.set_default_center("PARIS")
+
+
+def test_is_live_branches(no_default):
+    # Fri 13 Nov 2026 10:00 UTC = 19:00 Tokyo (after EOD), 10:00 London (before EOD)
+    now = dt.datetime(2026, 11, 13, 10, 0, tzinfo=dt.UTC)
+    fri = dt.date(2026, 11, 13)
+    ssn.set_default_center("TOKYO")
+    assert ssn.is_live(fri, now=now)                       # Tokyo: Fri after EOD, Sat back to Fri
+    assert ssn.is_live(fri, center="LONDON", now=now)
+    thu_now = dt.datetime(2026, 11, 12, 10, 0, tzinfo=dt.UTC)  # Thu 19:00 Tokyo, 10:00 London
+    thu = dt.date(2026, 11, 12)
+    assert not ssn.is_live(thu, now=thu_now)               # Tokyo already on Fri
+    assert ssn.is_live(thu, center="LONDON", now=thu_now)  # London still on Thu

@@ -326,6 +326,7 @@ def _ca_bond_market(y) -> dict:
 
 
 CCY_CALENDARS = {
+        "AED": lambda y: holidays.AE(years=y),
         "ARS": lambda y: holidays.AR(years=y),
         "AUD": lambda y: holidays.AU(years=y),
         "AUGOV": lambda y: holidays.AU(years=y, subdiv='NSW', categories=('public', 'bank')),  # Sydney, Aug bank hol.
