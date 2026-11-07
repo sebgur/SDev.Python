@@ -46,7 +46,7 @@ def par_rate(st: SwapTimes, df_disc: DiscountFunction, df_proj: DiscountFunction
 
 if __name__ == "__main__":
     from sdevpy.calibration.rates import yieldcurve as ycrv
-    from sdevpy.utilities.sdaycount import DayCount
+    from sdevpy.utilities.daycounts import DayCount
     from sdevpy.utilities.schedules import LegConvention, SwapConvention, make_spot_swap_scheduler
 
     # Curve: linear zero rates

@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from enum import Enum
 import numpy as np
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.scalendar import make_calendar
+from sdevpy.utilities.calendars import make_calendar
 from sdevpy.utilities.schedules import BondConvention, BillConvention, to_date, YieldType
-from sdevpy.utilities.sdaycount import yearfraction
+from sdevpy.utilities.daycounts import yearfraction
 from sdevpy.conventions.bondconventions import UST_BILL
 from sdevpy.rates.bonds import BondFlows, accrued_interest, dirty_from_yield, yield_from_dirty, dv01, simple_yield_time
 
@@ -120,8 +120,8 @@ def to_32nds(price: float) -> str:
 
 
 if __name__ == "__main__":
-    # from sdevpy.utilities.scalendar import BDC
-    # from sdevpy.utilities.sdaycount import DayCount
+    # from sdevpy.utilities.calendars import BDC
+    # from sdevpy.utilities.daycounts import DayCount
     from sdevpy.utilities.schedules import make_bond_scheduler
     from sdevpy.conventions.bondconventions import UST
     from sdevpy.rates.bonds import bond_flows, dirty_from_curve

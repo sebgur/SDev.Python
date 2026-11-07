@@ -1,6 +1,6 @@
 import datetime as dt
 from sdevpy.utilities import dates as dts
-from sdevpy.utilities.scalendar import make_calendar, BDC, to_eom, is_last_business_day_of_month
+from sdevpy.utilities.calendars import make_calendar, BDC, to_eom, is_last_business_day_of_month
 
 
 FX_SPOT_LAG_OVERRIDES = {

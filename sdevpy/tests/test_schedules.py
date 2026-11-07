@@ -2,8 +2,8 @@ import datetime as dt
 import numpy as np
 import pytest
 import dataclasses
-from sdevpy.utilities.scalendar import BDC
-from sdevpy.utilities.sdaycount import DayCount, icma_yearfraction, yearfraction
+from sdevpy.utilities.calendars import BDC
+from sdevpy.utilities.daycounts import DayCount, icma_yearfraction, yearfraction
 from sdevpy.utilities import schedules as sch
 from sdevpy.conventions.bondconventions import UST, GILT, JGB, CAN
 

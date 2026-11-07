@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from sdevpy.utilities import schedules as sch
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.scalendar import BDC
-from sdevpy.utilities.sdaycount import DayCount
+from sdevpy.utilities.calendars import BDC
+from sdevpy.utilities.daycounts import DayCount
 from sdevpy.conventions.bondconventions import UST
 from sdevpy.rates import bonds, swaps
 from sdevpy.rates.bondquotes import settlement_date, bill_flows

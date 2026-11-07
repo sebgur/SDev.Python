@@ -377,7 +377,7 @@
     <p>
       <strong>Current state:</strong> The library mixes bare <code>print()</code> calls in production
       functions (<code>meanreversion.py:104</code>, <code>localvol_factory.py:171</code>,
-      <code>tools.py:40</code>, <code>scalendar.py:208</code>) with <code>logging.getLogger(__name__)</code>
+      <code>tools.py:40</code>, <code>calendars.py:208</code>) with <code>logging.getLogger(__name__)</code>
       already correctly used in the majority of modules. Several production files also contain
       <code>if __name__ == "__main__": print("Hello")</code> stubs.
     </p>

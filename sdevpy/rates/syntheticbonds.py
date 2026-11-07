@@ -1,6 +1,6 @@
 import datetime as dt
 import numpy as np
-from sdevpy.utilities.scalendar import BDC, make_calendar
+from sdevpy.utilities.calendars import BDC, make_calendar
 from sdevpy.conventions.bondconventions import UST
 from sdevpy.utilities import schedules as sch
 from sdevpy.rates import bonds

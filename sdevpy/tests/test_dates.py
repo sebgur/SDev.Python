@@ -1,7 +1,7 @@
 import datetime as dt
 import pytest
 from sdevpy.utilities import dates as dts
-from sdevpy.utilities import scalendar as cdr
+from sdevpy.utilities import calendars as cdr
 
 
 def test_to_oadate():

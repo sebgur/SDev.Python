@@ -110,7 +110,7 @@ def data_file(name: str, folder: str|Path) -> Path:
 
 if __name__ == "__main__":
     # import numpy as np
-    # from sdevpy.utilities.scalendar import make_schedule
+    # from sdevpy.utilities.calendars import make_schedule
     # from sdevpy.utilities.timegrids import model_time
     # from sdevpy.maths.rand.rng import get_rng
     name = "ABC"

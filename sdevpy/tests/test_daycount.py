@@ -1,6 +1,6 @@
 import datetime as dt
-# from sdevpy.utilities import scalendar as cdr
-from sdevpy.utilities import sdaycount as dc
+# from sdevpy.utilities import calendars as cdr
+from sdevpy.utilities import daycounts as dc
 
 
 def test_yearfraction_act360():

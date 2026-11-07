@@ -1,5 +1,5 @@
-from sdevpy.utilities.scalendar import BDC
-from sdevpy.utilities.sdaycount import DayCount
+from sdevpy.utilities.calendars import BDC
+from sdevpy.utilities.daycounts import DayCount
 from sdevpy.utilities.schedules import LegConvention, BondConvention, YieldType, BillConvention
 
 

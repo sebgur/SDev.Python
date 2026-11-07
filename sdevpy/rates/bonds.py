@@ -7,7 +7,7 @@ import scipy.sparse as sps
 from sdevpy.utilities import timegrids
 from sdevpy.utilities.schedules import (BondScheduler, to_date, BondConvention, make_bond_scheduler,
     LegConvention, make_leg_schedule, YieldType)
-from sdevpy.utilities.sdaycount import DayCount, yearfraction
+from sdevpy.utilities.daycounts import DayCount, yearfraction
 
 
 DiscountFunction = Callable[[npt.NDArray[np.float64]], npt.NDArray[np.float64]]
@@ -449,8 +449,8 @@ def prices_jac(ff: FlatFlows, d: npt.NDArray[np.float64], g: npt.NDArray[np.floa
 
 if __name__ == "__main__":
     from sdevpy.calibration.rates import yieldcurve as ycrv
-    # from sdevpy.utilities.scalendar import BDC
-    # from sdevpy.utilities.sdaycount import DayCount
+    # from sdevpy.utilities.calendars import BDC
+    # from sdevpy.utilities.daycounts import DayCount
     from sdevpy.utilities.schedules import make_bond_scheduler
     from sdevpy.conventions.bondconventions import UST
 

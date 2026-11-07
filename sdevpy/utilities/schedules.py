@@ -4,8 +4,8 @@ from enum import Enum
 from functools import cached_property
 import numpy as np
 import numpy.typing as npt
-from sdevpy.utilities.scalendar import BDC, Period, make_calendar, is_eom, to_eom
-from sdevpy.utilities.sdaycount import DayCount, yearfraction, icma_yearfraction, act365_canadian
+from sdevpy.utilities.calendars import BDC, Period, make_calendar, is_eom, to_eom
+from sdevpy.utilities.daycounts import DayCount, yearfraction, icma_yearfraction, act365_canadian
 from sdevpy.utilities import timegrids
 from sdevpy.utilities import dates as dts
 

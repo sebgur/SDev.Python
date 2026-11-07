@@ -474,7 +474,7 @@ section = InterpolatedLocalVolSection(time, logm_list, vol_list)   <span class="
       <span class="issue-title">Equity path-dependent payoffs default to the US federal holiday calendar instead of an exchange calendar</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 234, 464 &nbsp;·&nbsp; exotics.py · lines 14, 73 &nbsp;·&nbsp; sdevpy/utilities/scalendar.py · line 412</span>
+    <span class="loc">sdevpy/montecarlo/payoffs/basic.py · lines 234, 464 &nbsp;·&nbsp; exotics.py · lines 14, 73 &nbsp;·&nbsp; sdevpy/utilities/calendars.py · line 412</span>
     <p>
       <strong>What happens:</strong> <code>Average</code>, <code>Variance</code>, <code>WorstOfBarrier</code> and <code>make_asian_option</code> all default to <code>cdr="USD"</code>, which maps to <code>holidays.US</code> (federal holidays).
       Checked against <code>make_calendar("NYSE")</code>: Good Friday (2026-04-03) is a USD business day but an NYSE holiday, while Columbus Day (2026-10-12) and Veterans Day (2026-11-11) are USD holidays but NYSE trading days.
@@ -488,7 +488,7 @@ section = InterpolatedLocalVolSection(time, logm_list, vol_list)   <span class="
 <span class="rm">-    ..., freq="1D", cdr="USD"):</span>
 <span class="ok">+    ..., freq="1D", cdr="NYSE"):</span>
 
-<span class="c"># scalendar.py, make_calendar</span>
+<span class="c"># calendars.py, make_calendar</span>
 <span class="ok">+@functools.lru_cache(maxsize=None)</span>
  <span class="kw">def</span> <span class="fn">make_calendar</span>(name: str, start_year: int=<span class="fn">2000</span>, end_year: int=<span class="fn">2100</span>):</pre>
     <p>A better long-term fix is to take the calendar from the underlying's static data rather than from a keyword default.</p>

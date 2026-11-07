@@ -253,7 +253,7 @@
         <tr>
           <td>Maintainability</td><td>7 / 10</td>
           <td><div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:70%;background:#3fb950"></div></div><span class="score-lbl">Good</span></div></td>
-          <td style="color:var(--muted);font-size:.83rem">Small modules and clear names. Conventions are data, so adding a market means adding a constant. The default data root is still the test-fixture folder (#7), and the Canadian calendar filters on the English holiday name <code>'Easter Monday'</code> (scalendar.py, <code>_ca_bond_market</code>), which a localisation change in <code>holidays</code> would break silently.</td>
+          <td style="color:var(--muted);font-size:.83rem">Small modules and clear names. Conventions are data, so adding a market means adding a constant. The default data root is still the test-fixture folder (#7), and the Canadian calendar filters on the English holiday name <code>'Easter Monday'</code> (calendars.py, <code>_ca_bond_market</code>), which a localisation change in <code>holidays</code> would break silently.</td>
         </tr>
         <tr>
           <td>Type Safety</td><td>6 / 10</td>
@@ -447,7 +447,7 @@ os.environ.setdefault("SDEVPY_DATA", str(Path(__file__).parent / "data"))</span>
       <span class="issue-title">Four library functions crash or hang on inputs they are meant to accept (open since the 23rd review)</span>
       <span class="badge medium">Medium</span>
     </div>
-    <span class="loc">sdevpy/maths/interpolation.py · lines 92–94 &nbsp;·&nbsp; sdevpy/utilities/timegrids.py · line 21 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/optionsurface.py · lines 196–206 &nbsp;·&nbsp; sdevpy/utilities/scalendar.py · lines 67–74</span>
+    <span class="loc">sdevpy/maths/interpolation.py · lines 92–94 &nbsp;·&nbsp; sdevpy/utilities/timegrids.py · line 21 &nbsp;·&nbsp; sdevpy/volatility/impliedvol/optionsurface.py · lines 196–206 &nbsp;·&nbsp; sdevpy/utilities/calendars.py · lines 67–74</span>
     <p>
       <strong>Why it's bad:</strong>
       (a) <code>CubicSplineInterpolator.__init__</code> builds the spline in <code>super().__init__</code> and then sets <code>self.interp = None</code>.
@@ -469,7 +469,7 @@ os.environ.setdefault("SDEVPY_DATA", str(Path(__file__).parent / "data"))</span>
             if k &gt;= num_charts:
                 axs[i, j].axis('off')
                 continue</span>
-<span class="c"># (d) scalendar.py:68</span>
+<span class="c"># (d) calendars.py:68</span>
 <span class="ok">        start, end = self.to_date(start), self.to_date(end)</span></pre>
   </div>
 

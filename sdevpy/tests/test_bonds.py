@@ -4,8 +4,8 @@ import dataclasses
 import pytest
 from sdevpy.utilities import schedules as sch
 from sdevpy.utilities import timegrids
-from sdevpy.utilities.scalendar import BDC
-from sdevpy.utilities.sdaycount import DayCount
+from sdevpy.utilities.calendars import BDC
+from sdevpy.utilities.daycounts import DayCount
 from sdevpy.rates import bonds
 from sdevpy.utilities.schedules import make_bond_scheduler, LegConvention, BondConvention, YieldType
 from sdevpy.rates.bonds import (bond_flows, dirty_from_curve, flatten, dirty_prices,

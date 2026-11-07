@@ -3,7 +3,7 @@ import datetime as dt
 from sdevpy.montecarlo.payoffs.basic import Payoff, Average, Terminal, Basket
 from sdevpy.montecarlo.payoffs.vanillas import string_to_optiontype, vanilla_option, make_vanilla_option_payoff
 from sdevpy.market.repository import MarketDataRepository
-from sdevpy.utilities.scalendar import make_schedule
+from sdevpy.utilities.calendars import make_schedule
 from sdevpy.montecarlo.marketstate import MarketState
 
 

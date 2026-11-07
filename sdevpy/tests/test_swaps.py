@@ -1,6 +1,6 @@
 import datetime as dt
 import numpy as np
-from sdevpy.utilities.sdaycount import DayCount
+from sdevpy.utilities.daycounts import DayCount
 from sdevpy.utilities import schedules as sch
 from sdevpy.utilities import timegrids
 from sdevpy.rates import swaps

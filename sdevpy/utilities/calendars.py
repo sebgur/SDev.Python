@@ -213,7 +213,7 @@ def to_eom(d: dt.date) -> dt.date:
 
 
 def is_last_business_day_of_month(cal, d: dt.datetime) -> bool:
-    """ True if `d` is the last good business day of its month. Distinct from scalendar.is_eom, which checks the
+    """ True if `d` is the last good business day of its month. Distinct from calendars.is_eom, which checks the
         literal calendar month-end, not the business-day-adjusted one. The two diverge exactly when the calendar
         month-end falls on a weekend/holiday, which is the case this check exists for. """
     nxt = cal.add_business_days(d, 1)

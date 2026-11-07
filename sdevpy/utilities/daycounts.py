@@ -2,7 +2,7 @@ import datetime as dt
 from enum import Enum
 import numpy as np
 import numpy.typing as npt
-# from sdevpy.utilities.scalendar import Period
+# from sdevpy.utilities.calendars import Period
 
 
 class DayCount(Enum):

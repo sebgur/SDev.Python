@@ -1,7 +1,7 @@
 """ Conventions and utilities for the FX market """
 import datetime as dt
 from sdevpy.utilities import dates as dts
-from sdevpy.utilities.sdaycount import yearfraction, DayCount
+from sdevpy.utilities.daycounts import yearfraction, DayCount
 
 
 USD_IS_QUOTE = {'EUR', 'GBP', 'AUD', 'NZD', 'XAU', 'XAG', 'XPT', 'XPD'} # ZZZ/USD convention
