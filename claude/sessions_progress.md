@@ -1,6 +1,6 @@
 # Trading sessions / "live" — progress notes
 
-Last updated: 2026-11-07. Work is step-by-step: Claude proposes code, user types it in.
+Last updated: 2026-11-07 (84 tests passing). Work is step-by-step: Claude proposes code, user types it in.
 
 ## Goal
 Detect whether a date/datetime is "live", i.e. belongs to a trading center's current session,
@@ -47,6 +47,16 @@ with sessions that start/end at different local times per center.
 - Default center: `set_default_center(name)` (code) overrides env var `SDEVPY_CENTER`;
   `default_center()`, `get_center(center)` (None/str/TradingCenter), module-level
   `is_live(x, center=None, now=None)`.
+
+## Gaps and resolve_end_date (done, 84 tests passing)
+- `ssn.resolve_end_date(end_date, center=None, now=None) -> (trade date, is_live)`; end_date None/'live'
+  -> current session. Used at the top of `swap_series` (kwargs `center`, `now`), end date converted with
+  `cdr.to_datetime`. Rest of `swap_series` (historical series, live quotes source) not designed yet:
+  calibration repository has no live source nor date listing.
+- Decided: **nothing is live in gaps**. After Fri EOD until Sun roll (and holiday gaps), is_live is False,
+  but dates still map back (Sat -> Fri). New `TradingCenter.in_session(t)`; `is_live` and
+  `resolve_end_date` require both `now` and `x` to be in a session (a Saturday date or moment is
+  never live, whatever the clock says). Rest of `swap_series` postponed by the user.
 
 ## Next
 - Use in `sdevpy/timeseries/swaptimeseries.py`: `swap_series(..., end_date=None|'live'|date)` replaces the

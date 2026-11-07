@@ -40,26 +40,39 @@ class TradingCenter:
 
     def session_date(self, t: dt.datetime) -> dt.date:
         """ Trade date of the session that moment t (aware datetime) belongs to """
+        return self.calendar.adjust(self._rolled_date(t), cdr.BDC.P)
+
+    def in_session(self, t: dt.datetime) -> bool:
+        """ True if moment t (aware datetime) is inside a session, False in gaps (weekends, holidays) """
+        return self.calendar.is_business_day(self._rolled_date(t))
+
+    def _rolled_date(self, t: dt.datetime) -> dt.date:
+        """ Local date of moment t, moved to the next day from roll time, before business-day adjustment """
         if t.utcoffset() is None:
-            raise ValueError(f"session_date requires an aware datetime, got naive {t}")
+            raise ValueError(f"Aware datetime required, got naive {t}")
         local = t.astimezone(self.tz)
         d = local.date()
         if local.time() >= self.roll:
             d += dt.timedelta(days=1)
-        return self.calendar.adjust(d, cdr.BDC.P)
+        return d
 
     def to_session_date(self, x: dt.date | dt.datetime) -> dt.date:
         """ Trade date for x: a date (rolled back to a business day) or a moment (aware datetime) """
+        return self._session_of(x)[0]
+
+    def _session_of(self, x: dt.date | dt.datetime) -> tuple[dt.date, bool]:
+        """ Trade date of x, and whether x is inside a session (False for dates and moments in gaps) """
         x = normalize(x)
-        if isinstance(x, dt.datetime):
-            return self.session_date(x)
-        return self.calendar.adjust(x, cdr.BDC.P)
+        d = self._rolled_date(x) if isinstance(x, dt.datetime) else x
+        return self.calendar.adjust(d, cdr.BDC.P), self.calendar.is_business_day(d)
 
     def is_live(self, x: dt.date | dt.datetime, now: dt.datetime | None = None) -> bool:
-        """ True if x belongs to the current session. now defaults to the system clock """
+        """ True if x belongs to the current session. Nothing is live in gaps (weekends, holidays):
+            neither x nor now may fall in a gap. now defaults to the system clock """
+        x_date, x_in_session = self._session_of(x)
         if now is None:
             now = dt.datetime.now(dt.UTC)
-        return self.to_session_date(x) == self.session_date(now)
+        return x_in_session and self.in_session(now) and x_date == self.session_date(now)
 
 
 @cache
@@ -122,3 +135,17 @@ CENTER_SPECS = {
     "CME": ("America/Chicago", "CME_Equity", dt.time(17)),
     "FX": ("America/New_York", None, dt.time(17)),
 }
+
+
+def resolve_end_date(end_date: dt.date | dt.datetime | str | None, center: str | TradingCenter | None = None,
+                     now: dt.datetime | None = None) -> tuple[dt.date, bool]:
+    """ Resolve an end date given as None or 'live' (current session), or a date/datetime.
+        Returns its trade date for center (default center if None) and whether it is live. """
+    c = get_center(center)
+    if now is None:
+        now = dt.datetime.now(dt.UTC)
+    if end_date is None or end_date == 'live':
+        return c.session_date(now), c.in_session(now)
+    if isinstance(end_date, str):
+        raise ValueError(f"Invalid end date '{end_date}': expected None, 'live', a date or a datetime")
+    return c.to_session_date(end_date), c.is_live(end_date, now)

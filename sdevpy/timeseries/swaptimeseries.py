@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 from sdevpy.conventions.repository import convention_repository
+from sdevpy.utilities import calendars as cdr
+from sdevpy.utilities import sessions as ssn
 
 
 def swap_series(calib_repo, conv_ids: list[str], expiries: list[str], tenors: list[str],
@@ -23,5 +25,8 @@ def swap_series(calib_repo, conv_ids: list[str], expiries: list[str], tenors: li
     # conv_repo = convention_repository()
 
     # Live end date: None, 'live' or today's trading day while in a live session
-    # live_day_str = ''
+    center = kwargs.get('center', None)
+    end_day, is_live = ssn.resolve_end_date(end_date, center=center, now=kwargs.get('now', None))
+    end_date = cdr.to_datetime(end_day)
+
     return pd.DataFrame({})

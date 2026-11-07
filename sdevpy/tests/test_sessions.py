@@ -13,6 +13,8 @@ FRI_1500 = dt.datetime(2026, 11, 13, 15, 0, tzinfo=NY)
 SAT_1200 = dt.datetime(2026, 11, 14, 12, 0, tzinfo=NY)
 SUN_1730 = dt.datetime(2026, 11, 15, 17, 30, tzinfo=NY)
 CHICAGO = ZoneInfo("America/Chicago")
+TOKYO_WED_1000 = dt.datetime(2026, 11, 11, 10, 0, tzinfo=TOKYO)
+TOKYO_SAT_1000 = dt.datetime(2026, 11, 14, 10, 0, tzinfo=TOKYO)
 
 
 def test_normalize_date():
@@ -101,13 +103,14 @@ def test_session_date_naive_raises():
 @pytest.mark.parametrize('x, now, ref', [
     (dt.date(2026, 11, 13), FRI_1500, True),                         # Fri date, Fri session
     (dt.datetime(2026, 11, 13), FRI_1500, True),                     # naive midnight = date
-    (dt.date(2026, 11, 14), FRI_1500, True),                         # Sat date, back to Fri
+    (dt.date(2026, 11, 14), FRI_1500, False),                        # Sat date: gap, never live
+    (dt.datetime(2026, 11, 14, 12, 0, tzinfo=NY), FRI_1500, False),  # Sat moment: gap, never live
     (dt.date(2026, 11, 12), FRI_1500, False),                        # Thu date
     (dt.date(2026, 11, 16), FRI_1500, False),                        # Mon date
     (dt.datetime(2026, 11, 13, 10, 0, tzinfo=NY), FRI_1500, True),   # Fri morning
     (dt.datetime(2026, 11, 12, 17, 30, tzinfo=NY), FRI_1500, True),  # Thu after roll: Fri session
     (dt.datetime(2026, 11, 12, 16, 0, tzinfo=NY), FRI_1500, False),  # Thu before roll
-    (dt.date(2026, 11, 13), SAT_1200, True),                         # weekend: Fri still live
+    (dt.date(2026, 11, 13), SAT_1200, False),                        # weekend gap: nothing live
     (dt.date(2026, 11, 16), SAT_1200, False),
     (dt.date(2026, 11, 16), SUN_1730, True),                         # Sun after roll: Mon live
     (dt.date(2026, 11, 13), SUN_1730, False),
@@ -119,7 +122,8 @@ def test_is_live(x, now, ref):
 
 def test_is_live_system_clock():
     center = _ny_center()
-    assert center.is_live(dt.datetime.now(dt.UTC))
+    now = dt.datetime.now(dt.UTC)
+    assert center.is_live(now) == center.in_session(now)
 
 
 def test_is_live_naive_now_raises():
@@ -187,9 +191,49 @@ def test_is_live_branches(no_default):
     now = dt.datetime(2026, 11, 13, 10, 0, tzinfo=dt.UTC)
     fri = dt.date(2026, 11, 13)
     ssn.set_default_center("TOKYO")
-    assert ssn.is_live(fri, now=now)                       # Tokyo: Fri after EOD, Sat back to Fri
+    assert not ssn.is_live(fri, now=now)                   # Tokyo: after Fri EOD, weekend gap
     assert ssn.is_live(fri, center="LONDON", now=now)
     thu_now = dt.datetime(2026, 11, 12, 10, 0, tzinfo=dt.UTC)  # Thu 19:00 Tokyo, 10:00 London
     thu = dt.date(2026, 11, 12)
     assert not ssn.is_live(thu, now=thu_now)               # Tokyo already on Fri
     assert ssn.is_live(thu, center="LONDON", now=thu_now)  # London still on Thu
+
+
+@pytest.mark.parametrize('end_date, now, ref', [
+    (None, TOKYO_WED_1000, (dt.date(2026, 11, 11), True)),
+    ('live', TOKYO_WED_1000, (dt.date(2026, 11, 11), True)),
+    (dt.datetime(2026, 11, 11), TOKYO_WED_1000, (dt.date(2026, 11, 11), True)),   # naive midnight = date
+    (dt.datetime(2026, 11, 10), TOKYO_WED_1000, (dt.date(2026, 11, 10), False)),  # past date
+    (None, TOKYO_SAT_1000, (dt.date(2026, 11, 13), False)),                       # weekend: Fri, not live
+    (dt.date(2026, 11, 14), TOKYO_SAT_1000, (dt.date(2026, 11, 13), False)),      # Sat date: Fri, not live
+    (dt.datetime(2026, 11, 11, 18, 0, tzinfo=TOKYO), TOKYO_WED_1000, (dt.date(2026, 11, 12), False)),  # after EOD
+])
+def test_resolve_end_date(end_date, now, ref):
+    assert ssn.resolve_end_date(end_date, center="TOKYO", now=now) == ref
+
+
+@pytest.mark.parametrize('end_date', ['today', dt.datetime(2026, 11, 11, 15, 0)])
+def test_resolve_end_date_invalid_raises(end_date):
+    with pytest.raises(ValueError):
+        ssn.resolve_end_date(end_date, center="TOKYO", now=TOKYO_WED_1000)
+
+
+@pytest.mark.parametrize('t, ref', [
+    (dt.datetime(2026, 11, 13, 16, 59), True),   # Fri before EOD
+    (dt.datetime(2026, 11, 13, 17, 0), False),   # Fri EOD: weekend gap starts
+    (dt.datetime(2026, 11, 14, 12, 0), False),   # Sat
+    (dt.datetime(2026, 11, 15, 16, 59), False),  # Sun before roll
+    (dt.datetime(2026, 11, 15, 17, 0), True),    # Sun roll: Mon session starts
+    (dt.datetime(2026, 11, 16, 18, 0), True),    # Mon evening: Tue session
+    (dt.datetime(2026, 11, 25, 18, 0), False),   # Wed evening: Thanksgiving gap
+    (dt.datetime(2026, 11, 26, 17, 0), True),    # Thanksgiving roll: Fri session
+])
+def test_in_session(t, ref):
+    center = _ny_center()
+    assert center.in_session(t.replace(tzinfo=NY)) == ref
+
+
+def test_in_session_naive_raises():
+    center = _ny_center()
+    with pytest.raises(ValueError):
+        center.in_session(dt.datetime(2026, 11, 13, 10, 0))
