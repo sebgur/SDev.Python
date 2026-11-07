@@ -1,5 +1,6 @@
 import datetime as dt
 from dataclasses import dataclass
+from functools import cache
 from zoneinfo import ZoneInfo
 from sdevpy.utilities import calendars as cdr
 
@@ -55,3 +56,22 @@ class TradingCenter:
         if now is None:
             now = dt.datetime.now(dt.UTC)
         return self.to_session_date(x) == self.session_date(now)
+
+@cache
+def make_center(name: str) -> TradingCenter:
+    """ Trading center from the CENTER_SPECS registry """
+    if name not in CENTER_SPECS:
+        raise ValueError(f"Unknown trading center '{name}'. Available: {', '.join(CENTER_SPECS)}")
+    tz, calendar_name, roll = CENTER_SPECS[name]
+    calendar = cdr.make_calendar(calendar_name) if calendar_name else cdr.Calendar(name)
+    return TradingCenter(name, ZoneInfo(tz), calendar, roll)
+
+
+# name: (timezone, calendar name for cdr.make_calendar or None for weekends only, roll time)
+CENTER_SPECS = {
+    "XNYS": ("America/New_York", "XNYS", dt.time(17)),
+    "XLON": ("Europe/London", "XLON", dt.time(17)),
+    "XTKS": ("Asia/Tokyo", "XTKS", dt.time(17)),
+    "CME": ("America/Chicago", "CME_Equity", dt.time(17)),
+    "FX": ("America/New_York", None, dt.time(17)),
+}

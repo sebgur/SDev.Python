@@ -12,6 +12,7 @@ THANKSGIVING = dt.date(2026, 11, 26)
 FRI_1500 = dt.datetime(2026, 11, 13, 15, 0, tzinfo=NY)
 SAT_1200 = dt.datetime(2026, 11, 14, 12, 0, tzinfo=NY)
 SUN_1730 = dt.datetime(2026, 11, 15, 17, 30, tzinfo=NY)
+CHICAGO = ZoneInfo("America/Chicago")
 
 
 def test_normalize_date():
@@ -125,3 +126,28 @@ def test_is_live_naive_now_raises():
     center = _ny_center()
     with pytest.raises(ValueError):
         center.is_live(dt.date(2026, 11, 13), now=dt.datetime(2026, 11, 13, 15, 0))
+
+
+@pytest.mark.parametrize('name', list(ssn.CENTER_SPECS))
+def test_make_center(name):
+    center = ssn.make_center(name)
+    assert center.name == name
+    assert center is ssn.make_center(name)  # cached
+
+
+def test_make_center_unknown_raises():
+    with pytest.raises(ValueError):
+        ssn.make_center("XXXX")
+
+
+@pytest.mark.parametrize('name, t, ref', [
+    ("XNYS", dt.datetime(2026, 11, 25, 18, 0, tzinfo=NY), dt.date(2026, 11, 25)),     # Thanksgiving: back to Wed
+    ("XTKS", dt.datetime(2026, 11, 22, 17, 0, tzinfo=TOKYO), dt.date(2026, 11, 20)),  # Mon 23 holiday: back to Fri
+    ("XTKS", dt.datetime(2026, 11, 23, 17, 0, tzinfo=TOKYO), dt.date(2026, 11, 24)),  # holiday roll: Tue
+    ("CME", dt.datetime(2026, 11, 16, 17, 30, tzinfo=CHICAGO), dt.date(2026, 11, 17)),  # Chicago roll
+    ("CME", dt.datetime(2026, 11, 16, 17, 30, tzinfo=NY), dt.date(2026, 11, 16)),     # 16:30 Chicago
+    ("FX", dt.datetime(2026, 11, 14, 12, 0, tzinfo=NY), dt.date(2026, 11, 13)),       # Sat: back to Fri
+    ("FX", dt.datetime(2026, 11, 15, 17, 0, tzinfo=NY), dt.date(2026, 11, 16)),       # Sun roll: Mon
+])
+def test_registry_session_date(name, t, ref):
+    assert ssn.make_center(name).session_date(t) == ref
