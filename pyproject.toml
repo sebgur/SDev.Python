@@ -17,7 +17,7 @@ classifiers = [
 ]
 dependencies = ["pandas", "numpy>=2.0", "scipy>=1.11", "matplotlib", "holidays", "requests",
                 "pandas_market_calendars", "openpyxl", "colorlog", "pyperclip", "statsmodels",
-                "ta", "dicttoxml", "xmltodict", "scikit-learn"]
+                "ta", "dicttoxml", "xmltodict", "scikit-learn", "tzlocal"]
 
 [project.optional-dependencies]
 ml = ["torch", "huggingface_hub", "transformers", "tiktoken"] # AI/LLMs

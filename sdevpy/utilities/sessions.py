@@ -17,7 +17,7 @@ def normalize(x: dt.date|dt.datetime) -> dt.date|dt.datetime:
         - naive dt.datetime at any other time: ValueError (ambiguous instant)
         Callers distinguish the result with isinstance(r, dt.datetime). """
     if isinstance(x, dt.datetime):
-        if x.utcoffset() is not None:
+        if x.utcoffset() is not None:  # Then it is timezone aware
             return x
         if x.time() != dt.time(0):
             raise ValueError(f"Naive datetime with non-midnight time is ambiguous: {x}. "
@@ -48,7 +48,7 @@ class TradingCenter:
 
     def _rolled_date(self, t: dt.datetime) -> dt.date:
         """ Local date of moment t, moved to the next day from roll time, before business-day adjustment """
-        if t.utcoffset() is None:
+        if t.utcoffset() is None:  # Not aware
             raise ValueError(f"Aware datetime required, got naive {t}")
         local = t.astimezone(self.tz)
         d = local.date()
@@ -116,8 +116,7 @@ def is_live(x: dt.date | dt.datetime, center: str | TradingCenter | None = None,
     return get_center(center).is_live(x, now)
 
 
-# name: (timezone, calendar name for cdr.make_calendar or None for weekends only, roll time)
-# Branch rolls are the company EOD times, local to each branch
+# name: (timezone, calendar name [None=weekends only], roll time)
 CENTER_SPECS = {
     # Branches
     "SYDNEY": ("Australia/Sydney", "AUD", dt.time(17)),
@@ -149,3 +148,19 @@ def resolve_end_date(end_date: dt.date | dt.datetime | str | None, center: str |
     if isinstance(end_date, str):
         raise ValueError(f"Invalid end date '{end_date}': expected None, 'live', a date or a datetime")
     return c.to_session_date(end_date), c.is_live(end_date, now)
+
+
+if __name__ == "__main__":
+    from tzlocal import get_localzone_name, get_localzone
+    tz_name = get_localzone_name()   # 'Europe/Paris'
+    tz = get_localzone()        # ZoneInfo('Europe/Paris')
+    print(tz_name)
+    print(tz)
+
+    # Do that: My recommendation: make None the default meaning live, accept 'now'/'live' as aliases, and interpret naive non-midnight datetimes as machine-local. You get no guessing, and users who type datetime.now() get the right instant.
+
+    CENTERS = ["NEWYORK", "SYDNEY", "SINGAPORE"]
+    now = dt.datetime.now(ZoneInfo("Asia/Singapore"))
+    for name in CENTERS:
+        center = make_center(name)
+        print(f"{name}: {center.session_date(now).strftime("%Y-%m-%d")} | {center.is_live(now, now)}")
