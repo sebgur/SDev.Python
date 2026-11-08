@@ -121,8 +121,8 @@ def is_live(x: dt.date | dt.datetime, center: str | TradingCenter | None = None,
 CENTER_SPECS = {
     # Branches
     "SYDNEY": ("Australia/Sydney", "AUD", dt.time(17)),
-    "TOKYO": ("Asia/Tokyo", "JPY", dt.time(17)),
-    "SINGAPORE": ("Asia/Singapore", "SGD", dt.time(17)),
+    "TOKYO": ("Asia/Tokyo", "JPY", dt.time(15)),
+    "SINGAPORE": ("Asia/Singapore", "SGD", dt.time(17, 30)),
     "AUCKLAND": ("Pacific/Auckland", "NZD", dt.time(17)),
     "MUMBAI": ("Asia/Kolkata", "INR", dt.time(17)),
     "DUBAI": ("Asia/Dubai", "AED", dt.time(17)),

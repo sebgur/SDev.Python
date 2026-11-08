@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Unique name of the task -->
+    <key>Label</key><string>livelog</string>
+
+    <!-- What to run: the program, then its arguments, one per string -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/sebgur/Code/SDev.Python/.venv314/bin/python</string>
+        <string>/Users/sebgur/Code/SDev.Python/examples/utilities/live_log.py</string>
+    </array>
+
+    <!-- When: at minutes 0, 15, 30, 45 of every hour -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Minute</key><integer>30</integer></dict>
+        <dict><key>Minute</key><integer>45</integer></dict>
+    </array>
+
+    <!-- Where printed output and errors go -->
+    <key>StandardOutPath</key><string>/Users/sebgur/temp/sessions/livelog.out</string>
+    <key>StandardErrorPath</key><string>/Users/sebgur/temp/sessions/livelog.err</string>
+</dict>
+</plist>
