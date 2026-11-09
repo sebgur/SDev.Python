@@ -1,4 +1,4 @@
-import numpy as np
+# import numpy as np
 import pandas as pd
 import datetime as dt
 from sdevpy.conventions.repository import convention_repository
@@ -33,20 +33,32 @@ def swap_series(calib_repo, conv_ids: list[str], expiries: list[str], tenors: li
     # keep_missing = kwargs.get('keep_missing', False)
     # scaler = 100.0 # ToDo
     conv_repo = convention_repository()
-    convs = [conv_repo.swap(conv_id) for conv_id in conv_ids]
 
     # # Live end date: None, 'live' or today's trading day while in a live session
     # center = kwargs.get('center', None)
     # end_day, is_live = ssn.resolve_date_input(end_date, center=center, now=kwargs.get('now', None))
     # end_date = cdr.to_datetime(end_day)
 
-    # curves_by_id = {}
+    curves_by_id = {}
     # columns = {}
     # live_specs = {}
-    for conv, expiry, tenor in zip(convs, expiries, tenors, strict=True):
-        # Get instrument details
-        series_id = swap_series_id(conv.id, expiry, tenor)
+    for conv_id, expiry, tenor in zip(conv_ids, expiries, tenors, strict=True):
+        # Series ID
+        series_id = swap_series_id(conv_id, expiry, tenor)
         print(series_id)
+
+        # Instrument details
+        conv = conv_repo.swap(conv_id)
+        index_id = conv.float_index
+
+        # Curves
+        curve_id = index_id
+        if curve_id not in curves_by_id:
+            available = calib_repo.get_available_curves([curve_id], start_date=start_date, end_date=end_date)
+            if not available:
+                raise ValueError(f"Curve {curve_id} not found between {start_date} and {end_date}")
+            else:
+                print(f"Available: {curve_id}")
 
     return pd.DataFrame({})
 
@@ -55,10 +67,10 @@ if __name__ == "__main__":
     from sdevpy.pricingcontext import default_calibration_repository
 
     calib_repo = default_calibration_repository()
-    conv_ids = ['USD.SOFR.SWAP', 'USD.SOFR.SWAP', 'EUR.EURIBOR.6M.SWAP']
-    expiries = ['', '1Y', '5Y']
-    tenors = ['5Y', '5Y', '10Y']
-    start_date = dt.datetime(2026, 1, 2)
+    conv_ids = ['USD.SOFR.1D.SWAP', 'USD.SOFR.1D.SWAP']
+    expiries = ['', '1Y']
+    tenors = ['5Y', '5Y']
+    start_date = dt.datetime(2025, 12, 15)
     end_date = None
 
     df = swap_series(calib_repo, conv_ids, expiries, tenors, start_date, end_date)

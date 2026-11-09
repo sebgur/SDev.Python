@@ -1,36 +1,36 @@
 {
   "indices": {
-    "USD.SOFR": {
+    "USD.SOFR.1D": {
       "notes": "NY Fed, published next business day. Fixing calendar: SIFMA (US government securities)",
       "currency": "USD", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT360", "calendar": "USGOV",
       "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
     },
-    "USD.EFFR": {
+    "USD.EFFR.1D": {
       "notes": "Effective Fed Funds, NY Fed, published next business day",
       "currency": "USD", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT360", "calendar": "USD",
       "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
     },
-    "EUR.ESTR": {
+    "EUR.ESTR.1D": {
       "notes": "ECB, published next TARGET business day",
       "currency": "EUR", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT360", "calendar": "EUR",
       "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
     },
-    "GBP.SONIA": {
+    "GBP.SONIA.1D": {
       "notes": "BoE, published next London business day",
       "currency": "GBP", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT365F", "calendar": "GBP",
       "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
     },
-    "JPY.TONA": {
+    "JPY.TONA.1D": {
       "notes": "BoJ, published next Tokyo business day",
       "currency": "JPY", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT365F", "calendar": "JPY",
       "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
     },
-    "CHF.SARON": {
+    "CHF.SARON.1D": {
       "notes": "SIX, published end of the same Zurich business day",
       "currency": "CHF", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT360", "calendar": "CHF",
       "fixing_lag": 0, "publication_lag": 0, "bdc": "F", "eom": false
     },
-    "CAD.CORRA": {
+    "CAD.CORRA.1D": {
       "notes": "BoC, published next Toronto business day",
       "currency": "CAD", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT365F", "calendar": "CAD",
       "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
@@ -91,22 +91,22 @@
   "futures": {
     "USD.SOFR.3M.FUT": {
       "notes": "CME SR3: SOFR compounded IMM to IMM, $25 per bp",
-      "currency": "USD", "index": "USD.SOFR", "rate_method": "COMPOUNDED",
+      "currency": "USD", "index": "USD.SOFR.1D", "rate_method": "COMPOUNDED",
       "period": "3M", "date_rule": "IMM", "exchange": "CME", "notional": 1000000
     },
     "USD.SOFR.1M.FUT": {
       "notes": "CME SR1: SOFR averaged over the calendar month, $41.67 per bp",
-      "currency": "USD", "index": "USD.SOFR", "rate_method": "AVERAGED",
+      "currency": "USD", "index": "USD.SOFR.1D", "rate_method": "AVERAGED",
       "period": "1M", "date_rule": "MONTH", "exchange": "CME", "notional": 5000000
     },
     "USD.EFFR.1M.FUT": {
       "notes": "CBOT ZQ 30-day Fed Funds: EFFR averaged over the calendar month, $41.67 per bp",
-      "currency": "USD", "index": "USD.EFFR", "rate_method": "AVERAGED",
+      "currency": "USD", "index": "USD.EFFR.1D", "rate_method": "AVERAGED",
       "period": "1M", "date_rule": "MONTH", "exchange": "CBOT", "notional": 5000000
     },
     "GBP.SONIA.3M.FUT": {
       "notes": "ICE SO3: SONIA compounded IMM to IMM, GBP 25 per bp",
-      "currency": "GBP", "index": "GBP.SONIA", "rate_method": "COMPOUNDED",
+      "currency": "GBP", "index": "GBP.SONIA.1D", "rate_method": "COMPOUNDED",
       "period": "3M", "date_rule": "IMM", "exchange": "ICE", "notional": 1000000
     },
     "EUR.EURIBOR.3M.FUT": {
@@ -116,54 +116,54 @@
     }
   },
   "swaps": {
-    "USD.SOFR.SWAP": {
+    "USD.SOFR.1D.SWAP": {
       "notes": "Annual/annual, pay T+2, spot T+2, SIFMA calendar",
-      "currency": "USD", "float_index": "USD.SOFR",
+      "currency": "USD", "float_index": "USD.SOFR.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USGOV", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USGOV", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "spot_lag": 2, "spot_calendar": null
     },
-    "USD.EFFR.SWAP": {
+    "USD.EFFR.1D.SWAP": {
       "notes": "Fed Funds OIS. Annual/annual, pay T+2, spot T+2",
-      "currency": "USD", "float_index": "USD.EFFR",
+      "currency": "USD", "float_index": "USD.EFFR.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USD", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USD", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "spot_lag": 2, "spot_calendar": null
     },
-    "EUR.ESTR.SWAP": {
+    "EUR.ESTR.1D.SWAP": {
       "notes": "Annual/annual, pay T+1, spot T+2",
-      "currency": "EUR", "float_index": "EUR.ESTR",
+      "currency": "EUR", "float_index": "EUR.ESTR.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 1, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 1, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "spot_lag": 2, "spot_calendar": null
     },
-    "GBP.SONIA.SWAP": {
+    "GBP.SONIA.1D.SWAP": {
       "notes": "Annual/annual, pay T+0, same-day start",
-      "currency": "GBP", "float_index": "GBP.SONIA",
+      "currency": "GBP", "float_index": "GBP.SONIA.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "GBP", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "GBP", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "spot_lag": 0, "spot_calendar": null
     },
-    "JPY.TONA.SWAP": {
+    "JPY.TONA.1D.SWAP": {
       "notes": "Annual/annual, pay T+2, spot T+2",
-      "currency": "JPY", "float_index": "JPY.TONA",
+      "currency": "JPY", "float_index": "JPY.TONA.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "JPY", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "JPY", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "spot_lag": 2, "spot_calendar": null
     },
-    "CHF.SARON.SWAP": {
+    "CHF.SARON.1D.SWAP": {
       "notes": "Annual/annual, pay T+2, spot T+2",
-      "currency": "CHF", "float_index": "CHF.SARON",
+      "currency": "CHF", "float_index": "CHF.SARON.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "CHF", "bdc": "MF", "adjust_accrual": true,
                     "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "CHF", "bdc": "MF", "adjust_accrual": true,

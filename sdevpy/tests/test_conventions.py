@@ -69,7 +69,7 @@ def _apply(entry: dict, changes: dict) -> None:
 def test_default_repository_loads():
     repo = convention_repository()
     assert repo is convention_repository()  # loaded once
-    assert 'USD.SOFR' in repo.ids('indices')
+    assert 'USD.SOFR.1D' in repo.ids('indices')
 
 
 def test_index_parsing():
@@ -90,10 +90,10 @@ def test_unknown_id_suggests():
 
 def test_duplicate_id(tmp_path):
     text = (staticdata_path() / CONVENTIONS_FILE).read_text()
-    dup = text.replace('"indices": {', '"indices": {\n"USD.SOFR": {},', 1)
+    dup = text.replace('"indices": {', '"indices": {\n"USD.SOFR.1D": {},', 1)
     path = tmp_path / "dup.json"
     path.write_text(dup)
-    with pytest.raises(ConventionError, match="Duplicate key 'USD.SOFR'"):
+    with pytest.raises(ConventionError, match="Duplicate key 'USD.SOFR.1D'"):
         ConventionRepository.from_file(path)
 
 

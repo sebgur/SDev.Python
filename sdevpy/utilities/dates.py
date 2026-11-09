@@ -17,6 +17,11 @@ _SPECIAL_TENOR_OFFSETS = {'ON': dt.timedelta(microseconds=-3),
                           'SN': dt.timedelta(microseconds=-1)}
 
 
+def today() -> dt.datetime:
+    """ Today at midnight (naive), per the local machine clock """
+    return dt.datetime.combine(dt.date.today(), dt.time.min)
+
+
 def advance_int(base_date: dt.datetime, days: int=0, months: int=0, years: int=0) -> dt.datetime:
     """ Advance base_date by days, months and years, no calendars or conventions """
     return base_date + relativedelta(days=days, months=months, years=years)
