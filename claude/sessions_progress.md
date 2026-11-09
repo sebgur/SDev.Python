@@ -1,6 +1,6 @@
 # Trading sessions / "live" — progress notes
 
-Last updated: 2026-11-07 (84 tests passing). Work is step-by-step: Claude proposes code, user types it in.
+Last updated: 2026-11-09 (92 tests passing). Work is step-by-step: Claude proposes code, user types it in.
 
 ## Goal
 Detect whether a date/datetime is "live", i.e. belongs to a trading center's current session,
@@ -58,6 +58,31 @@ with sessions that start/end at different local times per center.
   `resolve_end_date` require both `now` and `x` to be in a session (a Saturday date or moment is
   never live, whatever the clock says). Rest of `swap_series` postponed by the user.
 
+## Naive inputs, aliases, T-1 EOD (done 2026-11-09, 92 tests passing)
+- Naive non-midnight datetimes (x and now) are read in the naive tz: machine-local by default,
+  `set_naive_tz(tz)` overrides (tests use it). `localize(t)` helper; `_rolled_date` localizes, so
+  `session_date`/`in_session` accept naive. Naive midnight is still a date label.
+- `resolve_end_date` renamed `resolve_date_input`; None/'live'/'now' (case-insensitive, `_is_live_request`).
+- Default center: `DEFAULT_CENTER = "NEWYORK"`; env var SDEVPY_CENTER removed.
+- `CENTER_ALIASES` (NY, SG, TK, ...), case/space-insensitive via `center_name`; `make_center` resolves the
+  alias and then calls the cached `_make_center`.
+- T-1 EOD, convention decided: business day before the *trade date* (gap on Sat: session Fri, T-1 Thu).
+  `TradingCenter.previous_eod`, module `previous_eod`, `get_date_info(date_input, center, now)` ->
+  {session, islive, tm1eod}.
+- Validated by eye: week simulation every 15 min (`__main__`, Singapore clock) for NY, SG, TK.
+  Holidays seen: Veterans Day 11 Nov 2026 (USD calendar, NYSE open: XNYS differs),
+  Deepavali observed Mon 9 Nov 2026 (SGD).
+- Leftover: `_unadjusted_date` only used by `_session_of`, could be inlined.
+- **Bug to fix**: `swaptimeseries.py:29` still calls `ssn.resolve_end_date` (renamed `resolve_date_input`).
+
+## Roll times (rates EOD, set 2026-11-09)
+- Roll = time of the desk's official EOD snapshot (rates), not the market close itself.
+- Branches: NEWYORK 17:00, LONDON 16:30, TOKYO 15:00, SYDNEY 16:30, AUCKLAND 17:00, SINGAPORE 17:00,
+  MUMBAI 17:00, DUBAI 16:00. Exchanges: XLON 16:30, XTKS 15:00, others 17:00.
+- Typical values, not confirmed: to be checked with desks or against CCP EOD curve times.
+- Calendars: USD keeps Veterans Day (bond market closed, right for rates). `Calendar.is_weekend` is Sat/Sun
+  for all, which is right for AED since 2022 but wrong for UAE dates before 2022 (Fri/Sat weekend).
+
 ## Next
 - Use in `sdevpy/timeseries/swaptimeseries.py`: `swap_series(..., end_date=None|'live'|date)` replaces the
   last row with live quotes when end_date is live for the user's branch (optional `center` arg).
@@ -69,4 +94,4 @@ with sessions that start/end at different local times per center.
   valuation date, backtesting loop passing simulated `now`).
 
 ## Open questions
-- Per-center roll times for the registry (equities: 17:00 local, or a different time per exchange?).
+- Confirm the rates EOD snapshot times per branch (current values are typical, see Roll times).

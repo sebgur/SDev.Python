@@ -156,18 +156,18 @@ def is_live(x: dt.date|dt.datetime, center: str|TradingCenter|None=None, now: dt
 # name: (timezone, calendar name [None=weekends only], roll time)
 CENTER_SPECS = {
     # Branches
-    "SYDNEY": ("Australia/Sydney", "AUD", dt.time(17)),
+    "SYDNEY": ("Australia/Sydney", "AUD", dt.time(16, 30)),
     "TOKYO": ("Asia/Tokyo", "JPY", dt.time(15)),
-    "SINGAPORE": ("Asia/Singapore", "SGD", dt.time(17, 30)),
+    "SINGAPORE": ("Asia/Singapore", "SGD", dt.time(17)),
     "AUCKLAND": ("Pacific/Auckland", "NZD", dt.time(17)),
     "MUMBAI": ("Asia/Kolkata", "INR", dt.time(17)),
-    "DUBAI": ("Asia/Dubai", "AED", dt.time(17)),
-    "LONDON": ("Europe/London", "GBP", dt.time(17)),
+    "DUBAI": ("Asia/Dubai", "AED", dt.time(16)),
+    "LONDON": ("Europe/London", "GBP", dt.time(16, 30)),
     "NEWYORK": ("America/New_York", "USD", dt.time(17)),
     # Exchanges
     "XNYS": ("America/New_York", "XNYS", dt.time(17)),
-    "XLON": ("Europe/London", "XLON", dt.time(17)),
-    "XTKS": ("Asia/Tokyo", "XTKS", dt.time(17)),
+    "XLON": ("Europe/London", "XLON", dt.time(16, 30)),
+    "XTKS": ("Asia/Tokyo", "XTKS", dt.time(15)),
     "CME": ("America/Chicago", "CME_Equity", dt.time(17)),
     "FX": ("America/New_York", None, dt.time(17)),
 }
