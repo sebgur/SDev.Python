@@ -157,7 +157,9 @@ if __name__ == "__main__":
     print(tz_name)
     print(tz)
 
-    # Do that: My recommendation: make None the default meaning live, accept 'now'/'live' as aliases, and interpret naive non-midnight datetimes as machine-local. You get no guessing, and users who type datetime.now() get the right instant.
+    # Do that: My recommendation: make None the default meaning live, accept 'now'/'live' as aliases, and
+    # interpret naive non-midnight datetimes as machine-local. You get no guessing, and users who type datetime.now()
+    # get the right instant.
 
     CENTERS = ["NEWYORK", "SYDNEY", "SINGAPORE"]
     now = dt.datetime.now(ZoneInfo("Asia/Singapore"))
