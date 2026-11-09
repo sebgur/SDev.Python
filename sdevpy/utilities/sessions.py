@@ -74,6 +74,15 @@ class TradingCenter:
             False in gaps (weekends, holidays) """
         return self.calendar.is_business_day(self._rolled_date(t))
 
+    def to_session_date(self, x: dt.date | dt.datetime) -> dt.date:
+        """ Trade date for x: a date (rolled back to a business day) or a moment (datetime, naive read
+            in the naive timezone) """
+        return self._session_of(x)[0]
+
+    def previous_eod(self, x: dt.date | dt.datetime) -> dt.date:
+        """ T-1 EOD: business day before the trade date of x """
+        return self.calendar.adjust(self.to_session_date(x) - dt.timedelta(days=1), cdr.BDC.P)
+
     def _rolled_date(self, t: dt.datetime) -> dt.date:
         """ Local date of moment t, moved to the next day from roll time, before business-day adjustment """
         t = localize(t)
@@ -83,15 +92,14 @@ class TradingCenter:
             d += dt.timedelta(days=1)
         return d
 
-    def to_session_date(self, x: dt.date | dt.datetime) -> dt.date:
-        """ Trade date for x: a date (rolled back to a business day) or a moment (datetime, naive read
-            in the naive timezone) """
-        return self._session_of(x)[0]
+    def _unadjusted_date(self, x: dt.date | dt.datetime) -> dt.date:
+        """ Date of x before business-day adjustment: x itself for a date, rolled date for a moment """
+        x = normalize(x)
+        return self._rolled_date(x) if isinstance(x, dt.datetime) else x
 
     def _session_of(self, x: dt.date | dt.datetime) -> tuple[dt.date, bool]:
         """ Trade date of x, and whether x is inside a session (False for dates and moments in gaps) """
-        x = normalize(x)
-        d = self._rolled_date(x) if isinstance(x, dt.datetime) else x
+        d = self._unadjusted_date(x)
         return self.calendar.adjust(d, cdr.BDC.P), self.calendar.is_business_day(d)
 
 
@@ -152,6 +160,11 @@ CENTER_SPECS = {
 }
 
 
+def _is_live_request(date_input: dt.date | dt.datetime | str | None) -> bool:
+    """ True for None or 'live'/'now' (case-insensitive) """
+    return date_input is None or (isinstance(date_input, str) and date_input.lower() in ('live', 'now'))
+
+
 def resolve_date_input(date_input: dt.date|dt.datetime|str|None, center: str|TradingCenter|None=None,
                        now: dt.datetime|None=None) -> tuple[dt.date, bool]:
     """ Resolve a date input given as None, 'live' or 'now' (current session), or a date/datetime.
@@ -161,26 +174,60 @@ def resolve_date_input(date_input: dt.date|dt.datetime|str|None, center: str|Tra
     c = get_center(center)
     if now is None:
         now = dt.datetime.now(dt.UTC)
-    if date_input is None or date_input in ('live', 'now'):
+
+    if _is_live_request(date_input):
         return c.session_date(now), c.in_session(now)
+
     if isinstance(date_input, str):
         raise ValueError(f"Invalid end date '{date_input}': expected None, 'live', 'now', a date or a datetime")
+
     return c.to_session_date(date_input), c.is_live(date_input, now)
 
 
+def previous_eod(date_input: dt.date|dt.datetime|str|None=None, center: str|TradingCenter|None=None,
+                 now: dt.datetime|None=None) -> dt.date:
+    """ T-1 EOD for a date input: None, 'live' or 'now' (current moment), or a date/datetime """
+    c = get_center(center)
+    if _is_live_request(date_input):
+        return c.previous_eod(dt.datetime.now(dt.UTC) if now is None else now)
+    if isinstance(date_input, str):
+        raise ValueError(f"Invalid date input '{date_input}': expected None, 'live', 'now', a date or a datetime")
+    return c.previous_eod(date_input)
+
+
+def get_date_info(date_input: dt.date|dt.datetime|str|None, center: str|TradingCenter|None=None,
+                  now: dt.datetime|None=None) -> dict:
+    """ Get live status, session, T-1 EOD etc. """
+    session_date, is_live = resolve_date_input(date_input, center, now)
+    tm1eod = previous_eod(session_date, center, now)
+    return {'session': session_date, 'islive': is_live, 'tm1eod': tm1eod}
+
+
+
 if __name__ == "__main__":
+    import pandas as pd
     from tzlocal import get_localzone_name, get_localzone
     tz_name = get_localzone_name()   # 'Europe/Paris'
     tz = get_localzone()        # ZoneInfo('Europe/Paris')
     print(tz_name)
     print(tz)
 
-    date_inputs = [None, 'now', 'live', 'Now']
-    # date_inputs.append()
+    # Single test
+    date_inputs = [None, 'now', 'live', dt.datetime.now()]
+    date_inputs.append(dt.datetime(2026, 11, 8))
 
+    names, sessions, islives, tm1eods = [], [], [], []
     for d in date_inputs:
-        print(resolve_date_input(d))
+        info = get_date_info(d, now=dt.datetime(2026, 11, 8))
+        names.append(d)
+        sessions.append(info['session'])
+        islives.append(info['islive'])
+        tm1eods.append(info['tm1eod'])
 
+    df = pd.DataFrame({'Name': names, 'Session': sessions, 'IsLive': islives, 'Tm1': tm1eods})
+    print(df)
+
+    # Week test
 
     # CENTERS = ["NEWYORK", "SYDNEY", "SINGAPORE"]
     # now = dt.datetime.now(ZoneInfo("Asia/Singapore"))

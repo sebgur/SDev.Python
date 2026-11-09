@@ -232,3 +232,22 @@ def test_in_session(t, ref):
 def test_in_session_naive(naive_tokyo):
     center = _ny_center()
     assert center.in_session(dt.datetime(2026, 11, 14, 6, 0))
+
+
+@pytest.mark.parametrize('x, ref', [
+    (dt.datetime(2026, 11, 18, 10, 0, tzinfo=NY), dt.date(2026, 11, 17)),  # Wed live: Tue
+    (dt.datetime(2026, 11, 18, 18, 0, tzinfo=NY), dt.date(2026, 11, 18)),  # Wed after roll (Thu): Wed
+    (dt.date(2026, 11, 18), dt.date(2026, 11, 17)),                        # Wed date: Tue
+    (dt.date(2026, 11, 14), dt.date(2026, 11, 12)),                        # Sat date (Fri): Thu
+    (SAT_1200, dt.date(2026, 11, 12)),                                     # Sat moment (Fri): Thu
+    (dt.datetime(2026, 11, 13, 17, 30, tzinfo=NY), dt.date(2026, 11, 12)),  # Fri after EOD (Fri): Thu
+    (dt.date(2026, 11, 16), dt.date(2026, 11, 13)),                        # Mon: Fri
+    (dt.date(2026, 11, 27), dt.date(2026, 11, 25)),                        # after Thanksgiving: Wed
+])
+def test_previous_eod(x, ref):
+    assert _ny_center().previous_eod(x) == ref
+
+
+def test_previous_eod_live():
+    now = dt.datetime(2026, 11, 18, 10, 0, tzinfo=NY)
+    assert ssn.previous_eod('live', center="NEWYORK", now=now) == dt.date(2026, 11, 17)
