@@ -33,12 +33,19 @@ SOFR_1M_FUT = {"notes": "", "currency": "USD", "index": "USD-SOFR", "rate_method
                "date_rule": "MONTH", "exchange": "CME", "notional": 5000000}
 EURIBOR_6M_FUT = {"notes": "", "currency": "EUR", "index": "EUR-EURIBOR-6M", "rate_method": "TERM",
                   "period": "6M", "date_rule": "IMM", "exchange": "ICE", "notional": 1000000}
-BASE = {"indices": {"USD-SOFR": SOFR, "EUR-EURIBOR-6M": EURIBOR_6M},
+# Overnight vs term basis swap, legs in the same currency
+ESTR = {**SOFR, "currency": "EUR", "calendar": "EUR"}
+ESTR_LEG = {**SOFR_LEG, "calendar": "EUR"}
+BASIS = {"notes": "", "currency": "EUR", "leg1_index": "EUR-ESTR", "leg1": ESTR_LEG,
+         "leg2_index": "EUR-EURIBOR-6M", "leg2": dict(EURIBOR_6M_LEG), "spread_leg": 1, "spot_lag": 2,
+         "spot_calendar": None}
+BASE = {"indices": {"USD-SOFR": SOFR, "EUR-EURIBOR-6M": EURIBOR_6M, "EUR-ESTR": ESTR},
         "deposits": {"USD-DEPO": USD_DEPO},
         "fras": {"EUR-EURIBOR-6M-FRA": EURIBOR_6M_FRA},
         "futures": {"USD-SOFR-3M-FUT": SOFR_3M_FUT, "USD-SOFR-1M-FUT": SOFR_1M_FUT,
                     "EUR-EURIBOR-6M-FUT": EURIBOR_6M_FUT},
-        "swaps": {"USD-SOFR-OIS": SOFR_OIS, "EUR-EURIBOR-6M-IRS": EURIBOR_6M_IRS}}
+        "swaps": {"USD-SOFR-OIS": SOFR_OIS, "EUR-EURIBOR-6M-IRS": EURIBOR_6M_IRS},
+        "basis_swaps": {"EUR-ESTR-6M-BASIS": BASIS}}
 
 
 def modified(group: str, conv_id: str, **changes) -> dict:
@@ -91,7 +98,7 @@ def test_duplicate_id(tmp_path):
 
 
 @pytest.mark.parametrize('data, message', [
-    ({}, "missing \\['deposits', 'fras', 'futures', 'indices', 'swaps'\\]"),
+    ({}, "missing \\['basis_swaps', 'deposits', 'fras', 'futures', 'indices', 'swaps'\\]"),
     ({**BASE, "swapz": {}}, "unknown \\['swapz'\\]"),
     ({**BASE, "indices": {"usd-sofr": SOFR}}, "invalid id"),
     (modified('indices', 'USD-SOFR', notes=...), "missing \\['notes'\\]"),
@@ -166,7 +173,7 @@ def test_curve_instrument_parsing():
 
 def test_default_repository_groups():
     repo = convention_repository()
-    for group in ('indices', 'deposits', 'fras', 'futures', 'swaps'):
+    for group in ('indices', 'deposits', 'fras', 'futures', 'swaps', 'basis_swaps'):
         assert repo.ids(group)
 
 
@@ -187,5 +194,31 @@ def test_default_repository_groups():
     (modified('futures', 'USD-SOFR-3M-FUT', notional="1e6"), "notional: expected a number"),
 ])
 def test_curve_instrument_validation(data, message):
+    with pytest.raises(ConventionError, match=message):
+        ConventionRepository.from_dict(data)
+
+
+def test_basis_swap_parsing():
+    repo = ConventionRepository.from_dict(BASE)
+    basis = repo.basis_swap('EUR-ESTR-6M-BASIS')
+    assert basis.spread_leg == 1 and basis.leg1.frequency == '1Y' and basis.leg2.fixing_lag == 2
+    assert repo.index(basis.leg1_index).kind == IndexKind.OVERNIGHT
+    eur = convention_repository().basis_swap('EUR-EURIBOR-3M-6M-BASIS')
+    assert eur.leg1 == sch.LegConvention('3M', DayCount.ACT360, 'EUR', fixing_lag=2)
+    assert eur.leg2 == sch.LegConvention('6M', DayCount.ACT360, 'EUR', fixing_lag=2)
+
+
+@pytest.mark.parametrize('data, message', [
+    (modified('basis_swaps', 'EUR-ESTR-6M-BASIS', leg2_index="EUR-ESTR"), "both legs on the same index"),
+    (modified('basis_swaps', 'EUR-ESTR-6M-BASIS', leg1_index="USD-SOFR"),
+     "leg1_index: currency EUR but index USD-SOFR is USD"),
+    (modified('basis_swaps', 'EUR-ESTR-6M-BASIS', leg2_index="EUR-EURIBOR-3M"), "leg2_index: no 'EUR-EURIBOR-3M'"),
+    (modified('basis_swaps', 'EUR-ESTR-6M-BASIS', leg2={"frequency": "3M"}),
+     "leg2.frequency: 3M does not match index tenor 6M"),
+    (modified('basis_swaps', 'EUR-ESTR-6M-BASIS', leg1={"calendar": "XYZ"}), "leg1.calendar: unknown calendar"),
+    (modified('basis_swaps', 'EUR-ESTR-6M-BASIS', spread_leg=3), "spread_leg: must be 1 or 2"),
+    (modified('basis_swaps', 'EUR-ESTR-6M-BASIS', spot_lag=-1), "spot_lag: must be >= 0"),
+])
+def test_basis_swap_validation(data, message):
     with pytest.raises(ConventionError, match=message):
         ConventionRepository.from_dict(data)

@@ -93,3 +93,17 @@ class FixFloatSwapConvention:
     def schedule_convention(self) -> SwapConvention:
         """ Convention consumed by the schedulers, e.g. make_spot_swap_scheduler """
         return SwapConvention(self.fixed_leg, self.float_leg, self.spot_lag, self.spot_calendar)
+
+
+@dataclass(frozen=True)
+class BasisSwapConvention:
+    id: str
+    notes: str
+    currency: str
+    leg1_index: str  # index id
+    leg1: LegConvention
+    leg2_index: str  # index id
+    leg2: LegConvention
+    spread_leg: int  # 1 or 2: the leg paying the quoted spread
+    spot_lag: int  # business days from trade date to start
+    spot_calendar: str | None  # None: leg1 calendar

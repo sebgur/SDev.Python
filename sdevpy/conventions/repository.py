@@ -18,7 +18,7 @@ from sdevpy.utilities.calendars import CCY_CALENDARS, MCAL_ALIASES, list_mcal_ca
 from sdevpy.utilities.schedules import LegConvention, coupons_per_year
 from sdevpy.conventions.rateconventions import (IndexConvention, IndexKind, DepositConvention, FraConvention,
                                                 FutureConvention, RateMethod, FutureDateRule,
-                                                FixFloatSwapConvention, SwapKind)
+                                                FixFloatSwapConvention, SwapKind, BasisSwapConvention)
 
 CONVENTIONS_FILE = "conventions.json"
 _ID_PATTERN = re.compile(r"[A-Z0-9]+(-[A-Z0-9]+)*")
@@ -31,6 +31,7 @@ GROUPS: dict[str, type] = {
     'fras': FraConvention,
     'futures': FutureConvention,
     'swaps': FixFloatSwapConvention,
+    'basis_swaps': BasisSwapConvention,
 }
 
 # Index kind required by each swap kind and each future rate method
@@ -83,6 +84,9 @@ class ConventionRepository:
     def swap(self, conv_id: str) -> FixFloatSwapConvention:
         return self._get('swaps', conv_id)
 
+    def basis_swap(self, conv_id: str) -> BasisSwapConvention:
+        return self._get('basis_swaps', conv_id)
+
     def ids(self, group: str) -> list[str]:
         return sorted(self._table(group))
 
@@ -112,6 +116,8 @@ class ConventionRepository:
             self._check_future(conv, f"futures.{conv.id}")
         for conv in self._tables['swaps'].values():
             self._check_swap(conv, f"swaps.{conv.id}")
+        for conv in self._tables['basis_swaps'].values():
+            self._check_basis_swap(conv, f"basis_swaps.{conv.id}")
 
     def _check_fra(self, conv: FraConvention, path: str) -> None:
         _check_currency(conv.currency, path)
@@ -145,12 +151,29 @@ class ConventionRepository:
             raise ConventionError(f"{path}.float_leg.frequency: {conv.float_leg.frequency} does not match "
                                   f"index tenor {index.tenor}")
 
-    def _index_reference(self, index_id: str, currency: str, kind: IndexKind, path: str) -> IndexConvention:
-        """ Referenced index, which must exist and have the given currency and kind """
+    def _check_basis_swap(self, conv: BasisSwapConvention, path: str) -> None:
+        _check_currency(conv.currency, path)
+        _check_non_negative(conv, ('spot_lag',), path)
+        if conv.spot_calendar is not None:
+            _check_calendar(conv.spot_calendar, f"{path}.spot_calendar")
+        if conv.spread_leg not in (1, 2):
+            raise ConventionError(f"{path}.spread_leg: must be 1 or 2")
+        if conv.leg1_index == conv.leg2_index:
+            raise ConventionError(f"{path}: both legs on the same index {conv.leg1_index}")
+        for n, index_id, leg in ((1, conv.leg1_index, conv.leg1), (2, conv.leg2_index, conv.leg2)):
+            _check_leg(leg, f"{path}.leg{n}")
+            index = self._index_reference(index_id, conv.currency, None, f"{path}.leg{n}_index")
+            if index.kind == IndexKind.TERM and dts.period(leg.frequency) != dts.period(index.tenor):
+                raise ConventionError(f"{path}.leg{n}.frequency: {leg.frequency} does not match "
+                                      f"index tenor {index.tenor}")
+
+    def _index_reference(self, index_id: str, currency: str, kind: IndexKind | None,
+                         path: str) -> IndexConvention:
+        """ Referenced index, which must exist and have the given currency and kind (None: any kind) """
         index = self._reference('indices', index_id, path)
         if index.currency != currency:
             raise ConventionError(f"{path}: currency {currency} but index {index.id} is {index.currency}")
-        if index.kind != kind:
+        if kind is not None and index.kind != kind:
             raise ConventionError(f"{path}: needs a {kind.name} index, {index.id} is {index.kind.name}")
         return index
 

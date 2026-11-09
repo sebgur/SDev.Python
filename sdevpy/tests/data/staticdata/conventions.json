@@ -188,5 +188,18 @@
                     "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false},
       "spot_lag": 2, "spot_calendar": null
     }
+  },
+  "basis_swaps": {
+    "EUR-EURIBOR-3M-6M-BASIS": {
+      "notes": "EURIBOR 3M + spread (quarterly) vs EURIBOR 6M (semi-annual), spot T+2",
+      "currency": "EUR",
+      "leg1_index": "EUR-EURIBOR-3M",
+      "leg1": {"frequency": "3M", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
+               "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false},
+      "leg2_index": "EUR-EURIBOR-6M",
+      "leg2": {"frequency": "6M", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
+               "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false},
+      "spread_leg": 1, "spot_lag": 2, "spot_calendar": null
+    }
   }
 }
