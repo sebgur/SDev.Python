@@ -163,27 +163,17 @@ def test_registry_session_date(name, t, ref):
 
 
 @pytest.fixture
-def no_default(monkeypatch):
-    monkeypatch.delenv("SDEVPY_CENTER", raising=False)
+def no_default():
     ssn.set_default_center(None)
     yield
     ssn.set_default_center(None)
 
 
-def test_default_center_unset_raises(no_default):
-    with pytest.raises(ValueError):
-        ssn.default_center()
-
-
-def test_default_center_from_env(no_default, monkeypatch):
-    monkeypatch.setenv("SDEVPY_CENTER", "TOKYO")
-    assert ssn.default_center().name == "TOKYO"
-
-
-def test_default_center_code_overrides_env(no_default, monkeypatch):
-    monkeypatch.setenv("SDEVPY_CENTER", "TOKYO")
+def test_set_default_center(no_default):
     ssn.set_default_center("LONDON")
     assert ssn.default_center().name == "LONDON"
+    ssn.set_default_center(None)
+    assert ssn.default_center().name == "NEWYORK"
 
 
 def test_set_default_center_unknown_raises(no_default):

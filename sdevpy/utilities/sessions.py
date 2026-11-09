@@ -1,5 +1,4 @@
 import datetime as dt
-import os
 from dataclasses import dataclass
 from functools import cache
 from zoneinfo import ZoneInfo
@@ -9,6 +8,7 @@ from sdevpy.utilities import calendars as cdr
 # ToDo: Can't we do the weekly test by simulating it in one go as per the below, just defining a spaced grid of
 # datetime in a certain timezone?
 
+DEFAULT_CENTER = "NEWYORK"
 _default_center_name: str|None=None
 _naive_tz: dt.tzinfo|None=None  # None: machine-local
 
@@ -59,9 +59,11 @@ class TradingCenter:
         """ Trade date of the session that moment t (naive: read in the naive timezone) belongs to """
         return self.calendar.adjust(self._rolled_date(t), cdr.BDC.P)
 
-    def is_live(self, x: dt.date | dt.datetime, now: dt.datetime | None = None) -> bool:
+    def is_live(self, x: dt.date|dt.datetime, now: dt.datetime|None=None) -> bool:
         """ True if x belongs to the current session. Nothing is live in gaps (weekends, holidays):
-            neither x nor now may fall in a gap. now defaults to the system clock """
+            neither x nor now may fall in a gap.
+            Args:
+            - now: defaults to the system clock, only useful for testing/replicating results """
         x_date, x_in_session = self._session_of(x)
         if now is None:
             now = dt.datetime.now(dt.UTC)  # now expressed in UTC, == compares with tz
@@ -103,24 +105,20 @@ def make_center(name: str) -> TradingCenter:
     return TradingCenter(name, ZoneInfo(tz), calendar, roll)
 
 
-def set_default_center(name: str | None) -> None:
-    """ Set the process-wide default center (None: fall back to the SDEVPY_CENTER environment variable) """
+def set_default_center(name: str|None) -> None:
+    """ Set the process-wide default center (None: back to DEFAULT_CENTER) """
     global _default_center_name
     if name is not None:
-        make_center(name)  # Validate
+        make_center(name)
     _default_center_name = name
 
 
 def default_center() -> TradingCenter:
-    """ Default center: set_default_center() if called, else the SDEVPY_CENTER environment variable """
-    name = _default_center_name or os.environ.get("SDEVPY_CENTER")
-    if name is None:
-        raise ValueError("No default trading center: call set_default_center() or set SDEVPY_CENTER")
-    return make_center(name)
+    """ Default center: set_default_center() if called, else DEFAULT_CENTER """
+    return make_center(_default_center_name or DEFAULT_CENTER)
 
 
-
-def get_center(center: str | TradingCenter | None = None) -> TradingCenter:
+def get_center(center: str|TradingCenter|None=None) -> TradingCenter:
     """ Resolve a center given as a TradingCenter, a registry name, or None for the default center """
     if center is None:
         return default_center()
@@ -129,8 +127,7 @@ def get_center(center: str | TradingCenter | None = None) -> TradingCenter:
     return center
 
 
-def is_live(x: dt.date | dt.datetime, center: str | TradingCenter | None = None,
-            now: dt.datetime | None = None) -> bool:
+def is_live(x: dt.date|dt.datetime, center: str|TradingCenter|None=None, now: dt.datetime|None=None) -> bool:
     """ True if x belongs to the current session of center (default center if None) """
     return get_center(center).is_live(x, now)
 
@@ -155,18 +152,20 @@ CENTER_SPECS = {
 }
 
 
-def resolve_date_input(end_date: dt.date|dt.datetime|str|None, center: str|TradingCenter|None=None,
+def resolve_date_input(date_input: dt.date|dt.datetime|str|None, center: str|TradingCenter|None=None,
                        now: dt.datetime|None=None) -> tuple[dt.date, bool]:
     """ Resolve a date input given as None, 'live' or 'now' (current session), or a date/datetime.
+        Args:
+            - now: defaults to the system clock, only useful for testing/replicating results
         Returns its trade date for center (default center if None) and whether it is live. """
     c = get_center(center)
     if now is None:
         now = dt.datetime.now(dt.UTC)
-    if end_date is None or end_date in ('live', 'now'):
+    if date_input is None or date_input in ('live', 'now'):
         return c.session_date(now), c.in_session(now)
-    if isinstance(end_date, str):
-        raise ValueError(f"Invalid end date '{end_date}': expected None, 'live', 'now', a date or a datetime")
-    return c.to_session_date(end_date), c.is_live(end_date, now)
+    if isinstance(date_input, str):
+        raise ValueError(f"Invalid end date '{date_input}': expected None, 'live', 'now', a date or a datetime")
+    return c.to_session_date(date_input), c.is_live(date_input, now)
 
 
 if __name__ == "__main__":
@@ -176,12 +175,12 @@ if __name__ == "__main__":
     print(tz_name)
     print(tz)
 
-    d1 = dt.datetime.now()#dt.UTC)
-    d2 = dt.datetime.now()#ZoneInfo("Asia/Singapore"))
+    date_inputs = [None, 'now', 'live', 'Now']
+    # date_inputs.append()
 
-    print(d1)
-    print(d2)
-    print(d2 >= d1)
+    for d in date_inputs:
+        print(resolve_date_input(d))
+
 
     # CENTERS = ["NEWYORK", "SYDNEY", "SINGAPORE"]
     # now = dt.datetime.now(ZoneInfo("Asia/Singapore"))
