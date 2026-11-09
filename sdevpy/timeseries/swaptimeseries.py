@@ -19,14 +19,21 @@ def swap_series(calib_repo, conv_ids: list[str], expiries: list[str], tenors: li
                             common to all series (inner join)
         Returns a DataFrame with a 'Date' column and one column per series, named conv_id^expiry + x + tenor.
         Each cuve is loaded once and shared by all series that depend on it. """
-    # use_float_cache = kwargs.get('use_float_cache', True)
-    # keep_missing = kwargs.get('keep_missing', False)
-    # scaler = 100.0 # ToDo
+    use_float_cache = kwargs.get('use_float_cache', True)
+    keep_missing = kwargs.get('keep_missing', False)
+    scaler = 100.0 # ToDo
     # conv_repo = convention_repository()
 
     # Live end date: None, 'live' or today's trading day while in a live session
     center = kwargs.get('center', None)
-    end_day, is_live = ssn.resolve_end_date(end_date, center=center, now=kwargs.get('now', None))
+    end_day, is_live = ssn.resolve_date_input(end_date, center=center, now=kwargs.get('now', None))
     end_date = cdr.to_datetime(end_day)
+
+    curves_by_id = {}
+    columns = {}
+    live_specs = {}
+    for conv_id, expiry_str, tenor_str in zip(conv_ids, expiries, tenors, strict=True):
+        # Get instrument details
+        a = 0
 
     return pd.DataFrame({})

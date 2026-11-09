@@ -1,0 +1,59 @@
+{
+  "indices": {
+    "USD-SOFR": {
+      "notes": "NY Fed, published next business day. Fixing calendar: SIFMA (US government securities)",
+      "currency": "USD", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT360", "calendar": "USGOV",
+      "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
+    },
+    "USD-EFFR": {
+      "notes": "Effective Fed Funds, NY Fed, published next business day",
+      "currency": "USD", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT360", "calendar": "USD",
+      "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
+    },
+    "EUR-ESTR": {
+      "notes": "ECB, published next TARGET business day",
+      "currency": "EUR", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT360", "calendar": "EUR",
+      "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
+    },
+    "GBP-SONIA": {
+      "notes": "BoE, published next London business day",
+      "currency": "GBP", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT365F", "calendar": "GBP",
+      "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
+    },
+    "JPY-TONA": {
+      "notes": "BoJ, published next Tokyo business day",
+      "currency": "JPY", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT365F", "calendar": "JPY",
+      "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
+    },
+    "CHF-SARON": {
+      "notes": "SIX, published end of the same Zurich business day",
+      "currency": "CHF", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT360", "calendar": "CHF",
+      "fixing_lag": 0, "publication_lag": 0, "bdc": "F", "eom": false
+    },
+    "CAD-CORRA": {
+      "notes": "BoC, published next Toronto business day",
+      "currency": "CAD", "kind": "OVERNIGHT", "tenor": null, "daycount": "ACT365F", "calendar": "CAD",
+      "fixing_lag": 0, "publication_lag": 1, "bdc": "F", "eom": false
+    },
+    "EUR-EURIBOR-1M": {
+      "notes": "EMMI, fixed T-2 TARGET",
+      "currency": "EUR", "kind": "TERM", "tenor": "1M", "daycount": "ACT360", "calendar": "EUR",
+      "fixing_lag": 2, "publication_lag": 0, "bdc": "MF", "eom": true
+    },
+    "EUR-EURIBOR-3M": {
+      "notes": "EMMI, fixed T-2 TARGET",
+      "currency": "EUR", "kind": "TERM", "tenor": "3M", "daycount": "ACT360", "calendar": "EUR",
+      "fixing_lag": 2, "publication_lag": 0, "bdc": "MF", "eom": true
+    },
+    "EUR-EURIBOR-6M": {
+      "notes": "EMMI, fixed T-2 TARGET",
+      "currency": "EUR", "kind": "TERM", "tenor": "6M", "daycount": "ACT360", "calendar": "EUR",
+      "fixing_lag": 2, "publication_lag": 0, "bdc": "MF", "eom": true
+    },
+    "EUR-EURIBOR-12M": {
+      "notes": "EMMI, fixed T-2 TARGET",
+      "currency": "EUR", "kind": "TERM", "tenor": "12M", "daycount": "ACT360", "calendar": "EUR",
+      "fixing_lag": 2, "publication_lag": 0, "bdc": "MF", "eom": true
+    }
+  }
+}

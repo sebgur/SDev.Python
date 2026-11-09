@@ -22,7 +22,7 @@ def _sdevpy_imports(file: Path):
 
 @pytest.mark.parametrize('package, allowed', [
     ('market', {'market', 'conventions', 'utilities', 'maths', 'datapaths'}),
-    ('conventions', {'conventions', 'utilities'}),
+    ('conventions', {'conventions', 'utilities', 'datapaths'}),
 ])
 def test_package_dependencies(package, allowed):
     violations = []
