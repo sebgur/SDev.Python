@@ -16,6 +16,12 @@ CHICAGO = ZoneInfo("America/Chicago")
 TOKYO_WED_1000 = dt.datetime(2026, 11, 11, 10, 0, tzinfo=TOKYO)
 TOKYO_SAT_1000 = dt.datetime(2026, 11, 14, 10, 0, tzinfo=TOKYO)
 
+@pytest.fixture
+def naive_tokyo():
+    ssn.set_naive_tz("Asia/Tokyo")
+    yield
+    ssn.set_naive_tz(None)
+
 
 def test_normalize_date():
     d = dt.date(2026, 11, 9)
@@ -32,9 +38,10 @@ def test_normalize_naive_midnight():
 
 @pytest.mark.parametrize('t', [dt.datetime(2026, 11, 9, 16, 30), dt.datetime(2026, 11, 9, 0, 0, 1),
                                dt.datetime(2026, 11, 9, 0, 0, 0, 1)])
-def test_normalize_naive_non_midnight_raises(t):
-    with pytest.raises(ValueError):
-        ssn.normalize(t)
+def test_normalize_naive_non_midnight(t, naive_tokyo):
+    test = ssn.normalize(t)
+    assert test == t.replace(tzinfo=TOKYO)
+    assert test.utcoffset() is not None
 
 
 @pytest.mark.parametrize('t', [dt.datetime(2026, 11, 9, 16, 30, tzinfo=NY),
@@ -94,10 +101,9 @@ def test_session_date_other_zone():
     assert center.session_date(t) == dt.date(2026, 11, 17)
 
 
-def test_session_date_naive_raises():
+def test_session_date_naive(naive_tokyo):
     center = _ny_center()
-    with pytest.raises(ValueError):
-        center.session_date(dt.datetime(2026, 11, 13, 10, 0))
+    assert center.session_date(dt.datetime(2026, 11, 13, 6, 0)) == dt.date(2026, 11, 12)
 
 
 @pytest.mark.parametrize('x, now, ref', [
@@ -126,10 +132,9 @@ def test_is_live_system_clock():
     assert center.is_live(now) == center.in_session(now)
 
 
-def test_is_live_naive_now_raises():
+def test_is_live_naive_now(naive_tokyo):
     center = _ny_center()
-    with pytest.raises(ValueError):
-        center.is_live(dt.date(2026, 11, 13), now=dt.datetime(2026, 11, 13, 15, 0))
+    assert center.is_live(dt.date(2026, 11, 13), now=dt.datetime(2026, 11, 14, 5, 0))
 
 
 @pytest.mark.parametrize('name', list(ssn.CENTER_SPECS))
@@ -202,20 +207,21 @@ def test_is_live_branches(no_default):
 @pytest.mark.parametrize('end_date, now, ref', [
     (None, TOKYO_WED_1000, (dt.date(2026, 11, 11), True)),
     ('live', TOKYO_WED_1000, (dt.date(2026, 11, 11), True)),
+    ('now', TOKYO_WED_1000, (dt.date(2026, 11, 11), True)),
     (dt.datetime(2026, 11, 11), TOKYO_WED_1000, (dt.date(2026, 11, 11), True)),   # naive midnight = date
     (dt.datetime(2026, 11, 10), TOKYO_WED_1000, (dt.date(2026, 11, 10), False)),  # past date
     (None, TOKYO_SAT_1000, (dt.date(2026, 11, 13), False)),                       # weekend: Fri, not live
     (dt.date(2026, 11, 14), TOKYO_SAT_1000, (dt.date(2026, 11, 13), False)),      # Sat date: Fri, not live
     (dt.datetime(2026, 11, 11, 18, 0, tzinfo=TOKYO), TOKYO_WED_1000, (dt.date(2026, 11, 12), False)),  # after EOD
 ])
-def test_resolve_end_date(end_date, now, ref):
-    assert ssn.resolve_end_date(end_date, center="TOKYO", now=now) == ref
+def test_resolve_date_input(end_date, now, ref):
+    assert ssn.resolve_date_input(end_date, center="TOKYO", now=now) == ref
 
 
-@pytest.mark.parametrize('end_date', ['today', dt.datetime(2026, 11, 11, 15, 0)])
-def test_resolve_end_date_invalid_raises(end_date):
+@pytest.mark.parametrize('end_date', ['today', 'yesterday'])
+def test_resolve_date_input_invalid_raises(end_date):
     with pytest.raises(ValueError):
-        ssn.resolve_end_date(end_date, center="TOKYO", now=TOKYO_WED_1000)
+        ssn.resolve_date_input(end_date, center="TOKYO", now=TOKYO_WED_1000)
 
 
 @pytest.mark.parametrize('t, ref', [
@@ -233,7 +239,6 @@ def test_in_session(t, ref):
     assert center.in_session(t.replace(tzinfo=NY)) == ref
 
 
-def test_in_session_naive_raises():
+def test_in_session_naive(naive_tokyo):
     center = _ny_center()
-    with pytest.raises(ValueError):
-        center.in_session(dt.datetime(2026, 11, 13, 10, 0))
+    assert center.in_session(dt.datetime(2026, 11, 14, 6, 0))

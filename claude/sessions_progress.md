@@ -65,8 +65,6 @@ with sessions that start/end at different local times per center.
 ## Remaining plan
 - **Step 4**: `Session` dataclass (trade_date, open_utc, close_utc), `center.session(d)`, `is_open(t)`,
   current/next/previous session. Local times + tz, UTC per date (DST-safe).
-- **Step 5**: optionally take open/close (incl. early closes) from `pandas_market_calendars.schedule()`.
-- **Step 7**: liveness for multi-center objects (reference center, or all/any). Wait for a use case.
 - **Step 8**: integrate where sdevpy branches on live vs historical (fixings, market data, MC/pricer
   valuation date, backtesting loop passing simulated `now`).
 
