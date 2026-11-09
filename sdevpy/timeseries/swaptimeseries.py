@@ -2,8 +2,18 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 from sdevpy.conventions.repository import convention_repository
-from sdevpy.utilities import calendars as cdr
-from sdevpy.utilities import sessions as ssn
+# from sdevpy.utilities import calendars as cdr
+# from sdevpy.utilities import sessions as ssn
+
+
+def swap_series_id(conv_id: str, expiry: str, tenor: str) -> str:
+    """ Construct swap series ID from convention, expiry and tenor """
+    series_id = conv_id + "^"
+    if expiry is not None and expiry != "":
+        series_id += expiry + "x"
+
+    series_id += tenor
+    return series_id
 
 
 def swap_series(calib_repo, conv_ids: list[str], expiries: list[str], tenors: list[str],
@@ -19,21 +29,37 @@ def swap_series(calib_repo, conv_ids: list[str], expiries: list[str], tenors: li
                             common to all series (inner join)
         Returns a DataFrame with a 'Date' column and one column per series, named conv_id^expiry + x + tenor.
         Each cuve is loaded once and shared by all series that depend on it. """
-    use_float_cache = kwargs.get('use_float_cache', True)
-    keep_missing = kwargs.get('keep_missing', False)
-    scaler = 100.0 # ToDo
-    # conv_repo = convention_repository()
+    # use_float_cache = kwargs.get('use_float_cache', True)
+    # keep_missing = kwargs.get('keep_missing', False)
+    # scaler = 100.0 # ToDo
+    conv_repo = convention_repository()
+    convs = [conv_repo.swap(conv_id) for conv_id in conv_ids]
 
-    # Live end date: None, 'live' or today's trading day while in a live session
-    center = kwargs.get('center', None)
-    end_day, is_live = ssn.resolve_date_input(end_date, center=center, now=kwargs.get('now', None))
-    end_date = cdr.to_datetime(end_day)
+    # # Live end date: None, 'live' or today's trading day while in a live session
+    # center = kwargs.get('center', None)
+    # end_day, is_live = ssn.resolve_date_input(end_date, center=center, now=kwargs.get('now', None))
+    # end_date = cdr.to_datetime(end_day)
 
-    curves_by_id = {}
-    columns = {}
-    live_specs = {}
-    for conv_id, expiry_str, tenor_str in zip(conv_ids, expiries, tenors, strict=True):
+    # curves_by_id = {}
+    # columns = {}
+    # live_specs = {}
+    for conv, expiry, tenor in zip(convs, expiries, tenors, strict=True):
         # Get instrument details
-        a = 0
+        series_id = swap_series_id(conv.id, expiry, tenor)
+        print(series_id)
 
     return pd.DataFrame({})
+
+
+if __name__ == "__main__":
+    from sdevpy.pricingcontext import default_calibration_repository
+
+    calib_repo = default_calibration_repository()
+    conv_ids = ['USD.SOFR.SWAP', 'USD.SOFR.SWAP', 'EUR.EURIBOR.6M.SWAP']
+    expiries = ['', '1Y', '5Y']
+    tenors = ['5Y', '5Y', '10Y']
+    start_date = dt.datetime(2026, 1, 2)
+    end_date = None
+
+    df = swap_series(calib_repo, conv_ids, expiries, tenors, start_date, end_date)
+    print(df)

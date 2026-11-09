@@ -12,11 +12,6 @@ class IndexKind(Enum):
     TERM = "term"  # e.g. EURIBOR: fixed once per period
 
 
-class SwapKind(Enum):
-    IRS = "irs"  # fixed vs term index
-    OIS = "ois"  # fixed vs compounded overnight index
-
-
 class RateMethod(Enum):
     COMPOUNDED = "compounded"  # overnight index compounded over the reference period (e.g. CME SR3)
     AVERAGED = "averaged"  # overnight index arithmetic average over the reference period (e.g. CME SR1)
@@ -81,7 +76,6 @@ class FutureConvention:
 class FixFloatSwapConvention:
     id: str
     notes: str
-    kind: SwapKind
     currency: str
     float_index: str  # index id
     fixed_leg: LegConvention

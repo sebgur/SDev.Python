@@ -1,7 +1,7 @@
 """ Convention repository: loads all instrument conventions once from a single JSON file, validates them
     strictly (stops at the first error) and serves them by id. Objects are immutable and refer to each other
     by id. The JSON file is grouped by type, then keyed by id:
-        {"indices": {"USD-SOFR": {...}, ...}, ...} """
+        {"indices": {"USD.SOFR": {...}, ...}, ...} """
 import json
 import re
 import types
@@ -18,10 +18,10 @@ from sdevpy.utilities.calendars import CCY_CALENDARS, MCAL_ALIASES, list_mcal_ca
 from sdevpy.utilities.schedules import LegConvention, coupons_per_year
 from sdevpy.conventions.rateconventions import (IndexConvention, IndexKind, DepositConvention, FraConvention,
                                                 FutureConvention, RateMethod, FutureDateRule,
-                                                FixFloatSwapConvention, SwapKind, BasisSwapConvention)
+                                                FixFloatSwapConvention, BasisSwapConvention)
 
 CONVENTIONS_FILE = "conventions.json"
-_ID_PATTERN = re.compile(r"[A-Z0-9]+(-[A-Z0-9]+)*")
+_ID_PATTERN = re.compile(r"[A-Z0-9]+(\.[A-Z0-9]+)*")
 _CCY_PATTERN = re.compile(r"[A-Z]{3}")
 
 # JSON group name -> convention type. Ids are unique within a group
@@ -35,7 +35,6 @@ GROUPS: dict[str, type] = {
 }
 
 # Index kind required by each swap kind and each future rate method
-_SWAP_INDEX_KIND = {SwapKind.IRS: IndexKind.TERM, SwapKind.OIS: IndexKind.OVERNIGHT}
 _FUTURE_INDEX_KIND = {RateMethod.COMPOUNDED: IndexKind.OVERNIGHT, RateMethod.AVERAGED: IndexKind.OVERNIGHT,
                       RateMethod.TERM: IndexKind.TERM}
 
@@ -145,9 +144,8 @@ class ConventionRepository:
             _check_calendar(conv.spot_calendar, f"{path}.spot_calendar")
         _check_leg(conv.fixed_leg, f"{path}.fixed_leg")
         _check_leg(conv.float_leg, f"{path}.float_leg")
-        index = self._index_reference(conv.float_index, conv.currency, _SWAP_INDEX_KIND[conv.kind],
-                                      f"{path}.float_index")
-        if conv.kind == SwapKind.IRS and dts.period(conv.float_leg.frequency) != dts.period(index.tenor):
+        index = self._index_reference(conv.float_index, conv.currency, None, f"{path}.float_index")
+        if index.kind == IndexKind.TERM and dts.period(conv.float_leg.frequency) != dts.period(index.tenor):
             raise ConventionError(f"{path}.float_leg.frequency: {conv.float_leg.frequency} does not match "
                                   f"index tenor {index.tenor}")
 
@@ -216,7 +214,7 @@ def _check_keys(raw: Any, expected: set[str], path: str) -> None:
 def _parse_entry(conv_type: type, conv_id: str, raw: Any, path: str) -> Any:
     """ Top-level entry: the id is the JSON key, not a field in the entry """
     if not _ID_PATTERN.fullmatch(conv_id):
-        raise ConventionError(f"{path}: invalid id, expected upper case words separated by '-'")
+        raise ConventionError(f"{path}: invalid id, expected upper case words separated by '.'")
     return _parse_dataclass(conv_type, raw, path, id=conv_id)
 
 
