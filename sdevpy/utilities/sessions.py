@@ -103,11 +103,24 @@ class TradingCenter:
         return self.calendar.adjust(d, cdr.BDC.P), self.calendar.is_business_day(d)
 
 
-@cache
+def center_name(name: str) -> str:
+    """ Registry name for a center name or alias, case- and space-insensitive (e.g. 'ny', 'New York') """
+    key = name.upper().replace(" ", "")
+    key = CENTER_ALIASES.get(key, key)
+    if key not in CENTER_SPECS:
+        raise ValueError(f"Unknown trading center '{name}'. Available: {', '.join(CENTER_SPECS)} "
+                         f"(aliases: {', '.join(CENTER_ALIASES)})")
+    return key
+
+
 def make_center(name: str) -> TradingCenter:
-    """ Trading center from the CENTER_SPECS registry """
-    if name not in CENTER_SPECS:
-        raise ValueError(f"Unknown trading center '{name}'. Available: {', '.join(CENTER_SPECS)}")
+    """ Trading center from the CENTER_SPECS registry, by name or alias """
+    return _make_center(center_name(name))
+
+
+@cache
+def _make_center(name: str) -> TradingCenter:
+    """ Build a registry center (name must be a CENTER_SPECS key) """
     tz, calendar_name, roll = CENTER_SPECS[name]
     calendar = cdr.make_calendar(calendar_name) if calendar_name else cdr.Calendar(name)
     return TradingCenter(name, ZoneInfo(tz), calendar, roll)
@@ -159,6 +172,17 @@ CENTER_SPECS = {
     "FX": ("America/New_York", None, dt.time(17)),
 }
 
+CENTER_ALIASES = {
+    "NY": "NEWYORK", "NYC": "NEWYORK",
+    "LDN": "LONDON",
+    "JP": "TOKYO", "TK": "TOKYO", "TKY": "TOKYO",
+    "SG": "SINGAPORE", "SGP": "SINGAPORE",
+    "AU": "SYDNEY", "SYD": "SYDNEY",
+    "NZ": "AUCKLAND", "AKL": "AUCKLAND",
+    "BOM": "MUMBAI",
+    "DXB": "DUBAI",
+}
+
 
 def _is_live_request(date_input: dt.date | dt.datetime | str | None) -> bool:
     """ True for None or 'live'/'now' (case-insensitive) """
@@ -206,31 +230,28 @@ def get_date_info(date_input: dt.date|dt.datetime|str|None, center: str|TradingC
 
 if __name__ == "__main__":
     import pandas as pd
+    from pathlib import Path
     from tzlocal import get_localzone_name, get_localzone
     tz_name = get_localzone_name()   # 'Europe/Paris'
     tz = get_localzone()        # ZoneInfo('Europe/Paris')
     print(tz_name)
     print(tz)
 
-    # Single test
-    date_inputs = [None, 'now', 'live', dt.datetime.now()]
-    date_inputs.append(dt.datetime(2026, 11, 8))
+    # Week test: 'live' every 15 minutes over a week, on a simulated clock
+    gen_center = "SG"
+    gen_center_tz = make_center(gen_center).tz
+    start = dt.datetime(2026, 11, 5, 0, 0, tzinfo=gen_center_tz)  # Sat before Thanksgiving week
+    nows = pd.date_range(start, periods=10 * 24 * 4, freq="15min")
 
-    names, sessions, islives, tm1eods = [], [], [], []
-    for d in date_inputs:
-        info = get_date_info(d, now=dt.datetime(2026, 11, 8))
-        names.append(d)
-        sessions.append(info['session'])
-        islives.append(info['islive'])
-        tm1eods.append(info['tm1eod'])
+    test_center = "TK"
+    rows = []
+    for now in nows:
+        info = get_date_info('live', test_center, now.to_pydatetime())
+        rows.append({'Now': now, **info})
 
-    df = pd.DataFrame({'Name': names, 'Session': sessions, 'IsLive': islives, 'Tm1': tm1eods})
-    print(df)
-
-    # Week test
-
-    # CENTERS = ["NEWYORK", "SYDNEY", "SINGAPORE"]
-    # now = dt.datetime.now(ZoneInfo("Asia/Singapore"))
-    # for name in CENTERS:
-    #     center = make_center(name)
-    #     print(f"{name}: {center.session_date(now).strftime("%Y-%m-%d")} | {center.is_live(now, now)}")
+    df = pd.DataFrame(rows)
+    df['Now'] = df['Now'].dt.tz_localize(None)  # Formattable in Excel
+    file = Path.home() / "temp" / "sessions" / (test_center + ".tsv")
+    df.to_csv(file, sep="\t")
+    # pd.set_option('display.max_rows', None)
+    # print(df)
