@@ -56,6 +56,65 @@
       "fixing_lag": 2, "publication_lag": 0, "bdc": "MF", "eom": true
     }
   },
+  "deposits": {
+    "USD-DEPO": {
+      "notes": "Interbank cash deposit, spot T+2",
+      "currency": "USD", "daycount": "ACT360", "calendar": "USD",
+      "spot_lag": 2, "bdc": "MF", "eom": true
+    },
+    "EUR-DEPO": {
+      "notes": "Interbank cash deposit, spot T+2",
+      "currency": "EUR", "daycount": "ACT360", "calendar": "EUR",
+      "spot_lag": 2, "bdc": "MF", "eom": true
+    },
+    "GBP-DEPO": {
+      "notes": "Interbank cash deposit, same-day start",
+      "currency": "GBP", "daycount": "ACT365F", "calendar": "GBP",
+      "spot_lag": 0, "bdc": "MF", "eom": true
+    },
+    "CHF-DEPO": {
+      "notes": "Interbank cash deposit, spot T+2",
+      "currency": "CHF", "daycount": "ACT360", "calendar": "CHF",
+      "spot_lag": 2, "bdc": "MF", "eom": true
+    }
+  },
+  "fras": {
+    "EUR-EURIBOR-3M-FRA": {
+      "notes": "FRA on EURIBOR 3M, start counted from spot T+2",
+      "currency": "EUR", "index": "EUR-EURIBOR-3M", "spot_lag": 2
+    },
+    "EUR-EURIBOR-6M-FRA": {
+      "notes": "FRA on EURIBOR 6M, start counted from spot T+2",
+      "currency": "EUR", "index": "EUR-EURIBOR-6M", "spot_lag": 2
+    }
+  },
+  "futures": {
+    "USD-SOFR-3M-FUT": {
+      "notes": "CME SR3: SOFR compounded IMM to IMM, $25 per bp",
+      "currency": "USD", "index": "USD-SOFR", "rate_method": "COMPOUNDED",
+      "period": "3M", "date_rule": "IMM", "exchange": "CME", "notional": 1000000
+    },
+    "USD-SOFR-1M-FUT": {
+      "notes": "CME SR1: SOFR averaged over the calendar month, $41.67 per bp",
+      "currency": "USD", "index": "USD-SOFR", "rate_method": "AVERAGED",
+      "period": "1M", "date_rule": "MONTH", "exchange": "CME", "notional": 5000000
+    },
+    "USD-EFFR-1M-FUT": {
+      "notes": "CBOT ZQ 30-day Fed Funds: EFFR averaged over the calendar month, $41.67 per bp",
+      "currency": "USD", "index": "USD-EFFR", "rate_method": "AVERAGED",
+      "period": "1M", "date_rule": "MONTH", "exchange": "CBOT", "notional": 5000000
+    },
+    "GBP-SONIA-3M-FUT": {
+      "notes": "ICE SO3: SONIA compounded IMM to IMM, GBP 25 per bp",
+      "currency": "GBP", "index": "GBP-SONIA", "rate_method": "COMPOUNDED",
+      "period": "3M", "date_rule": "IMM", "exchange": "ICE", "notional": 1000000
+    },
+    "EUR-EURIBOR-3M-FUT": {
+      "notes": "ICE EURIBOR 3M futures, EUR 25 per bp",
+      "currency": "EUR", "index": "EUR-EURIBOR-3M", "rate_method": "TERM",
+      "period": "3M", "date_rule": "IMM", "exchange": "ICE", "notional": 1000000
+    }
+  },
   "swaps": {
     "USD-SOFR-OIS": {
       "notes": "Annual/annual, pay T+2, spot T+2, SIFMA calendar",

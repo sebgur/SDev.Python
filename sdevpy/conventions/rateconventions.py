@@ -17,6 +17,17 @@ class SwapKind(Enum):
     OIS = "ois"  # fixed vs compounded overnight index
 
 
+class RateMethod(Enum):
+    COMPOUNDED = "compounded"  # overnight index compounded over the reference period (e.g. CME SR3)
+    AVERAGED = "averaged"  # overnight index arithmetic average over the reference period (e.g. CME SR1)
+    TERM = "term"  # single term index fixing (e.g. EURIBOR futures)
+
+
+class FutureDateRule(Enum):
+    IMM = "imm"  # reference period starts on the 3rd Wednesday of the contract month
+    MONTH = "month"  # reference period is the contract calendar month
+
+
 @dataclass(frozen=True)
 class IndexConvention:
     id: str
@@ -30,6 +41,40 @@ class IndexConvention:
     publication_lag: int  # business days from value date to publication (overnight indices)
     bdc: BDC  # maturity adjustment of a term index
     eom: bool
+
+
+@dataclass(frozen=True)
+class DepositConvention:
+    id: str
+    notes: str
+    currency: str
+    daycount: DayCount
+    calendar: str
+    spot_lag: int  # business days from trade date to start
+    bdc: BDC
+    eom: bool
+
+
+@dataclass(frozen=True)
+class FraConvention:
+    id: str
+    notes: str
+    currency: str
+    index: str  # term index id: daycount, calendar, fixing lag and maturity rules come from the index
+    spot_lag: int  # business days from trade date to spot, from which the FRA start is counted
+
+
+@dataclass(frozen=True)
+class FutureConvention:
+    id: str
+    notes: str
+    currency: str
+    index: str  # index id
+    rate_method: RateMethod
+    period: str  # length of the reference period, e.g. '3M'
+    date_rule: FutureDateRule
+    exchange: str
+    notional: float  # contract notional in currency
 
 
 @dataclass(frozen=True)
