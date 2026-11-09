@@ -55,5 +55,79 @@
       "currency": "EUR", "kind": "TERM", "tenor": "12M", "daycount": "ACT360", "calendar": "EUR",
       "fixing_lag": 2, "publication_lag": 0, "bdc": "MF", "eom": true
     }
+  },
+  "swaps": {
+    "USD-SOFR-OIS": {
+      "notes": "Annual/annual, pay T+2, spot T+2, SIFMA calendar",
+      "kind": "OIS", "currency": "USD", "float_index": "USD-SOFR",
+      "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USGOV", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USGOV", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "spot_lag": 2, "spot_calendar": null
+    },
+    "USD-EFFR-OIS": {
+      "notes": "Fed Funds OIS. Annual/annual, pay T+2, spot T+2",
+      "kind": "OIS", "currency": "USD", "float_index": "USD-EFFR",
+      "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USD", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USD", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "spot_lag": 2, "spot_calendar": null
+    },
+    "EUR-ESTR-OIS": {
+      "notes": "Annual/annual, pay T+1, spot T+2",
+      "kind": "OIS", "currency": "EUR", "float_index": "EUR-ESTR",
+      "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 1, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 1, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "spot_lag": 2, "spot_calendar": null
+    },
+    "GBP-SONIA-OIS": {
+      "notes": "Annual/annual, pay T+0, same-day start",
+      "kind": "OIS", "currency": "GBP", "float_index": "GBP-SONIA",
+      "fixed_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "GBP", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "float_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "GBP", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "spot_lag": 0, "spot_calendar": null
+    },
+    "JPY-TONA-OIS": {
+      "notes": "Annual/annual, pay T+2, spot T+2",
+      "kind": "OIS", "currency": "JPY", "float_index": "JPY-TONA",
+      "fixed_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "JPY", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "float_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "JPY", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "spot_lag": 2, "spot_calendar": null
+    },
+    "CHF-SARON-OIS": {
+      "notes": "Annual/annual, pay T+2, spot T+2",
+      "kind": "OIS", "currency": "CHF", "float_index": "CHF-SARON",
+      "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "CHF", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "CHF", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "spot_lag": 2, "spot_calendar": null
+    },
+    "EUR-EURIBOR-3M-IRS": {
+      "notes": "Fixed annual 30/360 vs EURIBOR 3M, spot T+2",
+      "kind": "IRS", "currency": "EUR", "float_index": "EUR-EURIBOR-3M",
+      "fixed_leg": {"frequency": "1Y", "daycount": "D30_360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "float_leg": {"frequency": "3M", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false},
+      "spot_lag": 2, "spot_calendar": null
+    },
+    "EUR-EURIBOR-6M-IRS": {
+      "notes": "Fixed annual 30/360 vs EURIBOR 6M, spot T+2",
+      "kind": "IRS", "currency": "EUR", "float_index": "EUR-EURIBOR-6M",
+      "fixed_leg": {"frequency": "1Y", "daycount": "D30_360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+      "float_leg": {"frequency": "6M", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
+                    "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false},
+      "spot_lag": 2, "spot_calendar": null
+    }
   }
 }
