@@ -40,6 +40,15 @@ ACGB = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'AUGOV', bdc=BDC
                       settlement_lag=2, ex_coupon_days=7, ex_coupon_calendar_days=True,
                       simple_final_period=True, final_period_daycount=DayCount.ACT365F)
 
+# US corporates: semi-annual 30/360, US calendar, T+1, simple yield in the final coupon period
+US_CORP = BondConvention(LegConvention('6M', DayCount.D30_360, 'USD', bdc=BDC.F, adjust_accrual=False, eom=True),
+                         settlement_lag=1, simple_final_period=True)
+
+# Euro bonds without a market convention of their own (e.g. Italian non-BTP): ACT/ACT ICMA, TARGET, T+2, ICMA
+# yield (annual compounding whatever the coupon frequency), simple yield in the final coupon period
+EUR_ICMA = BondConvention(LegConvention('1Y', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F, adjust_accrual=False),
+                          settlement_lag=2, yield_frequency=1, simple_final_period=True)
+
 
 ################## BILLS ##############################################################################################
 UST_BILL = BillConvention(YieldType.STREET)  # bond-equivalent yield; also quoted on discount rate (ACT/360)
