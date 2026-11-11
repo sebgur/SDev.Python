@@ -31,6 +31,7 @@ class BondFlows:
     yield_frequency: int | None = None  # street-yield compounding per year (None: coupon frequency)
     yield_alpha: npt.NDArray[np.float64] | None = None  # coupon amounts the yield sees, when not alpha (CAN)
     yield_accrued_fraction: float | None = None  # accrued fraction the yield sees, when not accrued_fraction (CAN)
+    coupon_times: npt.NDArray[np.float64] | None = None  # simple_yield_time from settlement to each coupon date
 
     def yield_basis(self) -> "BondFlows":
         """ The flows as the yield-price relation sees them: alpha and accrued_fraction replaced by their yield
@@ -104,9 +105,10 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
         periods = np.array([bond.coupons_per_year * t])
 
     maturity_years = simple_yield_time(settle, to_date(bond.schedule.unadj_end[-1]))
+    coupon_times = simple_yield_times(settle, ends[i + 1:] if ex_coupon else ends[i:])  # JP compound yield
     return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time,
                      bond.conv.simple_final_period, ex_coupon, bond.conv.yield_type, maturity_years,
-                     bond.conv.compounding, yield_alpha, yield_accrued)
+                     bond.conv.compounding, yield_alpha, yield_accrued, coupon_times)
 
 
 def cashflows(bf: BondFlows, coupon: float, redemption: float = 100.0) -> npt.NDArray[np.float64]:
@@ -123,12 +125,27 @@ def accrued_interest(bf: BondFlows, coupon: float) -> float:
 def simple_yield_time(settlement: dt.date, maturity: dt.date) -> float:
     """ Years to maturity in the simple-yield formula (JNX trading rules, Appendix 1): ACT/365F when maturity is
         before the first anniversary of settlement (29-Feb settlement: 28-Feb), NL/365 otherwise """
-    try:
-        anniversary = settlement.replace(year=settlement.year + 1)
-    except ValueError:  # 29-Feb
-        anniversary = dt.date(settlement.year + 1, 2, 28)
-    daycount = DayCount.ACT365F if maturity < anniversary else DayCount.ACT365_NL
+    # try:
+    #     anniversary = settlement.replace(year=settlement.year + 1)
+    # except ValueError:  # 29-Feb
+    #     anniversary = dt.date(settlement.year + 1, 2, 28)
+    daycount = DayCount.ACT365F if maturity < _first_anniversary(settlement) else DayCount.ACT365_NL
     return float(yearfraction(settlement, maturity, daycount))
+
+
+def simple_yield_times(settlement: dt.date, dates: npt.NDArray[np.datetime64]) -> npt.NDArray[np.float64]:
+    """ simple_yield_time from settlement to each date (vectorized) """
+    act = yearfraction(settlement, dates, DayCount.ACT365F)
+    nl = yearfraction(settlement, dates, DayCount.ACT365_NL)
+    return np.where(dates < np.datetime64(_first_anniversary(settlement), 'D'), act, nl)
+
+
+def _first_anniversary(settlement: dt.date) -> dt.date:
+    """ First anniversary of settlement, 28-Feb for a 29-Feb settlement: where simple_yield_time switches to NL/365 """
+    try:
+        return settlement.replace(year=settlement.year + 1)
+    except ValueError:  # 29-Feb
+        return dt.date(settlement.year + 1, 2, 28)
 
 
 def _yield_discount(tau, f, y, simple):
@@ -164,7 +181,13 @@ def _price_derivs(bf: BondFlows, coupon: float, y: float, redemption: float,
         return clean + accrued_interest(bf, coupon), -t * clean / base, 2.0 * t * t * clean / base ** 2
 
     amounts = cashflows(yb, coupon, redemption)
-    v, dv, d2v = _yield_discount(yb.yield_exponents, yb.compounding, y, yb.simple_flows)
+    exponents = yb.yield_exponents
+    if kind == YieldType.JP_COMPOUND:
+        if yb.coupon_times is None:
+            raise ValueError("JP compound yield needs coupon_times: BondFlows built without a coupon schedule")
+        exponents = yb.compounding * yb.coupon_times
+    v, dv, d2v = _yield_discount(exponents, yb.compounding, y, yb.simple_flows)
+    # v, dv, d2v = _yield_discount(yb.yield_exponents, yb.compounding, y, yb.simple_flows)
     return float(np.sum(amounts * v)) + shift, float(np.sum(amounts * dv)), float(np.sum(amounts * d2v))
 
 
