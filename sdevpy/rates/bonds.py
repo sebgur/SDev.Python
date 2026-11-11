@@ -1,5 +1,5 @@
 import datetime as dt
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from collections.abc import Callable
 import numpy as np
 import numpy.typing as npt
@@ -29,6 +29,17 @@ class BondFlows:
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
     maturity_years: float = 0.0  # simple-yield time from settlement to the (unadjusted) maturity: simple_yield_time
     yield_frequency: int | None = None  # street-yield compounding per year (None: coupon frequency)
+    yield_alpha: npt.NDArray[np.float64] | None = None  # coupon amounts the yield sees, when not alpha (CAN)
+    yield_accrued_fraction: float | None = None  # accrued fraction the yield sees, when not accrued_fraction (CAN)
+
+    def yield_basis(self) -> "BondFlows":
+        """ The flows as the yield-price relation sees them: alpha and accrued_fraction replaced by their yield
+            versions when the convention has them (CAN), else self """
+        if self.yield_alpha is None:
+            return self
+
+        return replace(self, alpha=self.yield_alpha, accrual_fraction=self.yield_accrued_fraction,
+                       yield_alpha=None, yield_accrued_fraction=None)
 
     @property
     def compounding(self) -> int:
@@ -76,6 +87,12 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
         accrued = -bond.accrued_fraction(settle, to_date(ends[i]))
         alpha, periods, payment = alpha[1:], periods[1:], payment[1:]
 
+    # Yield basis (CAN): before the final period, the yield takes accrued and odd coupons on the leg day count
+    yield_alpha = yield_accrued = None
+    if bond.conv.yield_on_leg_daycount and len(alpha) > 1:
+        yield_alpha = tau[1:] if ex_coupon else tau
+        yield_accrued = -bond.accrual_fraction(settle, to_date(ends[i])) if ex_coupon else elapsed
+
     pay_times = settle_time = None
     if valdate is not None:
         pay_times = timegrids.model_time(valdate, payment)
@@ -89,7 +106,7 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
     maturity_years = simple_yield_time(settle, to_date(bond.schedule.unadj_end[-1]))
     return BondFlows(settle, payment, alpha, periods, accrued, bond.coupons_per_year, pay_times, settle_time,
                      bond.conv.simple_final_period, ex_coupon, bond.conv.yield_type, maturity_years,
-                     bond.conv.compounding)
+                     bond.conv.compounding, yield_alpha, yield_accrued)
 
 
 def cashflows(bf: BondFlows, coupon: float, redemption: float = 100.0) -> npt.NDArray[np.float64]:
@@ -136,16 +153,19 @@ def _kind(bf: BondFlows, kind: YieldType | None) -> YieldType:
 
 def _price_derivs(bf: BondFlows, coupon: float, y: float, redemption: float,
                   kind: YieldType) -> tuple[float, float, float]:
-    """ Dirty price at yield y and its first two derivatives in y """
+    """ Dirty price at yield y and its first two derivatives in y. The yield prices the flows on their yield
+        basis (BondFlows.yield_basis). The dirty price then carries the quoted accrued. """
+    yb = bf.yield_basis()
+    shift = accrued_interest(bf, coupon) - accrued_interest(yb, coupon)  # 0.0 unless the yield basis differs
     if kind == YieldType.SIMPLE:
-        t = bf.maturity_years
+        t = yb.maturity_years
         base = 1.0 + y * t
         clean = (100.0 * coupon * t + redemption) / base
         return clean + accrued_interest(bf, coupon), -t * clean / base, 2.0 * t * t * clean / base ** 2
-    amounts = cashflows(bf, coupon, redemption)
-    # v, dv, d2v = _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)
-    v, dv, d2v = _yield_discount(bf.yield_exponents, bf.compounding, y, bf.simple_flows)
-    return float(np.sum(amounts * v)), float(np.sum(amounts * dv)), float(np.sum(amounts * d2v))
+
+    amounts = cashflows(yb, coupon, redemption)
+    v, dv, d2v = _yield_discount(yb.yield_exponents, yb.compounding, y, yb.simple_flows)
+    return float(np.sum(amounts * v)) + shift, float(np.sum(amounts * dv)), float(np.sum(amounts * d2v))
 
 
 def dirty_from_yield(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0,
@@ -174,6 +194,18 @@ def yield_from_dirty(bf: BondFlows, coupon: float, dirty: float, redemption: flo
     raise RuntimeError("Yield did not converge")
 
 
+def yield_from_clean(bf: BondFlows, coupon: float, clean: float, redemption: float=100.0,
+                     kind: YieldType|None=None) -> float:
+    """ Yield to maturity from the quoted clean price """
+    return yield_from_dirty(bf, coupon, clean + accrued_interest(bf, coupon), redemption, kind=kind)
+
+
+def clean_from_yield(bf: BondFlows, coupon: float, y: float, redemption: float=100.0,
+                     kind: YieldType|None=None) -> float:
+    """ Quoted clean price from yield to maturity """
+    return dirty_from_yield(bf, coupon, y, redemption, kind) - accrued_interest(bf, coupon)
+
+
 def dirty_from_curve(bf: BondFlows, coupon: float, df: DiscountFunction, redemption: float = 100.0) -> float:
     """ Dirty price at settlement: PV of the cash flows, forward to the settlement date """
     if bf.pay_times is None:
@@ -194,10 +226,11 @@ def macaulay_duration(bf: BondFlows, coupon: float, y: float, redemption: float 
     """ PV-weighted average time to the cash flows, in years (street-convention yield discounting) """
     if _kind(bf, kind) != YieldType.STREET:
         raise ValueError("Macaulay duration needs a street (compounded) yield: pass kind=YieldType.STREET")
-    # pv = cashflows(bf, coupon, redemption) * _yield_discount(bf.periods, bf.frequency, y, bf.simple_flows)[0]
-    pv = cashflows(bf, coupon, redemption) * _yield_discount(bf.yield_exponents, bf.compounding, y,
-                                                             bf.simple_flows)[0]
-    return float(np.sum(pv * bf.periods) / np.sum(pv) / bf.frequency)
+
+    yb = bf.yield_basis()
+    pv = cashflows(yb, coupon, redemption) * _yield_discount(yb.yield_exponents, yb.compounding, y,
+                                                             yb.simple_flows)[0]
+    return float(np.sum(pv * yb.periods) / np.sum(pv) / yb.frequency)
 
 
 def modified_duration(bf: BondFlows, coupon: float, y: float, redemption: float = 100.0,

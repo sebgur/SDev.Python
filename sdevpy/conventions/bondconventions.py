@@ -31,7 +31,8 @@ BTP = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F,
 # Act/365 (Canadian bond), money-market yield in the final coupon period (IIAC)
 CAN = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'CAGOV', bdc=BDC.F, adjust_accrual=False),
                      settlement_lag=1, accrued_daycount=DayCount.ACT365_CANADIAN, simple_final_period=True,
-                     final_period_daycount=DayCount.ACT365F, stub_daycount=DayCount.ACT365_CANADIAN)
+                     final_period_daycount=DayCount.ACT365F, stub_daycount=DayCount.ACT365_CANADIAN,
+                     yield_on_leg_daycount=True)
 
 # Australian Commonwealth Government Bonds: semi-annual ACT/ACT ICMA, Sydney, T+2. Ex-interest 7 calendar days
 # before each coupon

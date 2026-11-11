@@ -205,6 +205,7 @@ class BondConvention:
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
     yield_frequency: int | None = None  # street-yield compounding per year (None: coupon frequency; BTP: 1)
     discount_to_payment: bool = False  # street yield discounts each flow to its adjusted payment date (BTP)
+    yield_on_leg_daycount: bool = False  # yield on leg.daycount for accrued and odd coupons, except final period (CAN)
 
     @property
     def compounding(self) -> int:
