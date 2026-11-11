@@ -63,6 +63,9 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
 
     periods = bond.coupons_per_year * np.cumsum(np.concatenate(([tau[0] - elapsed], tau[1:])))
     payment = bond.schedule.payment[i:]
+    if bond.conv.discount_to_payment:  # extra coupon-period fraction from each coupon date to its payment date
+        delay = (payment - ends[i:]).astype(float) / (ends[i:] - starts[i:]).astype(float)
+        periods = periods + delay
 
     # Ex-coupon period: the coupon goes to the holder at the ex date, the buyer is short its accrual to the coupon date
     ex_date = bond.ex_coupon_date(i)
@@ -79,8 +82,8 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
         settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
 
     if bond.conv.final_period_daycount is not None and len(periods) == 1:  # money-market time in the final period
-        # t = float(yearfraction(settle, to_date(bond.schedule.unadj_end[-1]), bond.conv.final_period_daycount))
-        t = float(yearfraction(settle, to_date(bond.schedule.payment[-1]), bond.conv.final_period_daycount))
+        end = bond.schedule.unadj_end[-1] if bond.conv.final_period_unadjusted else bond.schedule.payment[-1]
+        t = float(yearfraction(settle, to_date(end), bond.conv.final_period_daycount))
         periods = np.array([bond.coupons_per_year * t])
 
     maturity_years = simple_yield_time(settle, to_date(bond.schedule.unadj_end[-1]))

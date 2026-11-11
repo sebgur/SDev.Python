@@ -20,11 +20,12 @@ JGB = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'JPGOV', bdc=BDC.
 
 # German Bunds/Bobls/Schatz: annual ACT/ACT ICMA, TARGET, T+2, street yield
 BUND = BondConvention(LegConvention('1Y', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F, adjust_accrual=False),
-                      settlement_lag=2)
+                      settlement_lag=2, simple_final_period=True, final_period_daycount=DayCount.ACT365F,
+                      final_period_unadjusted=True)
 
 # Italian BTPs: semi-annual ACT/ACT ICMA, TARGET, T+2. Yield quoted annual-compounded:
 BTP = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'EUR', bdc=BDC.F, adjust_accrual=False),
-                     settlement_lag=2, yield_frequency=1)
+                     settlement_lag=2, yield_frequency=1, simple_final_period=True, discount_to_payment=True)
 
 # Government of Canada: semi-annual, Canadian bond market calendar, T+1. Canadian accrued and odd coupons
 # Act/365 (Canadian bond), money-market yield in the final coupon period (IIAC)

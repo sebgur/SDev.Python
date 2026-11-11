@@ -197,12 +197,14 @@ class BondConvention:
     ex_coupon_calendar_days: bool = False  # ex_coupon_days in calendar days before the coupon date (ACGB)
     simple_final_period: bool = False  # simple-interest yield in the last coupon period
     final_period_daycount: DayCount | None = None  # simple_final_period on this day count (None: coupon time)
+    final_period_unadjusted: bool = False
     accrued_daycount: DayCount | None = None  # accrued interest day count when it differs from the coupon's
     accrued_cap: bool = False  # accrued interest capped at the current period's coupon (JGB: c d / 365, at most c/2)
     stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
     stub_complement: bool = False  # broken part as 1/f less stub_daycount over the days not accrued (BoJ, JGB)
     yield_type: YieldType = YieldType.STREET  # the market's quoted yield
     yield_frequency: int | None = None  # street-yield compounding per year (None: coupon frequency; BTP: 1)
+    discount_to_payment: bool = False  # street yield discounts each flow to its adjusted payment date (BTP)
 
     @property
     def compounding(self) -> int:
