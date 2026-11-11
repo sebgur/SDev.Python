@@ -111,6 +111,27 @@ def bond_flows(bond: BondScheduler, settlement: dt.date, valdate: dt.datetime | 
                      bond.conv.compounding, yield_alpha, yield_accrued, coupon_times)
 
 
+def interest_at_maturity_flows(start: dt.date, maturity: dt.date, settlement: dt.date, daycount: DayCount,
+                               valdate: dt.datetime|None=None) -> BondFlows:
+    """ All interest from start paid with the principal at maturity: a single flow, yield at simple interest
+        (street convention's final period), (100 (1 + c T_start) / dirty - 1) / T, times on daycount """
+    start, settle, mat = to_date(start), to_date(settlement), to_date(maturity)
+    if settle >= mat:
+        raise ValueError(f"Bond matured before settlement {settle}")
+
+    payment = np.array([np.datetime64(mat, 'D')])
+    alpha = np.array([float(yearfraction(start, mat, daycount))])
+    periods = np.array([float(yearfraction(settle, mat, daycount))])  # frequency 1: periods in years
+    accrued = float(yearfraction(start, settle, daycount)) if settle > start else 0.0
+    pay_times = settle_time = None
+    if valdate is not None:
+        pay_times = timegrids.model_time(valdate, payment)
+        settle_time = timegrids.model_time(valdate, np.datetime64(settle, 'D'))
+
+    return BondFlows(settle, payment, alpha, periods, accrued, 1, pay_times, settle_time, simple_final_period=True,
+                     maturity_years=simple_yield_time(settle, mat))
+
+
 def cashflows(bf: BondFlows, coupon: float, redemption: float = 100.0) -> npt.NDArray[np.float64]:
     """ Cash flow amounts per 100 notional """
     amounts = 100.0 * coupon * bf.alpha
