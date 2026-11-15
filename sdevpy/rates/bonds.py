@@ -38,7 +38,7 @@ class BondFlows:
             versions when the convention has them (CAN), else self """
         if self.yield_alpha is None:
             return self
-        return replace(self, alpha=self.yield_alpha, accrual_fraction=self.yield_accrued_fraction,
+        return replace(self, alpha=self.yield_alpha, accrued_fraction=self.yield_accrued_fraction,
                        yield_alpha=None, yield_accrued_fraction=None)
 
     @property
@@ -145,10 +145,6 @@ def accrued_interest(bf: BondFlows, coupon: float) -> float:
 def simple_yield_time(settlement: dt.date, maturity: dt.date) -> float:
     """ Years to maturity in the simple-yield formula (JNX trading rules, Appendix 1): ACT/365F when maturity is
         before the first anniversary of settlement (29-Feb settlement: 28-Feb), NL/365 otherwise """
-    # try:
-    #     anniversary = settlement.replace(year=settlement.year + 1)
-    # except ValueError:  # 29-Feb
-    #     anniversary = dt.date(settlement.year + 1, 2, 28)
     daycount = DayCount.ACT365F if maturity < _first_anniversary(settlement) else DayCount.ACT365_NL
     return float(yearfraction(settlement, maturity, daycount))
 
@@ -184,6 +180,16 @@ def _yield_discount(tau, f, y, simple):
     return v, dv, d2v
 
 
+def _treasury_discount(tau, f, y):
+    """ US Treasury convention (31 CFR 356, App. B): simple interest over the fraction of a period to the next
+        coupon, compounded at y/f per period from there, (1 + y x0/f)^-1 (1 + y/f)^-(tau - x0), x0 = tau[0] """
+    a = tau[0] / f
+    s = 1.0 / (1.0 + a * y)
+    ds, d2s = -a * s * s, 2.0 * a * a * s **3
+    c, dc, d2c = _yield_discount(tau - tau[0], f, y, False)
+    return s * c, ds * c + s * dc, d2s * c + 2.0 * ds * dc + s * d2c
+
+
 def _kind(bf: BondFlows, kind: YieldType | None) -> YieldType:
     return bf.yield_type if kind is None else kind
 
@@ -199,14 +205,16 @@ def _price_derivs(bf: BondFlows, coupon: float, y: float, redemption: float,
         base = 1.0 + y * t
         clean = (100.0 * coupon * t + redemption) / base
         return clean + accrued_interest(bf, coupon), -t * clean / base, 2.0 * t * t * clean / base ** 2
-
     amounts = cashflows(yb, coupon, redemption)
     exponents = yb.yield_exponents
     if kind == YieldType.JP_COMPOUND:
         if yb.coupon_times is None:
             raise ValueError("JP compound yield needs coupon_times: BondFlows built without a coupon schedule")
         exponents = yb.compounding * yb.coupon_times
-    v, dv, d2v = _yield_discount(exponents, yb.compounding, y, yb.simple_flows)
+    if kind == YieldType.TREASURY:
+        v, dv, d2v = _treasury_discount(exponents, yb.compounding, y)
+    else:
+        v, dv, d2v = _yield_discount(exponents, yb.compounding, y, yb.simple_flows)
     # v, dv, d2v = _yield_discount(yb.yield_exponents, yb.compounding, y, yb.simple_flows)
     return float(np.sum(amounts * v)) + shift, float(np.sum(amounts * dv)), float(np.sum(amounts * d2v))
 

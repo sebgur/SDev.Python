@@ -202,7 +202,7 @@ def make_spot_swap_scheduler(trade_date: dt.date, tenor: str, conv: SwapConventi
 class YieldType(Enum):
     STREET = "street"  # compounded at the coupon frequency per coupon period
     SIMPLE = "simple"  # (c + (R - clean) / T) / clean: JGB simple yield; money-market yield (R/P - 1) / T for bills
-    JP_COMPOUND = "jp_compound"  # street formula, exponents f x simple_yield_time to each coupond date (Japan)
+    JP_COMPOUND = "jp_compound"  # street formula, exponents f x simple_yield_time to each coupon date (Japan)
     TREASURY = "treasury"  # US Treasury convention (auctions, when-issued): simple interest to the next coupon
 
 
