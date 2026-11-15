@@ -120,72 +120,72 @@
       "notes": "Annual/annual, pay T+2, spot T+2, SIFMA calendar",
       "currency": "USD", "float_index": "USD.SOFR.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USGOV", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USGOV", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "spot_lag": 2, "spot_calendar": null
     },
     "USD.EFFR.1D.SWAP": {
       "notes": "Fed Funds OIS. Annual/annual, pay T+2, spot T+2",
       "currency": "USD", "float_index": "USD.EFFR.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USD", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "USD", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "spot_lag": 2, "spot_calendar": null
     },
     "EUR.ESTR.1D.SWAP": {
       "notes": "Annual/annual, pay T+1, spot T+2",
       "currency": "EUR", "float_index": "EUR.ESTR.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 1, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 1, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 1, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 1, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "spot_lag": 2, "spot_calendar": null
     },
     "GBP.SONIA.1D.SWAP": {
       "notes": "Annual/annual, pay T+0, same-day start",
       "currency": "GBP", "float_index": "GBP.SONIA.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "GBP", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "GBP", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "spot_lag": 0, "spot_calendar": null
     },
     "JPY.TONA.1D.SWAP": {
       "notes": "Annual/annual, pay T+2, spot T+2",
       "currency": "JPY", "float_index": "JPY.TONA.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "JPY", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT365F", "calendar": "JPY", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "spot_lag": 2, "spot_calendar": null
     },
     "CHF.SARON.1D.SWAP": {
       "notes": "Annual/annual, pay T+2, spot T+2",
       "currency": "CHF", "float_index": "CHF.SARON.1D",
       "fixed_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "CHF", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "float_leg": {"frequency": "1Y", "daycount": "ACT360", "calendar": "CHF", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 2, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "spot_lag": 2, "spot_calendar": null
     },
     "EUR.EURIBOR.3M.SWAP": {
       "notes": "Fixed annual 30/360 vs EURIBOR 3M, spot T+2",
       "currency": "EUR", "float_index": "EUR.EURIBOR.3M",
       "fixed_leg": {"frequency": "1Y", "daycount": "D30_360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "float_leg": {"frequency": "3M", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "spot_lag": 2, "spot_calendar": null
     },
     "EUR.EURIBOR.6M.SWAP": {
       "notes": "Fixed annual 30/360 vs EURIBOR 6M, spot T+2",
       "currency": "EUR", "float_index": "EUR.EURIBOR.6M",
       "fixed_leg": {"frequency": "1Y", "daycount": "D30_360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 0, "fixing_lag": null, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "float_leg": {"frequency": "6M", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
-                    "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false},
+                    "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "spot_lag": 2, "spot_calendar": null
     }
   },
@@ -195,10 +195,10 @@
       "currency": "EUR",
       "leg1_index": "EUR.EURIBOR.3M",
       "leg1": {"frequency": "3M", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
-               "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false},
+               "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "leg2_index": "EUR.EURIBOR.6M",
       "leg2": {"frequency": "6M", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": true,
-               "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false},
+               "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": null, "eom": false, "fixed_regular_periods": false},
       "spread_leg": 1, "spot_lag": 2, "spot_calendar": null
     }
   }

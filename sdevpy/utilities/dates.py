@@ -27,9 +27,9 @@ def advance_int(base_date: dt.datetime, days: int=0, months: int=0, years: int=0
     return base_date + relativedelta(days=days, months=months, years=years)
 
 
-def advance(base_date: dt.datetime, tenor_str: str) -> dt.datetime:
-    """ Advance base_date by tenor, no calendars or conventions """
-    return base_date + period(tenor_str)
+def advance(date: dt.datetime, tenor_str: str) -> dt.datetime:
+    """ Advance date by tenor, no calendars or conventions """
+    return date + period(tenor_str)
 
 
 def to_oadate(date: dt.datetime) -> int:

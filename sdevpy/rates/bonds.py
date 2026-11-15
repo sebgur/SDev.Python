@@ -38,7 +38,6 @@ class BondFlows:
             versions when the convention has them (CAN), else self """
         if self.yield_alpha is None:
             return self
-
         return replace(self, alpha=self.yield_alpha, accrual_fraction=self.yield_accrued_fraction,
                        yield_alpha=None, yield_accrued_fraction=None)
 

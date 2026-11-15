@@ -15,13 +15,13 @@ SOFR = {"notes": "", "currency": "USD", "kind": "OVERNIGHT", "tenor": None, "day
 EURIBOR_6M = {"notes": "", "currency": "EUR", "kind": "TERM", "tenor": "6M", "daycount": "ACT360",
               "calendar": "EUR", "fixing_lag": 2, "publication_lag": 0, "bdc": "MF", "eom": True}
 SOFR_LEG = {"frequency": "1Y", "daycount": "ACT360", "calendar": "USGOV", "bdc": "MF", "adjust_accrual": True,
-            "pay_lag": 2, "fixing_lag": None, "fixing_calendar": None, "eom": False}
+            "pay_lag": 2, "fixing_lag": None, "fixing_calendar": None, "eom": False, "fixed_regular_periods": False}
 SOFR_SWAP = {"notes": "", "currency": "USD", "float_index": "USD.SOFR", "fixed_leg": SOFR_LEG,
             "float_leg": dict(SOFR_LEG), "spot_lag": 2, "spot_calendar": None}
 EUR_FIXED_LEG = {"frequency": "1Y", "daycount": "D30_360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": True,
-                 "pay_lag": 0, "fixing_lag": None, "fixing_calendar": None, "eom": False}
+                 "pay_lag": 0, "fixing_lag": None, "fixing_calendar": None, "eom": False, "fixed_regular_periods": False}
 EURIBOR_6M_LEG = {"frequency": "6M", "daycount": "ACT360", "calendar": "EUR", "bdc": "MF", "adjust_accrual": True,
-                  "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": None, "eom": False}
+                  "pay_lag": 0, "fixing_lag": 2, "fixing_calendar": None, "eom": False, "fixed_regular_periods": False}
 EURIBOR_6M_SWAP = {"notes": "", "currency": "EUR", "float_index": "EUR.EURIBOR.6M",
                   "fixed_leg": EUR_FIXED_LEG, "float_leg": EURIBOR_6M_LEG, "spot_lag": 2, "spot_calendar": None}
 USD_DEPO = {"notes": "", "currency": "USD", "daycount": "ACT360", "calendar": "USD", "spot_lag": 2, "bdc": "MF",

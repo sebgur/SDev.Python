@@ -2,7 +2,6 @@ import datetime as dt
 from enum import Enum
 import numpy as np
 import numpy.typing as npt
-# from sdevpy.utilities.calendars import Period
 
 
 class DayCount(Enum):
@@ -10,6 +9,7 @@ class DayCount(Enum):
     ACT365F = "ACT/365F"
     D30_360 = "30/360"
     D30E_360 = "30E/360"
+    D30_360_EOM = "30/360 EOM"  # SIFMA (SIA) 30/360 for month-end bonds: last day of February counts as the 30th
     ACTACT_ICMA = "ACT/ACT ICMA"
     ACT365_NL = "NL/365" # actual days with Feb 29 not counted / 365 (JGB accrued and simple yield)
     ACT365_CANADIAN = "ACT/365 Canadian bond"  # needs the coupon period: act365_canadian()
@@ -34,6 +34,9 @@ def yearfraction(start: dt.date, end: dt.date, convention: DayCount) -> float|np
 
     if convention == DayCount.D30_360:
         return _30_360(start, end)
+
+    if convention == DayCount.D30_360_EOM:
+        return _30_360_eom(start, end)
 
     if convention == DayCount.D30E_360:
         return _30e_360(start, end)
@@ -105,3 +108,21 @@ def _30e_360(start: dt.date, end: dt.date) -> float:
     d1 = min(start.day, 30)
     d2 = min(end.day, 30)
     return ((end.year - start.year) * 360 + (end.month - start.month) * 30 + (d2 - d1)) / 360
+
+
+def _30_360_eom(start: dt.date, end: dt.date) -> float:
+    """ SIFMA (SIA) 30/360 for month-end bonds: US 30/360, with the last day of February counted as the 30th """
+    d1, d2 = start.day, end.day
+    if _is_last_of_feb(start):
+        if _is_last_of_feb(end):
+            d2 = 30
+        d1 = 30
+    if d1 == 31:
+        d1 = 30
+    if d2 == 31 and d1 == 30:
+        d2 = 30
+    return ((end.year - start.year) * 360 + (end.month - start.month) * 30 + (d2 - d1)) / 360
+
+
+def _is_last_of_feb(d: dt.date) -> bool:
+    return d.month == 2 and (d + dt.timedelta(days=1)).month == 3

@@ -25,6 +25,7 @@ class LegConvention:
     fixing_lag: int | None = None  # business days before accrual start
     fixing_calendar: str | None = None  # index fixing calendar (None: use the leg calendar)
     eom: bool = False
+    fixed_regular_periods: bool = False  # regular 1/f, irregular and accrued on daycount summed over quasi-coupons
 
 
 @dataclass(frozen=True)
@@ -88,19 +89,34 @@ def regular_anchor(start: dt.date, end: dt.date, stub: str = "short_front", firs
 def accrual_fractions(starts: list[dt.date], ends: list[dt.date], conv: LegConvention,
                       anchor: dt.date) -> list[float]:
     """ Accrual fraction per period. For ACT/ACT ICMA, only the first and last periods can be irregular: they are
-        measured against quasi-coupon periods rolled from the schedule's regular anchor. """
-    if conv.daycount != DayCount.ACTACT_ICMA:
+        measured against quasi-coupon periods rolled from the schedule's regular anchor. Same with
+        conv.fixed_regular_periods on other day counts: 1/f per regular period, else the day count over the
+        quasi-coupon pieces """
+    if conv.daycount != DayCount.ACTACT_ICMA and not conv.fixed_regular_periods:
         return [yearfraction(s, e, conv.daycount) for s, e in zip(starts, ends, strict=True)]
 
     freq = coupons_per_year(conv.frequency)
     alpha = []
     for i, (s, e) in enumerate(zip(starts, ends, strict=True)):
+        s, e = to_date(s), to_date(e)
         if 0 < i < len(starts) - 1:
             quasi = [s, e]  # regular by construction
         else:
             quasi = quasi_coupon_dates(anchor, s, e, conv.frequency, conv.eom)
-        alpha.append(icma_yearfraction(s, e, quasi, freq))
+        if conv.daycount == DayCount.ACTACT_ICMA:
+            alpha.append(icma_yearfraction(s, e, quasi, freq))
+        else:
+            alpha.append(_piecewise_fraction(s, e, quasi, conv.daycount, freq))
     return alpha
+
+
+def _piecewise_fraction(start: dt.date, end: dt.date, quasi: list[dt.date], daycount: DayCount,
+                        freq: int) -> float:
+    """ 1/f for a whole quasi-coupon period, else the day count summed over the quasi-coupon pieces of [start, end] """
+    if quasi == [start, end]:
+        return 1.0 / freq
+    return sum(float(yearfraction(max(start, q0), min(end, q1), daycount))
+               for q0, q1 in zip(quasi[:-1], quasi[1:], strict=True) if min(end, q1) > max(start, q0))
 
 
 def leg_from_periods(periods: list[Period], conv: LegConvention, anchor: dt.date|None=None) -> LegSchedule:
@@ -187,6 +203,8 @@ class YieldType(Enum):
     STREET = "street"  # compounded at the coupon frequency per coupon period
     SIMPLE = "simple"  # (c + (R - clean) / T) / clean: JGB simple yield; money-market yield (R/P - 1) / T for bills
     JP_COMPOUND = "jp_compound"  # street formula, exponents f x simple_yield_time to each coupond date (Japan)
+    TREASURY = "treasury"  # US Treasury convention (auctions, when-issued): simple interest to the next coupon
+
 
 @dataclass(frozen=True)
 class BondConvention:
@@ -197,7 +215,7 @@ class BondConvention:
     ex_coupon_calendar_days: bool = False  # ex_coupon_days in calendar days before the coupon date (ACGB)
     simple_final_period: bool = False  # simple-interest yield in the last coupon period
     final_period_daycount: DayCount | None = None  # simple_final_period on this day count (None: coupon time)
-    final_period_unadjusted: bool = False
+    final_period_unadjusted: bool = False  # final-period time to the unadjusted maturity (BUND), not the payment date
     accrued_daycount: DayCount | None = None  # accrued interest day count when it differs from the coupon's
     accrued_cap: bool = False  # accrued interest capped at the current period's coupon (JGB: c d / 365, at most c/2)
     stub_daycount: DayCount | None = None  # irregular coupon amounts: 1/f per full quasi-period, broken part on this
