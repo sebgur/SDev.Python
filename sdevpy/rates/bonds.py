@@ -185,7 +185,7 @@ def _treasury_discount(tau, f, y):
         coupon, compounded at y/f per period from there, (1 + y x0/f)^-1 (1 + y/f)^-(tau - x0), x0 = tau[0] """
     a = tau[0] / f
     s = 1.0 / (1.0 + a * y)
-    ds, d2s = -a * s * s, 2.0 * a * a * s **3
+    ds, d2s = -a * s * s, 2.0 * a * a * s ** 3
     c, dc, d2c = _yield_discount(tau - tau[0], f, y, False)
     return s * c, ds * c + s * dc, d2s * c + 2.0 * ds * dc + s * d2c
 
@@ -215,7 +215,6 @@ def _price_derivs(bf: BondFlows, coupon: float, y: float, redemption: float,
         v, dv, d2v = _treasury_discount(exponents, yb.compounding, y)
     else:
         v, dv, d2v = _yield_discount(exponents, yb.compounding, y, yb.simple_flows)
-    # v, dv, d2v = _yield_discount(yb.yield_exponents, yb.compounding, y, yb.simple_flows)
     return float(np.sum(amounts * v)) + shift, float(np.sum(amounts * dv)), float(np.sum(amounts * d2v))
 
 

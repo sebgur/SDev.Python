@@ -10,7 +10,7 @@ UST = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'USGOV', bdc=BDC.
 
 # UK gilts: semi-annual ACT/ACT ICMA, London calendar, T+1, ex-dividend 7 business days before each coupon
 GILT = BondConvention(LegConvention('6M', DayCount.ACTACT_ICMA, 'GBP', bdc=BDC.F, adjust_accrual=False),
-                      settlement_lag=1, ex_coupon_days=7)
+                      settlement_lag=1, ex_coupon_days=7)  # ToDo: Should this not be 6?
 
 # JGBs: semi-annual on the 20th, Tokyo market calendar, T+1, accrued ACT/365F capped at c/2 (JNX), simple yield.
 # A full first coupon is a term of each bond: build it with accrual_start=previous_coupon_date(issue, ...)

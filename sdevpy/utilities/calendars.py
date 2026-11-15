@@ -19,6 +19,7 @@ class BDC(Enum):
 
 Period = namedtuple("Period", ["unadj_start", "unadj_end", "adj_start", "adj_end"])
 _IMM_MONTHS = (3, 6, 9, 12)
+MIN_YEAR = 1990 # First year to start loading holidays
 
 
 class Calendar:
@@ -254,7 +255,7 @@ def _step_imm(d: dt.date, n: int, forward: bool) -> dt.date:
 
 
 @cache
-def make_calendar(name: str, start_year: int=2000, end_year: int=2100):
+def make_calendar(name: str, start_year: int=MIN_YEAR, end_year: int=2100):
     if ',' in name:
         cdr_names = name.split(',')
         cdrs = [make_calendar(cdrn, start_year=start_year, end_year=end_year) for cdrn in cdr_names]
@@ -270,7 +271,6 @@ def make_calendar(name: str, start_year: int=2000, end_year: int=2100):
         cdr = make_calendar_from_mcal(MCAL_ALIASES.get(name, name), y)
         cdr.name = name
         return cdr
-        # return make_calendar_from_mcal(name, y)
     else:
         hols = set()
         for year in y:
