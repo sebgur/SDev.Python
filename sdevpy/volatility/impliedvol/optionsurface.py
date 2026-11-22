@@ -218,7 +218,6 @@ def transform_surface(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_calls
                       prices: npt.ArrayLike, transform: str='ShiftedBlackScholes'):
     """ Tranform prices into: Price, ShiftedBlackScholes (3%) and Bachelier (normal vols). """
     # Transform prices
-    # trans_prices = []
     num_expiries = expiries.shape[0]
     num_strikes = strikes.shape[1]
     if transform == 'Price':
@@ -227,31 +226,24 @@ def transform_surface(expiries: npt.ArrayLike, strikes: npt.ArrayLike, are_calls
         trans_prices = np.ndarray(shape=(num_expiries, num_strikes))
         shift = 0.03
         sfwd = fwd + shift
-        for i, expiry in enumerate(expiries):
+        for i in range(num_expiries):
+            expiry = expiries[i, 0]
             strikes_ = strikes[i]
             are_calls_ = are_calls[i]
-            # trans_prices_ = []
             for j, strike in enumerate(strikes_):
                 sstrike = strike + shift
                 trans_prices[i, j] = black.implied_vol(expiry, sstrike, are_calls_[j], sfwd,
                                                        prices[i, j])
-                # trans_prices_.append(black.implied_vol(expiry, sstrike, are_calls_[j], sfwd,
-                #                                        prices[i, j]))
-            # trans_prices.append(trans_prices_)
     elif transform == 'Bachelier':
         trans_prices = np.ndarray(shape=(num_expiries, num_strikes))
-        for i, expiry in enumerate(expiries):
+        for i in range(num_expiries):
+            expiry = expiries[i, 0]
             strikes_ = strikes[i]
             are_calls_ = are_calls[i]
-            # trans_prices_ = []
             for j, strike in enumerate(strikes_):
                 trans_prices[i, j] = bachelier.implied_vol_jaeckel(expiry, strike, are_calls_[j], fwd,
                                                            prices[i, j])
-            #     trans_prices_.append(bachelier.implied_vol(expiry, strike, are_calls_[j], fwd,
-            #                                                prices[i, j]))
-            # trans_prices.append(trans_prices_)
     else:
         raise ValueError("Unknown transform type: " + transform)
 
     return trans_prices
-    # return np.asarray(trans_prices)
